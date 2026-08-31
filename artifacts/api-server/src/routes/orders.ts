@@ -27,6 +27,7 @@ import {
   type OrderItem,
 } from "@workspace/db";
 import { CreateOrderBody, GetOrderParams } from "@workspace/api-zod";
+import { reindex } from "../lib/aiIndex";
 import { requireMember } from "../middlewares/requireMember";
 
 const router: IRouter = Router();
@@ -335,6 +336,8 @@ router.post("/orders", async (req, res) => {
       return { order, items };
     });
 
+    reindex("order", result.order.id);
+    for (const pid of new Set(productIds)) reindex("product", pid);
     res.status(201).json(serializeOrder(result.order, result.items));
   } catch (err) {
     if (err instanceof InsufficientStockError) {

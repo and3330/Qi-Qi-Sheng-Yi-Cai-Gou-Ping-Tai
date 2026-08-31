@@ -1654,6 +1654,76 @@ export interface PnlReport {
   months: PnlMonthRow[];
 }
 
+export interface CreateConversationInput {
+  title?: string;
+}
+
+export interface AssistantConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface ChatMessageInput {
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  content: string;
+}
+
+export type ChatMessageMetadata = { [key: string]: unknown };
+
+export interface ChatMessage {
+  id: number;
+  role: string;
+  content: string;
+  metadata?: ChatMessageMetadata;
+  createdAt: string;
+}
+
+export type AiIndexRebuildResultCounts = {[key: string]: number};
+
+export interface AiIndexRebuildResult {
+  ok: boolean;
+  /** vector（向量檢索）或 keyword（關鍵字退回） */
+  embedding: string;
+  counts: AiIndexRebuildResultCounts;
+}
+
+export interface SupportConversation {
+  id: number;
+  title: string;
+  status: string;
+  needsHuman: boolean;
+  createdAt: string;
+}
+
+export interface AdminSupportConversation {
+  id: number;
+  memberName: string;
+  memberUsername: string;
+  status: string;
+  needsHuman: boolean;
+  createdAt: string;
+}
+
+export type SupportThreadConversation = {
+  id: number;
+  status: string;
+  needsHuman: boolean;
+};
+
+export interface SupportThread {
+  conversation: SupportThreadConversation;
+  messages: ChatMessage[];
+}
+
+export interface SupportReply {
+  reply?: ChatMessage | null;
+  needsHuman: boolean;
+}
+
 export type ListPortalOrdersParams = {
 status?: ListPortalOrdersStatus;
 };
@@ -1895,5 +1965,13 @@ export const GetAdminFinanceLedgerKind = {
 export type GetAdminPnlReportParams = {
 from?: string;
 to?: string;
+};
+
+export type GetAdminSupportConversationsParams = {
+needsHuman?: string;
+};
+
+export type CloseSupportConversation200 = {
+  ok: boolean;
 };
 

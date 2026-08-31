@@ -18,6 +18,7 @@ import {
   UpdateAdminProductVariantBody,
 } from "@workspace/api-zod";
 import { requireStaff, requireOps } from "../middlewares/requireMember";
+import { reindex } from "../lib/aiIndex";
 
 const router: IRouter = Router();
 
@@ -138,6 +139,7 @@ router.post("/admin/products", requireOps, async (req, res) => {
     }
     return product;
   });
+  reindex("product", created.id);
   res.status(201).json(serializeAdminProduct(created));
 });
 
@@ -173,6 +175,7 @@ router.patch("/admin/products/:id", requireOps, async (req, res) => {
     res.status(404).json({ error: "找不到此商品" });
     return;
   }
+  reindex("product", updated.id);
   res.json(serializeAdminProduct(updated));
 });
 
@@ -253,6 +256,7 @@ router.post("/admin/inventory/adjust", requireOps, async (req, res) => {
         .returning();
       return { movement, product };
     });
+    reindex("product", productId);
     res
       .status(201)
       .json(serializeMovement(result.movement, result.product));
@@ -354,6 +358,7 @@ router.post(
       }
       return variant;
     });
+    reindex("product", created.productId);
     res.status(201).json(serializeAdminVariant(created));
   },
 );
@@ -382,6 +387,7 @@ router.patch("/admin/variants/:id", requireOps, async (req, res) => {
     res.status(404).json({ error: "找不到此規格" });
     return;
   }
+  reindex("product", updated.productId);
   res.json(serializeAdminVariant(updated));
 });
 

@@ -2343,3 +2343,231 @@ export const GetAdminPnlReportResponse = zod.object({
 })
 
 
+/**
+ * @summary 建立 AI 行政助理對話
+ */
+export const CreateAssistantConversationBody = zod.object({
+  "title": zod.string().optional()
+})
+
+export const CreateAssistantConversationResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary AI 行政助理對話列表
+ */
+export const GetAssistantConversationsResponseItem = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "createdAt": zod.string()
+})
+export const GetAssistantConversationsResponse = zod.array(GetAssistantConversationsResponseItem)
+
+
+/**
+ * @summary 對話歷史訊息
+ */
+export const GetAssistantMessagesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetAssistantMessagesResponseItem = zod.object({
+  "id": zod.int(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "createdAt": zod.string()
+})
+export const GetAssistantMessagesResponse = zod.array(GetAssistantMessagesResponseItem)
+
+
+/**
+ * @summary 送出訊息給 AI 行政助理
+ */
+export const SendAssistantMessageParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const sendAssistantMessageBodyContentMax = 4000;
+
+
+
+export const SendAssistantMessageBody = zod.object({
+  "content": zod.string().min(1).max(sendAssistantMessageBodyContentMax)
+})
+
+export const SendAssistantMessageResponse = zod.object({
+  "id": zod.int(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary 全量重建 AI 知識庫索引（僅系統管理員）
+ */
+export const RebuildAiIndexResponse = zod.object({
+  "ok": zod.boolean(),
+  "embedding": zod.string().describe('vector（向量檢索）或 keyword（關鍵字退回）'),
+  "counts": zod.record(zod.string(), zod.int())
+})
+
+
+/**
+ * @summary 建立客服對話
+ */
+export const CreateSupportConversationResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "needsHuman": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary 我的客服對話列表
+ */
+export const GetSupportConversationsResponseItem = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "needsHuman": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const GetSupportConversationsResponse = zod.array(GetSupportConversationsResponseItem)
+
+
+/**
+ * @summary 客服對話訊息
+ */
+export const GetSupportMessagesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetSupportMessagesResponse = zod.object({
+  "conversation": zod.object({
+  "id": zod.int(),
+  "status": zod.string(),
+  "needsHuman": zod.boolean()
+}),
+  "messages": zod.array(zod.object({
+  "id": zod.int(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary 送出客服訊息
+ */
+export const SendSupportMessageParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const sendSupportMessageBodyContentMax = 4000;
+
+
+
+export const SendSupportMessageBody = zod.object({
+  "content": zod.string().min(1).max(sendSupportMessageBodyContentMax)
+})
+
+export const SendSupportMessageResponse = zod.object({
+  "reply": zod.union([zod.object({
+  "id": zod.int(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
+  "needsHuman": zod.boolean()
+})
+
+
+/**
+ * @summary 客服對話總覽（後台）
+ */
+export const GetAdminSupportConversationsQueryParams = zod.object({
+  "needsHuman": zod.coerce.string().optional()
+})
+
+export const GetAdminSupportConversationsResponseItem = zod.object({
+  "id": zod.int(),
+  "memberName": zod.string(),
+  "memberUsername": zod.string(),
+  "status": zod.string(),
+  "needsHuman": zod.boolean(),
+  "createdAt": zod.string()
+})
+export const GetAdminSupportConversationsResponse = zod.array(GetAdminSupportConversationsResponseItem)
+
+
+/**
+ * @summary 檢視客服對話（後台）
+ */
+export const GetAdminSupportMessagesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetAdminSupportMessagesResponse = zod.object({
+  "conversation": zod.object({
+  "id": zod.int(),
+  "status": zod.string(),
+  "needsHuman": zod.boolean()
+}),
+  "messages": zod.array(zod.object({
+  "id": zod.int(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary 真人客服回覆
+ */
+export const ReplySupportConversationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const replySupportConversationBodyContentMax = 4000;
+
+
+
+export const ReplySupportConversationBody = zod.object({
+  "content": zod.string().min(1).max(replySupportConversationBodyContentMax)
+})
+
+export const ReplySupportConversationResponse = zod.object({
+  "id": zod.int(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary 結案客服對話
+ */
+export const CloseSupportConversationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const CloseSupportConversationResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+

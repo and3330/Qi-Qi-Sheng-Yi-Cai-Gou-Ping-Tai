@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { AdjustInstitutionWalletBody } from "@workspace/api-zod";
 import { requireAdmin } from "../middlewares/requireMember";
+import { reindex } from "../lib/aiIndex";
 
 const router: IRouter = Router();
 
@@ -160,6 +161,7 @@ router.post(
       throw err;
     }
 
+    reindex("institution", institutionId);
     res.json(await loadInstitutionWallet(institutionId));
   },
 );

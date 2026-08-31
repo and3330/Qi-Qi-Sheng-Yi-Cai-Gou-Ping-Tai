@@ -19,6 +19,8 @@ import adminInstitutionWalletsRouter from "./adminInstitutionWallets";
 import adminContentRouter from "./adminContent";
 import storageRouter from "./storage";
 import portalRouter from "./portal";
+import aiAssistantRouter from "./aiAssistant";
+import supportChatRouter from "./supportChat";
 
 const router: IRouter = Router();
 
@@ -42,5 +44,7 @@ router.use(adminInstitutionWalletsRouter);
 router.use(adminContentRouter);
 router.use(storageRouter);
 router.use(portalRouter);
+router.use(aiAssistantRouter);
+router.use(supportChatRouter);
 
 export default router;

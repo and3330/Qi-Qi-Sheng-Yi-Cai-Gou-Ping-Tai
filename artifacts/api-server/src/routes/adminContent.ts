@@ -14,6 +14,7 @@ import {
   UpdateAdminAnnouncementBody,
 } from "@workspace/api-zod";
 import { requireOps } from "../middlewares/requireMember";
+import { reindex, removeFromIndex } from "../lib/aiIndex";
 
 const router: IRouter = Router();
 
@@ -128,6 +129,7 @@ router.post("/admin/articles", requireOps, async (req, res) => {
     .values({ ...parsed.data, updatedAt: new Date() })
     .returning();
   await recordArticleRevision(row, req.member!.id, "建立");
+  reindex("article", row.id);
   res.status(201).json(serializeAdminArticle(row));
 });
 
@@ -156,6 +158,7 @@ router.patch("/admin/articles/:id", requireOps, async (req, res) => {
     req.member!.id,
     parsed.data.status ? `狀態變更為 ${parsed.data.status}` : "編輯",
   );
+  reindex("article", row.id);
   res.json(serializeAdminArticle(row));
 });
 
@@ -173,6 +176,7 @@ router.delete("/admin/articles/:id", requireOps, async (req, res) => {
     res.status(404).json({ error: "找不到此內容" });
     return;
   }
+  removeFromIndex("article", id);
   res.status(204).end();
 });
 
@@ -203,6 +207,7 @@ router.post("/admin/announcements", requireOps, async (req, res) => {
     .values({ ...parsed.data, updatedAt: new Date() })
     .returning();
   await recordAnnouncementRevision(row, req.member!.id, "建立");
+  reindex("announcement", row.id);
   res.status(201).json(serializeAdminAnnouncement(row));
 });
 
@@ -231,6 +236,7 @@ router.patch("/admin/announcements/:id", requireOps, async (req, res) => {
     req.member!.id,
     parsed.data.status ? `狀態變更為 ${parsed.data.status}` : "編輯",
   );
+  reindex("announcement", row.id);
   res.json(serializeAdminAnnouncement(row));
 });
 
@@ -248,6 +254,7 @@ router.delete("/admin/announcements/:id", requireOps, async (req, res) => {
     res.status(404).json({ error: "找不到此內容" });
     return;
   }
+  removeFromIndex("announcement", id);
   res.status(204).end();
 });
 

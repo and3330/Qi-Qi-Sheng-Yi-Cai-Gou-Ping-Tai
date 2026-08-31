@@ -3,3 +3,4 @@
 - [DB constraint error handling](db-constraint-error-handling.md) — enforce race-sensitive invariants with partial unique indexes; drizzle wraps pg errors, check err.cause for code 23505.
 - [Object storage private reads](object-storage-auth.md) — /storage/objects must be auth-gated; member reads allowed only via jsonb containment check on owning order's shipmentPhotos; staff bypass.
 - [Product variants invariants](product-variants.md) — products with active variants must reject variant-less cart/order/stock-adjust; PO receiving not yet variant-aware.
+- [AI 大腦架構](ai-brain-architecture.md) — embeddings 不走平台代理（金鑰選配、關鍵字退回）；助理操作須伺服器端兩段式確認（prompt 不可信）；工具回傳不入歷史須注入 pending 提示。

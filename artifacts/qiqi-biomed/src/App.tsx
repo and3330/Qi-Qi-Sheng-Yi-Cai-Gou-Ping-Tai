@@ -23,6 +23,7 @@ import HospitalsPage from "./pages/Hospitals";
 import NewsPage from "./pages/News";
 import FavoritesPage from "./pages/Favorites";
 import MemberPage from "./pages/Member";
+import SupportPage from "./pages/Support";
 import SignInPage from "./pages/SignIn";
 import SignUpPage from "./pages/SignUp";
 import { AdminGuard } from "./pages/admin/AdminGuard";
@@ -39,6 +40,8 @@ import AdminWalletsPage from "./pages/admin/Wallets";
 import AdminInstitutionWalletsPage from "./pages/admin/InstitutionWallets";
 import AdminCommissionsPage from "./pages/admin/Commissions";
 import AdminContentPage from "./pages/admin/Content";
+import AdminSupportPage from "./pages/admin/Support";
+import AdminAiAssistantPage from "./pages/admin/AiAssistant";
 import { PortalGuard } from "./pages/portal/PortalGuard";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalOrders from "./pages/portal/Orders";
@@ -102,6 +105,8 @@ function AdminArea() {
           <Route path="/admin/purchasing" component={AdminPurchasingPage} />
           <Route path="/admin/orders" component={AdminOrdersPage} />
           <Route path="/admin/content" component={AdminContentPage} />
+          <Route path="/admin/support" component={AdminSupportPage} />
+          <Route path="/admin/ai-assistant" component={AdminAiAssistantPage} />
           <Route path="/admin/reports" component={AdminReportsPage} />
           <Route path="/admin/finance" component={AdminFinancePage} />
           <Route path="/admin/commissions" component={AdminCommissionsPage} />
@@ -159,6 +164,7 @@ function AppRoutes() {
               <ProtectedRoute path="/orders/:id" component={OrderDetailPage} />
               <ProtectedRoute path="/favorites" component={FavoritesPage} />
               <ProtectedRoute path="/member" component={MemberPage} />
+              <ProtectedRoute path="/support" component={SupportPage} />
 
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />

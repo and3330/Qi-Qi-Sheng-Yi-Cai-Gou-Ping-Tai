@@ -23,6 +23,7 @@ import {
   UpdateShipmentPhotosBody,
 } from "@workspace/api-zod";
 import { requireStaff, requireOps } from "../middlewares/requireMember";
+import { reindex } from "../lib/aiIndex";
 
 const router: IRouter = Router();
 
@@ -153,21 +154,13 @@ const ORDER_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
 };
 
-router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) {
-    res.status(400).json({ error: "Invalid id" });
-    return;
-  }
-  const parsed = UpdateAdminOrderStatusBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "狀態不正確" });
-    return;
-  }
-  const target = parsed.data.status;
-
-  try {
-    await db.transaction(async (tx) => {
+/**
+ * 訂單狀態轉換（含完成入佣金、取消退款與回補庫存）。
+ * 供後台路由與 AI 行政助理共用。
+ * 失敗時丟出 ORDER_NOT_FOUND 或 BAD_TRANSITION:<現況>。
+ */
+export async function applyOrderStatusChange(id: number, target: string) {
+  await db.transaction(async (tx) => {
       const [order] = await tx
         .select()
         .from(ordersTable)
@@ -383,6 +376,23 @@ router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
         .set({ status: target })
         .where(eq(ordersTable.id, id));
     });
+}
+
+router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const parsed = UpdateAdminOrderStatusBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "狀態不正確" });
+    return;
+  }
+  const target = parsed.data.status;
+
+  try {
+    await applyOrderStatusChange(id, target);
   } catch (err) {
     if (err instanceof Error && err.message === "ORDER_NOT_FOUND") {
       res.status(404).json({ error: "找不到此訂單" });
@@ -397,6 +407,7 @@ router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
     throw err;
   }
 
+  reindex("order", id);
   res.json(await loadAdminOrder(id));
 });
 

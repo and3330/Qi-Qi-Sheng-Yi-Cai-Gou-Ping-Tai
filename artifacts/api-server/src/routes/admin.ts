@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { UpdateAdminMemberBody } from "@workspace/api-zod";
 import { requireAdmin, requireStaff } from "../middlewares/requireMember";
+import { reindex } from "../lib/aiIndex";
 
 const router: IRouter = Router();
 
@@ -138,6 +139,7 @@ router.patch("/admin/members/:id", requireAdmin, async (req, res) => {
     res.status(404).json({ error: "找不到此會員" });
     return;
   }
+  reindex("member", updated.id);
   res.json(serializeAdminMember(updated));
 });
 

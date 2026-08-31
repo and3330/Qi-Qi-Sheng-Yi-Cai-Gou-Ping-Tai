@@ -284,6 +284,13 @@ export default function MemberPage() {
             <span className="font-bold text-gray-800 flex-1">收藏清單</span>
             <span className="text-gray-300">›</span>
           </Link>
+          <Link href="/support" className="flex items-center p-4 hover:bg-amber-50 transition-colors">
+            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mr-3">
+              <HelpCircle size={16} />
+            </div>
+            <span className="font-bold text-gray-800 flex-1">線上客服</span>
+            <span className="text-gray-300">›</span>
+          </Link>
           <Link href="/knowledge" className="flex items-center p-4 hover:bg-slate-50 transition-colors">
             <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3">
               <HelpCircle size={16} />

@@ -1926,6 +1926,233 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PnlReport"
+  /admin/assistant/conversations:
+    post:
+      tags: [assistant]
+      operationId: createAssistantConversation
+      summary: 建立 AI 行政助理對話
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConversationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantConversation"
+    get:
+      tags: [assistant]
+      operationId: getAssistantConversations
+      summary: AI 行政助理對話列表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssistantConversation"
+  /admin/assistant/conversations/{id}/messages:
+    get:
+      tags: [assistant]
+      operationId: getAssistantMessages
+      summary: 對話歷史訊息
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+    post:
+      tags: [assistant]
+      operationId: sendAssistantMessage
+      summary: 送出訊息給 AI 行政助理
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "200":
+          description: AI 回覆
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+  /admin/ai-index/rebuild:
+    post:
+      tags: [assistant]
+      operationId: rebuildAiIndex
+      summary: 全量重建 AI 知識庫索引（僅系統管理員）
+      responses:
+        "200":
+          description: 重建結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiIndexRebuildResult"
+  /support/conversations:
+    post:
+      tags: [support]
+      operationId: createSupportConversation
+      summary: 建立客服對話
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportConversation"
+    get:
+      tags: [support]
+      operationId: getSupportConversations
+      summary: 我的客服對話列表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupportConversation"
+  /support/conversations/{id}/messages:
+    get:
+      tags: [support]
+      operationId: getSupportMessages
+      summary: 客服對話訊息
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportThread"
+    post:
+      tags: [support]
+      operationId: sendSupportMessage
+      summary: 送出客服訊息
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "200":
+          description: AI 或系統回覆
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportReply"
+  /admin/support/conversations:
+    get:
+      tags: [support]
+      operationId: getAdminSupportConversations
+      summary: 客服對話總覽（後台）
+      parameters:
+        - name: needsHuman
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminSupportConversation"
+  /admin/support/conversations/{id}/messages:
+    get:
+      tags: [support]
+      operationId: getAdminSupportMessages
+      summary: 檢視客服對話（後台）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupportThread"
+  /admin/support/conversations/{id}/reply:
+    post:
+      tags: [support]
+      operationId: replySupportConversation
+      summary: 真人客服回覆
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+  /admin/support/conversations/{id}/close:
+    post:
+      tags: [support]
+      operationId: closeSupportConversation
+      summary: 結案客服對話
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
 components:
   schemas:
     HealthStatus:
@@ -3044,3 +3271,80 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PnlMonthRow"
+    CreateConversationInput:
+      type: object
+      properties:
+        title: { type: string }
+    AssistantConversation:
+      type: object
+      required: [id, title, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        createdAt: { type: string }
+    ChatMessageInput:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, minLength: 1, maxLength: 4000 }
+    ChatMessage:
+      type: object
+      required: [id, role, content, createdAt]
+      properties:
+        id: { type: integer }
+        role: { type: string }
+        content: { type: string }
+        metadata: { type: object, additionalProperties: true }
+        createdAt: { type: string }
+    AiIndexRebuildResult:
+      type: object
+      required: [ok, embedding, counts]
+      properties:
+        ok: { type: boolean }
+        embedding: { type: string, description: "vector（向量檢索）或 keyword（關鍵字退回）" }
+        counts:
+          type: object
+          additionalProperties: { type: integer }
+    SupportConversation:
+      type: object
+      required: [id, title, status, needsHuman, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string }
+        needsHuman: { type: boolean }
+        createdAt: { type: string }
+    AdminSupportConversation:
+      type: object
+      required: [id, memberName, memberUsername, status, needsHuman, createdAt]
+      properties:
+        id: { type: integer }
+        memberName: { type: string }
+        memberUsername: { type: string }
+        status: { type: string }
+        needsHuman: { type: boolean }
+        createdAt: { type: string }
+    SupportThread:
+      type: object
+      required: [conversation, messages]
+      properties:
+        conversation:
+          type: object
+          required: [id, status, needsHuman]
+          properties:
+            id: { type: integer }
+            status: { type: string }
+            needsHuman: { type: boolean }
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+    SupportReply:
+      type: object
+      required: [needsHuman]
+      properties:
+        reply:
+          oneOf:
+            - $ref: "#/components/schemas/ChatMessage"
+            - type: "null"
+        needsHuman: { type: boolean }

@@ -13,3 +13,6 @@ export * from "./wallet";
 export * from "./institutionWallet";
 export * from "./profitSharing";
 export * from "./expenses";
+export * from "./conversations";
+export * from "./messages";
+export * from "./aiDocuments";

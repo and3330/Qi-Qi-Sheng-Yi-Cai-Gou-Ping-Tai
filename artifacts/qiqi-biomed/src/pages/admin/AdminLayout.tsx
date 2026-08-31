@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   ShieldCheck,
   FileText,
+  Bot,
+  Headphones,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -34,6 +36,8 @@ export const adminNavItems: AdminNavItem[] = [
   { name: "採購進貨", path: "/admin/purchasing", icon: PackagePlus, roles: ["admin", "ops"] },
   { name: "訂單管理", path: "/admin/orders", icon: ClipboardList }, // ops/support read-only enforced inside component or backend
   { name: "內容管理", path: "/admin/content", icon: FileText, roles: ["admin", "ops"] },
+  { name: "客服對話", path: "/admin/support", icon: Headphones }, 
+  { name: "AI 助理", path: "/admin/ai-assistant", icon: Bot, roles: ["admin", "ops"] },
   { name: "進銷存報表", path: "/admin/reports", icon: BarChart3, roles: ["admin"] },
   { name: "財務管理", path: "/admin/finance", icon: Landmark, roles: ["admin"] },
   { name: "佣金報表", path: "/admin/commissions", icon: HandCoins, roles: ["admin"] },
