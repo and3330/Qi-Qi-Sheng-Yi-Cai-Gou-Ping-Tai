@@ -56,12 +56,16 @@ router.post("/cart", async (req, res) => {
   const { productId, quantity } = parsed.data;
 
   const [product] = await db
-    .select({ id: productsTable.id })
+    .select({ id: productsTable.id, isActive: productsTable.isActive })
     .from(productsTable)
     .where(eq(productsTable.id, productId))
     .limit(1);
   if (!product) {
     res.status(400).json({ error: "Product not found" });
+    return;
+  }
+  if (!product.isActive) {
+    res.status(400).json({ error: "商品已下架，無法加入購物車" });
     return;
   }
 

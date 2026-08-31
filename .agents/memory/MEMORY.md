@@ -1,1 +1,2 @@
 - [Auth & schema-evolution decisions](auth-and-sessions.md) — auth is session-based username/password (Clerk removed for good); audit task-agent merges for reverts of recent main changes; schema changes must be nullable/defaulted and prompt-free.
+- [Dev DB schema sync pitfalls](dev-db-schema-sync.md) — drizzle push hangs on TTY prompts (use pg DDL script); dev DB may lag schema files; declare all deps in package.json.

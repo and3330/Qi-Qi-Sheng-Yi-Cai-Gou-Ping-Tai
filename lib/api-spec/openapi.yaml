@@ -133,6 +133,444 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
+  /admin/products:
+    get:
+      operationId: listAdminProducts
+      tags: [admin]
+      summary: 商品列表（限管理員，含下架與成本價）
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [all, active, inactive]
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminProduct"
+    post:
+      operationId: createAdminProduct
+      tags: [admin]
+      summary: 新增商品（限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProduct"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/products/{id}:
+    patch:
+      operationId: updateAdminProduct
+      tags: [admin]
+      summary: 編輯商品 / 上下架（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminProductUpdate"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProduct"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/inventory/adjust:
+    post:
+      operationId: adjustAdminStock
+      tags: [admin]
+      summary: 手動調整庫存（盤點 / 報廢等，限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAdjustInput"
+      responses:
+        "201":
+          description: Created stock movement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStockMovement"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/stock-movements:
+    get:
+      operationId: listAdminStockMovements
+      tags: [admin]
+      summary: 庫存異動紀錄（限管理員）
+      parameters:
+        - name: productId
+          in: query
+          schema: { type: integer }
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [purchase, sale, adjust]
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Stock movements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminStockMovement"
+  /admin/suppliers:
+    get:
+      operationId: listAdminSuppliers
+      tags: [admin]
+      summary: 供應商列表（限管理員）
+      parameters:
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+    post:
+      operationId: createAdminSupplier
+      tags: [admin]
+      summary: 新增供應商（限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierInput"
+      responses:
+        "201":
+          description: Created supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/suppliers/{id}:
+    patch:
+      operationId: updateAdminSupplier
+      tags: [admin]
+      summary: 編輯供應商（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierUpdate"
+      responses:
+        "200":
+          description: Updated supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/purchase-orders:
+    get:
+      operationId: listAdminPurchaseOrders
+      tags: [admin]
+      summary: 採購單列表（限管理員）
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, ordered, received, cancelled]
+      responses:
+        "200":
+          description: Purchase orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminPurchaseOrder"
+    post:
+      operationId: createAdminPurchaseOrder
+      tags: [admin]
+      summary: 建立採購單（限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderInput"
+      responses:
+        "201":
+          description: Created purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/purchase-orders/{id}:
+    get:
+      operationId: getAdminPurchaseOrder
+      tags: [admin]
+      summary: 採購單詳情（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/purchase-orders/{id}/status:
+    patch:
+      operationId: updateAdminPurchaseOrderStatus
+      tags: [admin]
+      summary: 採購單狀態流轉（草稿→已下單、取消，限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderStatusUpdate"
+      responses:
+        "200":
+          description: Updated purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+        "400":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/purchase-orders/{id}/receive:
+    post:
+      operationId: receiveAdminPurchaseOrder
+      tags: [admin]
+      summary: 採購單收貨入庫（增加庫存、更新成本、寫入異動紀錄，限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Received purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+        "400":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/orders:
+    get:
+      operationId: listAdminOrders
+      tags: [admin]
+      summary: 全部訂單列表（限管理員）
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, paid, shipped, completed, cancelled]
+        - name: search
+          in: query
+          schema: { type: string }
+          description: 搜尋訂單編號 / 會員姓名
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminOrder"
+  /admin/orders/{id}:
+    get:
+      operationId: getAdminOrder
+      tags: [admin]
+      summary: 訂單詳情（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrder"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/orders/{id}/status:
+    patch:
+      operationId: updateAdminOrderStatus
+      tags: [admin]
+      summary: 更新訂單狀態（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusUpdate"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminOrder"
+        "400":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/reports/inventory:
+    get:
+      operationId: getAdminInventoryReport
+      tags: [admin]
+      summary: 期間進銷存彙總報表（限管理員）
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Inventory report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryReport"
   /healthz:
     get:
       operationId: healthCheck
@@ -801,6 +1239,239 @@ components:
       required: [productId]
       properties:
         productId: { type: integer }
+    AdminProduct:
+      type: object
+      required: [id, code, name, category, priceHospital, priceClinic, priceConsumer, costPrice, stock, isHot, isNew, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        category: { type: string }
+        description: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"] }
+        priceHospital: { type: integer }
+        priceClinic: { type: integer }
+        priceConsumer: { type: integer }
+        costPrice: { type: integer, description: "成本價 (NT$)，隨進貨更新" }
+        stock: { type: integer }
+        isHot: { type: boolean }
+        isNew: { type: boolean }
+        isActive: { type: boolean, description: "上架中" }
+        spec: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    AdminProductInput:
+      type: object
+      required: [code, name, category, priceHospital, priceClinic, priceConsumer]
+      properties:
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        category: { type: string, minLength: 1 }
+        description: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"] }
+        priceHospital: { type: integer, minimum: 0 }
+        priceClinic: { type: integer, minimum: 0 }
+        priceConsumer: { type: integer, minimum: 0 }
+        costPrice: { type: integer, minimum: 0 }
+        stock: { type: integer, minimum: 0 }
+        isHot: { type: boolean }
+        isNew: { type: boolean }
+        isActive: { type: boolean }
+        spec: { type: ["string", "null"] }
+    AdminProductUpdate:
+      type: object
+      properties:
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        category: { type: string, minLength: 1 }
+        description: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"] }
+        priceHospital: { type: integer, minimum: 0 }
+        priceClinic: { type: integer, minimum: 0 }
+        priceConsumer: { type: integer, minimum: 0 }
+        costPrice: { type: integer, minimum: 0 }
+        isHot: { type: boolean }
+        isNew: { type: boolean }
+        isActive: { type: boolean }
+        spec: { type: ["string", "null"] }
+    AdminStockMovement:
+      type: object
+      required: [id, productId, productName, productCode, type, quantity, stockAfter, createdAt]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        productCode: { type: string }
+        type:
+          type: string
+          enum: [purchase, sale, adjust]
+          description: 進貨 / 銷售出貨 / 手動調整
+        quantity: { type: integer, description: "正數入庫、負數出庫" }
+        stockAfter: { type: integer, description: "異動後庫存" }
+        reason: { type: ["string", "null"] }
+        refNo: { type: ["string", "null"], description: "關聯單號（訂單 / 採購單）" }
+        createdAt: { type: string, format: date-time }
+    StockAdjustInput:
+      type: object
+      required: [productId, quantity, reason]
+      properties:
+        productId: { type: integer }
+        quantity: { type: integer, description: "正數入庫、負數出庫，不可為 0" }
+        reason: { type: string, minLength: 1, description: "盤點 / 報廢 / 其他" }
+        note: { type: ["string", "null"] }
+    Supplier:
+      type: object
+      required: [id, name, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        contactPerson: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        paymentTerms: { type: ["string", "null"], description: "付款條件，如 月結30天" }
+        note: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    SupplierInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        contactPerson: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        paymentTerms: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+    SupplierUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        contactPerson: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        paymentTerms: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        isActive: { type: boolean }
+    AdminPurchaseOrderItem:
+      type: object
+      required: [id, productId, productName, productCode, unitCost, quantity]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        productCode: { type: string }
+        unitCost: { type: integer, description: "進價 (NT$)" }
+        quantity: { type: integer }
+    AdminPurchaseOrder:
+      type: object
+      required: [id, poNo, supplierId, supplierName, status, totalAmount, createdAt, items]
+      properties:
+        id: { type: integer }
+        poNo: { type: string }
+        supplierId: { type: integer }
+        supplierName: { type: string }
+        status:
+          type: string
+          enum: [draft, ordered, received, cancelled]
+        totalAmount: { type: integer }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        orderedAt: { type: ["string", "null"], format: date-time }
+        receivedAt: { type: ["string", "null"], format: date-time }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPurchaseOrderItem"
+    PurchaseOrderLineInput:
+      type: object
+      required: [productId, unitCost, quantity]
+      properties:
+        productId: { type: integer }
+        unitCost: { type: integer, minimum: 0 }
+        quantity: { type: integer, minimum: 1 }
+    PurchaseOrderInput:
+      type: object
+      required: [supplierId, items]
+      properties:
+        supplierId: { type: integer }
+        note: { type: ["string", "null"] }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PurchaseOrderLineInput"
+    PurchaseOrderStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ordered, cancelled]
+          description: 收貨請用 receive 端點
+    AdminOrder:
+      type: object
+      required: [id, orderNo, memberId, memberName, status, paymentMethod, totalAmount, createdAt, items]
+      properties:
+        id: { type: integer }
+        orderNo: { type: string }
+        memberId: { type: integer }
+        memberName: { type: string }
+        memberTier:
+          type: string
+          enum: [hospital, clinic, consumer]
+        status:
+          type: string
+          enum: [pending, paid, shipped, completed, cancelled]
+        paymentMethod:
+          type: string
+          enum: [bank_transfer, cod, wallet]
+        totalAmount: { type: integer }
+        shippingAddress: { type: ["string", "null"] }
+        receiverName: { type: ["string", "null"] }
+        receiverPhone: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    OrderStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, paid, shipped, completed, cancelled]
+    InventoryReportRow:
+      type: object
+      required: [productId, productName, productCode, purchasedQty, purchasedAmount, soldQty, soldAmount, adjustedQty, currentStock]
+      properties:
+        productId: { type: integer }
+        productName: { type: string }
+        productCode: { type: string }
+        purchasedQty: { type: integer, description: "期間進貨數量" }
+        purchasedAmount: { type: integer, description: "期間進貨金額 (NT$)" }
+        soldQty: { type: integer, description: "期間銷貨數量" }
+        soldAmount: { type: integer, description: "期間銷貨金額 (NT$)" }
+        adjustedQty: { type: integer, description: "期間調整數量（含正負）" }
+        currentStock: { type: integer }
+    InventoryReport:
+      type: object
+      required: [purchaseTotalQty, purchaseTotalAmount, saleTotalQty, saleTotalAmount, adjustTotalQty, rows]
+      properties:
+        from: { type: ["string", "null"], format: date }
+        to: { type: ["string", "null"], format: date }
+        purchaseTotalQty: { type: integer }
+        purchaseTotalAmount: { type: integer }
+        saleTotalQty: { type: integer }
+        saleTotalAmount: { type: integer }
+        adjustTotalQty: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryReportRow"
     HomeSummary:
       type: object
       required: [hotProducts, announcements, latestArticles]

@@ -14,7 +14,7 @@ router.get("/products", async (req, res) => {
   }
   const { category, search, sort } = parsed.data;
 
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [eq(productsTable.isActive, true)];
   if (category) conditions.push(eq(productsTable.category, category));
   if (search) {
     conditions.push(
@@ -37,7 +37,7 @@ router.get("/products", async (req, res) => {
   const rows = await db
     .select()
     .from(productsTable)
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(...(Array.isArray(orderBy) ? orderBy : [orderBy]));
 
   res.json(rows.map(serializeProduct));
@@ -52,7 +52,9 @@ router.get("/products/:id", async (req, res) => {
   const [row] = await db
     .select()
     .from(productsTable)
-    .where(eq(productsTable.id, parsed.data.id))
+    .where(
+      and(eq(productsTable.id, parsed.data.id), eq(productsTable.isActive, true)),
+    )
     .limit(1);
   if (!row) {
     res.status(404).json({ error: "Product not found" });

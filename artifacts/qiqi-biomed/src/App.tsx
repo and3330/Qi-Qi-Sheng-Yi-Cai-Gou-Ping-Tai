@@ -29,6 +29,11 @@ import { AdminGuard } from "./pages/admin/AdminGuard";
 import AdminDashboardPage from "./pages/admin/Dashboard";
 import AdminMembersPage from "./pages/admin/Members";
 import AdminPlaceholderPage from "./pages/admin/Placeholder";
+import AdminProductsPage from "./pages/admin/Products";
+import AdminInventoryPage from "./pages/admin/Inventory";
+import AdminPurchasingPage from "./pages/admin/Purchasing";
+import AdminOrdersPage from "./pages/admin/Orders";
+import AdminReportsPage from "./pages/admin/Reports";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,12 +76,11 @@ function AdminArea() {
         <Switch>
           <Route path="/admin" component={AdminDashboardPage} />
           <Route path="/admin/members" component={AdminMembersPage} />
-          <Route path="/admin/inventory">
-            <AdminPlaceholderPage title="進銷存" />
-          </Route>
-          <Route path="/admin/purchasing">
-            <AdminPlaceholderPage title="採購進貨" />
-          </Route>
+          <Route path="/admin/products" component={AdminProductsPage} />
+          <Route path="/admin/inventory" component={AdminInventoryPage} />
+          <Route path="/admin/purchasing" component={AdminPurchasingPage} />
+          <Route path="/admin/orders" component={AdminOrdersPage} />
+          <Route path="/admin/reports" component={AdminReportsPage} />
           <Route path="/admin/finance">
             <AdminPlaceholderPage title="財務管理" />
           </Route>

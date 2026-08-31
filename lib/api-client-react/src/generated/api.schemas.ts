@@ -382,6 +382,351 @@ export interface FavoriteInput {
   productId: number;
 }
 
+export interface AdminProduct {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  priceHospital: number;
+  priceClinic: number;
+  priceConsumer: number;
+  /** 成本價 (NT$)，隨進貨更新 */
+  costPrice: number;
+  stock: number;
+  isHot: boolean;
+  isNew: boolean;
+  /** 上架中 */
+  isActive: boolean;
+  /** @nullable */
+  spec?: string | null;
+  createdAt: string;
+}
+
+export interface AdminProductInput {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  category: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @minimum 0 */
+  priceHospital: number;
+  /** @minimum 0 */
+  priceClinic: number;
+  /** @minimum 0 */
+  priceConsumer: number;
+  /** @minimum 0 */
+  costPrice?: number;
+  /** @minimum 0 */
+  stock?: number;
+  isHot?: boolean;
+  isNew?: boolean;
+  isActive?: boolean;
+  /** @nullable */
+  spec?: string | null;
+}
+
+export interface AdminProductUpdate {
+  /** @minLength 1 */
+  code?: string;
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  category?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @minimum 0 */
+  priceHospital?: number;
+  /** @minimum 0 */
+  priceClinic?: number;
+  /** @minimum 0 */
+  priceConsumer?: number;
+  /** @minimum 0 */
+  costPrice?: number;
+  isHot?: boolean;
+  isNew?: boolean;
+  isActive?: boolean;
+  /** @nullable */
+  spec?: string | null;
+}
+
+/**
+ * 進貨 / 銷售出貨 / 手動調整
+ */
+export type AdminStockMovementType = typeof AdminStockMovementType[keyof typeof AdminStockMovementType];
+
+
+export const AdminStockMovementType = {
+  purchase: 'purchase',
+  sale: 'sale',
+  adjust: 'adjust',
+} as const;
+
+export interface AdminStockMovement {
+  id: number;
+  productId: number;
+  productName: string;
+  productCode: string;
+  /** 進貨 / 銷售出貨 / 手動調整 */
+  type: AdminStockMovementType;
+  /** 正數入庫、負數出庫 */
+  quantity: number;
+  /** 異動後庫存 */
+  stockAfter: number;
+  /** @nullable */
+  reason?: string | null;
+  /**
+     * 關聯單號（訂單 / 採購單）
+     * @nullable
+     */
+  refNo?: string | null;
+  createdAt: string;
+}
+
+export interface StockAdjustInput {
+  productId: number;
+  /** 正數入庫、負數出庫，不可為 0 */
+  quantity: number;
+  /**
+     * 盤點 / 報廢 / 其他
+     * @minLength 1
+     */
+  reason: string;
+  /** @nullable */
+  note?: string | null;
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  /** @nullable */
+  contactPerson?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /**
+     * 付款條件，如 月結30天
+     * @nullable
+     */
+  paymentTerms?: string | null;
+  /** @nullable */
+  note?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface SupplierInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  contactPerson?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  paymentTerms?: string | null;
+  /** @nullable */
+  note?: string | null;
+}
+
+export interface SupplierUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @nullable */
+  contactPerson?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  address?: string | null;
+  /** @nullable */
+  paymentTerms?: string | null;
+  /** @nullable */
+  note?: string | null;
+  isActive?: boolean;
+}
+
+export interface AdminPurchaseOrderItem {
+  id: number;
+  productId: number;
+  productName: string;
+  productCode: string;
+  /** 進價 (NT$) */
+  unitCost: number;
+  quantity: number;
+}
+
+export type AdminPurchaseOrderStatus = typeof AdminPurchaseOrderStatus[keyof typeof AdminPurchaseOrderStatus];
+
+
+export const AdminPurchaseOrderStatus = {
+  draft: 'draft',
+  ordered: 'ordered',
+  received: 'received',
+  cancelled: 'cancelled',
+} as const;
+
+export interface AdminPurchaseOrder {
+  id: number;
+  poNo: string;
+  supplierId: number;
+  supplierName: string;
+  status: AdminPurchaseOrderStatus;
+  totalAmount: number;
+  /** @nullable */
+  note?: string | null;
+  createdAt: string;
+  /** @nullable */
+  orderedAt?: string | null;
+  /** @nullable */
+  receivedAt?: string | null;
+  items: AdminPurchaseOrderItem[];
+}
+
+export interface PurchaseOrderLineInput {
+  productId: number;
+  /** @minimum 0 */
+  unitCost: number;
+  /** @minimum 1 */
+  quantity: number;
+}
+
+export interface PurchaseOrderInput {
+  supplierId: number;
+  /** @nullable */
+  note?: string | null;
+  /** @minItems 1 */
+  items: PurchaseOrderLineInput[];
+}
+
+/**
+ * 收貨請用 receive 端點
+ */
+export type PurchaseOrderStatusUpdateStatus = typeof PurchaseOrderStatusUpdateStatus[keyof typeof PurchaseOrderStatusUpdateStatus];
+
+
+export const PurchaseOrderStatusUpdateStatus = {
+  ordered: 'ordered',
+  cancelled: 'cancelled',
+} as const;
+
+export interface PurchaseOrderStatusUpdate {
+  /** 收貨請用 receive 端點 */
+  status: PurchaseOrderStatusUpdateStatus;
+}
+
+export type AdminOrderMemberTier = typeof AdminOrderMemberTier[keyof typeof AdminOrderMemberTier];
+
+
+export const AdminOrderMemberTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export type AdminOrderStatus = typeof AdminOrderStatus[keyof typeof AdminOrderStatus];
+
+
+export const AdminOrderStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  shipped: 'shipped',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export type AdminOrderPaymentMethod = typeof AdminOrderPaymentMethod[keyof typeof AdminOrderPaymentMethod];
+
+
+export const AdminOrderPaymentMethod = {
+  bank_transfer: 'bank_transfer',
+  cod: 'cod',
+  wallet: 'wallet',
+} as const;
+
+export interface AdminOrder {
+  id: number;
+  orderNo: string;
+  memberId: number;
+  memberName: string;
+  memberTier?: AdminOrderMemberTier;
+  status: AdminOrderStatus;
+  paymentMethod: AdminOrderPaymentMethod;
+  totalAmount: number;
+  /** @nullable */
+  shippingAddress?: string | null;
+  /** @nullable */
+  receiverName?: string | null;
+  /** @nullable */
+  receiverPhone?: string | null;
+  /** @nullable */
+  note?: string | null;
+  createdAt: string;
+  items: OrderItem[];
+}
+
+export type OrderStatusUpdateStatus = typeof OrderStatusUpdateStatus[keyof typeof OrderStatusUpdateStatus];
+
+
+export const OrderStatusUpdateStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  shipped: 'shipped',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface OrderStatusUpdate {
+  status: OrderStatusUpdateStatus;
+}
+
+export interface InventoryReportRow {
+  productId: number;
+  productName: string;
+  productCode: string;
+  /** 期間進貨數量 */
+  purchasedQty: number;
+  /** 期間進貨金額 (NT$) */
+  purchasedAmount: number;
+  /** 期間銷貨數量 */
+  soldQty: number;
+  /** 期間銷貨金額 (NT$) */
+  soldAmount: number;
+  /** 期間調整數量（含正負） */
+  adjustedQty: number;
+  currentStock: number;
+}
+
+export interface InventoryReport {
+  /** @nullable */
+  from?: string | null;
+  /** @nullable */
+  to?: string | null;
+  purchaseTotalQty: number;
+  purchaseTotalAmount: number;
+  saleTotalQty: number;
+  saleTotalAmount: number;
+  adjustTotalQty: number;
+  rows: InventoryReportRow[];
+}
+
 export interface HomeSummary {
   hotProducts: Product[];
   announcements: Announcement[];
@@ -404,6 +749,79 @@ export const ListAdminMembersTier = {
   clinic: 'clinic',
   consumer: 'consumer',
 } as const;
+
+export type ListAdminProductsParams = {
+search?: string;
+category?: string;
+status?: ListAdminProductsStatus;
+};
+
+export type ListAdminProductsStatus = typeof ListAdminProductsStatus[keyof typeof ListAdminProductsStatus];
+
+
+export const ListAdminProductsStatus = {
+  all: 'all',
+  active: 'active',
+  inactive: 'inactive',
+} as const;
+
+export type ListAdminStockMovementsParams = {
+productId?: number;
+type?: ListAdminStockMovementsType;
+from?: string;
+to?: string;
+};
+
+export type ListAdminStockMovementsType = typeof ListAdminStockMovementsType[keyof typeof ListAdminStockMovementsType];
+
+
+export const ListAdminStockMovementsType = {
+  purchase: 'purchase',
+  sale: 'sale',
+  adjust: 'adjust',
+} as const;
+
+export type ListAdminSuppliersParams = {
+search?: string;
+};
+
+export type ListAdminPurchaseOrdersParams = {
+status?: ListAdminPurchaseOrdersStatus;
+};
+
+export type ListAdminPurchaseOrdersStatus = typeof ListAdminPurchaseOrdersStatus[keyof typeof ListAdminPurchaseOrdersStatus];
+
+
+export const ListAdminPurchaseOrdersStatus = {
+  draft: 'draft',
+  ordered: 'ordered',
+  received: 'received',
+  cancelled: 'cancelled',
+} as const;
+
+export type ListAdminOrdersParams = {
+status?: ListAdminOrdersStatus;
+/**
+ * 搜尋訂單編號 / 會員姓名
+ */
+search?: string;
+};
+
+export type ListAdminOrdersStatus = typeof ListAdminOrdersStatus[keyof typeof ListAdminOrdersStatus];
+
+
+export const ListAdminOrdersStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  shipped: 'shipped',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export type GetAdminInventoryReportParams = {
+from?: string;
+to?: string;
+};
 
 export type ListProductsParams = {
 category?: string;

@@ -12,6 +12,7 @@ import {
   orderItemsTable,
   productsTable,
   cartItemsTable,
+  stockMovementsTable,
   type Order,
   type OrderItem,
 } from "@workspace/db";
@@ -93,8 +94,13 @@ router.post("/orders", async (req, res) => {
   const byId = new Map(products.map((p) => [p.id, p]));
 
   for (const line of input.items) {
-    if (!byId.has(line.productId)) {
+    const p = byId.get(line.productId);
+    if (!p) {
       res.status(400).json({ error: `商品不存在 (id=${line.productId})` });
+      return;
+    }
+    if (!p.isActive) {
+      res.status(400).json({ error: `「${p.name}」已下架，請自購物車移除後再結帳` });
       return;
     }
   }
@@ -120,6 +126,7 @@ router.post("/orders", async (req, res) => {
   try {
     const result = await db.transaction(async (tx) => {
       // Atomically decrement stock; fail if insufficient.
+      const stockAfterById = new Map<number, number>();
       for (const line of input.items) {
         const decremented = await tx
           .update(productsTable)
@@ -127,14 +134,16 @@ router.post("/orders", async (req, res) => {
           .where(
             and(
               eq(productsTable.id, line.productId),
+              eq(productsTable.isActive, true),
               gte(productsTable.stock, line.quantity),
             ),
           )
-          .returning({ id: productsTable.id });
+          .returning({ id: productsTable.id, stock: productsTable.stock });
         if (decremented.length === 0) {
           const p = byId.get(line.productId)!;
           throw new InsufficientStockError(p.name);
         }
+        stockAfterById.set(line.productId, decremented[0].stock);
       }
 
       const [order] = await tx
@@ -156,6 +165,18 @@ router.post("/orders", async (req, res) => {
         .insert(orderItemsTable)
         .values(lines.map((l) => ({ ...l, orderId: order.id })))
         .returning();
+
+      // Record sale stock movements
+      await tx.insert(stockMovementsTable).values(
+        lines.map((l) => ({
+          productId: l.productId,
+          type: "sale",
+          quantity: -l.quantity,
+          stockAfter: stockAfterById.get(l.productId) ?? 0,
+          reason: "銷售出貨",
+          refNo: orderNo,
+        })),
+      );
 
       if (input.clearCart) {
         await tx

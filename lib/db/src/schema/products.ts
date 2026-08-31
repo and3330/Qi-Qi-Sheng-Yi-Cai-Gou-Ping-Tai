@@ -20,6 +20,8 @@ export const productsTable = pgTable("products", {
   priceClinic: integer("price_clinic").notNull(),
   priceConsumer: integer("price_consumer").notNull(),
   stock: integer("stock").notNull().default(0),
+  costPrice: integer("cost_price").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
   isHot: boolean("is_hot").notNull().default(false),
   isNew: boolean("is_new").notNull().default(false),
   spec: text("spec"),

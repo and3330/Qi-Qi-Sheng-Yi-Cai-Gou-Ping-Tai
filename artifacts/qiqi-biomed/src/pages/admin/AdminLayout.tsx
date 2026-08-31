@@ -4,6 +4,9 @@ import {
   LayoutDashboard,
   Boxes,
   PackagePlus,
+  Package,
+  ClipboardList,
+  BarChart3,
   Landmark,
   HandCoins,
   Wallet,
@@ -22,8 +25,11 @@ export type AdminNavItem = {
 
 export const adminNavItems: AdminNavItem[] = [
   { name: "儀表板", path: "/admin", icon: LayoutDashboard },
+  { name: "商品管理", path: "/admin/products", icon: Package },
   { name: "進銷存", path: "/admin/inventory", icon: Boxes },
   { name: "採購進貨", path: "/admin/purchasing", icon: PackagePlus },
+  { name: "訂單管理", path: "/admin/orders", icon: ClipboardList },
+  { name: "進銷存報表", path: "/admin/reports", icon: BarChart3 },
   { name: "財務管理", path: "/admin/finance", icon: Landmark },
   { name: "利潤分享", path: "/admin/profit-sharing", icon: HandCoins },
   { name: "會員錢包", path: "/admin/wallets", icon: Wallet },
