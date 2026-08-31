@@ -53,6 +53,7 @@ type EditState = {
   tier: string;
   role: string;
   isActive: boolean;
+  institutionVerified: boolean;
 };
 
 export default function AdminMembersPage() {
@@ -111,6 +112,7 @@ export default function AdminMembersPage() {
       tier: m.tier,
       role: m.role,
       isActive: m.isActive,
+      institutionVerified: m.institutionVerified ?? false,
     });
 
   const submitEdit = () => {
@@ -124,6 +126,7 @@ export default function AdminMembersPage() {
         tier: edit.tier as any,
         role: edit.role as any,
         isActive: edit.isActive,
+        institutionVerified: edit.institutionVerified,
       },
     });
   };
@@ -185,7 +188,7 @@ export default function AdminMembersPage() {
                 <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
                   <th className="px-4 py-3 font-medium">會員</th>
                   <th className="px-4 py-3 font-medium">聯絡方式</th>
-                  <th className="px-4 py-3 font-medium">等級</th>
+                  <th className="px-4 py-3 font-medium">等級 / 院所</th>
                   <th className="px-4 py-3 font-medium">角色</th>
                   <th className="px-4 py-3 font-medium">狀態</th>
                   <th className="px-4 py-3 text-right font-medium">操作</th>
@@ -213,12 +216,24 @@ export default function AdminMembersPage() {
                         <p>{m.phone || ""}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={tierBadgeClass[m.tier] ?? ""}
-                        >
-                          {tierLabels[m.tier] ?? m.tier}
-                        </Badge>
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge
+                            variant="outline"
+                            className={tierBadgeClass[m.tier] ?? ""}
+                          >
+                            {tierLabels[m.tier] ?? m.tier}
+                          </Badge>
+                          {m.boundInstitutionId && (
+                            <Badge
+                              variant="secondary"
+                              className={m.institutionVerified 
+                                ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" 
+                                : "bg-amber-50 text-amber-700 hover:bg-amber-100"}
+                            >
+                              {m.institutionVerified ? "已審核" : "待審核"}
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {m.role === "admin" ? (
@@ -363,6 +378,23 @@ export default function AdminMembersPage() {
                   data-testid="switch-edit-active"
                 />
               </div>
+              
+              {edit.member.boundInstitutionId && (
+                <div className="flex items-center justify-between rounded-xl border p-3">
+                  <div>
+                    <p className="text-sm font-medium">院所綁定審核</p>
+                    <p className="text-xs text-muted-foreground">
+                      審核通過後即可查看全院所訂單及統整資料
+                    </p>
+                  </div>
+                  <Switch
+                    checked={edit.institutionVerified}
+                    onCheckedChange={(checked) =>
+                      setEdit({ ...edit, institutionVerified: checked })
+                    }
+                  />
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>

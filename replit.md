@@ -35,6 +35,13 @@ Mobile-first B2B2C 醫藥採購 WebApp：三種會員身份（A 醫院 / B 診�
 - ERP、分潤、ICOPE、AI 客服等模組刻意未建，資料結構保留擴充點（member.points、institutions 綁定）。
 - codegen script 內含 sed 將 zod import 改為 `zod/v4`（orval 產出 v4 語法）。
 
+## 機構後台 (Institution Portal)
+
+- `/portal`（總覽/orders/wallet/reports），限 tier hospital|clinic（`requirePortal`）；guest 導 /sign-in、consumer 顯示無權限。
+- 資料範圍：`boundInstitutionId` 且 `institutionVerified=true`（管理員在 /admin 會員管理審核）才看得到全院所訂單，否則僅個人。會員自行改綁院所會自動重置審核狀態（`PATCH /me`）。
+- 錢包為「個人錢包」（reuse GET /wallet），非機構共用錢包。
+- 醫院/診所會員登入後，首頁顯示機構後台入口卡片。
+
 ## Product
 
 - 公開瀏覽：首頁、商城（顯示消費者價）、知識專區、最新消息、合作醫院

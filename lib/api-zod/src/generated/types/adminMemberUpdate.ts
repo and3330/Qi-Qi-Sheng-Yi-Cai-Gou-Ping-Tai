@@ -18,6 +18,7 @@ export interface AdminMemberUpdate {
   tier?: AdminMemberUpdateTier;
   role?: AdminMemberUpdateRole;
   isActive?: boolean;
+  institutionVerified?: boolean;
   /** @nullable */
   shippingAddress?: string | null;
 }

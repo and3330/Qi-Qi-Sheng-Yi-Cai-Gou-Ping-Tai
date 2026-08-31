@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck } from "lucide-react";
+import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck, Building2 } from "lucide-react";
 import { useGetMe, useUpdateMe, useListInstitutions, useLogout, getGetMeQueryKey, useGetWallet } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getTierName } from "@/lib/utils";
@@ -260,6 +260,16 @@ export default function MemberPage() {
 
         {/* Links */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+          {(me.tier === 'hospital' || me.tier === 'clinic') && (
+            <Link href="/portal" className="flex items-center p-4 hover:bg-slate-50 transition-colors bg-primary/5">
+              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center mr-3">
+                <Building2 size={16} />
+              </div>
+              <span className="font-bold text-gray-800 flex-1">機構後台</span>
+              <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-full mr-2">專屬功能</span>
+              <span className="text-gray-300">›</span>
+            </Link>
+          )}
           <Link href="/orders" className="flex items-center p-4 hover:bg-slate-50 transition-colors">
             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mr-3">
               <Package size={16} />

@@ -19,7 +19,71 @@ tags:
   - name: favorites
   - name: home
   - name: admin
+  - name: portal
 paths:
+  /portal/summary:
+    get:
+      operationId: getPortalSummary
+      tags: [portal]
+      summary: 機構後台總覽（限醫院/診所會員）
+      responses:
+        "200":
+          description: Portal summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalSummary"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /portal/orders:
+    get:
+      operationId: listPortalOrders
+      tags: [portal]
+      summary: 機構訂單總覽（已綁定院所者含同院所所有訂單）
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pending, paid, shipped, completed, cancelled]
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortalOrder"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /portal/reports:
+    get:
+      operationId: getPortalReports
+      tags: [portal]
+      summary: 機構採購統計（近 6 個月金額與常購品項）
+      responses:
+        "200":
+          description: Purchase reports
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalReports"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
   /admin/stats:
     get:
       operationId: getAdminStats
@@ -1358,6 +1422,67 @@ components:
         boundDepartment: { type: ["string", "null"] }
         points: { type: integer }
         shippingAddress: { type: ["string", "null"] }
+    PortalSummary:
+      type: object
+      required: [tier, institutionScope, walletBalance, monthOrderCount, monthPurchaseTotal, pendingOrderCount, recentOrders]
+      properties:
+        institutionName: { type: ["string", "null"], description: "綁定院所名稱，未綁定為 null" }
+        institutionScope: { type: boolean, description: "true 表示資料範圍為整個院所，false 為個人" }
+        tier:
+          type: string
+          enum: [hospital, clinic]
+        walletBalance: { type: integer, description: "本人錢包餘額 (NT$)" }
+        monthOrderCount: { type: integer, description: "本月訂單數" }
+        monthPurchaseTotal: { type: integer, description: "本月採購金額（不含已取消，NT$）" }
+        pendingOrderCount: { type: integer, description: "待處理訂單數" }
+        recentOrders:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalOrder"
+    PortalOrder:
+      type: object
+      required: [id, orderNo, status, paymentMethod, totalAmount, memberName, createdAt]
+      properties:
+        id: { type: integer }
+        orderNo: { type: string }
+        status:
+          type: string
+          enum: [pending, paid, shipped, completed, cancelled]
+        paymentMethod:
+          type: string
+          enum: [bank_transfer, cod, wallet]
+        totalAmount: { type: integer }
+        memberName: { type: string, description: "下單人姓名" }
+        boundDepartment: { type: ["string", "null"], description: "下單人科室" }
+        createdAt: { type: string, format: date-time }
+    PortalMonthlyStat:
+      type: object
+      required: [month, orderCount, purchaseTotal]
+      properties:
+        month: { type: string, description: "YYYY-MM" }
+        orderCount: { type: integer }
+        purchaseTotal: { type: integer, description: "不含已取消 (NT$)" }
+    PortalTopProduct:
+      type: object
+      required: [productName, productCode, quantity, amount]
+      properties:
+        productName: { type: string }
+        productCode: { type: string }
+        quantity: { type: integer }
+        amount: { type: integer }
+    PortalReports:
+      type: object
+      required: [months, topProducts, institutionScope]
+      properties:
+        institutionScope: { type: boolean }
+        months:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalMonthlyStat"
+        topProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalTopProduct"
     AdminStats:
       type: object
       required: [orderCount, pendingOrderCount, totalRevenue, memberCount, lowStockCount]
@@ -1385,6 +1510,7 @@ components:
         isActive: { type: boolean }
         points: { type: integer }
         boundInstitutionId: { type: ["integer", "null"] }
+        institutionVerified: { type: boolean, description: "綁定院所是否已審核（通過才能查看整個院所資料）" }
         boundDepartment: { type: ["string", "null"] }
         shippingAddress: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
@@ -1401,6 +1527,7 @@ components:
           type: string
           enum: [admin, member]
         isActive: { type: boolean }
+        institutionVerified: { type: boolean }
         shippingAddress: { type: ["string", "null"] }
     MemberUpdate:
       type: object

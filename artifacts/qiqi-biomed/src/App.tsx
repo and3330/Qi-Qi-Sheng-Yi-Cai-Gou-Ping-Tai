@@ -36,6 +36,11 @@ import AdminReportsPage from "./pages/admin/Reports";
 import AdminFinancePage from "./pages/admin/Finance";
 import AdminProfitSharingPage from "./pages/admin/ProfitSharing";
 import AdminWalletsPage from "./pages/admin/Wallets";
+import { PortalGuard } from "./pages/portal/PortalGuard";
+import PortalDashboard from "./pages/portal/Dashboard";
+import PortalOrders from "./pages/portal/Orders";
+import PortalWallet from "./pages/portal/Wallet";
+import PortalReports from "./pages/portal/Reports";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,11 +55,11 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function ProtectedRoute({ component: Component, ...rest }: { component: any, [x: string]: any }) {
   const { isLoaded, isSignedIn } = useAuth();
-  
+
   if (!isLoaded) {
     return <div className="flex h-screen items-center justify-center">載入中...</div>;
   }
-  
+
   if (!isSignedIn) {
     return <Redirect to="/sign-in" />;
   }
@@ -62,6 +67,16 @@ function ProtectedRoute({ component: Component, ...rest }: { component: any, [x:
   return (
     <Route {...rest}>
       <Component />
+    </Route>
+  );
+}
+
+function PortalRoute({ component: Component, ...rest }: { component: any, [x: string]: any }) {
+  return (
+    <Route {...rest}>
+      <PortalGuard>
+        <Component />
+      </PortalGuard>
     </Route>
   );
 }
@@ -123,7 +138,12 @@ function AppRoutes() {
               <Route path="/knowledge/:id" component={ArticlePage} />
               <Route path="/hospitals" component={HospitalsPage} />
               <Route path="/news" component={NewsPage} />
-              
+
+              <PortalRoute path="/portal" component={PortalDashboard} />
+              <PortalRoute path="/portal/orders" component={PortalOrders} />
+              <PortalRoute path="/portal/wallet" component={PortalWallet} />
+              <PortalRoute path="/portal/reports" component={PortalReports} />
+
               <ProtectedRoute path="/quick-order" component={QuickOrderPage} />
               <ProtectedRoute path="/cart" component={CartPage} />
               <ProtectedRoute path="/checkout" component={CheckoutPage} />
@@ -134,7 +154,7 @@ function AppRoutes() {
 
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
-              
+
               <Route>
                 <div className="flex h-full items-center justify-center p-8 text-center text-muted-foreground">
                   找不到此頁面

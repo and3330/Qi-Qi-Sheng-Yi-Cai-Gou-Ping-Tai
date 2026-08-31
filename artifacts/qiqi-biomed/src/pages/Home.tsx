@@ -2,16 +2,16 @@ import { Link } from "wouter";
 import { 
   ShoppingBag, Building2, BookOpen, Bell, Search, 
   ShoppingCart, User, ShieldCheck, CheckCircle2, 
-  Truck, Crown, Menu, CreditCard, HeadphonesIcon 
+  Truck, Crown, Menu, CreditCard, HeadphonesIcon, TrendingUp, ChevronRight
 } from "lucide-react";
-import { useGetHomeSummary, useAddCartItem, getGetCartQueryKey, useGetCart } from "@workspace/api-client-react";
+import { useGetHomeSummary, useGetPortalSummary, getGetPortalSummaryQueryKey, useAddCartItem, getGetCartQueryKey, useGetCart } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPrice, classNames } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 export default function HomePage() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, me } = useAuth();
   const { data: cart } = useGetCart({ 
     query: { 
       enabled: isLoaded && !!isSignedIn,
@@ -19,6 +19,13 @@ export default function HomePage() {
     } 
   });
   const cartCount = cart?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+
+  const { data: portalSummary } = useGetPortalSummary({
+    query: {
+      enabled: isLoaded && !!isSignedIn && (me?.tier === 'hospital' || me?.tier === 'clinic'),
+      queryKey: getGetPortalSummaryQueryKey()
+    }
+  });
 
   const { data: summary, isLoading } = useGetHomeSummary();
   const { mutate: addToCart } = useAddCartItem();
@@ -116,6 +123,41 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Portal Entry (for Hospital/Clinic members) */}
+      {isSignedIn && (me?.tier === 'hospital' || me?.tier === 'clinic') && portalSummary && (
+        <div className="px-4 relative z-20 mb-6">
+          <div className="bg-gradient-to-r from-primary to-[#2a7a44] rounded-2xl shadow-md p-4 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 opacity-10 transform translate-x-1/4 -translate-y-1/4 pointer-events-none">
+              <Building2 size={120} />
+            </div>
+            <div className="relative z-10 flex flex-col h-full justify-between">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium mb-1.5 inline-block">
+                    {me.tier === 'hospital' ? '醫院會員' : '診所/藥局會員'}
+                  </span>
+                  <h2 className="font-bold text-lg">{portalSummary.institutionName || '尚未綁定院所'}</h2>
+                </div>
+                <div className="bg-white text-primary w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
+                  <Building2 size={20} />
+                </div>
+              </div>
+              <div className="flex items-end justify-between bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/20">
+                <div>
+                  <div className="text-[10px] text-white/80 mb-0.5 flex items-center gap-1">
+                    <TrendingUp size={10} /> 本月採購金額
+                  </div>
+                  <div className="font-bold text-xl">{formatPrice(portalSummary.monthPurchaseTotal)}</div>
+                </div>
+                <Link href="/portal" className="bg-white text-primary text-xs font-bold px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 transition-colors active:scale-95 inline-flex items-center">
+                  進入機構後台 <ChevronRight size={14} className="ml-1" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Feature Grid */}
       <div className="px-4 relative z-20 mb-6">

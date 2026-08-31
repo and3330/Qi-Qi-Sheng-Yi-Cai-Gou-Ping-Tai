@@ -96,6 +96,91 @@ export interface Member {
   shippingAddress?: string | null;
 }
 
+export type PortalSummaryTier = typeof PortalSummaryTier[keyof typeof PortalSummaryTier];
+
+
+export const PortalSummaryTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+} as const;
+
+export type PortalOrderStatus = typeof PortalOrderStatus[keyof typeof PortalOrderStatus];
+
+
+export const PortalOrderStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  shipped: 'shipped',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export type PortalOrderPaymentMethod = typeof PortalOrderPaymentMethod[keyof typeof PortalOrderPaymentMethod];
+
+
+export const PortalOrderPaymentMethod = {
+  bank_transfer: 'bank_transfer',
+  cod: 'cod',
+  wallet: 'wallet',
+} as const;
+
+export interface PortalOrder {
+  id: number;
+  orderNo: string;
+  status: PortalOrderStatus;
+  paymentMethod: PortalOrderPaymentMethod;
+  totalAmount: number;
+  /** 下單人姓名 */
+  memberName: string;
+  /**
+     * 下單人科室
+     * @nullable
+     */
+  boundDepartment?: string | null;
+  createdAt: string;
+}
+
+export interface PortalSummary {
+  /**
+     * 綁定院所名稱，未綁定為 null
+     * @nullable
+     */
+  institutionName?: string | null;
+  /** true 表示資料範圍為整個院所，false 為個人 */
+  institutionScope: boolean;
+  tier: PortalSummaryTier;
+  /** 本人錢包餘額 (NT$) */
+  walletBalance: number;
+  /** 本月訂單數 */
+  monthOrderCount: number;
+  /** 本月採購金額（不含已取消，NT$） */
+  monthPurchaseTotal: number;
+  /** 待處理訂單數 */
+  pendingOrderCount: number;
+  recentOrders: PortalOrder[];
+}
+
+export interface PortalMonthlyStat {
+  /** YYYY-MM */
+  month: string;
+  orderCount: number;
+  /** 不含已取消 (NT$) */
+  purchaseTotal: number;
+}
+
+export interface PortalTopProduct {
+  productName: string;
+  productCode: string;
+  quantity: number;
+  amount: number;
+}
+
+export interface PortalReports {
+  institutionScope: boolean;
+  months: PortalMonthlyStat[];
+  topProducts: PortalTopProduct[];
+}
+
 export interface AdminStats {
   /** 訂單總數 */
   orderCount: number;
@@ -140,6 +225,8 @@ export interface AdminMember {
   points: number;
   /** @nullable */
   boundInstitutionId?: number | null;
+  /** 綁定院所是否已審核（通過才能查看整個院所資料） */
+  institutionVerified?: boolean;
   /** @nullable */
   boundDepartment?: string | null;
   /** @nullable */
@@ -174,6 +261,7 @@ export interface AdminMemberUpdate {
   tier?: AdminMemberUpdateTier;
   role?: AdminMemberUpdateRole;
   isActive?: boolean;
+  institutionVerified?: boolean;
   /** @nullable */
   shippingAddress?: string | null;
 }
@@ -1038,6 +1126,21 @@ export interface PnlReport {
   netProfit: number;
   months: PnlMonthRow[];
 }
+
+export type ListPortalOrdersParams = {
+status?: ListPortalOrdersStatus;
+};
+
+export type ListPortalOrdersStatus = typeof ListPortalOrdersStatus[keyof typeof ListPortalOrdersStatus];
+
+
+export const ListPortalOrdersStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  shipped: 'shipped',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
 
 export type ListAdminMembersParams = {
 /**

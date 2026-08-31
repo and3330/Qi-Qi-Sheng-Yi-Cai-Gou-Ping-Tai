@@ -24,6 +24,7 @@ function serializeAdminMember(m: Member) {
     tier: m.tier,
     role: m.role,
     isActive: m.isActive,
+    institutionVerified: m.institutionVerified,
     points: m.points,
     boundInstitutionId: m.boundInstitutionId,
     boundDepartment: m.boundDepartment,

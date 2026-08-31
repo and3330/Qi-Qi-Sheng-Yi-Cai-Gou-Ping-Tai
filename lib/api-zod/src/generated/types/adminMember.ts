@@ -22,6 +22,8 @@ export interface AdminMember {
   points: number;
   /** @nullable */
   boundInstitutionId?: number | null;
+  /** 綁定院所是否已審核（通過才能查看整個院所資料） */
+  institutionVerified?: boolean;
   /** @nullable */
   boundDepartment?: string | null;
   /** @nullable */

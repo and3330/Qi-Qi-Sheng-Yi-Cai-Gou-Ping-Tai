@@ -9,6 +9,69 @@ import * as zod from 'zod/v4';
 
 
 /**
+ * @summary 機構後台總覽（限醫院/診所會員）
+ */
+export const GetPortalSummaryResponse = zod.object({
+  "institutionName": zod.string().nullish().describe('綁定院所名稱，未綁定為 null'),
+  "institutionScope": zod.boolean().describe('true 表示資料範圍為整個院所，false 為個人'),
+  "tier": zod.enum(['hospital', 'clinic']),
+  "walletBalance": zod.int().describe('本人錢包餘額 (NT$)'),
+  "monthOrderCount": zod.int().describe('本月訂單數'),
+  "monthPurchaseTotal": zod.int().describe('本月採購金額（不含已取消，NT$）'),
+  "pendingOrderCount": zod.int().describe('待處理訂單數'),
+  "recentOrders": zod.array(zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled']),
+  "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']),
+  "totalAmount": zod.int(),
+  "memberName": zod.string().describe('下單人姓名'),
+  "boundDepartment": zod.string().nullish().describe('下單人科室'),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 機構訂單總覽（已綁定院所者含同院所所有訂單）
+ */
+export const ListPortalOrdersQueryParams = zod.object({
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled']).optional()
+})
+
+export const ListPortalOrdersResponseItem = zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled']),
+  "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']),
+  "totalAmount": zod.int(),
+  "memberName": zod.string().describe('下單人姓名'),
+  "boundDepartment": zod.string().nullish().describe('下單人科室'),
+  "createdAt": zod.coerce.date()
+})
+export const ListPortalOrdersResponse = zod.array(ListPortalOrdersResponseItem)
+
+
+/**
+ * @summary 機構採購統計（近 6 個月金額與常購品項）
+ */
+export const GetPortalReportsResponse = zod.object({
+  "institutionScope": zod.boolean(),
+  "months": zod.array(zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "orderCount": zod.int(),
+  "purchaseTotal": zod.int().describe('不含已取消 (NT$)')
+})),
+  "topProducts": zod.array(zod.object({
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "quantity": zod.int(),
+  "amount": zod.int()
+}))
+})
+
+
+/**
  * @summary 後台儀表板統計數字（限管理員）
  */
 export const GetAdminStatsResponse = zod.object({
@@ -39,6 +102,7 @@ export const ListAdminMembersResponseItem = zod.object({
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
+  "institutionVerified": zod.boolean().optional().describe('綁定院所是否已審核（通過才能查看整個院所資料）'),
   "boundDepartment": zod.string().nullish(),
   "shippingAddress": zod.string().nullish(),
   "createdAt": zod.coerce.date()
@@ -64,6 +128,7 @@ export const GetAdminMemberResponse = zod.object({
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
+  "institutionVerified": zod.boolean().optional().describe('綁定院所是否已審核（通過才能查看整個院所資料）'),
   "boundDepartment": zod.string().nullish(),
   "shippingAddress": zod.string().nullish(),
   "createdAt": zod.coerce.date()
@@ -87,6 +152,7 @@ export const UpdateAdminMemberBody = zod.object({
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).optional(),
   "role": zod.enum(['admin', 'member']).optional(),
   "isActive": zod.boolean().optional(),
+  "institutionVerified": zod.boolean().optional(),
   "shippingAddress": zod.string().nullish()
 })
 
@@ -101,6 +167,7 @@ export const UpdateAdminMemberResponse = zod.object({
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
+  "institutionVerified": zod.boolean().optional().describe('綁定院所是否已審核（通過才能查看整個院所資料）'),
   "boundDepartment": zod.string().nullish(),
   "shippingAddress": zod.string().nullish(),
   "createdAt": zod.coerce.date()

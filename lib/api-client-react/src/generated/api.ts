@@ -58,6 +58,7 @@ import type {
   ListAdminSuppliersParams,
   ListArticlesParams,
   ListInstitutionsParams,
+  ListPortalOrdersParams,
   ListProductsParams,
   LoginInput,
   Member,
@@ -66,6 +67,9 @@ import type {
   OrderInput,
   OrderStatusUpdate,
   PnlReport,
+  PortalOrder,
+  PortalReports,
+  PortalSummary,
   Product,
   ProfitReport,
   ProfitRule,
@@ -108,6 +112,244 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetPortalSummaryUrl = () => {
+
+
+
+
+  return `/api/portal/summary`
+}
+
+/**
+ * @summary 機構後台總覽（限醫院/診所會員）
+ */
+export const getPortalSummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<PortalSummary> => {
+
+  return customFetch<PortalSummary>(getGetPortalSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalSummaryQueryKey = () => {
+    return [
+    `/api/portal/summary`
+    ] as const;
+    }
+
+
+export const getGetPortalSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getPortalSummary>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalSummary>>> = ({ signal }) => getPortalSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalSummary>>>
+export type GetPortalSummaryQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 機構後台總覽（限醫院/診所會員）
+ */
+
+export function useGetPortalSummary<TData = Awaited<ReturnType<typeof getPortalSummary>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPortalOrdersUrl = (params?: ListPortalOrdersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/portal/orders?${stringifiedParams}` : `/api/portal/orders`
+}
+
+/**
+ * @summary 機構訂單總覽（已綁定院所者含同院所所有訂單）
+ */
+export const listPortalOrders = async (params?: ListPortalOrdersParams, options?: Parameters<typeof customFetch>[1]): Promise<PortalOrder[]> => {
+
+  return customFetch<PortalOrder[]>(getListPortalOrdersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPortalOrdersQueryKey = (params?: ListPortalOrdersParams,) => {
+    return [
+    `/api/portal/orders`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPortalOrdersQueryOptions = <TData = Awaited<ReturnType<typeof listPortalOrders>>, TError = ErrorType<ErrorMessage>>(params?: ListPortalOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPortalOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPortalOrdersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPortalOrders>>> = ({ signal }) => listPortalOrders(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPortalOrders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPortalOrdersQueryResult = NonNullable<Awaited<ReturnType<typeof listPortalOrders>>>
+export type ListPortalOrdersQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 機構訂單總覽（已綁定院所者含同院所所有訂單）
+ */
+
+export function useListPortalOrders<TData = Awaited<ReturnType<typeof listPortalOrders>>, TError = ErrorType<ErrorMessage>>(
+ params?: ListPortalOrdersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPortalOrders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPortalOrdersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPortalReportsUrl = () => {
+
+
+
+
+  return `/api/portal/reports`
+}
+
+/**
+ * @summary 機構採購統計（近 6 個月金額與常購品項）
+ */
+export const getPortalReports = async ( options?: Parameters<typeof customFetch>[1]): Promise<PortalReports> => {
+
+  return customFetch<PortalReports>(getGetPortalReportsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalReportsQueryKey = () => {
+    return [
+    `/api/portal/reports`
+    ] as const;
+    }
+
+
+export const getGetPortalReportsQueryOptions = <TData = Awaited<ReturnType<typeof getPortalReports>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalReports>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalReportsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalReports>>> = ({ signal }) => getPortalReports({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalReports>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalReportsQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalReports>>>
+export type GetPortalReportsQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 機構採購統計（近 6 個月金額與常購品項）
+ */
+
+export function useGetPortalReports<TData = Awaited<ReturnType<typeof getPortalReports>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalReports>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalReportsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAdminStatsUrl = () => {
 

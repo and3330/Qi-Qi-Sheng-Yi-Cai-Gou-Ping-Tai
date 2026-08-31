@@ -4,6 +4,7 @@ import {
   text,
   integer,
   timestamp,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -25,7 +26,7 @@ export const ordersTable = pgTable("orders", {
   receiverPhone: text("receiver_phone"),
   note: text("note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [index("idx_orders_member_created").on(t.memberId, t.createdAt)]);
 
 export const orderItemsTable = pgTable("order_items", {
   id: serial("id").primaryKey(),

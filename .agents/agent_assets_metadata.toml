@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "cPOVPT452Uth-GdLrB5Sb"
+uri = "file://docs/system-audit-and-build-guide.md"
+type = "text"
+title = "系統盤點與製作說明書"
+description = "依技術架構規劃書 v1.2 逐項對照現況，並提供分階段製作步驟"
+logical_id = "d464da1e-726e-4805-b956-1163dd44a236"
+content_hash = "sha256:776fb8ecaad423b70ffbaa64c797fad50d86fceacb546ffb6e37f3371fb89422"
+size = 8580
+mtime_ms = 1788188851947
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:4e42c516-c8d8-42d7-9918-721c7afd7f7e/d464da1e-726e-4805-b956-1163dd44a236/1b02230f-ef9a-4c27-aa0d-ebe8872be27d"
+storage_version_token = "1788188859360242"
+content_type = "text/markdown"
