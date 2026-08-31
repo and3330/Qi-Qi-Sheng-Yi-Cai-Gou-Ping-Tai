@@ -66,11 +66,16 @@ export const MemberTier = {
   consumer: 'consumer',
 } as const;
 
+/**
+ * 系統管理員 / 營運 / 客服 / 一般會員
+ */
 export type MemberRole = typeof MemberRole[keyof typeof MemberRole];
 
 
 export const MemberRole = {
   admin: 'admin',
+  ops: 'ops',
+  support: 'support',
   member: 'member',
 } as const;
 
@@ -84,6 +89,7 @@ export interface Member {
   phone?: string | null;
   /** A 醫院 / B 診所藥局 / C 消費者 */
   tier: MemberTier;
+  /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role?: MemberRole;
   /** @nullable */
   boundInstitutionId?: number | null;
@@ -203,11 +209,16 @@ export const AdminMemberTier = {
   consumer: 'consumer',
 } as const;
 
+/**
+ * 系統管理員 / 營運 / 客服 / 一般會員
+ */
 export type AdminMemberRole = typeof AdminMemberRole[keyof typeof AdminMemberRole];
 
 
 export const AdminMemberRole = {
   admin: 'admin',
+  ops: 'ops',
+  support: 'support',
   member: 'member',
 } as const;
 
@@ -220,6 +231,7 @@ export interface AdminMember {
   /** @nullable */
   phone?: string | null;
   tier: AdminMemberTier;
+  /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role: AdminMemberRole;
   isActive: boolean;
   points: number;
@@ -243,11 +255,16 @@ export const AdminMemberUpdateTier = {
   consumer: 'consumer',
 } as const;
 
+/**
+ * 系統管理員 / 營運 / 客服 / 一般會員
+ */
 export type AdminMemberUpdateRole = typeof AdminMemberUpdateRole[keyof typeof AdminMemberUpdateRole];
 
 
 export const AdminMemberUpdateRole = {
   admin: 'admin',
+  ops: 'ops',
+  support: 'support',
   member: 'member',
 } as const;
 
@@ -259,6 +276,7 @@ export interface AdminMemberUpdate {
   /** @nullable */
   phone?: string | null;
   tier?: AdminMemberUpdateTier;
+  /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role?: AdminMemberUpdateRole;
   isActive?: boolean;
   institutionVerified?: boolean;
@@ -282,6 +300,18 @@ export interface MemberUpdate {
   shippingAddress?: string | null;
 }
 
+export interface ProductVariant {
+  id: number;
+  productId: number;
+  /** 規格名稱，如 500ml、大盒裝 */
+  name: string;
+  priceHospital: number;
+  priceClinic: number;
+  priceConsumer: number;
+  stock: number;
+  isActive: boolean;
+}
+
 export interface Product {
   id: number;
   /** 商品編號，如 10011 */
@@ -302,6 +332,8 @@ export interface Product {
   stock: number;
   isHot: boolean;
   isNew: boolean;
+  /** 多規格（僅商品詳情提供；空陣列或缺省表示單一規格） */
+  variants?: ProductVariant[];
   /**
      * 規格，如 90粒/瓶
      * @nullable
@@ -309,15 +341,72 @@ export interface Product {
   spec?: string | null;
 }
 
+export interface AdminProductVariant {
+  id: number;
+  productId: number;
+  name: string;
+  priceHospital: number;
+  priceClinic: number;
+  priceConsumer: number;
+  costPrice: number;
+  stock: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AdminProductVariantInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @minimum 0 */
+  priceHospital: number;
+  /** @minimum 0 */
+  priceClinic: number;
+  /** @minimum 0 */
+  priceConsumer: number;
+  /** @minimum 0 */
+  costPrice?: number;
+  /**
+     * 期初庫存，僅建立時使用
+     * @minimum 0
+     */
+  stock?: number;
+  isActive?: boolean;
+}
+
+export interface AdminProductVariantUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /** @minimum 0 */
+  priceHospital?: number;
+  /** @minimum 0 */
+  priceClinic?: number;
+  /** @minimum 0 */
+  priceConsumer?: number;
+  /** @minimum 0 */
+  costPrice?: number;
+  isActive?: boolean;
+}
+
 export interface CartItem {
   id: number;
   productId: number;
+  /** @nullable */
+  variantId?: number | null;
   quantity: number;
   product: Product;
+  variant?: ProductVariant | null;
 }
 
 export interface CartItemInput {
   productId: number;
+  /** @nullable */
+  variantId?: number | null;
   /** @minimum 1 */
   quantity: number;
 }
@@ -333,6 +422,10 @@ export interface OrderItem {
   productName: string;
   productCode: string;
   unitPrice: number;
+  /** @nullable */
+  variantId?: number | null;
+  /** @nullable */
+  variantName?: string | null;
   quantity: number;
 }
 
@@ -374,12 +467,16 @@ export interface Order {
   receiverPhone?: string | null;
   /** @nullable */
   note?: string | null;
+  /** 出貨照片物件路徑 */
+  shipmentPhotos?: string[];
   createdAt: string;
   items: OrderItem[];
 }
 
 export interface OrderLineInput {
   productId: number;
+  /** @nullable */
+  variantId?: number | null;
   /** @minimum 1 */
   quantity: number;
 }
@@ -465,6 +562,272 @@ export interface Announcement {
   /** @nullable */
   imageUrl?: string | null;
   publishedAt: string;
+}
+
+export type AdminArticleKind = typeof AdminArticleKind[keyof typeof AdminArticleKind];
+
+
+export const AdminArticleKind = {
+  article: 'article',
+  faq: 'faq',
+} as const;
+
+export type AdminArticleStatus = typeof AdminArticleStatus[keyof typeof AdminArticleStatus];
+
+
+export const AdminArticleStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface AdminArticle {
+  id: number;
+  kind: AdminArticleKind;
+  title: string;
+  category: string;
+  /** @nullable */
+  summary?: string | null;
+  /**
+     * Markdown 內文
+     * @nullable
+     */
+  content?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  status: AdminArticleStatus;
+  publishedAt: string;
+  updatedAt: string;
+}
+
+export type AdminArticleInputKind = typeof AdminArticleInputKind[keyof typeof AdminArticleInputKind];
+
+
+export const AdminArticleInputKind = {
+  article: 'article',
+  faq: 'faq',
+} as const;
+
+export type AdminArticleInputStatus = typeof AdminArticleInputStatus[keyof typeof AdminArticleInputStatus];
+
+
+export const AdminArticleInputStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface AdminArticleInput {
+  kind: AdminArticleInputKind;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  category: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  summary?: string | null;
+  /** @nullable */
+  content?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  imageUrl?: string | null;
+  status?: AdminArticleInputStatus;
+}
+
+export type AdminArticleUpdateKind = typeof AdminArticleUpdateKind[keyof typeof AdminArticleUpdateKind];
+
+
+export const AdminArticleUpdateKind = {
+  article: 'article',
+  faq: 'faq',
+} as const;
+
+export type AdminArticleUpdateStatus = typeof AdminArticleUpdateStatus[keyof typeof AdminArticleUpdateStatus];
+
+
+export const AdminArticleUpdateStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface AdminArticleUpdate {
+  kind?: AdminArticleUpdateKind;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  category?: string;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  summary?: string | null;
+  /** @nullable */
+  content?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  imageUrl?: string | null;
+  status?: AdminArticleUpdateStatus;
+}
+
+export type AdminAnnouncementStatus = typeof AdminAnnouncementStatus[keyof typeof AdminAnnouncementStatus];
+
+
+export const AdminAnnouncementStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface AdminAnnouncement {
+  id: number;
+  title: string;
+  category: string;
+  /** @nullable */
+  content?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  status: AdminAnnouncementStatus;
+  publishedAt: string;
+  updatedAt: string;
+}
+
+export type AdminAnnouncementInputStatus = typeof AdminAnnouncementInputStatus[keyof typeof AdminAnnouncementInputStatus];
+
+
+export const AdminAnnouncementInputStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface AdminAnnouncementInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  category: string;
+  /** @nullable */
+  content?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  imageUrl?: string | null;
+  status?: AdminAnnouncementInputStatus;
+}
+
+export type AdminAnnouncementUpdateStatus = typeof AdminAnnouncementUpdateStatus[keyof typeof AdminAnnouncementUpdateStatus];
+
+
+export const AdminAnnouncementUpdateStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export interface AdminAnnouncementUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  category?: string;
+  /** @nullable */
+  content?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  imageUrl?: string | null;
+  status?: AdminAnnouncementUpdateStatus;
+}
+
+export type ContentRevisionEntityKind = typeof ContentRevisionEntityKind[keyof typeof ContentRevisionEntityKind];
+
+
+export const ContentRevisionEntityKind = {
+  article: 'article',
+  announcement: 'announcement',
+} as const;
+
+export interface ContentRevision {
+  id: number;
+  entityKind: ContentRevisionEntityKind;
+  entityId: number;
+  title: string;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  content?: string | null;
+  status: string;
+  /** @nullable */
+  editedBy?: number | null;
+  /** @nullable */
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface ShipmentPhotosInput {
+  /**
+     * @maxItems 10
+     * @items.maxLength 500
+     */
+  photos: string[];
+}
+
+export interface ShipmentPhotosResult {
+  shipmentPhotos: string[];
+}
+
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+  metadata?: UploadUrlRequest;
 }
 
 export interface FavoriteInput {
@@ -584,6 +947,11 @@ export interface AdminStockMovement {
 
 export interface StockAdjustInput {
   productId: number;
+  /**
+     * 多規格商品需指定規格
+     * @nullable
+     */
+  variantId?: number | null;
   /** 正數入庫、負數出庫，不可為 0 */
   quantity: number;
   /**
@@ -767,6 +1135,8 @@ export interface AdminOrder {
   receiverPhone?: string | null;
   /** @nullable */
   note?: string | null;
+  /** 出貨照片物件路徑 */
+  shipmentPhotos?: string[];
   createdAt: string;
   items: OrderItem[];
 }
@@ -928,6 +1298,163 @@ export interface WalletAdjustInput {
      * @nullable
      */
   reason?: string | null;
+}
+
+export type InstitutionWalletTransactionType = typeof InstitutionWalletTransactionType[keyof typeof InstitutionWalletTransactionType];
+
+
+export const InstitutionWalletTransactionType = {
+  deposit: 'deposit',
+  payment: 'payment',
+  refund: 'refund',
+  profit_share: 'profit_share',
+  adjust: 'adjust',
+} as const;
+
+export interface InstitutionWalletTransaction {
+  id: number;
+  institutionId: number;
+  /**
+     * 經手成員（訂單付款/退款時）
+     * @nullable
+     */
+  memberId?: number | null;
+  /** @nullable */
+  memberName?: string | null;
+  type: InstitutionWalletTransactionType;
+  /** 正=入帳、負=扣款 (NT$) */
+  amount: number;
+  balanceAfter: number;
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  refNo?: string | null;
+  createdAt: string;
+}
+
+export interface InstitutionWalletRow {
+  institutionId: number;
+  institutionName: string;
+  type: string;
+  city: string;
+  balance: number;
+}
+
+export interface InstitutionWallet {
+  institutionId: number;
+  institutionName: string;
+  type: string;
+  city: string;
+  balance: number;
+  transactions: InstitutionWalletTransaction[];
+}
+
+export type PortalWalletTransactionType = typeof PortalWalletTransactionType[keyof typeof PortalWalletTransactionType];
+
+
+export const PortalWalletTransactionType = {
+  deposit: 'deposit',
+  payment: 'payment',
+  refund: 'refund',
+  profit_share: 'profit_share',
+  adjust: 'adjust',
+} as const;
+
+export interface PortalWalletTransaction {
+  id: number;
+  /**
+     * 經手成員（機構錢包時）
+     * @nullable
+     */
+  memberName?: string | null;
+  type: PortalWalletTransactionType;
+  /** 正=入帳、負=扣款 (NT$) */
+  amount: number;
+  balanceAfter: number;
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  refNo?: string | null;
+  createdAt: string;
+}
+
+/**
+ * institution=機構共用錢包（綁定已審核），member=個人錢包
+ */
+export type PortalWalletWalletKind = typeof PortalWalletWalletKind[keyof typeof PortalWalletWalletKind];
+
+
+export const PortalWalletWalletKind = {
+  institution: 'institution',
+  member: 'member',
+} as const;
+
+export interface PortalWallet {
+  /** institution=機構共用錢包（綁定已審核），member=個人錢包 */
+  walletKind: PortalWalletWalletKind;
+  /** @nullable */
+  institutionName?: string | null;
+  balance: number;
+  transactions: PortalWalletTransaction[];
+}
+
+export interface CommissionGroupRow {
+  city: string;
+  institutionId: number;
+  institutionName: string;
+  /** @nullable */
+  department?: string | null;
+  orderCount: number;
+  amount: number;
+}
+
+export interface CommissionRecord {
+  id: number;
+  orderNo: string;
+  memberId: number;
+  memberName: string;
+  city: string;
+  institutionId: number;
+  institutionName: string;
+  /** @nullable */
+  department?: string | null;
+  ruleName: string;
+  percentBps: number;
+  baseAmount: number;
+  amount: number;
+  createdAt: string;
+}
+
+export interface CommissionReport {
+  /** @nullable */
+  from?: string | null;
+  /** @nullable */
+  to?: string | null;
+  totalAmount: number;
+  recordCount: number;
+  recordsTruncated: boolean;
+  groups: CommissionGroupRow[];
+  records: CommissionRecord[];
+}
+
+export interface PortalCommissionRecord {
+  id: number;
+  orderNo: string;
+  memberName: string;
+  /** @nullable */
+  department?: string | null;
+  ruleName: string;
+  percentBps: number;
+  baseAmount: number;
+  amount: number;
+  createdAt: string;
+}
+
+export interface PortalCommissions {
+  institutionScope: boolean;
+  totalAmount: number;
+  recordCount: number;
+  records: PortalCommissionRecord[];
 }
 
 export type ProfitRuleTier = typeof ProfitRuleTier[keyof typeof ProfitRuleTier];
@@ -1280,6 +1807,53 @@ export type GetAdminWalletStatsParams = {
 from?: string;
 to?: string;
 };
+
+export type GetAdminCommissionReportParams = {
+from?: string;
+to?: string;
+institutionId?: number;
+};
+
+export type ListAdminArticlesParams = {
+status?: ListAdminArticlesStatus;
+};
+
+export type ListAdminArticlesStatus = typeof ListAdminArticlesStatus[keyof typeof ListAdminArticlesStatus];
+
+
+export const ListAdminArticlesStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export type ListAdminAnnouncementsParams = {
+status?: ListAdminAnnouncementsStatus;
+};
+
+export type ListAdminAnnouncementsStatus = typeof ListAdminAnnouncementsStatus[keyof typeof ListAdminAnnouncementsStatus];
+
+
+export const ListAdminAnnouncementsStatus = {
+  draft: 'draft',
+  review: 'review',
+  published: 'published',
+  archived: 'archived',
+} as const;
+
+export type ListAdminContentRevisionsParams = {
+entityKind: ListAdminContentRevisionsEntityKind;
+entityId: number;
+};
+
+export type ListAdminContentRevisionsEntityKind = typeof ListAdminContentRevisionsEntityKind[keyof typeof ListAdminContentRevisionsEntityKind];
+
+
+export const ListAdminContentRevisionsEntityKind = {
+  article: 'article',
+  announcement: 'announcement',
+} as const;
 
 export type GetAdminProfitReportParams = {
 from?: string;

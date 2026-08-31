@@ -20,7 +20,7 @@ function AdminOnly({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isError || me?.role !== "admin") {
+  if (isError || !me?.role || me.role === "member") {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-muted/40 px-6 text-center">
         <div className="rounded-2xl bg-destructive/10 p-4 text-destructive">

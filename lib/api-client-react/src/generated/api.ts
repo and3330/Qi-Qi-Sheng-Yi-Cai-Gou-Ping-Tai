@@ -20,6 +20,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminAnnouncement,
+  AdminAnnouncementInput,
+  AdminAnnouncementUpdate,
+  AdminArticle,
+  AdminArticleInput,
+  AdminArticleUpdate,
   AdminMember,
   AdminMemberUpdate,
   AdminMemberWallet,
@@ -27,6 +33,9 @@ import type {
   AdminProduct,
   AdminProductInput,
   AdminProductUpdate,
+  AdminProductVariant,
+  AdminProductVariantInput,
+  AdminProductVariantUpdate,
   AdminPurchaseOrder,
   AdminStats,
   AdminStockMovement,
@@ -35,10 +44,13 @@ import type {
   CartItem,
   CartItemInput,
   CartItemUpdate,
+  CommissionReport,
+  ContentRevision,
   ErrorMessage,
   Expense,
   ExpenseInput,
   FavoriteInput,
+  GetAdminCommissionReportParams,
   GetAdminFinanceLedgerParams,
   GetAdminInventoryReportParams,
   GetAdminPnlReportParams,
@@ -47,8 +59,13 @@ import type {
   HealthStatus,
   HomeSummary,
   Institution,
+  InstitutionWallet,
+  InstitutionWalletRow,
   InventoryReport,
   Ledger,
+  ListAdminAnnouncementsParams,
+  ListAdminArticlesParams,
+  ListAdminContentRevisionsParams,
   ListAdminExpensesParams,
   ListAdminMembersParams,
   ListAdminOrdersParams,
@@ -67,9 +84,11 @@ import type {
   OrderInput,
   OrderStatusUpdate,
   PnlReport,
+  PortalCommissions,
   PortalOrder,
   PortalReports,
   PortalSummary,
+  PortalWallet,
   Product,
   ProfitReport,
   ProfitRule,
@@ -77,10 +96,14 @@ import type {
   PurchaseOrderInput,
   PurchaseOrderStatusUpdate,
   RegisterInput,
+  ShipmentPhotosInput,
+  ShipmentPhotosResult,
   StockAdjustInput,
   Supplier,
   SupplierInput,
   SupplierUpdate,
+  UploadUrlRequest,
+  UploadUrlResponse,
   Wallet,
   WalletAdjustInput,
   WalletStats
@@ -4074,6 +4097,1739 @@ export const useAdjustAdminMemberWallet = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getAdjustAdminMemberWalletMutationOptions(options));
+    }
+
+export const getGetPortalWalletUrl = () => {
+
+
+
+
+  return `/api/portal/wallet`
+}
+
+/**
+ * @summary 機構後台錢包（已審核者為機構共用錢包，否則為個人錢包）
+ */
+export const getPortalWallet = async ( options?: Parameters<typeof customFetch>[1]): Promise<PortalWallet> => {
+
+  return customFetch<PortalWallet>(getGetPortalWalletUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalWalletQueryKey = () => {
+    return [
+    `/api/portal/wallet`
+    ] as const;
+    }
+
+
+export const getGetPortalWalletQueryOptions = <TData = Awaited<ReturnType<typeof getPortalWallet>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalWalletQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalWallet>>> = ({ signal }) => getPortalWallet({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalWallet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalWalletQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalWallet>>>
+export type GetPortalWalletQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 機構後台錢包（已審核者為機構共用錢包，否則為個人錢包）
+ */
+
+export function useGetPortalWallet<TData = Awaited<ReturnType<typeof getPortalWallet>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalWalletQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPortalCommissionsUrl = () => {
+
+
+
+
+  return `/api/portal/commissions`
+}
+
+/**
+ * @summary 機構佣金對帳明細（限已審核綁定之機構會員）
+ */
+export const getPortalCommissions = async ( options?: Parameters<typeof customFetch>[1]): Promise<PortalCommissions> => {
+
+  return customFetch<PortalCommissions>(getGetPortalCommissionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPortalCommissionsQueryKey = () => {
+    return [
+    `/api/portal/commissions`
+    ] as const;
+    }
+
+
+export const getGetPortalCommissionsQueryOptions = <TData = Awaited<ReturnType<typeof getPortalCommissions>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPortalCommissionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPortalCommissions>>> = ({ signal }) => getPortalCommissions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPortalCommissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPortalCommissionsQueryResult = NonNullable<Awaited<ReturnType<typeof getPortalCommissions>>>
+export type GetPortalCommissionsQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 機構佣金對帳明細（限已審核綁定之機構會員）
+ */
+
+export function useGetPortalCommissions<TData = Awaited<ReturnType<typeof getPortalCommissions>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPortalCommissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPortalCommissionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminCommissionReportUrl = (params?: GetAdminCommissionReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/commission-report?${stringifiedParams}` : `/api/admin/commission-report`
+}
+
+/**
+ * @summary 佣金報表（縣市／醫院／科室彙總＋明細，限管理員）
+ */
+export const getAdminCommissionReport = async (params?: GetAdminCommissionReportParams, options?: Parameters<typeof customFetch>[1]): Promise<CommissionReport> => {
+
+  return customFetch<CommissionReport>(getGetAdminCommissionReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminCommissionReportQueryKey = (params?: GetAdminCommissionReportParams,) => {
+    return [
+    `/api/admin/commission-report`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminCommissionReportQueryOptions = <TData = Awaited<ReturnType<typeof getAdminCommissionReport>>, TError = ErrorType<unknown>>(params?: GetAdminCommissionReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminCommissionReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminCommissionReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminCommissionReport>>> = ({ signal }) => getAdminCommissionReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminCommissionReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminCommissionReportQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminCommissionReport>>>
+export type GetAdminCommissionReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 佣金報表（縣市／醫院／科室彙總＋明細，限管理員）
+ */
+
+export function useGetAdminCommissionReport<TData = Awaited<ReturnType<typeof getAdminCommissionReport>>, TError = ErrorType<unknown>>(
+ params?: GetAdminCommissionReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminCommissionReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminCommissionReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminInstitutionWalletsUrl = () => {
+
+
+
+
+  return `/api/admin/institution-wallets`
+}
+
+/**
+ * @summary 機構錢包總覽（限管理員）
+ */
+export const listAdminInstitutionWallets = async ( options?: Parameters<typeof customFetch>[1]): Promise<InstitutionWalletRow[]> => {
+
+  return customFetch<InstitutionWalletRow[]>(getListAdminInstitutionWalletsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminInstitutionWalletsQueryKey = () => {
+    return [
+    `/api/admin/institution-wallets`
+    ] as const;
+    }
+
+
+export const getListAdminInstitutionWalletsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminInstitutionWallets>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminInstitutionWallets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminInstitutionWalletsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminInstitutionWallets>>> = ({ signal }) => listAdminInstitutionWallets({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminInstitutionWallets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminInstitutionWalletsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminInstitutionWallets>>>
+export type ListAdminInstitutionWalletsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 機構錢包總覽（限管理員）
+ */
+
+export function useListAdminInstitutionWallets<TData = Awaited<ReturnType<typeof listAdminInstitutionWallets>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminInstitutionWallets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminInstitutionWalletsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminInstitutionWalletUrl = (institutionId: number,) => {
+
+
+
+
+  return `/api/admin/institution-wallets/${institutionId}`
+}
+
+/**
+ * @summary 單一機構錢包明細（限管理員）
+ */
+export const getAdminInstitutionWallet = async (institutionId: number, options?: Parameters<typeof customFetch>[1]): Promise<InstitutionWallet> => {
+
+  return customFetch<InstitutionWallet>(getGetAdminInstitutionWalletUrl(institutionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminInstitutionWalletQueryKey = (institutionId: number,) => {
+    return [
+    `/api/admin/institution-wallets/${institutionId}`
+    ] as const;
+    }
+
+
+export const getGetAdminInstitutionWalletQueryOptions = <TData = Awaited<ReturnType<typeof getAdminInstitutionWallet>>, TError = ErrorType<ErrorMessage>>(institutionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminInstitutionWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminInstitutionWalletQueryKey(institutionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminInstitutionWallet>>> = ({ signal }) => getAdminInstitutionWallet(institutionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: institutionId !== null && institutionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminInstitutionWallet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminInstitutionWalletQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminInstitutionWallet>>>
+export type GetAdminInstitutionWalletQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 單一機構錢包明細（限管理員）
+ */
+
+export function useGetAdminInstitutionWallet<TData = Awaited<ReturnType<typeof getAdminInstitutionWallet>>, TError = ErrorType<ErrorMessage>>(
+ institutionId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminInstitutionWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminInstitutionWalletQueryOptions(institutionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAdjustInstitutionWalletUrl = (institutionId: number,) => {
+
+
+
+
+  return `/api/admin/institution-wallets/${institutionId}/adjust`
+}
+
+/**
+ * @summary 管理員儲值／調整機構錢包（限管理員）
+ */
+export const adjustInstitutionWallet = async (institutionId: number,
+    walletAdjustInput: WalletAdjustInput, options?: Parameters<typeof customFetch>[1]): Promise<InstitutionWallet> => {
+
+  return customFetch<InstitutionWallet>(getAdjustInstitutionWalletUrl(institutionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(walletAdjustInput)
+  }
+);}
+
+
+
+
+
+export const getAdjustInstitutionWalletMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adjustInstitutionWallet>>, TError,{institutionId: number;data: BodyType<WalletAdjustInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adjustInstitutionWallet>>, TError,{institutionId: number;data: BodyType<WalletAdjustInput>}, TContext> => {
+
+const mutationKey = ['adjustInstitutionWallet'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adjustInstitutionWallet>>, {institutionId: number;data: BodyType<WalletAdjustInput>}> = (props) => {
+          const {institutionId,data} = props ?? {};
+
+          return  adjustInstitutionWallet(institutionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdjustInstitutionWalletMutationResult = NonNullable<Awaited<ReturnType<typeof adjustInstitutionWallet>>>
+    export type AdjustInstitutionWalletMutationBody = BodyType<WalletAdjustInput>
+    export type AdjustInstitutionWalletMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 管理員儲值／調整機構錢包（限管理員）
+ */
+export const useAdjustInstitutionWallet = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adjustInstitutionWallet>>, TError,{institutionId: number;data: BodyType<WalletAdjustInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adjustInstitutionWallet>>,
+        TError,
+        {institutionId: number;data: BodyType<WalletAdjustInput>},
+        TContext
+      > => {
+      return useMutation(getAdjustInstitutionWalletMutationOptions(options));
+    }
+
+export const getListAdminArticlesUrl = (params?: ListAdminArticlesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/articles?${stringifiedParams}` : `/api/admin/articles`
+}
+
+/**
+ * @summary 內容管理：文章／FAQ 列表（限管理員）
+ */
+export const listAdminArticles = async (params?: ListAdminArticlesParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminArticle[]> => {
+
+  return customFetch<AdminArticle[]>(getListAdminArticlesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminArticlesQueryKey = (params?: ListAdminArticlesParams,) => {
+    return [
+    `/api/admin/articles`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminArticlesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminArticles>>, TError = ErrorType<unknown>>(params?: ListAdminArticlesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminArticles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminArticlesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminArticles>>> = ({ signal }) => listAdminArticles(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminArticles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminArticlesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminArticles>>>
+export type ListAdminArticlesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 內容管理：文章／FAQ 列表（限管理員）
+ */
+
+export function useListAdminArticles<TData = Awaited<ReturnType<typeof listAdminArticles>>, TError = ErrorType<unknown>>(
+ params?: ListAdminArticlesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminArticles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminArticlesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminArticleUrl = () => {
+
+
+
+
+  return `/api/admin/articles`
+}
+
+/**
+ * @summary 內容管理：建立文章／FAQ（限管理員）
+ */
+export const createAdminArticle = async (adminArticleInput: AdminArticleInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminArticle> => {
+
+  return customFetch<AdminArticle>(getCreateAdminArticleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminArticleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminArticleMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminArticle>>, TError,{data: BodyType<AdminArticleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminArticle>>, TError,{data: BodyType<AdminArticleInput>}, TContext> => {
+
+const mutationKey = ['createAdminArticle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminArticle>>, {data: BodyType<AdminArticleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminArticle(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminArticleMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminArticle>>>
+    export type CreateAdminArticleMutationBody = BodyType<AdminArticleInput>
+    export type CreateAdminArticleMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 內容管理：建立文章／FAQ（限管理員）
+ */
+export const useCreateAdminArticle = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminArticle>>, TError,{data: BodyType<AdminArticleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminArticle>>,
+        TError,
+        {data: BodyType<AdminArticleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminArticleMutationOptions(options));
+    }
+
+export const getUpdateAdminArticleUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/articles/${id}`
+}
+
+/**
+ * @summary 內容管理：編輯／審核／上下架文章（限管理員）
+ */
+export const updateAdminArticle = async (id: number,
+    adminArticleUpdate: AdminArticleUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminArticle> => {
+
+  return customFetch<AdminArticle>(getUpdateAdminArticleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminArticleUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminArticleMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminArticle>>, TError,{id: number;data: BodyType<AdminArticleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminArticle>>, TError,{id: number;data: BodyType<AdminArticleUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminArticle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminArticle>>, {id: number;data: BodyType<AdminArticleUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminArticle(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminArticleMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminArticle>>>
+    export type UpdateAdminArticleMutationBody = BodyType<AdminArticleUpdate>
+    export type UpdateAdminArticleMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 內容管理：編輯／審核／上下架文章（限管理員）
+ */
+export const useUpdateAdminArticle = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminArticle>>, TError,{id: number;data: BodyType<AdminArticleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminArticle>>,
+        TError,
+        {id: number;data: BodyType<AdminArticleUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminArticleMutationOptions(options));
+    }
+
+export const getDeleteAdminArticleUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/articles/${id}`
+}
+
+/**
+ * @summary 內容管理：刪除文章（限管理員）
+ */
+export const deleteAdminArticle = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminArticleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminArticleMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminArticle>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminArticle>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAdminArticle'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminArticle>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminArticle(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminArticleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminArticle>>>
+
+    export type DeleteAdminArticleMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 內容管理：刪除文章（限管理員）
+ */
+export const useDeleteAdminArticle = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminArticle>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminArticle>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminArticleMutationOptions(options));
+    }
+
+export const getListAdminAnnouncementsUrl = (params?: ListAdminAnnouncementsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/announcements?${stringifiedParams}` : `/api/admin/announcements`
+}
+
+/**
+ * @summary 內容管理：公告列表（限管理員）
+ */
+export const listAdminAnnouncements = async (params?: ListAdminAnnouncementsParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminAnnouncement[]> => {
+
+  return customFetch<AdminAnnouncement[]>(getListAdminAnnouncementsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAnnouncementsQueryKey = (params?: ListAdminAnnouncementsParams,) => {
+    return [
+    `/api/admin/announcements`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminAnnouncementsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAnnouncements>>, TError = ErrorType<unknown>>(params?: ListAdminAnnouncementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAnnouncements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAnnouncementsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAnnouncements>>> = ({ signal }) => listAdminAnnouncements(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAnnouncements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminAnnouncementsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAnnouncements>>>
+export type ListAdminAnnouncementsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 內容管理：公告列表（限管理員）
+ */
+
+export function useListAdminAnnouncements<TData = Awaited<ReturnType<typeof listAdminAnnouncements>>, TError = ErrorType<unknown>>(
+ params?: ListAdminAnnouncementsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAnnouncements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminAnnouncementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminAnnouncementUrl = () => {
+
+
+
+
+  return `/api/admin/announcements`
+}
+
+/**
+ * @summary 內容管理：建立公告（限管理員）
+ */
+export const createAdminAnnouncement = async (adminAnnouncementInput: AdminAnnouncementInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminAnnouncement> => {
+
+  return customFetch<AdminAnnouncement>(getCreateAdminAnnouncementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminAnnouncementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminAnnouncementMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAnnouncement>>, TError,{data: BodyType<AdminAnnouncementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminAnnouncement>>, TError,{data: BodyType<AdminAnnouncementInput>}, TContext> => {
+
+const mutationKey = ['createAdminAnnouncement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminAnnouncement>>, {data: BodyType<AdminAnnouncementInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminAnnouncement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminAnnouncement>>>
+    export type CreateAdminAnnouncementMutationBody = BodyType<AdminAnnouncementInput>
+    export type CreateAdminAnnouncementMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 內容管理：建立公告（限管理員）
+ */
+export const useCreateAdminAnnouncement = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAnnouncement>>, TError,{data: BodyType<AdminAnnouncementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminAnnouncement>>,
+        TError,
+        {data: BodyType<AdminAnnouncementInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminAnnouncementMutationOptions(options));
+    }
+
+export const getUpdateAdminAnnouncementUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/announcements/${id}`
+}
+
+/**
+ * @summary 內容管理：編輯／審核／上下架公告（限管理員）
+ */
+export const updateAdminAnnouncement = async (id: number,
+    adminAnnouncementUpdate: AdminAnnouncementUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminAnnouncement> => {
+
+  return customFetch<AdminAnnouncement>(getUpdateAdminAnnouncementUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminAnnouncementUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminAnnouncementMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminAnnouncement>>, TError,{id: number;data: BodyType<AdminAnnouncementUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminAnnouncement>>, TError,{id: number;data: BodyType<AdminAnnouncementUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminAnnouncement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminAnnouncement>>, {id: number;data: BodyType<AdminAnnouncementUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminAnnouncement(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminAnnouncement>>>
+    export type UpdateAdminAnnouncementMutationBody = BodyType<AdminAnnouncementUpdate>
+    export type UpdateAdminAnnouncementMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 內容管理：編輯／審核／上下架公告（限管理員）
+ */
+export const useUpdateAdminAnnouncement = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminAnnouncement>>, TError,{id: number;data: BodyType<AdminAnnouncementUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminAnnouncement>>,
+        TError,
+        {id: number;data: BodyType<AdminAnnouncementUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminAnnouncementMutationOptions(options));
+    }
+
+export const getDeleteAdminAnnouncementUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/announcements/${id}`
+}
+
+/**
+ * @summary 內容管理：刪除公告（限管理員）
+ */
+export const deleteAdminAnnouncement = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminAnnouncementUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminAnnouncementMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAnnouncement>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAnnouncement>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAdminAnnouncement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminAnnouncement>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminAnnouncement(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminAnnouncement>>>
+
+    export type DeleteAdminAnnouncementMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 內容管理：刪除公告（限管理員）
+ */
+export const useDeleteAdminAnnouncement = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAnnouncement>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminAnnouncement>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminAnnouncementMutationOptions(options));
+    }
+
+export const getListAdminContentRevisionsUrl = (params: ListAdminContentRevisionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/content-revisions?${stringifiedParams}` : `/api/admin/content-revisions`
+}
+
+/**
+ * @summary 內容管理：版本紀錄（限管理員）
+ */
+export const listAdminContentRevisions = async (params: ListAdminContentRevisionsParams, options?: Parameters<typeof customFetch>[1]): Promise<ContentRevision[]> => {
+
+  return customFetch<ContentRevision[]>(getListAdminContentRevisionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminContentRevisionsQueryKey = (params?: ListAdminContentRevisionsParams,) => {
+    return [
+    `/api/admin/content-revisions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminContentRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminContentRevisions>>, TError = ErrorType<unknown>>(params: ListAdminContentRevisionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContentRevisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminContentRevisionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminContentRevisions>>> = ({ signal }) => listAdminContentRevisions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminContentRevisions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminContentRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminContentRevisions>>>
+export type ListAdminContentRevisionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 內容管理：版本紀錄（限管理員）
+ */
+
+export function useListAdminContentRevisions<TData = Awaited<ReturnType<typeof listAdminContentRevisions>>, TError = ErrorType<unknown>>(
+ params: ListAdminContentRevisionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContentRevisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminContentRevisionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestUploadUrlUrl = () => {
+
+
+
+
+  return `/api/storage/uploads/request-url`
+}
+
+/**
+ * @summary 取得檔案上傳網址（限營運人員）
+ */
+export const requestUploadUrl = async (uploadUrlRequest: UploadUrlRequest, options?: Parameters<typeof customFetch>[1]): Promise<UploadUrlResponse> => {
+
+  return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(uploadUrlRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestUploadUrlMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext> => {
+
+const mutationKey = ['requestUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestUploadUrl>>, {data: BodyType<UploadUrlRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestUploadUrl>>>
+    export type RequestUploadUrlMutationBody = BodyType<UploadUrlRequest>
+    export type RequestUploadUrlMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 取得檔案上傳網址（限營運人員）
+ */
+export const useRequestUploadUrl = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestUploadUrl>>, TError,{data: BodyType<UploadUrlRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestUploadUrl>>,
+        TError,
+        {data: BodyType<UploadUrlRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestUploadUrlMutationOptions(options));
+    }
+
+export const getGetStorageObjectUrl = (objectPath: string,) => {
+
+
+
+
+  return `/api/storage/objects/${objectPath}`
+}
+
+/**
+ * @summary 取得已上傳物件（出貨照片等）
+ */
+export const getStorageObject = async (objectPath: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetStorageObjectUrl(objectPath),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStorageObjectQueryKey = (objectPath: string,) => {
+    return [
+    `/api/storage/objects/${objectPath}`
+    ] as const;
+    }
+
+
+export const getGetStorageObjectQueryOptions = <TData = Awaited<ReturnType<typeof getStorageObject>>, TError = ErrorType<ErrorMessage>>(objectPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorageObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStorageObjectQueryKey(objectPath);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStorageObject>>> = ({ signal }) => getStorageObject(objectPath, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: objectPath !== null && objectPath !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStorageObject>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStorageObjectQueryResult = NonNullable<Awaited<ReturnType<typeof getStorageObject>>>
+export type GetStorageObjectQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 取得已上傳物件（出貨照片等）
+ */
+
+export function useGetStorageObject<TData = Awaited<ReturnType<typeof getStorageObject>>, TError = ErrorType<ErrorMessage>>(
+ objectPath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStorageObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStorageObjectQueryOptions(objectPath,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPublicObjectUrl = (filePath: string,) => {
+
+
+
+
+  return `/api/storage/public-objects/${filePath}`
+}
+
+/**
+ * @summary 取得公開資產
+ */
+export const getPublicObject = async (filePath: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPublicObjectUrl(filePath),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicObjectQueryKey = (filePath: string,) => {
+    return [
+    `/api/storage/public-objects/${filePath}`
+    ] as const;
+    }
+
+
+export const getGetPublicObjectQueryOptions = <TData = Awaited<ReturnType<typeof getPublicObject>>, TError = ErrorType<ErrorMessage>>(filePath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicObjectQueryKey(filePath);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicObject>>> = ({ signal }) => getPublicObject(filePath, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: filePath !== null && filePath !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicObject>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicObjectQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicObject>>>
+export type GetPublicObjectQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 取得公開資產
+ */
+
+export function useGetPublicObject<TData = Awaited<ReturnType<typeof getPublicObject>>, TError = ErrorType<ErrorMessage>>(
+ filePath: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicObject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicObjectQueryOptions(filePath,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateShipmentPhotosUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/orders/${id}/shipment-photos`
+}
+
+/**
+ * @summary 出貨照片存證（限營運人員）
+ */
+export const updateShipmentPhotos = async (id: number,
+    shipmentPhotosInput: ShipmentPhotosInput, options?: Parameters<typeof customFetch>[1]): Promise<ShipmentPhotosResult> => {
+
+  return customFetch<ShipmentPhotosResult>(getUpdateShipmentPhotosUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(shipmentPhotosInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateShipmentPhotosMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShipmentPhotos>>, TError,{id: number;data: BodyType<ShipmentPhotosInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShipmentPhotos>>, TError,{id: number;data: BodyType<ShipmentPhotosInput>}, TContext> => {
+
+const mutationKey = ['updateShipmentPhotos'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShipmentPhotos>>, {id: number;data: BodyType<ShipmentPhotosInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateShipmentPhotos(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShipmentPhotosMutationResult = NonNullable<Awaited<ReturnType<typeof updateShipmentPhotos>>>
+    export type UpdateShipmentPhotosMutationBody = BodyType<ShipmentPhotosInput>
+    export type UpdateShipmentPhotosMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 出貨照片存證（限營運人員）
+ */
+export const useUpdateShipmentPhotos = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShipmentPhotos>>, TError,{id: number;data: BodyType<ShipmentPhotosInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShipmentPhotos>>,
+        TError,
+        {id: number;data: BodyType<ShipmentPhotosInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateShipmentPhotosMutationOptions(options));
+    }
+
+export const getListAdminProductVariantsUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/products/${id}/variants`
+}
+
+/**
+ * @summary 商品規格列表（後台人員）
+ */
+export const listAdminProductVariants = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<AdminProductVariant[]> => {
+
+  return customFetch<AdminProductVariant[]>(getListAdminProductVariantsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminProductVariantsQueryKey = (id: number,) => {
+    return [
+    `/api/admin/products/${id}/variants`
+    ] as const;
+    }
+
+
+export const getListAdminProductVariantsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminProductVariants>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminProductVariants>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminProductVariantsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminProductVariants>>> = ({ signal }) => listAdminProductVariants(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminProductVariants>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminProductVariantsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminProductVariants>>>
+export type ListAdminProductVariantsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 商品規格列表（後台人員）
+ */
+
+export function useListAdminProductVariants<TData = Awaited<ReturnType<typeof listAdminProductVariants>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminProductVariants>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminProductVariantsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminProductVariantUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/products/${id}/variants`
+}
+
+/**
+ * @summary 新增商品規格（限營運人員）
+ */
+export const createAdminProductVariant = async (id: number,
+    adminProductVariantInput: AdminProductVariantInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminProductVariant> => {
+
+  return customFetch<AdminProductVariant>(getCreateAdminProductVariantUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminProductVariantInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminProductVariantMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminProductVariant>>, TError,{id: number;data: BodyType<AdminProductVariantInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminProductVariant>>, TError,{id: number;data: BodyType<AdminProductVariantInput>}, TContext> => {
+
+const mutationKey = ['createAdminProductVariant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminProductVariant>>, {id: number;data: BodyType<AdminProductVariantInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createAdminProductVariant(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminProductVariantMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminProductVariant>>>
+    export type CreateAdminProductVariantMutationBody = BodyType<AdminProductVariantInput>
+    export type CreateAdminProductVariantMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 新增商品規格（限營運人員）
+ */
+export const useCreateAdminProductVariant = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminProductVariant>>, TError,{id: number;data: BodyType<AdminProductVariantInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminProductVariant>>,
+        TError,
+        {id: number;data: BodyType<AdminProductVariantInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminProductVariantMutationOptions(options));
+    }
+
+export const getUpdateAdminProductVariantUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/variants/${id}`
+}
+
+/**
+ * @summary 編輯商品規格（限營運人員；庫存請走庫存調整）
+ */
+export const updateAdminProductVariant = async (id: number,
+    adminProductVariantUpdate: AdminProductVariantUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminProductVariant> => {
+
+  return customFetch<AdminProductVariant>(getUpdateAdminProductVariantUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminProductVariantUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminProductVariantMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminProductVariant>>, TError,{id: number;data: BodyType<AdminProductVariantUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminProductVariant>>, TError,{id: number;data: BodyType<AdminProductVariantUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminProductVariant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminProductVariant>>, {id: number;data: BodyType<AdminProductVariantUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminProductVariant(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminProductVariantMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminProductVariant>>>
+    export type UpdateAdminProductVariantMutationBody = BodyType<AdminProductVariantUpdate>
+    export type UpdateAdminProductVariantMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 編輯商品規格（限營運人員；庫存請走庫存調整）
+ */
+export const useUpdateAdminProductVariant = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminProductVariant>>, TError,{id: number;data: BodyType<AdminProductVariantUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminProductVariant>>,
+        TError,
+        {id: number;data: BodyType<AdminProductVariantUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminProductVariantMutationOptions(options));
+    }
+
+export const getDeleteAdminProductVariantUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/variants/${id}`
+}
+
+/**
+ * @summary 刪除商品規格（限營運人員；已有訂單紀錄者不可刪除）
+ */
+export const deleteAdminProductVariant = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminProductVariantUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminProductVariantMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProductVariant>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProductVariant>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAdminProductVariant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminProductVariant>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminProductVariant(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminProductVariantMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminProductVariant>>>
+
+    export type DeleteAdminProductVariantMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 刪除商品規格（限營運人員；已有訂單紀錄者不可刪除）
+ */
+export const useDeleteAdminProductVariant = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProductVariant>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminProductVariant>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminProductVariantMutationOptions(options));
     }
 
 export const getListAdminProfitRulesUrl = () => {

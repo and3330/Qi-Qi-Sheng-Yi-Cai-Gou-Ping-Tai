@@ -38,7 +38,17 @@ export default function ProductPage() {
   const { toast } = useToast();
   
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | null>(null);
+
+  const hasVariants = product?.variants && product.variants.length > 0;
   
+  const selectedVariant = useMemo(() => {
+    if (!hasVariants) return null;
+    return product.variants!.find(v => v.id === selectedVariantId) || null;
+  }, [product, selectedVariantId, hasVariants]);
+
+  const activeStock = hasVariants ? (selectedVariant ? selectedVariant.stock : 0) : (product?.stock ?? 0);
+
   const isFavorite = useMemo(() => {
     return favorites?.some(f => f.id === id) ?? false;
   }, [favorites, id]);
@@ -67,9 +77,15 @@ export default function ProductPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    addToCart({ data: { productId: id, quantity } }, {
+    if (hasVariants && !selectedVariantId) {
+      toast({ title: "請選擇商品規格", variant: "destructive" });
+      return;
+    }
+    
+    addToCart({ data: { productId: id, quantity, variantId: selectedVariantId } }, {
       onSuccess: () => {
-        toast({ title: "已加入購物車", description: `${product.name} x ${quantity}` });
+        const title = selectedVariant ? `${product.name} (${selectedVariant.name})` : product.name;
+        toast({ title: "已加入購物車", description: `${title} x ${quantity}` });
         queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
       },
       onError: () => {
@@ -81,10 +97,11 @@ export default function ProductPage() {
   // Determine current price based on tier, default to consumer
   const currentPrice = useMemo(() => {
     if (!product) return 0;
-    if (me?.tier === 'hospital') return product.priceHospital;
-    if (me?.tier === 'clinic') return product.priceClinic;
-    return product.priceConsumer;
-  }, [product, me]);
+    const target = hasVariants && selectedVariant ? selectedVariant : product;
+    if (me?.tier === 'hospital') return target.priceHospital;
+    if (me?.tier === 'clinic') return target.priceClinic;
+    return target.priceConsumer;
+  }, [product, me, hasVariants, selectedVariant]);
 
   if (isLoading) {
     return (
@@ -154,11 +171,38 @@ export default function ProductPage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-400 mb-0.5">庫存狀態</p>
-            <p className={classNames("text-sm font-bold", product.stock > 10 ? "text-green-600" : product.stock > 0 ? "text-orange-500" : "text-destructive")}>
-              {product.stock > 10 ? "庫存充足" : product.stock > 0 ? `倒數 ${product.stock} 件` : "售完補貨中"}
+            <p className={classNames("text-sm font-bold", activeStock > 10 ? "text-green-600" : activeStock > 0 ? "text-orange-500" : "text-destructive")}>
+              {activeStock > 10 ? "庫存充足" : activeStock > 0 ? `倒數 ${activeStock} 件` : "售完補貨中"}
             </p>
           </div>
         </div>
+
+        {hasVariants && (
+          <div className="mb-4 pt-4 border-t border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-3">商品規格</h3>
+            <div className="flex flex-wrap gap-2">
+              {product.variants!.filter(v => v.isActive).map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => {
+                    setSelectedVariantId(v.id);
+                    setQuantity(1);
+                  }}
+                  className={classNames(
+                    "px-4 py-2 rounded-xl text-sm font-medium border-2 transition-all active:scale-95",
+                    selectedVariantId === v.id 
+                      ? "border-primary bg-primary/10 text-primary" 
+                      : "border-gray-100 bg-white text-gray-600 hover:border-primary/30 hover:bg-gray-50",
+                    v.stock <= 0 && "opacity-50 cursor-not-allowed"
+                  )}
+                  disabled={v.stock <= 0}
+                >
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tier Price Preview */}
         {!me && (
@@ -197,8 +241,8 @@ export default function ProductPage() {
             </div>
             <button 
               className="w-10 h-full flex items-center justify-center text-gray-500 disabled:opacity-50"
-              onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
-              disabled={quantity >= product.stock}
+              onClick={() => setQuantity(q => Math.min(activeStock, q + 1))}
+              disabled={quantity >= activeStock}
             >
               <Plus size={16} />
             </button>
@@ -206,10 +250,10 @@ export default function ProductPage() {
           
           <Button 
             className="flex-1 h-12 text-base font-bold rounded-xl"
-            disabled={product.stock <= 0}
+            disabled={activeStock <= 0}
             onClick={handleAddToCart}
           >
-            {product.stock > 0 ? (
+            {activeStock > 0 ? (
               <>
                 <ShoppingCart size={18} className="mr-2" />
                 加入購物車

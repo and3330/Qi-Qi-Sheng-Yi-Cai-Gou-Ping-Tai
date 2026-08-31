@@ -27,6 +27,8 @@ export interface AdminOrder {
   receiverPhone?: string | null;
   /** @nullable */
   note?: string | null;
+  /** 出貨照片物件路徑 */
+  shipmentPhotos?: string[];
   createdAt: Date;
   items: OrderItem[];
 }

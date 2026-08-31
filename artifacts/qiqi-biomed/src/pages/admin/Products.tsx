@@ -5,10 +5,16 @@ import {
   getListAdminProductsQueryKey,
   useCreateAdminProduct,
   useUpdateAdminProduct,
+  useListAdminProductVariants,
+  getListAdminProductVariantsQueryKey,
+  useCreateAdminProductVariant,
+  useUpdateAdminProductVariant,
+  useDeleteAdminProductVariant,
   type AdminProduct,
+  type AdminProductVariant,
   type ListAdminProductsParams,
 } from "@workspace/api-client-react";
-import { Search, Plus, Pencil, PackageX, PackageCheck, AlertTriangle } from "lucide-react";
+import { Search, Plus, Pencil, PackageX, PackageCheck, AlertTriangle, Trash2, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +76,196 @@ const emptyForm: FormState = {
   isNew: true,
   isActive: true,
 };
+
+function VariantsManager({ productId }: { productId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: variants, isLoading } = useListAdminProductVariants(productId, { query: { queryKey: getListAdminProductVariantsQueryKey(productId) } });
+  
+  const createMut = useCreateAdminProductVariant();
+  const updateMut = useUpdateAdminProductVariant();
+  const deleteMut = useDeleteAdminProductVariant();
+
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  
+  const [vForm, setVForm] = useState({
+    name: "",
+    priceHospital: "",
+    priceClinic: "",
+    priceConsumer: "",
+    costPrice: "",
+    initialStock: "0"
+  });
+
+  const resetForm = () => {
+    setVForm({ name: "", priceHospital: "", priceClinic: "", priceConsumer: "", costPrice: "", initialStock: "0" });
+    setAdding(false);
+    setEditingId(null);
+  };
+
+  const fillEdit = (v: AdminProductVariant) => {
+    setVForm({
+      name: v.name,
+      priceHospital: String(v.priceHospital),
+      priceClinic: String(v.priceClinic),
+      priceConsumer: String(v.priceConsumer),
+      costPrice: String(v.costPrice),
+      initialStock: "0" // not editable
+    });
+    setEditingId(v.id);
+    setAdding(false);
+  };
+
+  const handleSave = () => {
+    const nums = {
+      priceHospital: Number(vForm.priceHospital),
+      priceClinic: Number(vForm.priceClinic),
+      priceConsumer: Number(vForm.priceConsumer),
+      costPrice: Number(vForm.costPrice),
+      initialStock: Number(vForm.initialStock)
+    };
+    if (!vForm.name.trim() || Object.values(nums).some(n => !Number.isInteger(n) || n < 0)) {
+      toast({ title: "請確認欄位", description: "名稱與售價為必填，且金額需為非負整數", variant: "destructive" });
+      return;
+    }
+    
+    if (editingId) {
+      updateMut.mutate({
+        id: editingId,
+        data: {
+          name: vForm.name.trim(),
+          priceHospital: nums.priceHospital,
+          priceClinic: nums.priceClinic,
+          priceConsumer: nums.priceConsumer,
+          costPrice: nums.costPrice
+        }
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListAdminProductVariantsQueryKey(productId) });
+          resetForm();
+          toast({ title: "儲存成功" });
+        }
+      });
+    } else {
+      createMut.mutate({
+        id: productId,
+        data: {
+          name: vForm.name.trim(),
+          priceHospital: nums.priceHospital,
+          priceClinic: nums.priceClinic,
+          priceConsumer: nums.priceConsumer,
+          costPrice: nums.costPrice,
+          stock: nums.initialStock
+        }
+      }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListAdminProductVariantsQueryKey(productId) });
+          resetForm();
+          toast({ title: "新增成功" });
+        }
+      });
+    }
+  };
+  
+  const toggleActive = (id: number, current: boolean) => {
+    updateMut.mutate({ id, data: { isActive: !current } }, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListAdminProductVariantsQueryKey(productId) })
+    });
+  };
+
+  const handleDelete = (id: number) => {
+    deleteMut.mutate({ id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListAdminProductVariantsQueryKey(productId) });
+        toast({ title: "已刪除規格" });
+      },
+      onError: (err: any) => {
+        toast({ title: "刪除失敗", description: err?.data?.error || "該規格可能有訂單記錄", variant: "destructive" });
+      }
+    });
+  };
+
+  return (
+    <div className="border rounded-xl bg-gray-50/50 p-4 mt-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-bold text-sm">多規格管理</h3>
+        {!adding && !editingId && (
+          <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
+            <Plus size={14} className="mr-1" /> 新增規格
+          </Button>
+        )}
+      </div>
+
+      {(adding || editingId) && (
+        <div className="bg-white p-3 rounded-lg border shadow-sm mb-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1 col-span-2">
+              <Label className="text-xs">規格名稱 *</Label>
+              <Input className="h-8" value={vForm.name} onChange={e => setVForm({...vForm, name: e.target.value})} placeholder="例如：大盒裝" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">消費者價 *</Label>
+              <Input className="h-8" type="number" value={vForm.priceConsumer} onChange={e => setVForm({...vForm, priceConsumer: e.target.value})} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">診所價 *</Label>
+              <Input className="h-8" type="number" value={vForm.priceClinic} onChange={e => setVForm({...vForm, priceClinic: e.target.value})} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">醫院價 *</Label>
+              <Input className="h-8" type="number" value={vForm.priceHospital} onChange={e => setVForm({...vForm, priceHospital: e.target.value})} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">進貨成本</Label>
+              <Input className="h-8" type="number" value={vForm.costPrice} onChange={e => setVForm({...vForm, costPrice: e.target.value})} />
+            </div>
+            {adding && (
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">期初庫存</Label>
+                <Input className="h-8" type="number" value={vForm.initialStock} onChange={e => setVForm({...vForm, initialStock: e.target.value})} />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button size="sm" variant="ghost" className="h-8" onClick={resetForm}>取消</Button>
+            <Button size="sm" className="h-8" onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>儲存</Button>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <Skeleton className="h-20 w-full" />
+      ) : (
+        <div className="space-y-2">
+          {variants?.map(v => (
+            <div key={v.id} className="bg-white border rounded-lg p-3 flex justify-between items-center group">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-bold text-sm">{v.name}</span>
+                  {!v.isActive && <Badge variant="secondary" className="text-[10px] px-1 h-4">停售</Badge>}
+                </div>
+                <div className="text-[11px] text-muted-foreground flex gap-3">
+                  <span>C: ${v.priceConsumer}</span>
+                  <span>Cl: ${v.priceClinic}</span>
+                  <span>H: ${v.priceHospital}</span>
+                  <span className="font-medium text-foreground ml-2 border-l pl-3">庫存: {v.stock}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                <Switch checked={v.isActive} onCheckedChange={() => toggleActive(v.id, v.isActive)} title="上架狀態" />
+                <div className="w-1" />
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fillEdit(v)}><Pencil size={14} /></Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDelete(v.id)}><Trash2 size={14} /></Button>
+              </div>
+            </div>
+          ))}
+          {!variants?.length && !adding && <div className="text-center text-xs text-muted-foreground py-4">無規格。請新增規格。</div>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminProductsPage() {
   const { toast } = useToast();
@@ -543,6 +739,8 @@ export default function AdminProductsPage() {
                   </div>
                 ))}
               </div>
+              
+              {form.id !== null && <VariantsManager productId={form.id} />}
             </div>
           )}
           <DialogFooter>

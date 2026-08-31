@@ -17,7 +17,7 @@ import {
   CreateAdminPurchaseOrderBody,
   UpdateAdminPurchaseOrderStatusBody,
 } from "@workspace/api-zod";
-import { requireAdmin } from "../middlewares/requireMember";
+import { requireOps } from "../middlewares/requireMember";
 
 const router: IRouter = Router();
 
@@ -65,7 +65,7 @@ function serializePO(
 
 // ---------- Suppliers ----------
 
-router.get("/admin/suppliers", requireAdmin, async (req, res) => {
+router.get("/admin/suppliers", requireOps, async (req, res) => {
   const search =
     typeof req.query.search === "string" ? req.query.search.trim() : "";
   const conditions: SQL[] = [];
@@ -86,7 +86,7 @@ router.get("/admin/suppliers", requireAdmin, async (req, res) => {
   res.json(rows.map(serializeSupplier));
 });
 
-router.post("/admin/suppliers", requireAdmin, async (req, res) => {
+router.post("/admin/suppliers", requireOps, async (req, res) => {
   const parsed = CreateAdminSupplierBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "供應商資料不完整" });
@@ -108,7 +108,7 @@ router.post("/admin/suppliers", requireAdmin, async (req, res) => {
   res.status(201).json(serializeSupplier(created));
 });
 
-router.patch("/admin/suppliers/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/suppliers/:id", requireOps, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -148,7 +148,7 @@ async function loadPO(id: number) {
   return serializePO(row.po, row.supplierName, items);
 }
 
-router.get("/admin/purchase-orders", requireAdmin, async (req, res) => {
+router.get("/admin/purchase-orders", requireOps, async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "";
   const conditions: SQL[] = [];
   if (["draft", "ordered", "received", "cancelled"].includes(status))
@@ -181,7 +181,7 @@ router.get("/admin/purchase-orders", requireAdmin, async (req, res) => {
   );
 });
 
-router.post("/admin/purchase-orders", requireAdmin, async (req, res) => {
+router.post("/admin/purchase-orders", requireOps, async (req, res) => {
   const parsed = CreateAdminPurchaseOrderBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "採購單資料不完整" });
@@ -253,7 +253,7 @@ router.post("/admin/purchase-orders", requireAdmin, async (req, res) => {
     .json(serializePO(result.po, supplier.name, result.items));
 });
 
-router.get("/admin/purchase-orders/:id", requireAdmin, async (req, res) => {
+router.get("/admin/purchase-orders/:id", requireOps, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -269,7 +269,7 @@ router.get("/admin/purchase-orders/:id", requireAdmin, async (req, res) => {
 
 router.patch(
   "/admin/purchase-orders/:id/status",
-  requireAdmin,
+  requireOps,
   async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) {
@@ -317,7 +317,7 @@ router.patch(
 
 router.post(
   "/admin/purchase-orders/:id/receive",
-  requireAdmin,
+  requireOps,
   async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) {

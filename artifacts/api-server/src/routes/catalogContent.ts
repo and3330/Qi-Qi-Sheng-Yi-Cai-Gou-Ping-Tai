@@ -45,7 +45,7 @@ router.get("/articles", async (req, res) => {
     res.status(400).json({ error: "Invalid query" });
     return;
   }
-  const conditions: SQL[] = [];
+  const conditions: SQL[] = [eq(articlesTable.status, "published")];
   if (parsed.data.kind) conditions.push(eq(articlesTable.kind, parsed.data.kind));
   if (parsed.data.category)
     conditions.push(eq(articlesTable.category, parsed.data.category));
@@ -60,7 +60,7 @@ router.get("/articles", async (req, res) => {
   const rows = await db
     .select()
     .from(articlesTable)
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(desc(articlesTable.publishedAt));
   res.json(rows.map(serializeArticle));
 });
@@ -74,7 +74,7 @@ router.get("/articles/:id", async (req, res) => {
   const [row] = await db
     .select()
     .from(articlesTable)
-    .where(eq(articlesTable.id, parsed.data.id))
+    .where(and(eq(articlesTable.id, parsed.data.id), eq(articlesTable.status, "published")))
     .limit(1);
   if (!row) {
     res.status(404).json({ error: "文章不存在" });
@@ -98,6 +98,7 @@ router.get("/announcements", async (_req, res) => {
   const rows = await db
     .select()
     .from(announcementsTable)
+    .where(eq(announcementsTable.status, "published"))
     .orderBy(desc(announcementsTable.publishedAt));
   res.json(rows.map(serializeAnnouncement));
 });
@@ -113,12 +114,13 @@ router.get("/home/summary", async (_req, res) => {
     db
       .select()
       .from(announcementsTable)
+      .where(eq(announcementsTable.status, "published"))
       .orderBy(desc(announcementsTable.publishedAt))
       .limit(5),
     db
       .select()
       .from(articlesTable)
-      .where(eq(articlesTable.kind, "article"))
+      .where(and(eq(articlesTable.kind, "article"), eq(articlesTable.status, "published")))
       .orderBy(desc(articlesTable.publishedAt))
       .limit(4),
   ]);

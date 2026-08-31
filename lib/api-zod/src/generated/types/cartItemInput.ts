@@ -8,6 +8,8 @@
 
 export interface CartItemInput {
   productId: number;
+  /** @nullable */
+  variantId?: number | null;
   /** @minimum 1 */
   quantity: number;
 }

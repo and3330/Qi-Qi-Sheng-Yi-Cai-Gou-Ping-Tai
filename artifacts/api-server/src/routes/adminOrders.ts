@@ -12,11 +12,17 @@ import {
   profitRulesTable,
   profitShareRecordsTable,
   walletTransactionsTable,
+  institutionsTable,
+  institutionWalletTransactionsTable,
   type Order,
   type OrderItem,
+  productVariantsTable,
 } from "@workspace/db";
-import { UpdateAdminOrderStatusBody } from "@workspace/api-zod";
-import { requireAdmin } from "../middlewares/requireMember";
+import {
+  UpdateAdminOrderStatusBody,
+  UpdateShipmentPhotosBody,
+} from "@workspace/api-zod";
+import { requireStaff, requireOps } from "../middlewares/requireMember";
 
 const router: IRouter = Router();
 
@@ -38,19 +44,22 @@ function serializeAdminOrder(
     receiverName: o.receiverName,
     receiverPhone: o.receiverPhone,
     note: o.note,
+    shipmentPhotos: o.shipmentPhotos ?? [],
     createdAt: o.createdAt.toISOString(),
     items: items.map((i) => ({
       id: i.id,
       productId: i.productId,
       productName: i.productName,
       productCode: i.productCode,
+      variantId: i.variantId,
+      variantName: i.variantName,
       unitPrice: i.unitPrice,
       quantity: i.quantity,
     })),
   };
 }
 
-router.get("/admin/orders", requireAdmin, async (req, res) => {
+router.get("/admin/orders", requireStaff, async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "";
   const search =
     typeof req.query.search === "string" ? req.query.search.trim() : "";
@@ -121,7 +130,7 @@ async function loadAdminOrder(id: number) {
   );
 }
 
-router.get("/admin/orders/:id", requireAdmin, async (req, res) => {
+router.get("/admin/orders/:id", requireStaff, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -144,7 +153,7 @@ const ORDER_TRANSITIONS: Record<string, string[]> = {
   cancelled: [],
 };
 
-router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
+router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -202,19 +211,52 @@ router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
                 (order.totalAmount * rule.percentBps) / 10000,
               );
               if (amount > 0) {
-                const newBalance = member.walletBalance + amount;
-                await tx
-                  .update(membersTable)
-                  .set({ walletBalance: newBalance })
-                  .where(eq(membersTable.id, member.id));
-                await tx.insert(walletTransactionsTable).values({
-                  memberId: member.id,
-                  type: "profit_share",
-                  amount,
-                  balanceAfter: newBalance,
-                  reason: `利潤分享（${rule.name}）`,
-                  refNo: order.orderNo,
-                });
+                // 佣金歸屬：下單人「已審核綁定」院所 → 撥入機構共用錢包；否則入個人錢包
+                // （與結帳扣款規則一致：需 institutionVerified；機構不存在時退回個人錢包，避免有紀錄沒入帳）
+                let creditedInstitutionId: number | null = null;
+                if (
+                  member.boundInstitutionId != null &&
+                  member.institutionVerified
+                ) {
+                  const [inst] = await tx
+                    .select()
+                    .from(institutionsTable)
+                    .where(eq(institutionsTable.id, member.boundInstitutionId))
+                    .for("update")
+                    .limit(1);
+                  if (inst) {
+                    creditedInstitutionId = inst.id;
+                    const newBalance = inst.walletBalance + amount;
+                    await tx
+                      .update(institutionsTable)
+                      .set({ walletBalance: newBalance })
+                      .where(eq(institutionsTable.id, inst.id));
+                    await tx.insert(institutionWalletTransactionsTable).values({
+                      institutionId: inst.id,
+                      memberId: member.id,
+                      type: "profit_share",
+                      amount,
+                      balanceAfter: newBalance,
+                      reason: `佣金回饋（${rule.name}）`,
+                      refNo: order.orderNo,
+                    });
+                  }
+                }
+                if (creditedInstitutionId == null) {
+                  const newBalance = member.walletBalance + amount;
+                  await tx
+                    .update(membersTable)
+                    .set({ walletBalance: newBalance })
+                    .where(eq(membersTable.id, member.id));
+                  await tx.insert(walletTransactionsTable).values({
+                    memberId: member.id,
+                    type: "profit_share",
+                    amount,
+                    balanceAfter: newBalance,
+                    reason: `利潤分享（${rule.name}）`,
+                    refNo: order.orderNo,
+                  });
+                }
                 await tx.insert(profitShareRecordsTable).values({
                   orderId: order.id,
                   orderNo: order.orderNo,
@@ -222,6 +264,9 @@ router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
                   ruleId: rule.id,
                   ruleName: rule.name,
                   percentBps: rule.percentBps,
+                  institutionId: creditedInstitutionId,
+                  department:
+                    creditedInstitutionId != null ? member.boundDepartment : null,
                   baseAmount: order.totalAmount,
                   amount,
                 });
@@ -232,28 +277,66 @@ router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
       }
 
       if (target === "cancelled") {
-        // 錢包已付款的訂單取消 → 退款回錢包
+        // 錢包已付款的訂單取消 → 依付款來源退回機構共用錢包或個人錢包
         if (order.paymentMethod === "wallet" && order.status !== "pending") {
-          const [member] = await tx
-            .select()
-            .from(membersTable)
-            .where(eq(membersTable.id, order.memberId))
-            .for("update")
-            .limit(1);
-          if (member) {
-            const newBalance = member.walletBalance + order.totalAmount;
-            await tx
-              .update(membersTable)
-              .set({ walletBalance: newBalance })
-              .where(eq(membersTable.id, member.id));
-            await tx.insert(walletTransactionsTable).values({
-              memberId: member.id,
-              type: "refund",
-              amount: order.totalAmount,
-              balanceAfter: newBalance,
-              reason: "訂單取消退款",
-              refNo: order.orderNo,
-            });
+          if (order.walletSource === "institution") {
+            // 找出扣款時的機構（以交易明細為準，避免會員之後改綁）
+            const [payTx] = await tx
+              .select()
+              .from(institutionWalletTransactionsTable)
+              .where(
+                and(
+                  eq(institutionWalletTransactionsTable.refNo, order.orderNo),
+                  eq(institutionWalletTransactionsTable.type, "payment"),
+                ),
+              )
+              .limit(1);
+            if (payTx) {
+              const [inst] = await tx
+                .select()
+                .from(institutionsTable)
+                .where(eq(institutionsTable.id, payTx.institutionId))
+                .for("update")
+                .limit(1);
+              if (inst) {
+                const newBalance = inst.walletBalance + order.totalAmount;
+                await tx
+                  .update(institutionsTable)
+                  .set({ walletBalance: newBalance })
+                  .where(eq(institutionsTable.id, inst.id));
+                await tx.insert(institutionWalletTransactionsTable).values({
+                  institutionId: inst.id,
+                  memberId: order.memberId,
+                  type: "refund",
+                  amount: order.totalAmount,
+                  balanceAfter: newBalance,
+                  reason: "訂單取消退款",
+                  refNo: order.orderNo,
+                });
+              }
+            }
+          } else {
+            const [member] = await tx
+              .select()
+              .from(membersTable)
+              .where(eq(membersTable.id, order.memberId))
+              .for("update")
+              .limit(1);
+            if (member) {
+              const newBalance = member.walletBalance + order.totalAmount;
+              await tx
+                .update(membersTable)
+                .set({ walletBalance: newBalance })
+                .where(eq(membersTable.id, member.id));
+              await tx.insert(walletTransactionsTable).values({
+                memberId: member.id,
+                type: "refund",
+                amount: order.totalAmount,
+                balanceAfter: newBalance,
+                reason: "訂單取消退款",
+                refNo: order.orderNo,
+              });
+            }
           }
         }
         // Restock the order items and record movements
@@ -262,18 +345,34 @@ router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
           .from(orderItemsTable)
           .where(eq(orderItemsTable.orderId, id));
         for (const item of items) {
-          const [updated] = await tx
-            .update(productsTable)
-            .set({ stock: sql`${productsTable.stock} + ${item.quantity}` })
-            .where(eq(productsTable.id, item.productId))
-            .returning();
-          if (!updated) continue;
+          let stockAfter: number | null = null;
+          if (item.variantId != null) {
+            const [updated] = await tx
+              .update(productVariantsTable)
+              .set({
+                stock: sql`${productVariantsTable.stock} + ${item.quantity}`,
+              })
+              .where(eq(productVariantsTable.id, item.variantId))
+              .returning();
+            if (updated) stockAfter = updated.stock;
+          } else {
+            const [updated] = await tx
+              .update(productsTable)
+              .set({ stock: sql`${productsTable.stock} + ${item.quantity}` })
+              .where(eq(productsTable.id, item.productId))
+              .returning();
+            if (updated) stockAfter = updated.stock;
+          }
+          if (stockAfter == null) continue;
           await tx.insert(stockMovementsTable).values({
             productId: item.productId,
+            variantId: item.variantId,
             type: "sale",
             quantity: item.quantity,
-            stockAfter: updated.stock,
-            reason: "訂單取消回補",
+            stockAfter,
+            reason: item.variantName
+              ? `訂單取消回補（${item.variantName}）`
+              : "訂單取消回補",
             refNo: order.orderNo,
           });
         }
@@ -301,7 +400,7 @@ router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
   res.json(await loadAdminOrder(id));
 });
 
-router.get("/admin/reports/inventory", requireAdmin, async (req, res) => {
+router.get("/admin/reports/inventory", requireStaff, async (req, res) => {
   const from = typeof req.query.from === "string" ? req.query.from : "";
   const to = typeof req.query.to === "string" ? req.query.to : "";
 
@@ -441,5 +540,38 @@ router.get("/admin/reports/inventory", requireAdmin, async (req, res) => {
     rows,
   });
 });
+
+// 出貨照片存證：營運人員上傳後將物件路徑存入訂單
+router.post(
+  "/admin/orders/:id/shipment-photos",
+  requireOps,
+  async (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const parsed = UpdateShipmentPhotosBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "照片資料不正確" });
+      return;
+    }
+    const photos = parsed.data.photos;
+    if (photos.some((p) => !p.startsWith("/objects/"))) {
+      res.status(400).json({ error: "照片路徑不正確" });
+      return;
+    }
+    const [row] = await db
+      .update(ordersTable)
+      .set({ shipmentPhotos: photos })
+      .where(eq(ordersTable.id, id))
+      .returning({ shipmentPhotos: ordersTable.shipmentPhotos });
+    if (!row) {
+      res.status(404).json({ error: "找不到此訂單" });
+      return;
+    }
+    res.json({ shipmentPhotos: row.shipmentPhotos });
+  },
+);
 
 export default router;

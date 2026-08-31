@@ -1,14 +1,21 @@
+import { useState } from "react";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, Clock, CreditCard, Truck, FileText } from "lucide-react";
+import { ArrowLeft, Clock, CreditCard, Truck, FileText, Image as ImageIcon, X } from "lucide-react";
 import { useGetOrder, getGetOrderQueryKey } from "@workspace/api-client-react";
 import { formatPrice, getOrderStatusName, getPaymentMethodName, classNames } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 
 export default function OrderDetailPage() {
   const [, params] = useRoute("/orders/:id");
   const id = Number(params?.id);
   const { data: order, isLoading } = useGetOrder(id, { query: { enabled: !!id, queryKey: getGetOrderQueryKey(id) } });
+  
+  const [photoView, setPhotoView] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -121,6 +128,7 @@ export default function OrderDetailPage() {
                 <div className="flex justify-between items-start mb-1">
                   <div className="font-medium text-sm text-gray-900 pr-4 line-clamp-2 leading-tight">
                     {item.productName}
+                    {item.variantName && <span className="inline-block text-[10px] bg-gray-100 text-gray-600 px-1 py-0.5 rounded ml-1 mt-0.5">規格：{item.variantName}</span>}
                   </div>
                   <div className="font-bold text-gray-900 shrink-0">{formatPrice(item.unitPrice)}</div>
                 </div>
@@ -137,7 +145,47 @@ export default function OrderDetailPage() {
             <span className="text-xl font-bold text-destructive">{formatPrice(order.totalAmount)}</span>
           </div>
         </section>
+        
+        {order.shipmentPhotos && order.shipmentPhotos.length > 0 && (
+          <section className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6">
+            <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <ImageIcon size={18} className="text-primary" />
+              出貨照片存證
+            </h3>
+            <div className="grid grid-cols-4 gap-2">
+              {order.shipmentPhotos.map((path, idx) => (
+                <button
+                  key={idx}
+                  className="relative aspect-square rounded-xl overflow-hidden border bg-gray-50 active:scale-95 transition-transform"
+                  onClick={() => setPhotoView(path)}
+                >
+                  <img src={`/api/storage${path}`} alt={`出貨照片 ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
+
+      <Dialog open={!!photoView} onOpenChange={(o) => !o && setPhotoView(null)}>
+        <DialogContent className="max-w-md w-full bg-black/95 p-0 border-0 rounded-none overflow-hidden h-[100dvh] flex items-center justify-center flex-col shadow-none">
+          <div className="absolute top-4 right-4 z-50">
+            <button 
+              onClick={() => setPhotoView(null)}
+              className="bg-black/50 text-white p-2 rounded-full backdrop-blur-sm"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          {photoView && (
+            <img 
+              src={`/api/storage${photoView}`} 
+              alt="出貨照片" 
+              className="w-full h-auto max-h-[100dvh] object-contain"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

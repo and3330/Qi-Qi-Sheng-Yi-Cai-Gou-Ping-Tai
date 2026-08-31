@@ -98,7 +98,7 @@ export const ListAdminMembersResponseItem = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']),
-  "role": zod.enum(['admin', 'member']),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
@@ -124,7 +124,7 @@ export const GetAdminMemberResponse = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']),
-  "role": zod.enum(['admin', 'member']),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
@@ -150,7 +150,7 @@ export const UpdateAdminMemberBody = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).optional(),
-  "role": zod.enum(['admin', 'member']).optional(),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).optional().describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "isActive": zod.boolean().optional(),
   "institutionVerified": zod.boolean().optional(),
   "shippingAddress": zod.string().nullish()
@@ -163,7 +163,7 @@ export const UpdateAdminMemberResponse = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']),
-  "role": zod.enum(['admin', 'member']),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
@@ -323,6 +323,7 @@ export const UpdateAdminProductResponse = zod.object({
 
 export const AdjustAdminStockBody = zod.object({
   "productId": zod.int(),
+  "variantId": zod.int().nullish().describe('多規格商品需指定規格'),
   "quantity": zod.int().describe('正數入庫、負數出庫，不可為 0'),
   "reason": zod.string().min(1).describe('盤點 \/ 報廢 \/ 其他'),
   "note": zod.string().nullish()
@@ -637,6 +638,7 @@ export const ListAdminOrdersResponseItem = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -644,6 +646,8 @@ export const ListAdminOrdersResponseItem = zod.object({
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "quantity": zod.int()
 }))
 })
@@ -670,6 +674,7 @@ export const GetAdminOrderResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -677,6 +682,8 @@ export const GetAdminOrderResponse = zod.object({
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "quantity": zod.int()
 }))
 })
@@ -706,6 +713,7 @@ export const UpdateAdminOrderStatusResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -713,6 +721,8 @@ export const UpdateAdminOrderStatusResponse = zod.object({
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "quantity": zod.int()
 }))
 })
@@ -786,7 +796,7 @@ export const RegisterResponse = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
-  "role": zod.enum(['admin', 'member']).optional(),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).optional().describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "boundInstitutionId": zod.int().nullish(),
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
@@ -814,7 +824,7 @@ export const LoginResponse = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
-  "role": zod.enum(['admin', 'member']).optional(),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).optional().describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "boundInstitutionId": zod.int().nullish(),
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
@@ -839,7 +849,7 @@ export const GetMeResponse = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
-  "role": zod.enum(['admin', 'member']).optional(),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).optional().describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "boundInstitutionId": zod.int().nullish(),
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
@@ -869,7 +879,7 @@ export const UpdateMeResponse = zod.object({
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
-  "role": zod.enum(['admin', 'member']).optional(),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).optional().describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
   "boundInstitutionId": zod.int().nullish(),
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
@@ -900,6 +910,16 @@ export const ListProductsResponseItem = zod.object({
   "stock": zod.int(),
   "isHot": zod.boolean(),
   "isNew": zod.boolean(),
+  "variants": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+})).optional().describe('多規格（僅商品詳情提供；空陣列或缺省表示單一規格）'),
   "spec": zod.string().nullish().describe('規格，如 90粒\/瓶')
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
@@ -925,6 +945,16 @@ export const GetProductResponse = zod.object({
   "stock": zod.int(),
   "isHot": zod.boolean(),
   "isNew": zod.boolean(),
+  "variants": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+})).optional().describe('多規格（僅商品詳情提供；空陣列或缺省表示單一規格）'),
   "spec": zod.string().nullish().describe('規格，如 90粒\/瓶')
 })
 
@@ -935,6 +965,7 @@ export const GetProductResponse = zod.object({
 export const GetCartResponseItem = zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
   "quantity": zod.int(),
   "product": zod.object({
   "id": zod.int(),
@@ -949,8 +980,28 @@ export const GetCartResponseItem = zod.object({
   "stock": zod.int(),
   "isHot": zod.boolean(),
   "isNew": zod.boolean(),
+  "variants": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+})).optional().describe('多規格（僅商品詳情提供；空陣列或缺省表示單一規格）'),
   "spec": zod.string().nullish().describe('規格，如 90粒\/瓶')
-})
+}),
+  "variant": zod.union([zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+}),zod.null()]).optional()
 })
 export const GetCartResponse = zod.array(GetCartResponseItem)
 
@@ -963,12 +1014,14 @@ export const GetCartResponse = zod.array(GetCartResponseItem)
 
 export const AddCartItemBody = zod.object({
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
   "quantity": zod.int().min(1)
 })
 
 export const AddCartItemResponse = zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
   "quantity": zod.int(),
   "product": zod.object({
   "id": zod.int(),
@@ -983,8 +1036,28 @@ export const AddCartItemResponse = zod.object({
   "stock": zod.int(),
   "isHot": zod.boolean(),
   "isNew": zod.boolean(),
+  "variants": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+})).optional().describe('多規格（僅商品詳情提供；空陣列或缺省表示單一規格）'),
   "spec": zod.string().nullish().describe('規格，如 90粒\/瓶')
-})
+}),
+  "variant": zod.union([zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+}),zod.null()]).optional()
 })
 
 
@@ -1011,6 +1084,7 @@ export const UpdateCartItemBody = zod.object({
 export const UpdateCartItemResponse = zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
   "quantity": zod.int(),
   "product": zod.object({
   "id": zod.int(),
@@ -1025,8 +1099,28 @@ export const UpdateCartItemResponse = zod.object({
   "stock": zod.int(),
   "isHot": zod.boolean(),
   "isNew": zod.boolean(),
+  "variants": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+})).optional().describe('多規格（僅商品詳情提供；空陣列或缺省表示單一規格）'),
   "spec": zod.string().nullish().describe('規格，如 90粒\/瓶')
-})
+}),
+  "variant": zod.union([zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+}),zod.null()]).optional()
 })
 
 
@@ -1053,6 +1147,7 @@ export const ListOrdersResponseItem = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1060,6 +1155,8 @@ export const ListOrdersResponseItem = zod.object({
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "quantity": zod.int()
 }))
 })
@@ -1085,6 +1182,7 @@ export const CreateOrderBody = zod.object({
   "clearCart": zod.boolean().optional().describe('下單後是否清空購物車'),
   "items": zod.array(zod.object({
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
   "quantity": zod.int().min(1)
 })).min(1)
 })
@@ -1099,6 +1197,7 @@ export const CreateOrderResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1106,6 +1205,8 @@ export const CreateOrderResponse = zod.object({
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "quantity": zod.int()
 }))
 })
@@ -1128,6 +1229,7 @@ export const GetOrderResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1135,6 +1237,8 @@ export const GetOrderResponse = zod.object({
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "quantity": zod.int()
 }))
 })
@@ -1232,6 +1336,16 @@ export const ListFavoritesResponseItem = zod.object({
   "stock": zod.int(),
   "isHot": zod.boolean(),
   "isNew": zod.boolean(),
+  "variants": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+})).optional().describe('多規格（僅商品詳情提供；空陣列或缺省表示單一規格）'),
   "spec": zod.string().nullish().describe('規格，如 90粒\/瓶')
 })
 export const ListFavoritesResponse = zod.array(ListFavoritesResponseItem)
@@ -1274,6 +1388,16 @@ export const GetHomeSummaryResponse = zod.object({
   "stock": zod.int(),
   "isHot": zod.boolean(),
   "isNew": zod.boolean(),
+  "variants": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string().describe('規格名稱，如 500ml、大盒裝'),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean()
+})).optional().describe('多規格（僅商品詳情提供；空陣列或缺省表示單一規格）'),
   "spec": zod.string().nullish().describe('規格，如 90粒\/瓶')
 })),
   "announcements": zod.array(zod.object({
@@ -1401,6 +1525,588 @@ export const AdjustAdminMemberWalletResponse = zod.object({
   "createdAt": zod.coerce.date()
 }))
 })
+
+
+/**
+ * @summary 機構後台錢包（已審核者為機構共用錢包，否則為個人錢包）
+ */
+export const GetPortalWalletResponse = zod.object({
+  "walletKind": zod.enum(['institution', 'member']).describe('institution=機構共用錢包（綁定已審核），member=個人錢包'),
+  "institutionName": zod.string().nullish(),
+  "balance": zod.int(),
+  "transactions": zod.array(zod.object({
+  "id": zod.int(),
+  "memberName": zod.string().nullish().describe('經手成員（機構錢包時）'),
+  "type": zod.enum(['deposit', 'payment', 'refund', 'profit_share', 'adjust']),
+  "amount": zod.int().describe('正=入帳、負=扣款 (NT$)'),
+  "balanceAfter": zod.int(),
+  "reason": zod.string().nullish(),
+  "refNo": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 機構佣金對帳明細（限已審核綁定之機構會員）
+ */
+export const GetPortalCommissionsResponse = zod.object({
+  "institutionScope": zod.boolean(),
+  "totalAmount": zod.int(),
+  "recordCount": zod.int(),
+  "records": zod.array(zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "memberName": zod.string(),
+  "department": zod.string().nullish(),
+  "ruleName": zod.string(),
+  "percentBps": zod.int(),
+  "baseAmount": zod.int(),
+  "amount": zod.int(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 佣金報表（縣市／醫院／科室彙總＋明細，限管理員）
+ */
+export const GetAdminCommissionReportQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "institutionId": zod.coerce.number().int().optional()
+})
+
+export const GetAdminCommissionReportResponse = zod.object({
+  "from": zod.coerce.date().nullish(),
+  "to": zod.coerce.date().nullish(),
+  "totalAmount": zod.int(),
+  "recordCount": zod.int(),
+  "recordsTruncated": zod.boolean(),
+  "groups": zod.array(zod.object({
+  "city": zod.string(),
+  "institutionId": zod.int(),
+  "institutionName": zod.string(),
+  "department": zod.string().nullish(),
+  "orderCount": zod.int(),
+  "amount": zod.int()
+})),
+  "records": zod.array(zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "memberId": zod.int(),
+  "memberName": zod.string(),
+  "city": zod.string(),
+  "institutionId": zod.int(),
+  "institutionName": zod.string(),
+  "department": zod.string().nullish(),
+  "ruleName": zod.string(),
+  "percentBps": zod.int(),
+  "baseAmount": zod.int(),
+  "amount": zod.int(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 機構錢包總覽（限管理員）
+ */
+export const ListAdminInstitutionWalletsResponseItem = zod.object({
+  "institutionId": zod.int(),
+  "institutionName": zod.string(),
+  "type": zod.string(),
+  "city": zod.string(),
+  "balance": zod.int()
+})
+export const ListAdminInstitutionWalletsResponse = zod.array(ListAdminInstitutionWalletsResponseItem)
+
+
+/**
+ * @summary 單一機構錢包明細（限管理員）
+ */
+export const GetAdminInstitutionWalletParams = zod.object({
+  "institutionId": zod.coerce.number().int()
+})
+
+export const GetAdminInstitutionWalletResponse = zod.object({
+  "institutionId": zod.int(),
+  "institutionName": zod.string(),
+  "type": zod.string(),
+  "city": zod.string(),
+  "balance": zod.int(),
+  "transactions": zod.array(zod.object({
+  "id": zod.int(),
+  "institutionId": zod.int(),
+  "memberId": zod.int().nullish().describe('經手成員（訂單付款\/退款時）'),
+  "memberName": zod.string().nullish(),
+  "type": zod.enum(['deposit', 'payment', 'refund', 'profit_share', 'adjust']),
+  "amount": zod.int().describe('正=入帳、負=扣款 (NT$)'),
+  "balanceAfter": zod.int(),
+  "reason": zod.string().nullish(),
+  "refNo": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 管理員儲值／調整機構錢包（限管理員）
+ */
+export const AdjustInstitutionWalletParams = zod.object({
+  "institutionId": zod.coerce.number().int()
+})
+
+export const adjustInstitutionWalletBodyReasonMax = 200;
+
+
+
+export const AdjustInstitutionWalletBody = zod.object({
+  "type": zod.enum(['deposit', 'adjust']),
+  "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
+  "reason": zod.string().max(adjustInstitutionWalletBodyReasonMax).nullish()
+})
+
+export const AdjustInstitutionWalletResponse = zod.object({
+  "institutionId": zod.int(),
+  "institutionName": zod.string(),
+  "type": zod.string(),
+  "city": zod.string(),
+  "balance": zod.int(),
+  "transactions": zod.array(zod.object({
+  "id": zod.int(),
+  "institutionId": zod.int(),
+  "memberId": zod.int().nullish().describe('經手成員（訂單付款\/退款時）'),
+  "memberName": zod.string().nullish(),
+  "type": zod.enum(['deposit', 'payment', 'refund', 'profit_share', 'adjust']),
+  "amount": zod.int().describe('正=入帳、負=扣款 (NT$)'),
+  "balanceAfter": zod.int(),
+  "reason": zod.string().nullish(),
+  "refNo": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 內容管理：文章／FAQ 列表（限管理員）
+ */
+export const ListAdminArticlesQueryParams = zod.object({
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional()
+})
+
+export const ListAdminArticlesResponseItem = zod.object({
+  "id": zod.int(),
+  "kind": zod.enum(['article', 'faq']),
+  "title": zod.string(),
+  "category": zod.string(),
+  "summary": zod.string().nullish(),
+  "content": zod.string().nullish().describe('Markdown 內文'),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "publishedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminArticlesResponse = zod.array(ListAdminArticlesResponseItem)
+
+
+/**
+ * @summary 內容管理：建立文章／FAQ（限管理員）
+ */
+export const createAdminArticleBodyTitleMax = 200;
+
+export const createAdminArticleBodyCategoryMax = 50;
+
+export const createAdminArticleBodySummaryMax = 500;
+
+export const createAdminArticleBodyImageUrlMax = 500;
+
+
+
+export const CreateAdminArticleBody = zod.object({
+  "kind": zod.enum(['article', 'faq']),
+  "title": zod.string().min(1).max(createAdminArticleBodyTitleMax),
+  "category": zod.string().min(1).max(createAdminArticleBodyCategoryMax),
+  "summary": zod.string().max(createAdminArticleBodySummaryMax).nullish(),
+  "content": zod.string().nullish(),
+  "imageUrl": zod.string().max(createAdminArticleBodyImageUrlMax).nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional()
+})
+
+export const CreateAdminArticleResponse = zod.object({
+  "id": zod.int(),
+  "kind": zod.enum(['article', 'faq']),
+  "title": zod.string(),
+  "category": zod.string(),
+  "summary": zod.string().nullish(),
+  "content": zod.string().nullish().describe('Markdown 內文'),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "publishedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 內容管理：編輯／審核／上下架文章（限管理員）
+ */
+export const UpdateAdminArticleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateAdminArticleBodyTitleMax = 200;
+
+export const updateAdminArticleBodyCategoryMax = 50;
+
+export const updateAdminArticleBodySummaryMax = 500;
+
+export const updateAdminArticleBodyImageUrlMax = 500;
+
+
+
+export const UpdateAdminArticleBody = zod.object({
+  "kind": zod.enum(['article', 'faq']).optional(),
+  "title": zod.string().min(1).max(updateAdminArticleBodyTitleMax).optional(),
+  "category": zod.string().min(1).max(updateAdminArticleBodyCategoryMax).optional(),
+  "summary": zod.string().max(updateAdminArticleBodySummaryMax).nullish(),
+  "content": zod.string().nullish(),
+  "imageUrl": zod.string().max(updateAdminArticleBodyImageUrlMax).nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional()
+})
+
+export const UpdateAdminArticleResponse = zod.object({
+  "id": zod.int(),
+  "kind": zod.enum(['article', 'faq']),
+  "title": zod.string(),
+  "category": zod.string(),
+  "summary": zod.string().nullish(),
+  "content": zod.string().nullish().describe('Markdown 內文'),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "publishedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 內容管理：刪除文章（限管理員）
+ */
+export const DeleteAdminArticleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteAdminArticleResponse = zod.void()
+
+
+/**
+ * @summary 內容管理：公告列表（限管理員）
+ */
+export const ListAdminAnnouncementsQueryParams = zod.object({
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional()
+})
+
+export const ListAdminAnnouncementsResponseItem = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "publishedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminAnnouncementsResponse = zod.array(ListAdminAnnouncementsResponseItem)
+
+
+/**
+ * @summary 內容管理：建立公告（限管理員）
+ */
+export const createAdminAnnouncementBodyTitleMax = 200;
+
+export const createAdminAnnouncementBodyCategoryMax = 50;
+
+export const createAdminAnnouncementBodyImageUrlMax = 500;
+
+
+
+export const CreateAdminAnnouncementBody = zod.object({
+  "title": zod.string().min(1).max(createAdminAnnouncementBodyTitleMax),
+  "category": zod.string().min(1).max(createAdminAnnouncementBodyCategoryMax),
+  "content": zod.string().nullish(),
+  "imageUrl": zod.string().max(createAdminAnnouncementBodyImageUrlMax).nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional()
+})
+
+export const CreateAdminAnnouncementResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "publishedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 內容管理：編輯／審核／上下架公告（限管理員）
+ */
+export const UpdateAdminAnnouncementParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateAdminAnnouncementBodyTitleMax = 200;
+
+export const updateAdminAnnouncementBodyCategoryMax = 50;
+
+export const updateAdminAnnouncementBodyImageUrlMax = 500;
+
+
+
+export const UpdateAdminAnnouncementBody = zod.object({
+  "title": zod.string().min(1).max(updateAdminAnnouncementBodyTitleMax).optional(),
+  "category": zod.string().min(1).max(updateAdminAnnouncementBodyCategoryMax).optional(),
+  "content": zod.string().nullish(),
+  "imageUrl": zod.string().max(updateAdminAnnouncementBodyImageUrlMax).nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']).optional()
+})
+
+export const UpdateAdminAnnouncementResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "status": zod.enum(['draft', 'review', 'published', 'archived']),
+  "publishedAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 內容管理：刪除公告（限管理員）
+ */
+export const DeleteAdminAnnouncementParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteAdminAnnouncementResponse = zod.void()
+
+
+/**
+ * @summary 內容管理：版本紀錄（限管理員）
+ */
+export const ListAdminContentRevisionsQueryParams = zod.object({
+  "entityKind": zod.enum(['article', 'announcement']),
+  "entityId": zod.coerce.number().int()
+})
+
+export const ListAdminContentRevisionsResponseItem = zod.object({
+  "id": zod.int(),
+  "entityKind": zod.enum(['article', 'announcement']),
+  "entityId": zod.int(),
+  "title": zod.string(),
+  "category": zod.string().nullish(),
+  "summary": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "status": zod.string(),
+  "editedBy": zod.int().nullish(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevisionsResponseItem)
+
+
+/**
+ * @summary 取得檔案上傳網址（限營運人員）
+ */
+
+
+
+
+
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string().min(1),
+  "size": zod.int().min(1),
+  "contentType": zod.string().min(1)
+})
+
+
+
+
+
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.url(),
+  "objectPath": zod.string(),
+  "metadata": zod.object({
+  "name": zod.string().min(1),
+  "size": zod.int().min(1),
+  "contentType": zod.string().min(1)
+}).optional()
+})
+
+
+/**
+ * @summary 取得已上傳物件（出貨照片等）
+ */
+export const GetStorageObjectParams = zod.object({
+  "objectPath": zod.coerce.string()
+})
+
+export const GetStorageObjectResponse = zod.unknown()
+
+
+/**
+ * @summary 取得公開資產
+ */
+export const GetPublicObjectParams = zod.object({
+  "filePath": zod.coerce.string()
+})
+
+export const GetPublicObjectResponse = zod.unknown()
+
+
+/**
+ * @summary 出貨照片存證（限營運人員）
+ */
+export const UpdateShipmentPhotosParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateShipmentPhotosBodyPhotosItemMax = 500;
+
+export const updateShipmentPhotosBodyPhotosMax = 10;
+
+
+
+export const UpdateShipmentPhotosBody = zod.object({
+  "photos": zod.array(zod.string().max(updateShipmentPhotosBodyPhotosItemMax)).max(updateShipmentPhotosBodyPhotosMax)
+})
+
+export const UpdateShipmentPhotosResponse = zod.object({
+  "shipmentPhotos": zod.array(zod.string())
+})
+
+
+/**
+ * @summary 商品規格列表（後台人員）
+ */
+export const ListAdminProductVariantsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListAdminProductVariantsResponseItem = zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string(),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "costPrice": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminProductVariantsResponse = zod.array(ListAdminProductVariantsResponseItem)
+
+
+/**
+ * @summary 新增商品規格（限營運人員）
+ */
+export const CreateAdminProductVariantParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const createAdminProductVariantBodyNameMax = 100;
+
+export const createAdminProductVariantBodyPriceHospitalMin = 0;
+
+export const createAdminProductVariantBodyPriceClinicMin = 0;
+
+export const createAdminProductVariantBodyPriceConsumerMin = 0;
+
+export const createAdminProductVariantBodyCostPriceMin = 0;
+
+export const createAdminProductVariantBodyStockMin = 0;
+
+
+
+export const CreateAdminProductVariantBody = zod.object({
+  "name": zod.string().min(1).max(createAdminProductVariantBodyNameMax),
+  "priceHospital": zod.int().min(createAdminProductVariantBodyPriceHospitalMin),
+  "priceClinic": zod.int().min(createAdminProductVariantBodyPriceClinicMin),
+  "priceConsumer": zod.int().min(createAdminProductVariantBodyPriceConsumerMin),
+  "costPrice": zod.int().min(createAdminProductVariantBodyCostPriceMin).optional(),
+  "stock": zod.int().min(createAdminProductVariantBodyStockMin).optional().describe('期初庫存，僅建立時使用'),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateAdminProductVariantResponse = zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string(),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "costPrice": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 編輯商品規格（限營運人員；庫存請走庫存調整）
+ */
+export const UpdateAdminProductVariantParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateAdminProductVariantBodyNameMax = 100;
+
+export const updateAdminProductVariantBodyPriceHospitalMin = 0;
+
+export const updateAdminProductVariantBodyPriceClinicMin = 0;
+
+export const updateAdminProductVariantBodyPriceConsumerMin = 0;
+
+export const updateAdminProductVariantBodyCostPriceMin = 0;
+
+
+
+export const UpdateAdminProductVariantBody = zod.object({
+  "name": zod.string().min(1).max(updateAdminProductVariantBodyNameMax).optional(),
+  "priceHospital": zod.int().min(updateAdminProductVariantBodyPriceHospitalMin).optional(),
+  "priceClinic": zod.int().min(updateAdminProductVariantBodyPriceClinicMin).optional(),
+  "priceConsumer": zod.int().min(updateAdminProductVariantBodyPriceConsumerMin).optional(),
+  "costPrice": zod.int().min(updateAdminProductVariantBodyCostPriceMin).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAdminProductVariantResponse = zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string(),
+  "priceHospital": zod.int(),
+  "priceClinic": zod.int(),
+  "priceConsumer": zod.int(),
+  "costPrice": zod.int(),
+  "stock": zod.int(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 刪除商品規格（限營運人員；已有訂單紀錄者不可刪除）
+ */
+export const DeleteAdminProductVariantParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteAdminProductVariantResponse = zod.void()
 
 
 /**

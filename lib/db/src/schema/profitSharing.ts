@@ -43,6 +43,10 @@ export const profitShareRecordsTable = pgTable("profit_share_records", {
   ruleId: integer("rule_id"),
   ruleName: text("rule_name").notNull(),
   percentBps: integer("percent_bps").notNull(),
+  // 佣金歸屬機構（下單人當時綁定的院所；未綁定則為 null，佣金入會員個人錢包）
+  institutionId: integer("institution_id"),
+  // 下單人當時綁定的科室快照
+  department: text("department"),
   // 分潤基準金額（訂單金額）
   baseAmount: integer("base_amount").notNull(),
   // 實際分潤金額

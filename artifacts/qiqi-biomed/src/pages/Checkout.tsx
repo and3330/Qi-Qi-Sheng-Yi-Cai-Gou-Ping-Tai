@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, CheckCircle2, Building2, Truck, CreditCard, Wallet } from "lucide-react";
-import { useGetCart, useCreateOrder, useGetMe, getGetCartQueryKey, getListOrdersQueryKey, useGetWallet, getGetWalletQueryKey } from "@workspace/api-client-react";
+import { useGetCart, useCreateOrder, useGetMe, getGetCartQueryKey, getListOrdersQueryKey, useGetPortalWallet, getGetPortalWalletQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: wallet } = useGetWallet();
+  const { data: wallet } = useGetPortalWallet();
   const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "cod" | "wallet">("bank_transfer");
   const [receiverName, setReceiverName] = useState(me?.name || "");
   const [receiverPhone, setReceiverPhone] = useState(me?.phone || "");
@@ -27,14 +27,15 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successOrderNo, setSuccessOrderNo] = useState<string | null>(null);
 
-  const getPrice = (product: any) => {
-    if (me?.tier === "hospital") return product.priceHospital;
-    if (me?.tier === "clinic") return product.priceClinic;
-    return product.priceConsumer;
+  const getPrice = (item: any) => {
+    const target = item.variant || item.product;
+    if (me?.tier === "hospital") return target.priceHospital;
+    if (me?.tier === "clinic") return target.priceClinic;
+    return target.priceConsumer;
   };
 
   const total = useMemo(() => {
-    return cart?.reduce((sum, item) => sum + (getPrice(item.product) * item.quantity), 0) || 0;
+    return cart?.reduce((sum, item) => sum + (getPrice(item) * item.quantity), 0) || 0;
   }, [cart, me]);
 
   const handleSubmit = async () => {
@@ -57,6 +58,7 @@ export default function CheckoutPage() {
           clearCart: true,
           items: cart.map(item => ({
             productId: item.productId,
+            variantId: item.variantId,
             quantity: item.quantity
           }))
         }
@@ -65,7 +67,7 @@ export default function CheckoutPage() {
       queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
       if (paymentMethod === "wallet") {
-        queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetPortalWalletQueryKey() });
       }
     } catch (e: any) {
       toast({ title: e?.data?.error || "結帳失敗，請重試", variant: "destructive" });
@@ -184,6 +186,11 @@ export default function CheckoutPage() {
                     <div className="text-xs text-gray-500 mt-0.5">
                       目前餘額 NT${balance.toLocaleString()}，結帳時直接扣款
                     </div>
+                    {wallet?.walletKind === "institution" && (
+                      <div className="text-[10px] text-primary mt-1 font-medium bg-primary/10 px-2 py-0.5 rounded inline-block">
+                        將自機構共用錢包扣款
+                      </div>
+                    )}
                   </div>
                   <input type="radio" className="hidden" checked={paymentMethod === 'wallet'} onChange={() => setPaymentMethod('wallet')} />
                 </label>
@@ -204,8 +211,12 @@ export default function CheckoutPage() {
           <div className="space-y-2 mb-4">
             {cart.map(item => (
               <div key={item.id} className="flex justify-between text-sm">
-                <span className="text-gray-600 truncate mr-4">{item.product.name} x {item.quantity}</span>
-                <span className="font-medium">{formatPrice(getPrice(item.product) * item.quantity)}</span>
+                <span className="text-gray-600 truncate mr-4">
+                  {item.product.name} 
+                  {item.variant && <span className="text-[10px] bg-gray-100 px-1 py-0.5 rounded ml-1">規格：{item.variant.name}</span>}
+                  <span className="ml-1 text-xs">x {item.quantity}</span>
+                </span>
+                <span className="font-medium">{formatPrice(getPrice(item) * item.quantity)}</span>
               </div>
             ))}
           </div>

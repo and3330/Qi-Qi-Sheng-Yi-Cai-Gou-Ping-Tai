@@ -17,6 +17,7 @@ export interface AdminMember {
   /** @nullable */
   phone?: string | null;
   tier: AdminMemberTier;
+  /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role: AdminMemberRole;
   isActive: boolean;
   points: number;

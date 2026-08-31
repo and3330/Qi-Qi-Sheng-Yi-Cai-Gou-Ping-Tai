@@ -7,6 +7,9 @@ import {
   ordersTable,
   orderItemsTable,
   institutionsTable,
+  walletTransactionsTable,
+  institutionWalletTransactionsTable,
+  profitShareRecordsTable,
   type Member,
 } from "@workspace/db";
 import { requireMember } from "../middlewares/requireMember";
@@ -239,6 +242,139 @@ router.get("/portal/reports", requirePortal, async (req, res) => {
       productCode: r.productCode,
       quantity: Number(r.quantity ?? 0),
       amount: Number(r.amount ?? 0),
+    })),
+  });
+});
+
+router.get("/portal/wallet", requirePortal, async (req, res) => {
+  const member = req.member!;
+  const institutionScoped =
+    member.boundInstitutionId != null && member.institutionVerified;
+
+  if (institutionScoped) {
+    const [inst] = await db
+      .select({
+        name: institutionsTable.name,
+        walletBalance: institutionsTable.walletBalance,
+      })
+      .from(institutionsTable)
+      .where(eq(institutionsTable.id, member.boundInstitutionId!))
+      .limit(1);
+    const txs = await db
+      .select({
+        id: institutionWalletTransactionsTable.id,
+        type: institutionWalletTransactionsTable.type,
+        amount: institutionWalletTransactionsTable.amount,
+        balanceAfter: institutionWalletTransactionsTable.balanceAfter,
+        reason: institutionWalletTransactionsTable.reason,
+        refNo: institutionWalletTransactionsTable.refNo,
+        createdAt: institutionWalletTransactionsTable.createdAt,
+        memberName: membersTable.name,
+      })
+      .from(institutionWalletTransactionsTable)
+      .leftJoin(
+        membersTable,
+        eq(institutionWalletTransactionsTable.memberId, membersTable.id),
+      )
+      .where(
+        eq(
+          institutionWalletTransactionsTable.institutionId,
+          member.boundInstitutionId!,
+        ),
+      )
+      .orderBy(desc(institutionWalletTransactionsTable.createdAt))
+      .limit(300);
+    res.json({
+      walletKind: "institution",
+      institutionName: inst?.name ?? null,
+      balance: inst?.walletBalance ?? 0,
+      transactions: txs.map((t) => ({
+        id: t.id,
+        memberName: t.memberName,
+        type: t.type,
+        amount: t.amount,
+        balanceAfter: t.balanceAfter,
+        reason: t.reason,
+        refNo: t.refNo,
+        createdAt: t.createdAt.toISOString(),
+      })),
+    });
+    return;
+  }
+
+  const txs = await db
+    .select()
+    .from(walletTransactionsTable)
+    .where(eq(walletTransactionsTable.memberId, member.id))
+    .orderBy(desc(walletTransactionsTable.createdAt))
+    .limit(300);
+  res.json({
+    walletKind: "member",
+    institutionName: null,
+    balance: member.walletBalance,
+    transactions: txs.map((t) => ({
+      id: t.id,
+      memberName: null,
+      type: t.type,
+      amount: t.amount,
+      balanceAfter: t.balanceAfter,
+      reason: t.reason,
+      refNo: t.refNo,
+      createdAt: t.createdAt.toISOString(),
+    })),
+  });
+});
+
+// 機構佣金對帳：僅已審核綁定者可見，逐筆明細供核對
+router.get("/portal/commissions", requirePortal, async (req, res) => {
+  const member = req.member!;
+  if (!member.boundInstitutionId || !member.institutionVerified) {
+    res.json({
+      institutionScope: false,
+      totalAmount: 0,
+      recordCount: 0,
+      records: [],
+    });
+    return;
+  }
+  const where = eq(
+    profitShareRecordsTable.institutionId,
+    member.boundInstitutionId,
+  );
+  const [totals] = await db
+    .select({
+      totalAmount: sql<number>`coalesce(sum(${profitShareRecordsTable.amount}), 0)`,
+      recordCount: sql<number>`count(*)`,
+    })
+    .from(profitShareRecordsTable)
+    .where(where);
+  const rows = await db
+    .select({
+      record: profitShareRecordsTable,
+      memberName: membersTable.name,
+    })
+    .from(profitShareRecordsTable)
+    .innerJoin(
+      membersTable,
+      eq(profitShareRecordsTable.memberId, membersTable.id),
+    )
+    .where(where)
+    .orderBy(desc(profitShareRecordsTable.createdAt))
+    .limit(300);
+  res.json({
+    institutionScope: true,
+    totalAmount: Number(totals.totalAmount),
+    recordCount: Number(totals.recordCount),
+    records: rows.map(({ record, memberName }) => ({
+      id: record.id,
+      orderNo: record.orderNo,
+      memberName,
+      department: record.department,
+      ruleName: record.ruleName,
+      percentBps: record.percentBps,
+      baseAmount: record.baseAmount,
+      amount: record.amount,
+      createdAt: record.createdAt.toISOString(),
     })),
   });
 });

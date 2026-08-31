@@ -6,10 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * 系統管理員 / 營運 / 客服 / 一般會員
+ */
 export type AdminMemberUpdateRole = typeof AdminMemberUpdateRole[keyof typeof AdminMemberUpdateRole];
 
 
 export const AdminMemberUpdateRole = {
   admin: 'admin',
+  ops: 'ops',
+  support: 'support',
   member: 'member',
 } as const;

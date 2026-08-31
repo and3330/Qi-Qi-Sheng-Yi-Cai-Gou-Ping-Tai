@@ -5,6 +5,7 @@ import {
   integer,
   timestamp,
   index,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -20,6 +21,10 @@ export const ordersTable = pgTable("orders", {
   status: text("status").notNull().default("pending"),
   // bank_transfer | cod | wallet
   paymentMethod: text("payment_method").notNull(),
+  // 錢包付款來源：member（個人錢包）| institution（機構共用錢包）；非錢包付款為 null
+  walletSource: text("wallet_source"),
+  // 出貨照片存證（物件路徑陣列，如 ["/objects/uploads/xxx"]）
+  shipmentPhotos: jsonb("shipment_photos").$type<string[]>().notNull().default([]),
   totalAmount: integer("total_amount").notNull(),
   shippingAddress: text("shipping_address"),
   receiverName: text("receiver_name"),
@@ -34,6 +39,9 @@ export const orderItemsTable = pgTable("order_items", {
     .notNull()
     .references(() => ordersTable.id),
   productId: integer("product_id").notNull(),
+  // 多規格：所選規格（無規格商品為 null）
+  variantId: integer("variant_id"),
+  variantName: text("variant_name"),
   productName: text("product_name").notNull(),
   productCode: text("product_code").notNull(),
   unitPrice: integer("unit_price").notNull(),

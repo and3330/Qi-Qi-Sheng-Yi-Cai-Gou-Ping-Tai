@@ -8,6 +8,11 @@
 
 export interface StockAdjustInput {
   productId: number;
+  /**
+     * 多規格商品需指定規格
+     * @nullable
+     */
+  variantId?: number | null;
   /** 正數入庫、負數出庫，不可為 0 */
   quantity: number;
   /**

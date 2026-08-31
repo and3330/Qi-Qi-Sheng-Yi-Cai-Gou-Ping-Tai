@@ -16,10 +16,13 @@ import {
   ordersTable,
   orderItemsTable,
   productsTable,
+  productVariantsTable,
   cartItemsTable,
   stockMovementsTable,
   membersTable,
   walletTransactionsTable,
+  institutionsTable,
+  institutionWalletTransactionsTable,
   type Order,
   type OrderItem,
 } from "@workspace/db";
@@ -41,12 +44,15 @@ function serializeOrder(o: Order, items: OrderItem[]) {
     receiverName: o.receiverName,
     receiverPhone: o.receiverPhone,
     note: o.note,
+    shipmentPhotos: o.shipmentPhotos ?? [],
     createdAt: o.createdAt.toISOString(),
     items: items.map((i) => ({
       id: i.id,
       productId: i.productId,
       productName: i.productName,
       productCode: i.productCode,
+      variantId: i.variantId,
+      variantName: i.variantName,
       unitPrice: i.unitPrice,
       quantity: i.quantity,
     })),
@@ -100,6 +106,36 @@ router.post("/orders", async (req, res) => {
     .where(inArray(productsTable.id, productIds));
   const byId = new Map(products.map((p) => [p.id, p]));
 
+  const variantIds = input.items
+    .map((i) => i.variantId)
+    .filter((v): v is number => v != null);
+  const variants = variantIds.length
+    ? await db
+        .select()
+        .from(productVariantsTable)
+        .where(inArray(productVariantsTable.id, variantIds))
+    : [];
+  const variantById = new Map(variants.map((v) => [v.id, v]));
+
+  // 有規格的商品必須指定規格
+  const productIdsWithoutVariant = input.items
+    .filter((i) => i.variantId == null)
+    .map((i) => i.productId);
+  const productsRequiringVariant = productIdsWithoutVariant.length
+    ? await db
+        .select({ productId: productVariantsTable.productId })
+        .from(productVariantsTable)
+        .where(
+          and(
+            inArray(productVariantsTable.productId, productIdsWithoutVariant),
+            eq(productVariantsTable.isActive, true),
+          ),
+        )
+    : [];
+  const requiresVariant = new Set(
+    productsRequiringVariant.map((r) => r.productId),
+  );
+
   for (const line of input.items) {
     const p = byId.get(line.productId);
     if (!p) {
@@ -110,18 +146,36 @@ router.post("/orders", async (req, res) => {
       res.status(400).json({ error: `「${p.name}」已下架，請自購物車移除後再結帳` });
       return;
     }
+    if (line.variantId == null && requiresVariant.has(line.productId)) {
+      res.status(400).json({ error: `「${p.name}」有多種規格，請重新選擇規格後再結帳` });
+      return;
+    }
+    if (line.variantId != null) {
+      const v = variantById.get(line.variantId);
+      if (!v || v.productId !== line.productId) {
+        res.status(400).json({ error: `「${p.name}」的規格不存在` });
+        return;
+      }
+      if (!v.isActive) {
+        res.status(400).json({ error: `「${p.name}（${v.name}）」已停售，請自購物車移除後再結帳` });
+        return;
+      }
+    }
   }
 
   const tier = req.member!.tier;
   const lines = input.items.map((line) => {
     const p = byId.get(line.productId)!;
+    const v = line.variantId != null ? variantById.get(line.variantId)! : null;
     return {
       productId: p.id,
+      variantId: v?.id ?? null,
+      variantName: v?.name ?? null,
       productName: p.name,
       productCode: p.code,
-      unitPrice: tierPrice(tier, p),
+      unitPrice: v ? tierPrice(tier, v) : tierPrice(tier, p),
       quantity: line.quantity,
-      unitCost: p.costPrice,
+      unitCost: v ? v.costPrice : p.costPrice,
     };
   });
   const totalAmount = lines.reduce(
@@ -134,49 +188,102 @@ router.post("/orders", async (req, res) => {
   try {
     const result = await db.transaction(async (tx) => {
       // Atomically decrement stock; fail if insufficient.
-      const stockAfterById = new Map<number, number>();
+      // 多規格商品扣規格庫存，無規格商品扣商品庫存。
+      const stockAfterByKey = new Map<string, number>();
       for (const line of input.items) {
-        const decremented = await tx
-          .update(productsTable)
-          .set({ stock: sql`${productsTable.stock} - ${line.quantity}` })
-          .where(
-            and(
-              eq(productsTable.id, line.productId),
-              eq(productsTable.isActive, true),
-              gte(productsTable.stock, line.quantity),
-            ),
-          )
-          .returning({ id: productsTable.id, stock: productsTable.stock });
-        if (decremented.length === 0) {
-          const p = byId.get(line.productId)!;
-          throw new InsufficientStockError(p.name);
+        if (line.variantId != null) {
+          const decremented = await tx
+            .update(productVariantsTable)
+            .set({ stock: sql`${productVariantsTable.stock} - ${line.quantity}` })
+            .where(
+              and(
+                eq(productVariantsTable.id, line.variantId),
+                eq(productVariantsTable.isActive, true),
+                gte(productVariantsTable.stock, line.quantity),
+              ),
+            )
+            .returning({ stock: productVariantsTable.stock });
+          if (decremented.length === 0) {
+            const p = byId.get(line.productId)!;
+            const v = variantById.get(line.variantId)!;
+            throw new InsufficientStockError(`${p.name}（${v.name}）`);
+          }
+          stockAfterByKey.set(`${line.productId}:${line.variantId}`, decremented[0].stock);
+        } else {
+          const decremented = await tx
+            .update(productsTable)
+            .set({ stock: sql`${productsTable.stock} - ${line.quantity}` })
+            .where(
+              and(
+                eq(productsTable.id, line.productId),
+                eq(productsTable.isActive, true),
+                gte(productsTable.stock, line.quantity),
+              ),
+            )
+            .returning({ id: productsTable.id, stock: productsTable.stock });
+          if (decremented.length === 0) {
+            const p = byId.get(line.productId)!;
+            throw new InsufficientStockError(p.name);
+          }
+          stockAfterByKey.set(`${line.productId}:`, decremented[0].stock);
         }
-        stockAfterById.set(line.productId, decremented[0].stock);
       }
 
-      // 錢包付款：鎖定會員列、檢查餘額並扣款（餘額不可為負）
+      // 錢包付款：已審核綁定院所的機構會員扣「機構共用錢包」，其他扣個人錢包
+      let walletSource: "member" | "institution" | null = null;
       if (input.paymentMethod === "wallet") {
-        const [member] = await tx
-          .select({ walletBalance: membersTable.walletBalance })
-          .from(membersTable)
-          .where(eq(membersTable.id, req.member!.id))
-          .for("update")
-          .limit(1);
-        if (!member || member.walletBalance < totalAmount)
-          throw new InsufficientWalletError();
-        const newBalance = member.walletBalance - totalAmount;
-        await tx
-          .update(membersTable)
-          .set({ walletBalance: newBalance })
-          .where(eq(membersTable.id, req.member!.id));
-        await tx.insert(walletTransactionsTable).values({
-          memberId: req.member!.id,
-          type: "payment",
-          amount: -totalAmount,
-          balanceAfter: newBalance,
-          reason: "訂單錢包付款",
-          refNo: orderNo,
-        });
+        const useInstitutionWallet =
+          (req.member!.tier === "hospital" || req.member!.tier === "clinic") &&
+          req.member!.boundInstitutionId != null &&
+          req.member!.institutionVerified;
+        if (useInstitutionWallet) {
+          walletSource = "institution";
+          const [inst] = await tx
+            .select({ walletBalance: institutionsTable.walletBalance })
+            .from(institutionsTable)
+            .where(eq(institutionsTable.id, req.member!.boundInstitutionId!))
+            .for("update")
+            .limit(1);
+          if (!inst || inst.walletBalance < totalAmount)
+            throw new InsufficientWalletError();
+          const newBalance = inst.walletBalance - totalAmount;
+          await tx
+            .update(institutionsTable)
+            .set({ walletBalance: newBalance })
+            .where(eq(institutionsTable.id, req.member!.boundInstitutionId!));
+          await tx.insert(institutionWalletTransactionsTable).values({
+            institutionId: req.member!.boundInstitutionId!,
+            memberId: req.member!.id,
+            type: "payment",
+            amount: -totalAmount,
+            balanceAfter: newBalance,
+            reason: "訂單機構錢包付款",
+            refNo: orderNo,
+          });
+        } else {
+          walletSource = "member";
+          const [member] = await tx
+            .select({ walletBalance: membersTable.walletBalance })
+            .from(membersTable)
+            .where(eq(membersTable.id, req.member!.id))
+            .for("update")
+            .limit(1);
+          if (!member || member.walletBalance < totalAmount)
+            throw new InsufficientWalletError();
+          const newBalance = member.walletBalance - totalAmount;
+          await tx
+            .update(membersTable)
+            .set({ walletBalance: newBalance })
+            .where(eq(membersTable.id, req.member!.id));
+          await tx.insert(walletTransactionsTable).values({
+            memberId: req.member!.id,
+            type: "payment",
+            amount: -totalAmount,
+            balanceAfter: newBalance,
+            reason: "訂單錢包付款",
+            refNo: orderNo,
+          });
+        }
       }
 
       const [order] = await tx
@@ -186,6 +293,7 @@ router.post("/orders", async (req, res) => {
           memberId: req.member!.id,
           status: input.paymentMethod === "wallet" ? "paid" : "pending",
           paymentMethod: input.paymentMethod,
+          walletSource,
           totalAmount,
           shippingAddress: input.shippingAddress,
           receiverName: input.receiverName,
@@ -203,10 +311,12 @@ router.post("/orders", async (req, res) => {
       await tx.insert(stockMovementsTable).values(
         lines.map((l) => ({
           productId: l.productId,
+          variantId: l.variantId,
           type: "sale",
           quantity: -l.quantity,
-          stockAfter: stockAfterById.get(l.productId) ?? 0,
-          reason: "銷售出貨",
+          stockAfter:
+            stockAfterByKey.get(`${l.productId}:${l.variantId ?? ""}`) ?? 0,
+          reason: l.variantName ? `銷售出貨（${l.variantName}）` : "銷售出貨",
           refNo: orderNo,
         })),
       );

@@ -1,16 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListAdminOrders,
   getListAdminOrdersQueryKey,
   useUpdateAdminOrderStatus,
+  useUpdateShipmentPhotos,
   getGetAdminStatsQueryKey,
   getListAdminProductsQueryKey,
   getListAdminStockMovementsQueryKey,
   type AdminOrder,
   type ListAdminOrdersParams,
 } from "@workspace/api-client-react";
-import { Search, Eye } from "lucide-react";
+import { useUpload } from "@workspace/object-storage-web";
+import { Search, Eye, X, UploadCloud } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +76,104 @@ const NEXT_ACTIONS: Record<string, { status: string; label: string; danger?: boo
   completed: [],
   cancelled: [],
 };
+
+function ShipmentPhotosManager({ order }: { order: AdminOrder }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { mutateAsync: updatePhotos, isPending: saving } = useUpdateShipmentPhotos();
+  const { uploadFile, isUploading } = useUpload();
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const photos = order.shipmentPhotos || [];
+  
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    if (photos.length + files.length > 10) {
+      toast({ title: "最多只能上傳 10 張照片", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      const newPaths: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const res = await uploadFile(file);
+        if (res?.objectPath) {
+          newPaths.push(res.objectPath);
+        }
+      }
+      
+      if (newPaths.length > 0) {
+        await updatePhotos({ id: order.id, data: { photos: [...photos, ...newPaths] } });
+        queryClient.invalidateQueries({ queryKey: getListAdminOrdersQueryKey(), exact: false });
+        toast({ title: "照片上傳成功" });
+      }
+    } catch (err: any) {
+      toast({ title: "照片上傳失敗", variant: "destructive" });
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+  
+  const removePhoto = async (index: number) => {
+    try {
+      const updatedPhotos = [...photos];
+      updatedPhotos.splice(index, 1);
+      await updatePhotos({ id: order.id, data: { photos: updatedPhotos } });
+      queryClient.invalidateQueries({ queryKey: getListAdminOrdersQueryKey(), exact: false });
+      toast({ title: "照片已移除" });
+    } catch (err: any) {
+      toast({ title: "移除失敗", variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="border rounded-xl p-4 bg-gray-50/50 mt-4">
+      <div className="flex justify-between items-center mb-3">
+        <h4 className="font-bold text-sm">出貨照片存證</h4>
+        <div className="text-xs text-muted-foreground">{photos.length}/10</div>
+      </div>
+      
+      <div className="grid grid-cols-4 gap-2 mb-3">
+        {photos.map((p, idx) => (
+          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border bg-white group">
+            <img src={`/api/storage${p}`} alt="Shipment" className="w-full h-full object-cover" />
+            <button 
+              className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+              onClick={() => removePhoto(idx)}
+              disabled={saving}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        ))}
+        {photos.length < 10 && (
+          <button 
+            className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || saving}
+          >
+            <UploadCloud size={20} className="mb-1" />
+            <span className="text-[10px]">{isUploading ? "上傳中..." : "上傳照片"}</span>
+          </button>
+        )}
+      </div>
+      <input 
+        type="file" 
+        multiple 
+        accept="image/*" 
+        className="hidden" 
+        ref={fileInputRef} 
+        onChange={handleFileChange}
+      />
+    </div>
+  );
+}
 
 export default function AdminOrdersPage() {
   const { toast } = useToast();
@@ -289,7 +389,10 @@ export default function AdminOrdersPage() {
                     {detail.items.map((i) => (
                       <tr key={i.id} className="border-b last:border-0">
                         <td className="px-3 py-2">
-                          <p className="font-medium">{i.productName}</p>
+                          <p className="font-medium">
+                            {i.productName}
+                            {i.variantName && <span className="ml-1 text-[10px] bg-muted px-1 py-0.5 rounded text-muted-foreground">規格：{i.variantName}</span>}
+                          </p>
                           <p className="text-xs text-muted-foreground">{i.productCode}</p>
                         </td>
                         <td className="px-3 py-2 text-right">
@@ -310,6 +413,8 @@ export default function AdminOrdersPage() {
                   NT${detail.totalAmount.toLocaleString()}
                 </span>
               </p>
+              
+              <ShipmentPhotosManager order={detail} />
             </div>
           )}
           <DialogFooter className="gap-2">

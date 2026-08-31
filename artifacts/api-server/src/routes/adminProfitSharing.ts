@@ -3,6 +3,7 @@ import { and, desc, eq, gte, lte, sql, type SQL } from "drizzle-orm";
 import {
   db,
   membersTable,
+  institutionsTable,
   profitRulesTable,
   profitShareRecordsTable,
   type ProfitRule,
@@ -220,6 +221,110 @@ router.get("/admin/profit-report", requireAdmin, async (req, res) => {
       orderNo: record.orderNo,
       memberId: record.memberId,
       memberName,
+      ruleName: record.ruleName,
+      percentBps: record.percentBps,
+      baseAmount: record.baseAmount,
+      amount: record.amount,
+      createdAt: record.createdAt.toISOString(),
+    })),
+  });
+});
+
+// 佣金報表：依縣市／醫院／科室彙總，並附明細供機構核對
+router.get("/admin/commission-report", requireAdmin, async (req, res) => {
+  const from = typeof req.query.from === "string" ? req.query.from : "";
+  const to = typeof req.query.to === "string" ? req.query.to : "";
+  const institutionId = Number(req.query.institutionId);
+
+  const conds: SQL[] = [
+    sql`${profitShareRecordsTable.institutionId} is not null`,
+  ];
+  if (from) conds.push(gte(profitShareRecordsTable.createdAt, new Date(from)));
+  if (to) {
+    const end = new Date(to);
+    end.setDate(end.getDate() + 1);
+    conds.push(lte(profitShareRecordsTable.createdAt, end));
+  }
+  if (Number.isInteger(institutionId) && institutionId > 0)
+    conds.push(eq(profitShareRecordsTable.institutionId, institutionId));
+  const where = and(...conds);
+
+  const [totalsRow] = await db
+    .select({
+      totalAmount: sql<number>`coalesce(sum(${profitShareRecordsTable.amount}), 0)`,
+      recordCount: sql<number>`count(*)`,
+    })
+    .from(profitShareRecordsTable)
+    .where(where);
+
+  const groups = await db
+    .select({
+      city: institutionsTable.city,
+      institutionId: profitShareRecordsTable.institutionId,
+      institutionName: institutionsTable.name,
+      department: profitShareRecordsTable.department,
+      orderCount: sql<number>`count(*)`,
+      amount: sql<number>`coalesce(sum(${profitShareRecordsTable.amount}), 0)`,
+    })
+    .from(profitShareRecordsTable)
+    .innerJoin(
+      institutionsTable,
+      eq(profitShareRecordsTable.institutionId, institutionsTable.id),
+    )
+    .where(where)
+    .groupBy(
+      institutionsTable.city,
+      profitShareRecordsTable.institutionId,
+      institutionsTable.name,
+      profitShareRecordsTable.department,
+    );
+
+  const RECORD_LIMIT = 500;
+  const rows = await db
+    .select({
+      record: profitShareRecordsTable,
+      memberName: membersTable.name,
+      institutionName: institutionsTable.name,
+      city: institutionsTable.city,
+    })
+    .from(profitShareRecordsTable)
+    .innerJoin(
+      membersTable,
+      eq(profitShareRecordsTable.memberId, membersTable.id),
+    )
+    .innerJoin(
+      institutionsTable,
+      eq(profitShareRecordsTable.institutionId, institutionsTable.id),
+    )
+    .where(where)
+    .orderBy(desc(profitShareRecordsTable.createdAt))
+    .limit(RECORD_LIMIT);
+
+  res.json({
+    from: from || null,
+    to: to || null,
+    totalAmount: Number(totalsRow.totalAmount),
+    recordCount: Number(totalsRow.recordCount),
+    recordsTruncated: Number(totalsRow.recordCount) > rows.length,
+    groups: groups
+      .map((g) => ({
+        city: g.city,
+        institutionId: g.institutionId!,
+        institutionName: g.institutionName,
+        department: g.department,
+        orderCount: Number(g.orderCount),
+        amount: Number(g.amount),
+      }))
+      .sort((a, b) => b.amount - a.amount),
+    records: rows.map(({ record, memberName, institutionName, city }) => ({
+      id: record.id,
+      orderNo: record.orderNo,
+      memberId: record.memberId,
+      memberName,
+      city,
+      institutionId: record.institutionId!,
+      institutionName,
+      department: record.department,
       ruleName: record.ruleName,
       percentBps: record.percentBps,
       baseAmount: record.baseAmount,

@@ -1,6 +1,6 @@
 import { Link } from "wouter";
-import { ArrowLeft, Wallet as WalletIcon, ArrowUpRight, ArrowDownRight, RefreshCcw } from "lucide-react";
-import { useGetWallet } from "@workspace/api-client-react";
+import { ArrowLeft, Wallet as WalletIcon, ArrowUpRight, ArrowDownRight, RefreshCcw, User } from "lucide-react";
+import { useGetPortalWallet } from "@workspace/api-client-react";
 import { formatPrice, classNames } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,9 @@ const getTypeIcon = (type: string) => {
 };
 
 export default function PortalWallet() {
-  const { data: wallet, isLoading } = useGetWallet();
+  const { data: wallet, isLoading } = useGetPortalWallet();
+
+  const isInstitution = wallet?.walletKind === 'institution';
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-nav-offset animate-in fade-in bottom-nav-offset mb-16">
@@ -36,18 +38,27 @@ export default function PortalWallet() {
         <Link href="/portal" className="p-2 text-white/90 hover:text-white transition-colors -ml-2 cursor-pointer">
           <ArrowLeft size={24} />
         </Link>
-        <h1 className="text-white font-bold text-lg tracking-wide">我的錢包</h1>
+        <h1 className="text-white font-bold text-lg tracking-wide">
+          {isInstitution ? "機構共用錢包" : "我的錢包"}
+        </h1>
         <div className="w-8" />
       </div>
 
       <div className="p-4">
         {/* Balance Card */}
-        <div className="bg-gradient-to-br from-primary to-[#2a7a44] rounded-3xl p-6 text-white shadow-lg mb-6 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-primary to-[#2a7a44] rounded-3xl p-6 text-white shadow-lg mb-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 opacity-10 pointer-events-none transform translate-x-1/4 -translate-y-1/4">
             <WalletIcon size={160} />
           </div>
           <div className="relative z-10">
-            <p className="text-white/80 text-sm font-medium mb-1">可用餘額</p>
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-white/80 text-sm font-medium">可用餘額</p>
+              {isInstitution && wallet?.institutionName && (
+                <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                  {wallet.institutionName}
+                </span>
+              )}
+            </div>
             {isLoading ? (
               <Skeleton className="h-10 w-48 bg-white/20" />
             ) : (
@@ -66,6 +77,12 @@ export default function PortalWallet() {
             </div>
           </div>
         </div>
+
+        {!isInstitution && !isLoading && (
+          <p className="text-xs text-gray-500 text-center mb-4">
+            院所綁定審核通過後將顯示機構共用錢包
+          </p>
+        )}
 
         {/* Transactions */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -116,8 +133,11 @@ export default function PortalWallet() {
                           餘額 {formatPrice(tx.balanceAfter)}
                         </span>
                       </div>
-                      <div className="text-[9px] text-gray-400 mt-1">
-                        {new Date(tx.createdAt).toLocaleString('zh-TW')}
+                      <div className="flex justify-between items-center text-[9px] text-gray-400 mt-1">
+                        <span>{new Date(tx.createdAt).toLocaleString('zh-TW')}</span>
+                        {isInstitution && tx.memberName && (
+                          <span className="flex items-center gap-0.5"><User size={10} /> {tx.memberName}</span>
+                        )}
                       </div>
                     </div>
                   </div>

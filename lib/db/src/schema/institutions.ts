@@ -1,4 +1,4 @@
-import { pgTable, serial, text, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, jsonb, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,6 +12,8 @@ export const institutionsTable = pgTable("institutions", {
   phone: text("phone"),
   hours: text("hours"),
   departments: jsonb("departments").$type<string[]>().notNull().default([]),
+  // 機構共用錢包餘額 (NT$)，全機構成員共用
+  walletBalance: integer("wallet_balance").notNull().default(0),
 });
 
 export const insertInstitutionSchema = createInsertSchema(

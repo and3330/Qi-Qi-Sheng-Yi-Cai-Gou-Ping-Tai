@@ -10,37 +10,48 @@ import {
   Landmark,
   HandCoins,
   Wallet,
+  Building2,
   Users,
   Menu,
   X,
   ArrowLeft,
   ShieldCheck,
+  FileText,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export type AdminNavItem = {
   name: string;
   path: string;
   icon: typeof LayoutDashboard;
+  roles?: string[]; // null means all admin/ops/support
 };
 
 export const adminNavItems: AdminNavItem[] = [
   { name: "儀表板", path: "/admin", icon: LayoutDashboard },
-  { name: "商品管理", path: "/admin/products", icon: Package },
-  { name: "進銷存", path: "/admin/inventory", icon: Boxes },
-  { name: "採購進貨", path: "/admin/purchasing", icon: PackagePlus },
-  { name: "訂單管理", path: "/admin/orders", icon: ClipboardList },
-  { name: "進銷存報表", path: "/admin/reports", icon: BarChart3 },
-  { name: "財務管理", path: "/admin/finance", icon: Landmark },
-  { name: "利潤分享", path: "/admin/profit-sharing", icon: HandCoins },
-  { name: "會員錢包", path: "/admin/wallets", icon: Wallet },
+  { name: "商品管理", path: "/admin/products", icon: Package, roles: ["admin", "ops"] },
+  { name: "進銷存", path: "/admin/inventory", icon: Boxes, roles: ["admin", "ops"] },
+  { name: "採購進貨", path: "/admin/purchasing", icon: PackagePlus, roles: ["admin", "ops"] },
+  { name: "訂單管理", path: "/admin/orders", icon: ClipboardList }, // ops/support read-only enforced inside component or backend
+  { name: "內容管理", path: "/admin/content", icon: FileText, roles: ["admin", "ops"] },
+  { name: "進銷存報表", path: "/admin/reports", icon: BarChart3, roles: ["admin"] },
+  { name: "財務管理", path: "/admin/finance", icon: Landmark, roles: ["admin"] },
+  { name: "佣金報表", path: "/admin/commissions", icon: HandCoins, roles: ["admin"] },
+  { name: "利潤分享", path: "/admin/profit-sharing", icon: HandCoins, roles: ["admin"] },
+  { name: "機構錢包", path: "/admin/institution-wallets", icon: Building2, roles: ["admin"] },
+  { name: "會員錢包", path: "/admin/wallets", icon: Wallet, roles: ["admin"] },
   { name: "使用者管理", path: "/admin/members", icon: Users },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
+  const { me } = useAuth();
+  
   return (
     <nav className="flex flex-col gap-1 px-3">
-      {adminNavItems.map((item) => {
+      {adminNavItems
+        .filter(item => !item.roles || item.roles.includes(me?.role as string))
+        .map((item) => {
         const isActive =
           item.path === "/admin"
             ? location === "/admin"

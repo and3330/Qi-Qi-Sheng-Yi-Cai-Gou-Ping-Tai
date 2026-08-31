@@ -28,14 +28,15 @@ export default function CartPage() {
     });
   };
 
-  const getPrice = (product: any) => {
-    if (me?.tier === "hospital") return product.priceHospital;
-    if (me?.tier === "clinic") return product.priceClinic;
-    return product.priceConsumer;
+  const getPrice = (item: any) => {
+    const target = item.variant || item.product;
+    if (me?.tier === "hospital") return target.priceHospital;
+    if (me?.tier === "clinic") return target.priceClinic;
+    return target.priceConsumer;
   };
 
   const total = useMemo(() => {
-    return cart?.reduce((sum, item) => sum + (getPrice(item.product) * item.quantity), 0) || 0;
+    return cart?.reduce((sum, item) => sum + (getPrice(item) * item.quantity), 0) || 0;
   }, [cart, me]);
 
   const handleUpdateQuantity = (id: number, quantity: number) => {
@@ -98,7 +99,14 @@ export default function CartPage() {
             
             <div className="flex-1 flex flex-col min-w-0">
               <div className="flex justify-between items-start gap-2 mb-1">
-                <h3 className="font-bold text-sm text-gray-900 line-clamp-2 leading-tight">{item.product.name}</h3>
+                <div>
+                  <h3 className="font-bold text-sm text-gray-900 line-clamp-2 leading-tight">{item.product.name}</h3>
+                  {item.variant && (
+                    <span className="inline-block bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded mt-1">
+                      規格：{item.variant.name}
+                    </span>
+                  )}
+                </div>
                 <button onClick={() => handleRemove(item.id)} className="text-gray-400 hover:text-destructive p-1 -mr-1 -mt-1 shrink-0">
                   <Trash2 size={16} />
                 </button>
@@ -107,7 +115,7 @@ export default function CartPage() {
               <div className="text-xs text-gray-500 mb-auto">{item.product.spec || item.product.code}</div>
               
               <div className="flex justify-between items-end mt-2">
-                <div className="font-bold text-primary">{formatPrice(getPrice(item.product))}</div>
+                <div className="font-bold text-primary">{formatPrice(getPrice(item))}</div>
                 
                 <div className="flex items-center border rounded-lg overflow-hidden h-8 bg-gray-50 border-gray-200">
                   <button 
@@ -123,7 +131,7 @@ export default function CartPage() {
                   <button 
                     className="w-8 h-full flex items-center justify-center text-gray-500 disabled:opacity-50"
                     onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                    disabled={item.quantity >= item.product.stock}
+                    disabled={item.quantity >= (item.variant ? item.variant.stock : item.product.stock)}
                   >
                     <Plus size={14} />
                   </button>

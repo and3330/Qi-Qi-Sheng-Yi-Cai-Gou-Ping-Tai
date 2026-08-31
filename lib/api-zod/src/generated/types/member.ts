@@ -18,6 +18,7 @@ export interface Member {
   phone?: string | null;
   /** A 醫院 / B 診所藥局 / C 消費者 */
   tier: MemberTier;
+  /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role?: MemberRole;
   /** @nullable */
   boundInstitutionId?: number | null;

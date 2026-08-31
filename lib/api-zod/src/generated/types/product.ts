@@ -5,6 +5,7 @@
  * 七期生醫採購平台 API
  * OpenAPI spec version: 0.1.0
  */
+import type { ProductVariant } from './productVariant';
 
 export interface Product {
   id: number;
@@ -26,6 +27,8 @@ export interface Product {
   stock: number;
   isHot: boolean;
   isNew: boolean;
+  /** 多規格（僅商品詳情提供；空陣列或缺省表示單一規格） */
+  variants?: ProductVariant[];
   /**
      * 規格，如 90粒/瓶
      * @nullable

@@ -24,6 +24,8 @@ export interface Order {
   receiverPhone?: string | null;
   /** @nullable */
   note?: string | null;
+  /** 出貨照片物件路徑 */
+  shipmentPhotos?: string[];
   createdAt: string;
   items: OrderItem[];
 }

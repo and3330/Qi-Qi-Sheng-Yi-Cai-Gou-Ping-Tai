@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, ilike, or, type SQL } from "drizzle-orm";
-import { db, productsTable } from "@workspace/db";
+import { db, productsTable, productVariantsTable } from "@workspace/db";
 import { ListProductsQueryParams, GetProductParams } from "@workspace/api-zod";
 import { serializeProduct } from "../lib/serialize";
 
@@ -60,7 +60,29 @@ router.get("/products/:id", async (req, res) => {
     res.status(404).json({ error: "Product not found" });
     return;
   }
-  res.json(serializeProduct(row));
+  const variants = await db
+    .select()
+    .from(productVariantsTable)
+    .where(
+      and(
+        eq(productVariantsTable.productId, row.id),
+        eq(productVariantsTable.isActive, true),
+      ),
+    )
+    .orderBy(asc(productVariantsTable.id));
+  res.json({
+    ...serializeProduct(row),
+    variants: variants.map((v) => ({
+      id: v.id,
+      productId: v.productId,
+      name: v.name,
+      priceHospital: v.priceHospital,
+      priceClinic: v.priceClinic,
+      priceConsumer: v.priceConsumer,
+      stock: v.stock,
+      isActive: v.isActive,
+    })),
+  });
 });
 
 export default router;

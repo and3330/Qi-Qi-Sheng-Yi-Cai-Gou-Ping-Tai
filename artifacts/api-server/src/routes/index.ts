@@ -15,6 +15,9 @@ import walletRouter from "./wallet";
 import adminWalletsRouter from "./adminWallets";
 import adminProfitSharingRouter from "./adminProfitSharing";
 import adminFinanceRouter from "./adminFinance";
+import adminInstitutionWalletsRouter from "./adminInstitutionWallets";
+import adminContentRouter from "./adminContent";
+import storageRouter from "./storage";
 import portalRouter from "./portal";
 
 const router: IRouter = Router();
@@ -35,6 +38,9 @@ router.use(walletRouter);
 router.use(adminWalletsRouter);
 router.use(adminProfitSharingRouter);
 router.use(adminFinanceRouter);
+router.use(adminInstitutionWalletsRouter);
+router.use(adminContentRouter);
+router.use(storageRouter);
 router.use(portalRouter);
 
 export default router;

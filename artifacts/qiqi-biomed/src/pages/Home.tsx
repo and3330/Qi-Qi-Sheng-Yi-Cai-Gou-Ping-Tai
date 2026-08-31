@@ -159,6 +159,23 @@ export default function HomePage() {
         </div>
       )}
 
+      {/* Admin Entry (for Admin/Ops/Support) */}
+      {isSignedIn && me?.role && me.role !== 'member' && (
+        <div className="px-4 relative z-20 mb-6">
+          <Link href="/admin" className="bg-gray-900 rounded-2xl shadow-md p-4 text-white overflow-hidden relative flex items-center justify-between active:scale-95 transition-transform">
+            <div>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium mb-1.5 inline-block">
+                內部人員
+              </span>
+              <h2 className="font-bold text-lg">進入管理後台</h2>
+            </div>
+            <div className="bg-white/10 w-10 h-10 rounded-full flex items-center justify-center">
+              <ChevronRight size={20} />
+            </div>
+          </Link>
+        </div>
+      )}
+
       {/* Feature Grid */}
       <div className="px-4 relative z-20 mb-6">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 grid grid-cols-2 gap-y-3 gap-x-2">

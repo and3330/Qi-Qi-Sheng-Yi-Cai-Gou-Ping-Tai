@@ -1153,6 +1153,562 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorMessage"
+  /portal/wallet:
+    get:
+      operationId: getPortalWallet
+      tags: [portal]
+      summary: 機構後台錢包（已審核者為機構共用錢包，否則為個人錢包）
+      responses:
+        "200":
+          description: Portal wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalWallet"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /portal/commissions:
+    get:
+      operationId: getPortalCommissions
+      tags: [portal]
+      summary: 機構佣金對帳明細（限已審核綁定之機構會員）
+      responses:
+        "200":
+          description: Portal commissions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalCommissions"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/commission-report:
+    get:
+      operationId: getAdminCommissionReport
+      tags: [admin]
+      summary: 佣金報表（縣市／醫院／科室彙總＋明細，限管理員）
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: institutionId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Commission report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionReport"
+  /admin/institution-wallets:
+    get:
+      operationId: listAdminInstitutionWallets
+      tags: [admin]
+      summary: 機構錢包總覽（限管理員）
+      responses:
+        "200":
+          description: Institution wallets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InstitutionWalletRow"
+  /admin/institution-wallets/{institutionId}:
+    get:
+      operationId: getAdminInstitutionWallet
+      tags: [admin]
+      summary: 單一機構錢包明細（限管理員）
+      parameters:
+        - name: institutionId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Institution wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstitutionWallet"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/institution-wallets/{institutionId}/adjust:
+    post:
+      operationId: adjustInstitutionWallet
+      tags: [admin]
+      summary: 管理員儲值／調整機構錢包（限管理員）
+      parameters:
+        - name: institutionId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletAdjustInput"
+      responses:
+        "200":
+          description: Updated institution wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstitutionWallet"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/articles:
+    get:
+      operationId: listAdminArticles
+      tags: [admin]
+      summary: 內容管理：文章／FAQ 列表（限管理員）
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, review, published, archived]
+      responses:
+        "200":
+          description: Articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminArticle"
+    post:
+      operationId: createAdminArticle
+      tags: [admin]
+      summary: 內容管理：建立文章／FAQ（限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminArticleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticle"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/articles/{id}:
+    patch:
+      operationId: updateAdminArticle
+      tags: [admin]
+      summary: 內容管理：編輯／審核／上下架文章（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminArticleUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArticle"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deleteAdminArticle
+      tags: [admin]
+      summary: 內容管理：刪除文章（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/announcements:
+    get:
+      operationId: listAdminAnnouncements
+      tags: [admin]
+      summary: 內容管理：公告列表（限管理員）
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, review, published, archived]
+      responses:
+        "200":
+          description: Announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminAnnouncement"
+    post:
+      operationId: createAdminAnnouncement
+      tags: [admin]
+      summary: 內容管理：建立公告（限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAnnouncementInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAnnouncement"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/announcements/{id}:
+    patch:
+      operationId: updateAdminAnnouncement
+      tags: [admin]
+      summary: 內容管理：編輯／審核／上下架公告（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAnnouncementUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAnnouncement"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deleteAdminAnnouncement
+      tags: [admin]
+      summary: 內容管理：刪除公告（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/content-revisions:
+    get:
+      operationId: listAdminContentRevisions
+      tags: [admin]
+      summary: 內容管理：版本紀錄（限管理員）
+      parameters:
+        - name: entityKind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [article, announcement]
+        - name: entityId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Revisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContentRevision"
+  /storage/uploads/request-url:
+    post:
+      tags: [admin]
+      operationId: requestUploadUrl
+      summary: 取得檔案上傳網址（限營運人員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "500":
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /storage/objects/{objectPath}:
+    get:
+      tags: [catalog]
+      operationId: getStorageObject
+      summary: 取得已上傳物件（出貨照片等）
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content streamed with correct Content-Type.
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [catalog]
+      operationId: getPublicObject
+      summary: 取得公開資產
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content streamed with correct Content-Type.
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/orders/{id}/shipment-photos:
+    post:
+      operationId: updateShipmentPhotos
+      tags: [admin]
+      summary: 出貨照片存證（限營運人員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShipmentPhotosInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShipmentPhotosResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/products/{id}/variants:
+    get:
+      operationId: listAdminProductVariants
+      tags: [admin]
+      summary: 商品規格列表（後台人員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Variants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminProductVariant"
+    post:
+      operationId: createAdminProductVariant
+      tags: [admin]
+      summary: 新增商品規格（限營運人員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminProductVariantInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProductVariant"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/variants/{id}:
+    patch:
+      operationId: updateAdminProductVariant
+      tags: [admin]
+      summary: 編輯商品規格（限營運人員；庫存請走庫存調整）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminProductVariantUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminProductVariant"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deleteAdminProductVariant
+      tags: [admin]
+      summary: 刪除商品規格（限營運人員；已有訂單紀錄者不可刪除）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "400":
+          description: In use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
   /admin/profit-rules:
     get:
       operationId: listAdminProfitRules
@@ -1416,7 +1972,8 @@ components:
           description: A 醫院 / B 診所藥局 / C 消費者
         role:
           type: string
-          enum: [admin, member]
+          enum: [admin, ops, support, member]
+          description: 系統管理員 / 營運 / 客服 / 一般會員
         boundInstitutionId: { type: ["integer", "null"] }
         boundInstitutionName: { type: ["string", "null"] }
         boundDepartment: { type: ["string", "null"] }
@@ -1506,7 +2063,8 @@ components:
           enum: [hospital, clinic, consumer]
         role:
           type: string
-          enum: [admin, member]
+          enum: [admin, ops, support, member]
+          description: 系統管理員 / 營運 / 客服 / 一般會員
         isActive: { type: boolean }
         points: { type: integer }
         boundInstitutionId: { type: ["integer", "null"] }
@@ -1525,7 +2083,8 @@ components:
           enum: [hospital, clinic, consumer]
         role:
           type: string
-          enum: [admin, member]
+          enum: [admin, ops, support, member]
+          description: 系統管理員 / 營運 / 客服 / 一般會員
         isActive: { type: boolean }
         institutionVerified: { type: boolean }
         shippingAddress: { type: ["string", "null"] }
@@ -1556,21 +2115,78 @@ components:
         stock: { type: integer }
         isHot: { type: boolean }
         isNew: { type: boolean }
+        variants:
+          type: array
+          description: 多規格（僅商品詳情提供；空陣列或缺省表示單一規格）
+          items:
+            $ref: "#/components/schemas/ProductVariant"
         spec: { type: ["string", "null"], description: "規格，如 90粒/瓶" }
+    ProductVariant:
+      type: object
+      required: [id, productId, name, priceHospital, priceClinic, priceConsumer, stock, isActive]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        name: { type: string, description: "規格名稱，如 500ml、大盒裝" }
+        priceHospital: { type: integer }
+        priceClinic: { type: integer }
+        priceConsumer: { type: integer }
+        stock: { type: integer }
+        isActive: { type: boolean }
+    AdminProductVariant:
+      type: object
+      required: [id, productId, name, priceHospital, priceClinic, priceConsumer, costPrice, stock, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        name: { type: string }
+        priceHospital: { type: integer }
+        priceClinic: { type: integer }
+        priceConsumer: { type: integer }
+        costPrice: { type: integer }
+        stock: { type: integer }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    AdminProductVariantInput:
+      type: object
+      required: [name, priceHospital, priceClinic, priceConsumer]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        priceHospital: { type: integer, minimum: 0 }
+        priceClinic: { type: integer, minimum: 0 }
+        priceConsumer: { type: integer, minimum: 0 }
+        costPrice: { type: integer, minimum: 0 }
+        stock: { type: integer, minimum: 0, description: "期初庫存，僅建立時使用" }
+        isActive: { type: boolean }
+    AdminProductVariantUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        priceHospital: { type: integer, minimum: 0 }
+        priceClinic: { type: integer, minimum: 0 }
+        priceConsumer: { type: integer, minimum: 0 }
+        costPrice: { type: integer, minimum: 0 }
+        isActive: { type: boolean }
     CartItem:
       type: object
       required: [id, productId, quantity, product]
       properties:
         id: { type: integer }
         productId: { type: integer }
+        variantId: { type: ["integer", "null"] }
         quantity: { type: integer }
         product:
           $ref: "#/components/schemas/Product"
+        variant:
+          oneOf:
+            - $ref: "#/components/schemas/ProductVariant"
+            - type: "null"
     CartItemInput:
       type: object
       required: [productId, quantity]
       properties:
         productId: { type: integer }
+        variantId: { type: ["integer", "null"] }
         quantity: { type: integer, minimum: 1 }
     CartItemUpdate:
       type: object
@@ -1586,6 +2202,8 @@ components:
         productName: { type: string }
         productCode: { type: string }
         unitPrice: { type: integer }
+        variantId: { type: ["integer", "null"] }
+        variantName: { type: ["string", "null"] }
         quantity: { type: integer }
     Order:
       type: object
@@ -1605,6 +2223,10 @@ components:
         receiverName: { type: ["string", "null"] }
         receiverPhone: { type: ["string", "null"] }
         note: { type: ["string", "null"] }
+        shipmentPhotos:
+          type: array
+          items: { type: string }
+          description: 出貨照片物件路徑
         createdAt: { type: string }
         items:
           type: array
@@ -1615,6 +2237,7 @@ components:
       required: [productId, quantity]
       properties:
         productId: { type: integer }
+        variantId: { type: ["integer", "null"] }
         quantity: { type: integer, minimum: 1 }
     OrderInput:
       type: object
@@ -1673,6 +2296,144 @@ components:
         category: { type: string }
         imageUrl: { type: ["string", "null"] }
         publishedAt: { type: string }
+    AdminArticle:
+      type: object
+      required: [id, kind, title, category, status, publishedAt, updatedAt]
+      properties:
+        id: { type: integer }
+        kind:
+          type: string
+          enum: [article, faq]
+        title: { type: string }
+        category: { type: string }
+        summary: { type: ["string", "null"] }
+        content: { type: ["string", "null"], description: "Markdown 內文" }
+        imageUrl: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [draft, review, published, archived]
+        publishedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AdminArticleInput:
+      type: object
+      required: [kind, title, category]
+      properties:
+        kind:
+          type: string
+          enum: [article, faq]
+        title: { type: string, minLength: 1, maxLength: 200 }
+        category: { type: string, minLength: 1, maxLength: 50 }
+        summary: { type: ["string", "null"], maxLength: 500 }
+        content: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"], maxLength: 500 }
+        status:
+          type: string
+          enum: [draft, review, published, archived]
+    AdminArticleUpdate:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum: [article, faq]
+        title: { type: string, minLength: 1, maxLength: 200 }
+        category: { type: string, minLength: 1, maxLength: 50 }
+        summary: { type: ["string", "null"], maxLength: 500 }
+        content: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"], maxLength: 500 }
+        status:
+          type: string
+          enum: [draft, review, published, archived]
+    AdminAnnouncement:
+      type: object
+      required: [id, title, category, status, publishedAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        category: { type: string }
+        content: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [draft, review, published, archived]
+        publishedAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AdminAnnouncementInput:
+      type: object
+      required: [title, category]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        category: { type: string, minLength: 1, maxLength: 50 }
+        content: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"], maxLength: 500 }
+        status:
+          type: string
+          enum: [draft, review, published, archived]
+    AdminAnnouncementUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        category: { type: string, minLength: 1, maxLength: 50 }
+        content: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"], maxLength: 500 }
+        status:
+          type: string
+          enum: [draft, review, published, archived]
+    ContentRevision:
+      type: object
+      required: [id, entityKind, entityId, title, status, createdAt]
+      properties:
+        id: { type: integer }
+        entityKind:
+          type: string
+          enum: [article, announcement]
+        entityId: { type: integer }
+        title: { type: string }
+        category: { type: ["string", "null"] }
+        summary: { type: ["string", "null"] }
+        content: { type: ["string", "null"] }
+        status: { type: string }
+        editedBy: { type: ["integer", "null"] }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    ShipmentPhotosInput:
+      type: object
+      required: [photos]
+      properties:
+        photos:
+          type: array
+          maxItems: 10
+          items: { type: string, maxLength: 500 }
+    ShipmentPhotosResult:
+      type: object
+      required: [shipmentPhotos]
+      properties:
+        shipmentPhotos:
+          type: array
+          items: { type: string }
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        size:
+          type: integer
+          minimum: 1
+        contentType:
+          type: string
+          minLength: 1
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
     FavoriteInput:
       type: object
       required: [productId]
@@ -1754,6 +2515,7 @@ components:
       required: [productId, quantity, reason]
       properties:
         productId: { type: integer }
+        variantId: { type: ["integer", "null"], description: "多規格商品需指定規格" }
         quantity: { type: integer, description: "正數入庫、負數出庫，不可為 0" }
         reason: { type: string, minLength: 1, description: "盤點 / 報廢 / 其他" }
         note: { type: ["string", "null"] }
@@ -1871,6 +2633,10 @@ components:
         receiverName: { type: ["string", "null"] }
         receiverPhone: { type: ["string", "null"] }
         note: { type: ["string", "null"] }
+        shipmentPhotos:
+          type: array
+          items: { type: string }
+          description: 出貨照片物件路徑
         createdAt: { type: string, format: date-time }
         items:
           type: array
@@ -2004,6 +2770,140 @@ components:
           type: integer
           description: "儲值必須為正；調整可為正負 (NT$)"
         reason: { type: ["string", "null"], maxLength: 200 }
+    InstitutionWalletTransaction:
+      type: object
+      required: [id, institutionId, type, amount, balanceAfter, createdAt]
+      properties:
+        id: { type: integer }
+        institutionId: { type: integer }
+        memberId: { type: ["integer", "null"], description: "經手成員（訂單付款/退款時）" }
+        memberName: { type: ["string", "null"] }
+        type:
+          type: string
+          enum: [deposit, payment, refund, profit_share, adjust]
+        amount: { type: integer, description: "正=入帳、負=扣款 (NT$)" }
+        balanceAfter: { type: integer }
+        reason: { type: ["string", "null"] }
+        refNo: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    InstitutionWalletRow:
+      type: object
+      required: [institutionId, institutionName, type, city, balance]
+      properties:
+        institutionId: { type: integer }
+        institutionName: { type: string }
+        type: { type: string }
+        city: { type: string }
+        balance: { type: integer }
+    InstitutionWallet:
+      type: object
+      required: [institutionId, institutionName, type, city, balance, transactions]
+      properties:
+        institutionId: { type: integer }
+        institutionName: { type: string }
+        type: { type: string }
+        city: { type: string }
+        balance: { type: integer }
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/InstitutionWalletTransaction"
+    PortalWalletTransaction:
+      type: object
+      required: [id, type, amount, balanceAfter, createdAt]
+      properties:
+        id: { type: integer }
+        memberName: { type: ["string", "null"], description: "經手成員（機構錢包時）" }
+        type:
+          type: string
+          enum: [deposit, payment, refund, profit_share, adjust]
+        amount: { type: integer, description: "正=入帳、負=扣款 (NT$)" }
+        balanceAfter: { type: integer }
+        reason: { type: ["string", "null"] }
+        refNo: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    PortalWallet:
+      type: object
+      required: [walletKind, balance, transactions]
+      properties:
+        walletKind:
+          type: string
+          enum: [institution, member]
+          description: "institution=機構共用錢包（綁定已審核），member=個人錢包"
+        institutionName: { type: ["string", "null"] }
+        balance: { type: integer }
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalWalletTransaction"
+    CommissionGroupRow:
+      type: object
+      required: [city, institutionId, institutionName, orderCount, amount]
+      properties:
+        city: { type: string }
+        institutionId: { type: integer }
+        institutionName: { type: string }
+        department: { type: ["string", "null"] }
+        orderCount: { type: integer }
+        amount: { type: integer }
+    CommissionRecord:
+      type: object
+      required: [id, orderNo, memberId, memberName, city, institutionId, institutionName, ruleName, percentBps, baseAmount, amount, createdAt]
+      properties:
+        id: { type: integer }
+        orderNo: { type: string }
+        memberId: { type: integer }
+        memberName: { type: string }
+        city: { type: string }
+        institutionId: { type: integer }
+        institutionName: { type: string }
+        department: { type: ["string", "null"] }
+        ruleName: { type: string }
+        percentBps: { type: integer }
+        baseAmount: { type: integer }
+        amount: { type: integer }
+        createdAt: { type: string, format: date-time }
+    CommissionReport:
+      type: object
+      required: [totalAmount, recordCount, recordsTruncated, groups, records]
+      properties:
+        from: { type: ["string", "null"], format: date }
+        to: { type: ["string", "null"], format: date }
+        totalAmount: { type: integer }
+        recordCount: { type: integer }
+        recordsTruncated: { type: boolean }
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionGroupRow"
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionRecord"
+    PortalCommissionRecord:
+      type: object
+      required: [id, orderNo, memberName, ruleName, percentBps, baseAmount, amount, createdAt]
+      properties:
+        id: { type: integer }
+        orderNo: { type: string }
+        memberName: { type: string }
+        department: { type: ["string", "null"] }
+        ruleName: { type: string }
+        percentBps: { type: integer }
+        baseAmount: { type: integer }
+        amount: { type: integer }
+        createdAt: { type: string, format: date-time }
+    PortalCommissions:
+      type: object
+      required: [institutionScope, totalAmount, recordCount, records]
+      properties:
+        institutionScope: { type: boolean }
+        totalAmount: { type: integer }
+        recordCount: { type: integer }
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortalCommissionRecord"
     ProfitRule:
       type: object
       required: [id, name, tier, percentBps, isActive, createdAt]

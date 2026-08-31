@@ -1,3 +1,5 @@
 - [Auth & schema-evolution decisions](auth-and-sessions.md) — auth is session-based username/password (Clerk removed for good); audit task-agent merges for reverts of recent main changes; schema changes must be nullable/defaulted and prompt-free.
 - [Dev DB schema sync pitfalls](dev-db-schema-sync.md) — drizzle push hangs on TTY prompts (use pg DDL script); dev DB may lag schema files; declare all deps in package.json.
 - [DB constraint error handling](db-constraint-error-handling.md) — enforce race-sensitive invariants with partial unique indexes; drizzle wraps pg errors, check err.cause for code 23505.
+- [Object storage private reads](object-storage-auth.md) — /storage/objects must be auth-gated; member reads allowed only via jsonb containment check on owning order's shipmentPhotos; staff bypass.
+- [Product variants invariants](product-variants.md) — products with active variants must reject variant-less cart/order/stock-adjust; PO receiving not yet variant-aware.

@@ -44,6 +44,28 @@ export async function requireMember(
   }
 }
 
+/**
+ * 角色權限：admin（系統管理員）/ ops（營運）/ support（客服）/ member（一般會員）
+ * requireRole("admin","ops") 表示僅系統管理員與營運可通過。
+ */
+export function requireRole(...roles: string[]) {
+  return function (req: Request, res: Response, next: NextFunction) {
+    requireMember(req, res, () => {
+      if (!req.member || !roles.includes(req.member.role)) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+      next();
+    });
+  };
+}
+
+/** 後台人員（系統管理員／營運／客服）皆可通過 — 用於唯讀後台資料。 */
+export const requireStaff = requireRole("admin", "ops", "support");
+
+/** 系統管理員與營運可通過 — 用於商品、訂單、進貨、內容等營運操作。 */
+export const requireOps = requireRole("admin", "ops");
+
 /** Requires an authenticated member with the admin role. */
 export async function requireAdmin(
   req: Request,

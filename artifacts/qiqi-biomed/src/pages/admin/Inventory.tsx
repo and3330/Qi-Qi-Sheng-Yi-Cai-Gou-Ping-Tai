@@ -6,6 +6,8 @@ import {
   useListAdminStockMovements,
   getListAdminStockMovementsQueryKey,
   useAdjustAdminStock,
+  useListAdminProductVariants,
+  getListAdminProductVariantsQueryKey,
   type AdminProduct,
   type ListAdminStockMovementsParams,
 } from "@workspace/api-client-react";
@@ -53,6 +55,7 @@ type AdjustState = {
   quantity: string;
   reason: string;
   note: string;
+  variantId?: number | null;
 };
 
 export default function AdminInventoryPage() {
@@ -117,6 +120,10 @@ export default function AdminInventoryPage() {
 
   const lowCount = (products ?? []).filter((p) => p.stock <= LOW_STOCK).length;
 
+  const { data: variants } = useListAdminProductVariants(adjust?.product.id as number, {
+    query: { enabled: !!adjust?.product.id, queryKey: getListAdminProductVariantsQueryKey(adjust?.product.id as number) }
+  });
+
   const submitAdjust = () => {
     if (!adjust) return;
     const qty = Number(adjust.quantity);
@@ -128,9 +135,14 @@ export default function AdminInventoryPage() {
       toast({ title: "請選擇調整原因", variant: "destructive" });
       return;
     }
+    if (variants && variants.length > 0 && !adjust.variantId) {
+      toast({ title: "請選擇規格", variant: "destructive" });
+      return;
+    }
     adjustMutation.mutate({
       data: {
         productId: adjust.product.id,
+        variantId: adjust.variantId || null,
         quantity: adjust.direction === "in" ? qty : -qty,
         reason: adjust.reason,
         note: adjust.note.trim() || null,
@@ -374,6 +386,28 @@ export default function AdminInventoryPage() {
               <p className="text-sm text-muted-foreground">
                 目前庫存：<span className="font-semibold text-foreground">{adjust.product.stock}</span>
               </p>
+              
+              {variants && variants.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>選擇規格</Label>
+                  <Select
+                    value={adjust.variantId?.toString() || ""}
+                    onValueChange={(v) => setAdjust({ ...adjust, variantId: Number(v) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="請選擇規格" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variants.map(v => (
+                        <SelectItem key={v.id} value={v.id.toString()}>
+                          {v.name} (目前：{v.stock})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>方向</Label>

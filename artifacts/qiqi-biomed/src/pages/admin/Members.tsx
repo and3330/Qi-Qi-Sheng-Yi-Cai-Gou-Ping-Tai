@@ -240,6 +240,14 @@ export default function AdminMembersPage() {
                           <Badge className="gap-1 bg-primary/10 text-primary hover:bg-primary/10">
                             <ShieldCheck size={12} /> 管理員
                           </Badge>
+                        ) : m.role === "ops" ? (
+                          <Badge className="gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                            營運
+                          </Badge>
+                        ) : m.role === "support" ? (
+                          <Badge className="gap-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200">
+                            客服
+                          </Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">一般會員</span>
                         )}
@@ -346,21 +354,26 @@ export default function AdminMembersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center justify-between rounded-xl border p-3">
-                <div>
-                  <p className="text-sm font-medium">管理員權限</p>
-                  <p className="text-xs text-muted-foreground">
-                    可進入後台管理系統
-                  </p>
-                </div>
-                <Switch
-                  checked={edit.role === "admin"}
-                  disabled={me?.id === edit.member.id}
-                  onCheckedChange={(checked) =>
-                    setEdit({ ...edit, role: checked ? "admin" : "member" })
-                  }
-                  data-testid="switch-edit-admin"
-                />
+              <div className="space-y-1.5">
+                <Label>系統角色權限</Label>
+                <Select
+                  value={edit.role}
+                  onValueChange={(v) => setEdit({ ...edit, role: v })}
+                  disabled={me?.role !== "admin" || me?.id === edit.member.id}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">系統管理員 (Admin)</SelectItem>
+                    <SelectItem value="ops">營運 (Ops)</SelectItem>
+                    <SelectItem value="support">客服 (Support)</SelectItem>
+                    <SelectItem value="member">一般會員 (Member)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  後台權限由系統管理員分配，不同的角色會看到不同的功能選單。
+                </p>
               </div>
               <div className="flex items-center justify-between rounded-xl border p-3">
                 <div>

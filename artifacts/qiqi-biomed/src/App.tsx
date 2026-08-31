@@ -36,10 +36,14 @@ import AdminReportsPage from "./pages/admin/Reports";
 import AdminFinancePage from "./pages/admin/Finance";
 import AdminProfitSharingPage from "./pages/admin/ProfitSharing";
 import AdminWalletsPage from "./pages/admin/Wallets";
+import AdminInstitutionWalletsPage from "./pages/admin/InstitutionWallets";
+import AdminCommissionsPage from "./pages/admin/Commissions";
+import AdminContentPage from "./pages/admin/Content";
 import { PortalGuard } from "./pages/portal/PortalGuard";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalOrders from "./pages/portal/Orders";
 import PortalWallet from "./pages/portal/Wallet";
+import PortalCommissions from "./pages/portal/Commissions";
 import PortalReports from "./pages/portal/Reports";
 
 const queryClient = new QueryClient({
@@ -97,9 +101,12 @@ function AdminArea() {
           <Route path="/admin/inventory" component={AdminInventoryPage} />
           <Route path="/admin/purchasing" component={AdminPurchasingPage} />
           <Route path="/admin/orders" component={AdminOrdersPage} />
+          <Route path="/admin/content" component={AdminContentPage} />
           <Route path="/admin/reports" component={AdminReportsPage} />
           <Route path="/admin/finance" component={AdminFinancePage} />
+          <Route path="/admin/commissions" component={AdminCommissionsPage} />
           <Route path="/admin/profit-sharing" component={AdminProfitSharingPage} />
+          <Route path="/admin/institution-wallets" component={AdminInstitutionWalletsPage} />
           <Route path="/admin/wallets" component={AdminWalletsPage} />
           <Route>
             <Redirect to="/admin" />
@@ -142,6 +149,7 @@ function AppRoutes() {
               <PortalRoute path="/portal" component={PortalDashboard} />
               <PortalRoute path="/portal/orders" component={PortalOrders} />
               <PortalRoute path="/portal/wallet" component={PortalWallet} />
+              <PortalRoute path="/portal/commissions" component={PortalCommissions} />
               <PortalRoute path="/portal/reports" component={PortalReports} />
 
               <ProtectedRoute path="/quick-order" component={QuickOrderPage} />

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { and, eq } from "drizzle-orm";
-import { db, cartItemsTable, productsTable } from "@workspace/db";
+import { and, eq, isNull } from "drizzle-orm";
+import { db, cartItemsTable, productsTable, productVariantsTable } from "@workspace/db";
 import {
   AddCartItemBody,
   UpdateCartItemBody,
@@ -14,19 +14,38 @@ const router: IRouter = Router();
 
 router.use("/cart", requireMember);
 
+function serializeVariant(v: typeof productVariantsTable.$inferSelect) {
+  return {
+    id: v.id,
+    productId: v.productId,
+    name: v.name,
+    priceHospital: v.priceHospital,
+    priceClinic: v.priceClinic,
+    priceConsumer: v.priceConsumer,
+    stock: v.stock,
+    isActive: v.isActive,
+  };
+}
+
 async function cartItemWithProduct(id: number) {
   const [row] = await db
     .select()
     .from(cartItemsTable)
     .innerJoin(productsTable, eq(cartItemsTable.productId, productsTable.id))
+    .leftJoin(
+      productVariantsTable,
+      eq(cartItemsTable.variantId, productVariantsTable.id),
+    )
     .where(eq(cartItemsTable.id, id))
     .limit(1);
   if (!row) return null;
   return {
     id: row.cart_items.id,
     productId: row.cart_items.productId,
+    variantId: row.cart_items.variantId,
     quantity: row.cart_items.quantity,
     product: serializeProduct(row.products),
+    variant: row.product_variants ? serializeVariant(row.product_variants) : null,
   };
 }
 
@@ -35,14 +54,22 @@ router.get("/cart", async (req, res) => {
     .select()
     .from(cartItemsTable)
     .innerJoin(productsTable, eq(cartItemsTable.productId, productsTable.id))
+    .leftJoin(
+      productVariantsTable,
+      eq(cartItemsTable.variantId, productVariantsTable.id),
+    )
     .where(eq(cartItemsTable.memberId, req.member!.id))
     .orderBy(cartItemsTable.id);
   res.json(
     rows.map((row) => ({
       id: row.cart_items.id,
       productId: row.cart_items.productId,
+      variantId: row.cart_items.variantId,
       quantity: row.cart_items.quantity,
       product: serializeProduct(row.products),
+      variant: row.product_variants
+        ? serializeVariant(row.product_variants)
+        : null,
     })),
   );
 });
@@ -54,6 +81,7 @@ router.post("/cart", async (req, res) => {
     return;
   }
   const { productId, quantity } = parsed.data;
+  const variantId = parsed.data.variantId ?? null;
 
   const [product] = await db
     .select({ id: productsTable.id, isActive: productsTable.isActive })
@@ -68,6 +96,41 @@ router.post("/cart", async (req, res) => {
     res.status(400).json({ error: "商品已下架，無法加入購物車" });
     return;
   }
+  if (variantId == null) {
+    const [activeVariant] = await db
+      .select({ id: productVariantsTable.id })
+      .from(productVariantsTable)
+      .where(
+        and(
+          eq(productVariantsTable.productId, productId),
+          eq(productVariantsTable.isActive, true),
+        ),
+      )
+      .limit(1);
+    if (activeVariant) {
+      res.status(400).json({ error: "此商品有多種規格，請先選擇規格" });
+      return;
+    }
+  }
+  if (variantId != null) {
+    const [variant] = await db
+      .select({
+        id: productVariantsTable.id,
+        productId: productVariantsTable.productId,
+        isActive: productVariantsTable.isActive,
+      })
+      .from(productVariantsTable)
+      .where(eq(productVariantsTable.id, variantId))
+      .limit(1);
+    if (!variant || variant.productId !== productId) {
+      res.status(400).json({ error: "規格不存在" });
+      return;
+    }
+    if (!variant.isActive) {
+      res.status(400).json({ error: "此規格已停售" });
+      return;
+    }
+  }
 
   const [existing] = await db
     .select()
@@ -76,6 +139,9 @@ router.post("/cart", async (req, res) => {
       and(
         eq(cartItemsTable.memberId, req.member!.id),
         eq(cartItemsTable.productId, productId),
+        variantId == null
+          ? isNull(cartItemsTable.variantId)
+          : eq(cartItemsTable.variantId, variantId),
       ),
     )
     .limit(1);
@@ -91,7 +157,7 @@ router.post("/cart", async (req, res) => {
   } else {
     const [inserted] = await db
       .insert(cartItemsTable)
-      .values({ memberId: req.member!.id, productId, quantity })
+      .values({ memberId: req.member!.id, productId, variantId, quantity })
       .returning();
     itemId = inserted.id;
   }

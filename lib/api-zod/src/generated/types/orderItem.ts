@@ -12,5 +12,9 @@ export interface OrderItem {
   productName: string;
   productCode: string;
   unitPrice: number;
+  /** @nullable */
+  variantId?: number | null;
+  /** @nullable */
+  variantName?: string | null;
   quantity: number;
 }

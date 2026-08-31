@@ -8,7 +8,7 @@ import {
   type Member,
 } from "@workspace/db";
 import { UpdateAdminMemberBody } from "@workspace/api-zod";
-import { requireAdmin } from "../middlewares/requireMember";
+import { requireAdmin, requireStaff } from "../middlewares/requireMember";
 
 const router: IRouter = Router();
 
@@ -33,7 +33,7 @@ function serializeAdminMember(m: Member) {
   };
 }
 
-router.get("/admin/stats", requireAdmin, async (_req, res) => {
+router.get("/admin/stats", requireStaff, async (_req, res) => {
   const [[orders], [revenue], [members], [lowStock], [pendingOrders]] =
     await Promise.all([
       db.select({ value: count() }).from(ordersTable),
@@ -60,7 +60,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res) => {
   });
 });
 
-router.get("/admin/members", requireAdmin, async (req, res) => {
+router.get("/admin/members", requireStaff, async (req, res) => {
   const search =
     typeof req.query.search === "string" ? req.query.search.trim() : "";
   const tier = typeof req.query.tier === "string" ? req.query.tier : "";
@@ -90,7 +90,7 @@ router.get("/admin/members", requireAdmin, async (req, res) => {
   res.json(rows.map(serializeAdminMember));
 });
 
-router.get("/admin/members/:id", requireAdmin, async (req, res) => {
+router.get("/admin/members/:id", requireStaff, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });

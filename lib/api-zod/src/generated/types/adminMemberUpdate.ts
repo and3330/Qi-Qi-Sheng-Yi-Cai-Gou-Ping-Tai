@@ -16,6 +16,7 @@ export interface AdminMemberUpdate {
   /** @nullable */
   phone?: string | null;
   tier?: AdminMemberUpdateTier;
+  /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role?: AdminMemberUpdateRole;
   isActive?: boolean;
   institutionVerified?: boolean;
