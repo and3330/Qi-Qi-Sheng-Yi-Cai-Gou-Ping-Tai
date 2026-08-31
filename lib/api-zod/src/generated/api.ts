@@ -185,6 +185,7 @@ export const ListAdminProductsQueryParams = zod.object({
 
 export const ListAdminProductsResponseItem = zod.object({
   "id": zod.int(),
+  "allowedGrades": zod.array(zod.string()).nullish().describe('授權可銷售機構分級；null 或空陣列 = 不限'),
   "code": zod.string(),
   "name": zod.string(),
   "category": zod.string(),
@@ -236,11 +237,13 @@ export const CreateAdminProductBody = zod.object({
   "isHot": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isActive": zod.boolean().optional(),
-  "spec": zod.string().nullish()
+  "spec": zod.string().nullish(),
+  "allowedGrades": zod.array(zod.enum(['A', 'B', 'C'])).nullish().describe('授權可銷售機構分級；null 或空陣列 = 不限')
 })
 
 export const CreateAdminProductResponse = zod.object({
   "id": zod.int(),
+  "allowedGrades": zod.array(zod.string()).nullish().describe('授權可銷售機構分級；null 或空陣列 = 不限'),
   "code": zod.string(),
   "name": zod.string(),
   "category": zod.string(),
@@ -292,11 +295,13 @@ export const UpdateAdminProductBody = zod.object({
   "isHot": zod.boolean().optional(),
   "isNew": zod.boolean().optional(),
   "isActive": zod.boolean().optional(),
-  "spec": zod.string().nullish()
+  "spec": zod.string().nullish(),
+  "allowedGrades": zod.array(zod.enum(['A', 'B', 'C'])).nullish().describe('授權可銷售機構分級；null 或空陣列 = 不限')
 })
 
 export const UpdateAdminProductResponse = zod.object({
   "id": zod.int(),
+  "allowedGrades": zod.array(zod.string()).nullish().describe('授權可銷售機構分級；null 或空陣列 = 不限'),
   "code": zod.string(),
   "name": zod.string(),
   "category": zod.string(),
@@ -476,6 +481,8 @@ export const ListAdminPurchaseOrdersResponseItem = zod.object({
   "items": zod.array(zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitCost": zod.int().describe('進價 (NT$)'),
@@ -499,6 +506,7 @@ export const CreateAdminPurchaseOrderBody = zod.object({
   "note": zod.string().nullish(),
   "items": zod.array(zod.object({
   "productId": zod.int(),
+  "variantId": zod.int().nullish().describe('多規格商品必填：收貨補到此規格庫存'),
   "unitCost": zod.int().min(createAdminPurchaseOrderBodyItemsItemUnitCostMin),
   "quantity": zod.int().min(1)
 })).min(1)
@@ -518,6 +526,8 @@ export const CreateAdminPurchaseOrderResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitCost": zod.int().describe('進價 (NT$)'),
@@ -547,6 +557,8 @@ export const GetAdminPurchaseOrderResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitCost": zod.int().describe('進價 (NT$)'),
@@ -580,6 +592,8 @@ export const UpdateAdminPurchaseOrderStatusResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitCost": zod.int().describe('進價 (NT$)'),
@@ -609,6 +623,8 @@ export const ReceiveAdminPurchaseOrderResponse = zod.object({
   "items": zod.array(zod.object({
   "id": zod.int(),
   "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
   "productName": zod.string(),
   "productCode": zod.string(),
   "unitCost": zod.int().describe('進價 (NT$)'),
@@ -1143,6 +1159,8 @@ export const ListOrdersResponseItem = zod.object({
   "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled']),
   "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']).describe('匯款 \/ 貨到付款 \/ 錢包扣款(預留)'),
   "totalAmount": zod.int(),
+  "pointsUsed": zod.int().optional(),
+  "pointsEarned": zod.int().optional(),
   "shippingAddress": zod.string().nullish(),
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
@@ -1169,6 +1187,8 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
 
 
 
+export const createOrderBodyPointsToUseMin = 0;
+
 
 
 
@@ -1180,6 +1200,7 @@ export const CreateOrderBody = zod.object({
   "shippingAddress": zod.string().min(1),
   "note": zod.string().optional(),
   "clearCart": zod.boolean().optional().describe('下單後是否清空購物車'),
+  "pointsToUse": zod.int().min(createOrderBodyPointsToUseMin).optional().describe('點數折抵（1 點 = NT$1）'),
   "items": zod.array(zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -1193,6 +1214,8 @@ export const CreateOrderResponse = zod.object({
   "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled']),
   "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']).describe('匯款 \/ 貨到付款 \/ 錢包扣款(預留)'),
   "totalAmount": zod.int(),
+  "pointsUsed": zod.int().optional(),
+  "pointsEarned": zod.int().optional(),
   "shippingAddress": zod.string().nullish(),
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
@@ -1225,6 +1248,8 @@ export const GetOrderResponse = zod.object({
   "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled']),
   "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']).describe('匯款 \/ 貨到付款 \/ 錢包扣款(預留)'),
   "totalAmount": zod.int(),
+  "pointsUsed": zod.int().optional(),
+  "pointsEarned": zod.int().optional(),
   "shippingAddress": zod.string().nullish(),
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
@@ -1260,7 +1285,8 @@ export const ListInstitutionsResponseItem = zod.object({
   "address": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "hours": zod.string().nullish(),
-  "departments": zod.array(zod.string()).optional()
+  "departments": zod.array(zod.string()).optional(),
+  "grade": zod.union([zod.literal('A'),zod.literal('B'),zod.literal('C'),zod.literal(null)]).nullish().describe('機構分級')
 })
 export const ListInstitutionsResponse = zod.array(ListInstitutionsResponseItem)
 
@@ -2568,6 +2594,259 @@ export const CloseSupportConversationParams = zod.object({
 
 export const CloseSupportConversationResponse = zod.object({
   "ok": zod.boolean()
+})
+
+
+/**
+ * @summary 我的點數異動紀錄
+ */
+export const GetPointTransactionsResponseItem = zod.object({
+  "id": zod.int(),
+  "type": zod.string().describe('earn\/redeem\/refund\/revoke\/adjust'),
+  "delta": zod.int(),
+  "balanceAfter": zod.int(),
+  "orderId": zod.int().nullish(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const GetPointTransactionsResponse = zod.array(GetPointTransactionsResponseItem)
+
+
+/**
+ * @summary 機構主檔列表（後台）
+ */
+export const ListAdminInstitutionsResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "type": zod.enum(['hospital', 'clinic', 'pharmacy']),
+  "city": zod.string(),
+  "address": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "hours": zod.string().nullish(),
+  "departments": zod.array(zod.string()).optional(),
+  "grade": zod.union([zod.literal('A'),zod.literal('B'),zod.literal('C'),zod.literal(null)]).nullish().describe('機構分級')
+})
+export const ListAdminInstitutionsResponse = zod.array(ListAdminInstitutionsResponseItem)
+
+
+/**
+ * @summary 更新機構分級
+ */
+export const UpdateAdminInstitutionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateAdminInstitutionBody = zod.object({
+  "grade": zod.union([zod.literal('A'),zod.literal('B'),zod.literal('C'),zod.literal(null)]).nullish()
+})
+
+export const UpdateAdminInstitutionResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "type": zod.enum(['hospital', 'clinic', 'pharmacy']),
+  "city": zod.string(),
+  "address": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "hours": zod.string().nullish(),
+  "departments": zod.array(zod.string()).optional(),
+  "grade": zod.union([zod.literal('A'),zod.literal('B'),zod.literal('C'),zod.literal(null)]).nullish().describe('機構分級')
+})
+
+
+/**
+ * @summary 報價單列表
+ */
+export const ListAdminQuotationsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListAdminQuotationsResponseItem = zod.object({
+  "id": zod.int(),
+  "quoteNo": zod.string(),
+  "customerName": zod.string(),
+  "memberId": zod.int().nullish(),
+  "memberName": zod.string().nullish(),
+  "institutionId": zod.int().nullish(),
+  "institutionName": zod.string().nullish(),
+  "status": zod.enum(['draft', 'sent', 'accepted', 'converted', 'cancelled']),
+  "totalAmount": zod.int(),
+  "validUntil": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "convertedOrderId": zod.int().nullish(),
+  "convertedOrderNo": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "quantity": zod.int()
+}))
+})
+export const ListAdminQuotationsResponse = zod.array(ListAdminQuotationsResponseItem)
+
+
+/**
+ * @summary 建立報價單
+ */
+
+export const createAdminQuotationBodyItemsItemUnitPriceMin = 0;
+
+
+
+
+
+export const CreateAdminQuotationBody = zod.object({
+  "customerName": zod.string().min(1),
+  "memberId": zod.int().nullish().describe('綁定會員（轉訂單必填）'),
+  "institutionId": zod.int().nullish(),
+  "validUntil": zod.string().nullish().describe('YYYY-MM-DD'),
+  "note": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "unitPrice": zod.int().min(createAdminQuotationBodyItemsItemUnitPriceMin),
+  "quantity": zod.int().min(1)
+})).min(1)
+})
+
+export const CreateAdminQuotationResponse = zod.object({
+  "id": zod.int(),
+  "quoteNo": zod.string(),
+  "customerName": zod.string(),
+  "memberId": zod.int().nullish(),
+  "memberName": zod.string().nullish(),
+  "institutionId": zod.int().nullish(),
+  "institutionName": zod.string().nullish(),
+  "status": zod.enum(['draft', 'sent', 'accepted', 'converted', 'cancelled']),
+  "totalAmount": zod.int(),
+  "validUntil": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "convertedOrderId": zod.int().nullish(),
+  "convertedOrderNo": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "quantity": zod.int()
+}))
+})
+
+
+/**
+ * @summary 報價單明細
+ */
+export const GetAdminQuotationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetAdminQuotationResponse = zod.object({
+  "id": zod.int(),
+  "quoteNo": zod.string(),
+  "customerName": zod.string(),
+  "memberId": zod.int().nullish(),
+  "memberName": zod.string().nullish(),
+  "institutionId": zod.int().nullish(),
+  "institutionName": zod.string().nullish(),
+  "status": zod.enum(['draft', 'sent', 'accepted', 'converted', 'cancelled']),
+  "totalAmount": zod.int(),
+  "validUntil": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "convertedOrderId": zod.int().nullish(),
+  "convertedOrderNo": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "quantity": zod.int()
+}))
+})
+
+
+/**
+ * @summary 變更報價單狀態（sent / accepted / cancelled）
+ */
+export const UpdateAdminQuotationStatusParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateAdminQuotationStatusBody = zod.object({
+  "status": zod.enum(['sent', 'accepted', 'cancelled'])
+})
+
+export const UpdateAdminQuotationStatusResponse = zod.object({
+  "id": zod.int(),
+  "quoteNo": zod.string(),
+  "customerName": zod.string(),
+  "memberId": zod.int().nullish(),
+  "memberName": zod.string().nullish(),
+  "institutionId": zod.int().nullish(),
+  "institutionName": zod.string().nullish(),
+  "status": zod.enum(['draft', 'sent', 'accepted', 'converted', 'cancelled']),
+  "totalAmount": zod.int(),
+  "validUntil": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "convertedOrderId": zod.int().nullish(),
+  "convertedOrderNo": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "quantity": zod.int()
+}))
+})
+
+
+/**
+ * @summary 報價單轉訂單（依報價價格建立訂單並扣庫存）
+ */
+export const ConvertAdminQuotationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ConvertAdminQuotationResponse = zod.object({
+  "id": zod.int(),
+  "quoteNo": zod.string(),
+  "customerName": zod.string(),
+  "memberId": zod.int().nullish(),
+  "memberName": zod.string().nullish(),
+  "institutionId": zod.int().nullish(),
+  "institutionName": zod.string().nullish(),
+  "status": zod.enum(['draft', 'sent', 'accepted', 'converted', 'cancelled']),
+  "totalAmount": zod.int(),
+  "validUntil": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "convertedOrderId": zod.int().nullish(),
+  "convertedOrderNo": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "quantity": zod.int()
+}))
 })
 
 

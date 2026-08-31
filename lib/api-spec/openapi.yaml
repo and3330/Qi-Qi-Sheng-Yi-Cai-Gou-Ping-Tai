@@ -2153,6 +2153,150 @@ paths:
                 properties:
                   ok: { type: boolean }
                 required: [ok]
+  /member/points/transactions:
+    get:
+      tags: [members]
+      operationId: getPointTransactions
+      summary: 我的點數異動紀錄
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PointTransaction"
+  /admin/institutions:
+    get:
+      tags: [admin]
+      operationId: listAdminInstitutions
+      summary: 機構主檔列表（後台）
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Institution"
+  /admin/institutions/{id}:
+    patch:
+      tags: [admin]
+      operationId: updateAdminInstitution
+      summary: 更新機構分級
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminInstitutionUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Institution"
+  /admin/quotations:
+    get:
+      tags: [quotations]
+      operationId: listAdminQuotations
+      summary: 報價單列表
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quotation"
+    post:
+      tags: [quotations]
+      operationId: createAdminQuotation
+      summary: 建立報價單
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /admin/quotations/{id}:
+    get:
+      tags: [quotations]
+      operationId: getAdminQuotation
+      summary: 報價單明細
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /admin/quotations/{id}/status:
+    patch:
+      tags: [quotations]
+      operationId: updateAdminQuotationStatus
+      summary: 變更報價單狀態（sent / accepted / cancelled）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotationStatusUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /admin/quotations/{id}/convert:
+    post:
+      tags: [quotations]
+      operationId: convertAdminQuotation
+      summary: 報價單轉訂單（依報價價格建立訂單並扣庫存）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 轉出的訂單資訊
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
 components:
   schemas:
     HealthStatus:
@@ -2446,6 +2590,8 @@ components:
           enum: [bank_transfer, cod, wallet]
           description: 匯款 / 貨到付款 / 錢包扣款(預留)
         totalAmount: { type: integer }
+        pointsUsed: { type: integer }
+        pointsEarned: { type: integer }
         shippingAddress: { type: ["string", "null"] }
         receiverName: { type: ["string", "null"] }
         receiverPhone: { type: ["string", "null"] }
@@ -2478,6 +2624,7 @@ components:
         shippingAddress: { type: string, minLength: 1 }
         note: { type: string }
         clearCart: { type: boolean, description: "下單後是否清空購物車" }
+        pointsToUse: { type: integer, minimum: 0, description: "點數折抵（1 點 = NT$1）" }
         items:
           type: array
           minItems: 1
@@ -2499,6 +2646,7 @@ components:
         departments:
           type: array
           items: { type: string }
+        grade: { type: ["string", "null"], enum: [A, B, C, null], description: 機構分級 }
     Article:
       type: object
       required: [id, kind, title, category, publishedAt]
@@ -2671,6 +2819,10 @@ components:
       required: [id, code, name, category, priceHospital, priceClinic, priceConsumer, costPrice, stock, isHot, isNew, isActive, createdAt]
       properties:
         id: { type: integer }
+        allowedGrades:
+          type: ["array", "null"]
+          items: { type: string }
+          description: 授權可銷售機構分級；null 或空陣列 = 不限
         code: { type: string }
         name: { type: string }
         category: { type: string }
@@ -2704,6 +2856,10 @@ components:
         isNew: { type: boolean }
         isActive: { type: boolean }
         spec: { type: ["string", "null"] }
+        allowedGrades:
+          type: ["array", "null"]
+          items: { type: string, enum: [A, B, C] }
+          description: 授權可銷售機構分級；null 或空陣列 = 不限
     AdminProductUpdate:
       type: object
       properties:
@@ -2720,6 +2876,10 @@ components:
         isNew: { type: boolean }
         isActive: { type: boolean }
         spec: { type: ["string", "null"] }
+        allowedGrades:
+          type: ["array", "null"]
+          items: { type: string, enum: [A, B, C] }
+          description: 授權可銷售機構分級；null 或空陣列 = 不限
     AdminStockMovement:
       type: object
       required: [id, productId, productName, productCode, type, quantity, stockAfter, createdAt]
@@ -2788,6 +2948,8 @@ components:
       properties:
         id: { type: integer }
         productId: { type: integer }
+        variantId: { type: ["integer", "null"] }
+        variantName: { type: ["string", "null"] }
         productName: { type: string }
         productCode: { type: string }
         unitCost: { type: integer, description: "進價 (NT$)" }
@@ -2817,6 +2979,7 @@ components:
       required: [productId, unitCost, quantity]
       properties:
         productId: { type: integer }
+        variantId: { type: ["integer", "null"], description: "多規格商品必填：收貨補到此規格庫存" }
         unitCost: { type: integer, minimum: 0 }
         quantity: { type: integer, minimum: 1 }
     PurchaseOrderInput:
@@ -3348,3 +3511,79 @@ components:
             - $ref: "#/components/schemas/ChatMessage"
             - type: "null"
         needsHuman: { type: boolean }
+    PointTransaction:
+      type: object
+      required: [id, type, delta, balanceAfter, createdAt]
+      properties:
+        id: { type: integer }
+        type: { type: string, description: earn/redeem/refund/revoke/adjust }
+        delta: { type: integer }
+        balanceAfter: { type: integer }
+        orderId: { type: ["integer", "null"] }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string }
+    AdminInstitutionUpdate:
+      type: object
+      properties:
+        grade: { type: ["string", "null"], enum: [A, B, C, null] }
+    QuotationItemInput:
+      type: object
+      required: [productId, unitPrice, quantity]
+      properties:
+        productId: { type: integer }
+        variantId: { type: ["integer", "null"] }
+        unitPrice: { type: integer, minimum: 0 }
+        quantity: { type: integer, minimum: 1 }
+    QuotationInput:
+      type: object
+      required: [customerName, items]
+      properties:
+        customerName: { type: string, minLength: 1 }
+        memberId: { type: ["integer", "null"], description: 綁定會員（轉訂單必填） }
+        institutionId: { type: ["integer", "null"] }
+        validUntil: { type: ["string", "null"], description: YYYY-MM-DD }
+        note: { type: ["string", "null"] }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/QuotationItemInput"
+    QuotationItem:
+      type: object
+      required: [id, productId, productName, productCode, unitPrice, quantity]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        variantId: { type: ["integer", "null"] }
+        variantName: { type: ["string", "null"] }
+        productName: { type: string }
+        productCode: { type: string }
+        unitPrice: { type: integer }
+        quantity: { type: integer }
+    Quotation:
+      type: object
+      required: [id, quoteNo, customerName, status, totalAmount, createdAt, items]
+      properties:
+        id: { type: integer }
+        quoteNo: { type: string }
+        customerName: { type: string }
+        memberId: { type: ["integer", "null"] }
+        memberName: { type: ["string", "null"] }
+        institutionId: { type: ["integer", "null"] }
+        institutionName: { type: ["string", "null"] }
+        status: { type: string, enum: [draft, sent, accepted, converted, cancelled] }
+        totalAmount: { type: integer }
+        validUntil: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        convertedOrderId: { type: ["integer", "null"] }
+        convertedOrderNo: { type: ["string", "null"] }
+        createdAt: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuotationItem"
+    QuotationStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [sent, accepted, cancelled] }

@@ -250,9 +250,9 @@ export default function MemberPage() {
             <p className="text-xs text-gray-500 font-medium mb-1">可用點數</p>
             <p className="text-2xl font-bold text-gray-900">{me.points.toLocaleString()} <span className="text-xs text-gray-400 font-normal">點</span></p>
           </div>
-          <Button variant="outline" size="sm" className="rounded-full text-xs">
-            點數兌換
-          </Button>
+          <Link href="/points" className="border border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center justify-center whitespace-nowrap rounded-full px-3 text-xs font-medium transition-colors">
+            點數明細
+          </Link>
         </div>
 
         {/* Wallet Card */}

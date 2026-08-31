@@ -12,6 +12,7 @@ import {
   profitRulesTable,
   profitShareRecordsTable,
   walletTransactionsTable,
+  pointTransactionsTable,
   institutionsTable,
   institutionWalletTransactionsTable,
   type Order,
@@ -267,9 +268,53 @@ export async function applyOrderStatusChange(id: number, target: string) {
             }
           }
         }
+
+        // 點數累積：每滿 NT$100 得 1 點（以實付金額計，僅入一次）
+        if ((order.pointsEarned ?? 0) === 0) {
+          const earn = Math.floor(order.totalAmount / 100);
+          if (earn > 0) {
+            const [m] = await tx
+              .update(membersTable)
+              .set({ points: sql`${membersTable.points} + ${earn}` })
+              .where(eq(membersTable.id, order.memberId))
+              .returning({ points: membersTable.points });
+            if (m) {
+              await tx.insert(pointTransactionsTable).values({
+                memberId: order.memberId,
+                type: "earn",
+                delta: earn,
+                balanceAfter: m.points,
+                orderId: order.id,
+                note: `訂單完成回饋 ${order.orderNo}`,
+              });
+              await tx
+                .update(ordersTable)
+                .set({ pointsEarned: earn })
+                .where(eq(ordersTable.id, order.id));
+            }
+          }
+        }
       }
 
       if (target === "cancelled") {
+        // 點數折抵退回：取消時將折抵的點數還給會員
+        if ((order.pointsUsed ?? 0) > 0) {
+          const [m] = await tx
+            .update(membersTable)
+            .set({ points: sql`${membersTable.points} + ${order.pointsUsed}` })
+            .where(eq(membersTable.id, order.memberId))
+            .returning({ points: membersTable.points });
+          if (m) {
+            await tx.insert(pointTransactionsTable).values({
+              memberId: order.memberId,
+              type: "refund",
+              delta: order.pointsUsed,
+              balanceAfter: m.points,
+              orderId: order.id,
+              note: `訂單取消退回折抵點數 ${order.orderNo}`,
+            });
+          }
+        }
         // 錢包已付款的訂單取消 → 依付款來源退回機構共用錢包或個人錢包
         if (order.paymentMethod === "wallet" && order.status !== "pending") {
           if (order.walletSource === "institution") {

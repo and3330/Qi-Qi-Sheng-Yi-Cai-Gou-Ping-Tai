@@ -1,4 +1,5 @@
 import { and, desc, eq, gt, gte, inArray, lte, lt, ne, sql } from "drizzle-orm";
+import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import {
   db,
   productsTable,
@@ -427,10 +428,13 @@ async function createOrder(args: {
     : [];
   const requiresVariant = new Set(requiring.map((r) => r.productId));
 
+  const memberGrade = await resolveMemberGrade(member);
   for (const line of args.items) {
     const p = byId.get(line.productId);
     if (!p) throw new ToolError(`商品不存在 (id=${line.productId})`);
     if (!p.isActive) throw new ToolError(`「${p.name}」已下架`);
+    if (!gradeAllowed(p.allowedGrades, memberGrade))
+      throw new ToolError(`「${p.name}」未開放此會員的機構分級購買，無法代客下單`);
     if (!Number.isInteger(line.quantity) || line.quantity < 1) throw new ToolError("數量不正確");
     if (line.variantId == null && requiresVariant.has(line.productId))
       throw new ToolError(`「${p.name}」有多種規格，請指定 variantId`);

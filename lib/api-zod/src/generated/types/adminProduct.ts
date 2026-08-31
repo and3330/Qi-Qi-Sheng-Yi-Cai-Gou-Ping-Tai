@@ -8,6 +8,11 @@
 
 export interface AdminProduct {
   id: number;
+  /**
+     * 授權可銷售機構分級；null 或空陣列 = 不限
+     * @nullable
+     */
+  allowedGrades?: string[] | null;
   code: string;
   name: string;
   category: string;

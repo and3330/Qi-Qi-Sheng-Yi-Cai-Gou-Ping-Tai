@@ -48,6 +48,7 @@ export function serializeInstitution(i: Institution) {
     phone: i.phone,
     hours: i.hours,
     departments: i.departments ?? [],
+    grade: i.grade ?? null,
   };
 }
 

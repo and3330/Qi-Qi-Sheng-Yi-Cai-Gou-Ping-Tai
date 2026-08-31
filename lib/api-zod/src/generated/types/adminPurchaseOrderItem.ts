@@ -9,6 +9,10 @@
 export interface AdminPurchaseOrderItem {
   id: number;
   productId: number;
+  /** @nullable */
+  variantId?: number | null;
+  /** @nullable */
+  variantName?: string | null;
   productName: string;
   productCode: string;
   /** 進價 (NT$) */

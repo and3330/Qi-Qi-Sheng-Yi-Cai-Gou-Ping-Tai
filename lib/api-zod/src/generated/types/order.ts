@@ -16,6 +16,8 @@ export interface Order {
   /** 匯款 / 貨到付款 / 錢包扣款(預留) */
   paymentMethod: OrderPaymentMethod;
   totalAmount: number;
+  pointsUsed?: number;
+  pointsEarned?: number;
   /** @nullable */
   shippingAddress?: string | null;
   /** @nullable */

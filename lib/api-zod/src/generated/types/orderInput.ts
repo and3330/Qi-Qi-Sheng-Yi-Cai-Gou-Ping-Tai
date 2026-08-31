@@ -19,6 +19,11 @@ export interface OrderInput {
   note?: string;
   /** 下單後是否清空購物車 */
   clearCart?: boolean;
+  /**
+     * 點數折抵（1 點 = NT$1）
+     * @minimum 0
+     */
+  pointsToUse?: number;
   /** @minItems 1 */
   items: OrderLineInput[];
 }

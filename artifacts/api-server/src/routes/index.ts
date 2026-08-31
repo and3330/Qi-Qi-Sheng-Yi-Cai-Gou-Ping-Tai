@@ -21,6 +21,9 @@ import storageRouter from "./storage";
 import portalRouter from "./portal";
 import aiAssistantRouter from "./aiAssistant";
 import supportChatRouter from "./supportChat";
+import pointsRouter from "./points";
+import adminInstitutionsRouter from "./adminInstitutions";
+import adminQuotationsRouter from "./adminQuotations";
 
 const router: IRouter = Router();
 
@@ -46,5 +49,8 @@ router.use(storageRouter);
 router.use(portalRouter);
 router.use(aiAssistantRouter);
 router.use(supportChatRouter);
+router.use(pointsRouter);
+router.use(adminInstitutionsRouter);
+router.use(adminQuotationsRouter);
 
 export default router;

@@ -20,6 +20,7 @@ import {
   Bot,
   Headphones,
   ChevronDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -56,6 +57,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     title: "訂單與客服",
     items: [
       { name: "訂單管理", path: "/admin/orders", icon: ClipboardList },
+      { name: "報價單", path: "/admin/quotations", icon: FileSpreadsheet, roles: ["admin", "ops"] },
       { name: "客服對話", path: "/admin/support", icon: Headphones },
     ],
   },
@@ -74,6 +76,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { name: "內容管理", path: "/admin/content", icon: FileText, roles: ["admin", "ops"] },
       { name: "使用者管理", path: "/admin/members", icon: Users },
+      { name: "機構主檔", path: "/admin/institutions", icon: Building2, roles: ["admin", "ops"] },
     ],
   },
 ];

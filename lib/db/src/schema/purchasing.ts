@@ -28,6 +28,9 @@ export const purchaseOrderItemsTable = pgTable("purchase_order_items", {
     .notNull()
     .references(() => purchaseOrdersTable.id),
   productId: integer("product_id").notNull(),
+  // 多規格：收貨補到指定規格庫存（無規格商品為 null）
+  variantId: integer("variant_id"),
+  variantName: text("variant_name"),
   productName: text("product_name").notNull(),
   productCode: text("product_code").notNull(),
   unitCost: integer("unit_cost").notNull(),

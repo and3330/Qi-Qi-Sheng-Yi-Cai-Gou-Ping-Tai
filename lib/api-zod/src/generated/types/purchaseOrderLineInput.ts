@@ -8,6 +8,11 @@
 
 export interface PurchaseOrderLineInput {
   productId: number;
+  /**
+     * 多規格商品必填：收貨補到此規格庫存
+     * @nullable
+     */
+  variantId?: number | null;
   /** @minimum 0 */
   unitCost: number;
   /** @minimum 1 */

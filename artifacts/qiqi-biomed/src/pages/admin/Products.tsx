@@ -57,6 +57,7 @@ type FormState = {
   isHot: boolean;
   isNew: boolean;
   isActive: boolean;
+  allowedGrades: string[];
 };
 
 const emptyForm: FormState = {
@@ -75,6 +76,7 @@ const emptyForm: FormState = {
   isHot: false,
   isNew: true,
   isActive: true,
+  allowedGrades: [],
 };
 
 function VariantsManager({ productId }: { productId: number }) {
@@ -358,6 +360,7 @@ export default function AdminProductsPage() {
       isHot: p.isHot,
       isNew: p.isNew,
       isActive: p.isActive,
+      allowedGrades: p.allowedGrades || [],
     });
 
   const submit = () => {
@@ -391,6 +394,7 @@ export default function AdminProductsPage() {
       isHot: form.isHot,
       isNew: form.isNew,
       isActive: form.isActive,
+      allowedGrades: form.allowedGrades.length > 0 ? (form.allowedGrades as any[]) : null,
     };
     if (form.id === null) {
       const stock = Number(form.stock || 0);
@@ -503,6 +507,7 @@ export default function AdminProductsPage() {
                   <th className="px-4 py-3 text-right font-medium">成本價</th>
                   <th className="px-4 py-3 text-right font-medium">庫存</th>
                   <th className="px-4 py-3 font-medium">狀態</th>
+                  <th className="px-4 py-3 font-medium">授權分級</th>
                   <th className="px-4 py-3 text-right font-medium">操作</th>
                 </tr>
               </thead>
@@ -562,6 +567,19 @@ export default function AdminProductsPage() {
                         >
                           已下架
                         </Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.allowedGrades && p.allowedGrades.length > 0 ? (
+                        <div className="flex gap-1">
+                          {p.allowedGrades.map((g) => (
+                            <Badge key={g} variant="outline" className="text-xs bg-slate-50">
+                              {g} 級
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">不限</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -718,6 +736,32 @@ export default function AdminProductsPage() {
                   </p>
                 </div>
               )}
+              <div className="space-y-2">
+                <Label>授權可銷售機構分級 (留空代表不限)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {["A", "B", "C"].map((g) => {
+                    const selected = form.allowedGrades.includes(g);
+                    return (
+                      <Badge
+                        key={g}
+                        variant={selected ? "default" : "outline"}
+                        className="cursor-pointer px-3 py-1"
+                        onClick={() => {
+                          setForm({
+                            ...form,
+                            allowedGrades: selected
+                              ? form.allowedGrades.filter((x) => x !== g)
+                              : [...form.allowedGrades, g],
+                          });
+                        }}
+                      >
+                        {g} 級
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 gap-3">
                 {(
                   [

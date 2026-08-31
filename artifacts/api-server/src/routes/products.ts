@@ -3,10 +3,15 @@ import { and, asc, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { db, productsTable, productVariantsTable } from "@workspace/db";
 import { ListProductsQueryParams, GetProductParams } from "@workspace/api-zod";
 import { serializeProduct } from "../lib/serialize";
+import {
+  optionalMember,
+  resolveMemberGrade,
+  gradeAllowed,
+} from "../middlewares/optionalMember";
 
 const router: IRouter = Router();
 
-router.get("/products", async (req, res) => {
+router.get("/products", optionalMember, async (req, res) => {
   const parsed = ListProductsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid query" });
@@ -40,10 +45,14 @@ router.get("/products", async (req, res) => {
     .where(and(...conditions))
     .orderBy(...(Array.isArray(orderBy) ? orderBy : [orderBy]));
 
-  res.json(rows.map(serializeProduct));
+  // 授權可銷售機構範圍：受限商品僅開放給符合分級的機構會員
+  const grade = await resolveMemberGrade(req.member);
+  const visible = rows.filter((p) => gradeAllowed(p.allowedGrades, grade));
+
+  res.json(visible.map(serializeProduct));
 });
 
-router.get("/products/:id", async (req, res) => {
+router.get("/products/:id", optionalMember, async (req, res) => {
   const parsed = GetProductParams.safeParse(req.params);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid id" });
@@ -57,6 +66,11 @@ router.get("/products/:id", async (req, res) => {
     )
     .limit(1);
   if (!row) {
+    res.status(404).json({ error: "Product not found" });
+    return;
+  }
+  const grade = await resolveMemberGrade(req.member);
+  if (!gradeAllowed(row.allowedGrades, grade)) {
     res.status(404).json({ error: "Product not found" });
     return;
   }

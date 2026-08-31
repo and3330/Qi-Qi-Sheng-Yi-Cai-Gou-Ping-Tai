@@ -42,6 +42,8 @@ import AdminCommissionsPage from "./pages/admin/Commissions";
 import AdminContentPage from "./pages/admin/Content";
 import AdminSupportPage from "./pages/admin/Support";
 import AdminAiAssistantPage from "./pages/admin/AiAssistant";
+import AdminInstitutionsPage from "./pages/admin/Institutions";
+import AdminQuotationsPage from "./pages/admin/Quotations";
 import { PortalGuard } from "./pages/portal/PortalGuard";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalOrders from "./pages/portal/Orders";
@@ -104,9 +106,11 @@ function AdminArea() {
           <Route path="/admin/inventory" component={AdminInventoryPage} />
           <Route path="/admin/purchasing" component={AdminPurchasingPage} />
           <Route path="/admin/orders" component={AdminOrdersPage} />
+          <Route path="/admin/quotations" component={AdminQuotationsPage} />
           <Route path="/admin/content" component={AdminContentPage} />
           <Route path="/admin/support" component={AdminSupportPage} />
           <Route path="/admin/ai-assistant" component={AdminAiAssistantPage} />
+          <Route path="/admin/institutions" component={AdminInstitutionsPage} />
           <Route path="/admin/reports" component={AdminReportsPage} />
           <Route path="/admin/finance" component={AdminFinancePage} />
           <Route path="/admin/commissions" component={AdminCommissionsPage} />

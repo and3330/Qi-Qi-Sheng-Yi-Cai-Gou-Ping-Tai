@@ -38,6 +38,18 @@ export default function CheckoutPage() {
     return cart?.reduce((sum, item) => sum + (getPrice(item) * item.quantity), 0) || 0;
   }, [cart, me]);
 
+  const [pointsToUse, setPointsToUse] = useState<number>(0);
+
+  const handlePointsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = parseInt(e.target.value) || 0;
+    if (val < 0) val = 0;
+    if (val > (me?.points || 0)) val = me?.points || 0;
+    if (val > total) val = total;
+    setPointsToUse(val);
+  };
+
+  const finalTotal = total - pointsToUse;
+
   const handleSubmit = async () => {
     if (!receiverName || !receiverPhone || !shippingAddress) {
       toast({ title: "請填寫完整收件資訊", variant: "destructive" });
@@ -56,6 +68,7 @@ export default function CheckoutPage() {
           shippingAddress,
           note,
           clearCart: true,
+          pointsToUse: pointsToUse > 0 ? pointsToUse : undefined,
           items: cart.map(item => ({
             productId: item.productId,
             variantId: item.variantId,
@@ -156,7 +169,7 @@ export default function CheckoutPage() {
 
             {(() => {
               const balance = wallet?.balance ?? 0;
-              const insufficient = balance < total;
+              const insufficient = balance < finalTotal;
               if (insufficient) {
                 return (
                   <label className="flex items-center p-3 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed" data-testid="option-payment-wallet">
@@ -220,9 +233,31 @@ export default function CheckoutPage() {
               </div>
             ))}
           </div>
-          <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-            <span className="font-bold text-gray-900">總金額</span>
-            <span className="text-xl font-bold text-destructive">{formatPrice(total)}</span>
+          <div className="border-t border-gray-100 pt-4 mt-2">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-900">點數折抵</span>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  可用 {me?.points || 0} 點
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">-NT$</span>
+                <Input
+                  type="number"
+                  min="0"
+                  max={Math.min(me?.points || 0, total)}
+                  value={pointsToUse || ""}
+                  onChange={handlePointsChange}
+                  className="w-20 h-8 text-right px-2 py-1 bg-gray-50 border-gray-200"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+              <span className="font-bold text-gray-900">應付總額</span>
+              <span className="text-xl font-bold text-destructive">{formatPrice(finalTotal)}</span>
+            </div>
           </div>
         </section>
       </div>

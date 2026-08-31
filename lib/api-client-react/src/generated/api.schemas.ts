@@ -459,6 +459,8 @@ export interface Order {
   /** 匯款 / 貨到付款 / 錢包扣款(預留) */
   paymentMethod: OrderPaymentMethod;
   totalAmount: number;
+  pointsUsed?: number;
+  pointsEarned?: number;
   /** @nullable */
   shippingAddress?: string | null;
   /** @nullable */
@@ -501,6 +503,11 @@ export interface OrderInput {
   note?: string;
   /** 下單後是否清空購物車 */
   clearCart?: boolean;
+  /**
+     * 點數折抵（1 點 = NT$1）
+     * @minimum 0
+     */
+  pointsToUse?: number;
   /** @minItems 1 */
   items: OrderLineInput[];
 }
@@ -512,6 +519,19 @@ export const InstitutionType = {
   hospital: 'hospital',
   clinic: 'clinic',
   pharmacy: 'pharmacy',
+} as const;
+
+/**
+ * 機構分級
+ * @nullable
+ */
+export type InstitutionGrade = typeof InstitutionGrade[keyof typeof InstitutionGrade] | null;
+
+
+export const InstitutionGrade = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
 } as const;
 
 export interface Institution {
@@ -526,6 +546,11 @@ export interface Institution {
   /** @nullable */
   hours?: string | null;
   departments?: string[];
+  /**
+     * 機構分級
+     * @nullable
+     */
+  grade?: InstitutionGrade;
 }
 
 export type ArticleKind = typeof ArticleKind[keyof typeof ArticleKind];
@@ -836,6 +861,11 @@ export interface FavoriteInput {
 
 export interface AdminProduct {
   id: number;
+  /**
+     * 授權可銷售機構分級；null 或空陣列 = 不限
+     * @nullable
+     */
+  allowedGrades?: string[] | null;
   code: string;
   name: string;
   category: string;
@@ -857,6 +887,15 @@ export interface AdminProduct {
   spec?: string | null;
   createdAt: string;
 }
+
+export type AdminProductInputAllowedGradesItem = typeof AdminProductInputAllowedGradesItem[keyof typeof AdminProductInputAllowedGradesItem];
+
+
+export const AdminProductInputAllowedGradesItem = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+} as const;
 
 export interface AdminProductInput {
   /** @minLength 1 */
@@ -884,7 +923,21 @@ export interface AdminProductInput {
   isActive?: boolean;
   /** @nullable */
   spec?: string | null;
+  /**
+     * 授權可銷售機構分級；null 或空陣列 = 不限
+     * @nullable
+     */
+  allowedGrades?: AdminProductInputAllowedGradesItem[] | null;
 }
+
+export type AdminProductUpdateAllowedGradesItem = typeof AdminProductUpdateAllowedGradesItem[keyof typeof AdminProductUpdateAllowedGradesItem];
+
+
+export const AdminProductUpdateAllowedGradesItem = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+} as const;
 
 export interface AdminProductUpdate {
   /** @minLength 1 */
@@ -910,6 +963,11 @@ export interface AdminProductUpdate {
   isActive?: boolean;
   /** @nullable */
   spec?: string | null;
+  /**
+     * 授權可銷售機構分級；null 或空陣列 = 不限
+     * @nullable
+     */
+  allowedGrades?: AdminProductUpdateAllowedGradesItem[] | null;
 }
 
 /**
@@ -1023,6 +1081,10 @@ export interface SupplierUpdate {
 export interface AdminPurchaseOrderItem {
   id: number;
   productId: number;
+  /** @nullable */
+  variantId?: number | null;
+  /** @nullable */
+  variantName?: string | null;
   productName: string;
   productCode: string;
   /** 進價 (NT$) */
@@ -1059,6 +1121,11 @@ export interface AdminPurchaseOrder {
 
 export interface PurchaseOrderLineInput {
   productId: number;
+  /**
+     * 多規格商品必填：收貨補到此規格庫存
+     * @nullable
+     */
+  variantId?: number | null;
   /** @minimum 0 */
   unitCost: number;
   /** @minimum 1 */
@@ -1724,6 +1791,130 @@ export interface SupportReply {
   needsHuman: boolean;
 }
 
+export interface PointTransaction {
+  id: number;
+  /** earn/redeem/refund/revoke/adjust */
+  type: string;
+  delta: number;
+  balanceAfter: number;
+  /** @nullable */
+  orderId?: number | null;
+  /** @nullable */
+  note?: string | null;
+  createdAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type AdminInstitutionUpdateGrade = typeof AdminInstitutionUpdateGrade[keyof typeof AdminInstitutionUpdateGrade] | null;
+
+
+export const AdminInstitutionUpdateGrade = {
+  A: 'A',
+  B: 'B',
+  C: 'C',
+} as const;
+
+export interface AdminInstitutionUpdate {
+  /** @nullable */
+  grade?: AdminInstitutionUpdateGrade;
+}
+
+export interface QuotationItemInput {
+  productId: number;
+  /** @nullable */
+  variantId?: number | null;
+  /** @minimum 0 */
+  unitPrice: number;
+  /** @minimum 1 */
+  quantity: number;
+}
+
+export interface QuotationInput {
+  /** @minLength 1 */
+  customerName: string;
+  /**
+     * 綁定會員（轉訂單必填）
+     * @nullable
+     */
+  memberId?: number | null;
+  /** @nullable */
+  institutionId?: number | null;
+  /**
+     * YYYY-MM-DD
+     * @nullable
+     */
+  validUntil?: string | null;
+  /** @nullable */
+  note?: string | null;
+  /** @minItems 1 */
+  items: QuotationItemInput[];
+}
+
+export interface QuotationItem {
+  id: number;
+  productId: number;
+  /** @nullable */
+  variantId?: number | null;
+  /** @nullable */
+  variantName?: string | null;
+  productName: string;
+  productCode: string;
+  unitPrice: number;
+  quantity: number;
+}
+
+export type QuotationStatus = typeof QuotationStatus[keyof typeof QuotationStatus];
+
+
+export const QuotationStatus = {
+  draft: 'draft',
+  sent: 'sent',
+  accepted: 'accepted',
+  converted: 'converted',
+  cancelled: 'cancelled',
+} as const;
+
+export interface Quotation {
+  id: number;
+  quoteNo: string;
+  customerName: string;
+  /** @nullable */
+  memberId?: number | null;
+  /** @nullable */
+  memberName?: string | null;
+  /** @nullable */
+  institutionId?: number | null;
+  /** @nullable */
+  institutionName?: string | null;
+  status: QuotationStatus;
+  totalAmount: number;
+  /** @nullable */
+  validUntil?: string | null;
+  /** @nullable */
+  note?: string | null;
+  /** @nullable */
+  convertedOrderId?: number | null;
+  /** @nullable */
+  convertedOrderNo?: string | null;
+  createdAt: string;
+  items: QuotationItem[];
+}
+
+export type QuotationStatusUpdateStatus = typeof QuotationStatusUpdateStatus[keyof typeof QuotationStatusUpdateStatus];
+
+
+export const QuotationStatusUpdateStatus = {
+  sent: 'sent',
+  accepted: 'accepted',
+  cancelled: 'cancelled',
+} as const;
+
+export interface QuotationStatusUpdate {
+  status: QuotationStatusUpdateStatus;
+}
+
 export type ListPortalOrdersParams = {
 status?: ListPortalOrdersStatus;
 };
@@ -1973,5 +2164,9 @@ needsHuman?: string;
 
 export type CloseSupportConversation200 = {
   ok: boolean;
+};
+
+export type ListAdminQuotationsParams = {
+status?: string;
 };
 

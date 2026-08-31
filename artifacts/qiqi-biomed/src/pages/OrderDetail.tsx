@@ -140,9 +140,30 @@ export default function OrderDetailPage() {
             ))}
           </div>
           
-          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
-            <span className="font-bold text-gray-900">總計</span>
-            <span className="text-xl font-bold text-destructive">{formatPrice(order.totalAmount)}</span>
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-2">
+            {order.pointsUsed ? (
+              <>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">商品總額</span>
+                  <span className="font-medium">{formatPrice(order.totalAmount + order.pointsUsed)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">點數折抵</span>
+                  <span className="font-medium text-destructive">-NT${order.pointsUsed}</span>
+                </div>
+              </>
+            ) : null}
+            <div className="flex justify-between items-center pt-2">
+              <span className="font-bold text-gray-900">實付金額</span>
+              <span className="text-xl font-bold text-destructive">{formatPrice(order.totalAmount)}</span>
+            </div>
+            {order.pointsEarned ? (
+              <div className="text-right mt-1">
+                <span className="text-xs bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md font-medium">
+                  獲得回饋點數 +{order.pointsEarned}
+                </span>
+              </div>
+            ) : null}
           </div>
         </section>
         

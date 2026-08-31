@@ -26,6 +26,7 @@ import type {
   AdminArticle,
   AdminArticleInput,
   AdminArticleUpdate,
+  AdminInstitutionUpdate,
   AdminMember,
   AdminMemberUpdate,
   AdminMemberWallet,
@@ -79,6 +80,7 @@ import type {
   ListAdminOrdersParams,
   ListAdminProductsParams,
   ListAdminPurchaseOrdersParams,
+  ListAdminQuotationsParams,
   ListAdminStockMovementsParams,
   ListAdminSuppliersParams,
   ListArticlesParams,
@@ -92,6 +94,7 @@ import type {
   OrderInput,
   OrderStatusUpdate,
   PnlReport,
+  PointTransaction,
   PortalCommissions,
   PortalOrder,
   PortalReports,
@@ -103,6 +106,9 @@ import type {
   ProfitRuleInput,
   PurchaseOrderInput,
   PurchaseOrderStatusUpdate,
+  Quotation,
+  QuotationInput,
+  QuotationStatusUpdate,
   RegisterInput,
   ShipmentPhotosInput,
   ShipmentPhotosResult,
@@ -7579,5 +7585,606 @@ export const useCloseSupportConversation = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCloseSupportConversationMutationOptions(options));
+    }
+
+export const getGetPointTransactionsUrl = () => {
+
+
+
+
+  return `/api/member/points/transactions`
+}
+
+/**
+ * @summary 我的點數異動紀錄
+ */
+export const getPointTransactions = async ( options?: Parameters<typeof customFetch>[1]): Promise<PointTransaction[]> => {
+
+  return customFetch<PointTransaction[]>(getGetPointTransactionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPointTransactionsQueryKey = () => {
+    return [
+    `/api/member/points/transactions`
+    ] as const;
+    }
+
+
+export const getGetPointTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof getPointTransactions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPointTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPointTransactionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPointTransactions>>> = ({ signal }) => getPointTransactions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPointTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPointTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof getPointTransactions>>>
+export type GetPointTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 我的點數異動紀錄
+ */
+
+export function useGetPointTransactions<TData = Awaited<ReturnType<typeof getPointTransactions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPointTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPointTransactionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminInstitutionsUrl = () => {
+
+
+
+
+  return `/api/admin/institutions`
+}
+
+/**
+ * @summary 機構主檔列表（後台）
+ */
+export const listAdminInstitutions = async ( options?: Parameters<typeof customFetch>[1]): Promise<Institution[]> => {
+
+  return customFetch<Institution[]>(getListAdminInstitutionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminInstitutionsQueryKey = () => {
+    return [
+    `/api/admin/institutions`
+    ] as const;
+    }
+
+
+export const getListAdminInstitutionsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminInstitutions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminInstitutions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminInstitutionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminInstitutions>>> = ({ signal }) => listAdminInstitutions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminInstitutions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminInstitutionsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminInstitutions>>>
+export type ListAdminInstitutionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 機構主檔列表（後台）
+ */
+
+export function useListAdminInstitutions<TData = Awaited<ReturnType<typeof listAdminInstitutions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminInstitutions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminInstitutionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminInstitutionUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/institutions/${id}`
+}
+
+/**
+ * @summary 更新機構分級
+ */
+export const updateAdminInstitution = async (id: number,
+    adminInstitutionUpdate: AdminInstitutionUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Institution> => {
+
+  return customFetch<Institution>(getUpdateAdminInstitutionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminInstitutionUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminInstitutionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminInstitution>>, TError,{id: number;data: BodyType<AdminInstitutionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminInstitution>>, TError,{id: number;data: BodyType<AdminInstitutionUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminInstitution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminInstitution>>, {id: number;data: BodyType<AdminInstitutionUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminInstitution(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminInstitutionMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminInstitution>>>
+    export type UpdateAdminInstitutionMutationBody = BodyType<AdminInstitutionUpdate>
+    export type UpdateAdminInstitutionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 更新機構分級
+ */
+export const useUpdateAdminInstitution = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminInstitution>>, TError,{id: number;data: BodyType<AdminInstitutionUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminInstitution>>,
+        TError,
+        {id: number;data: BodyType<AdminInstitutionUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminInstitutionMutationOptions(options));
+    }
+
+export const getListAdminQuotationsUrl = (params?: ListAdminQuotationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/quotations?${stringifiedParams}` : `/api/admin/quotations`
+}
+
+/**
+ * @summary 報價單列表
+ */
+export const listAdminQuotations = async (params?: ListAdminQuotationsParams, options?: Parameters<typeof customFetch>[1]): Promise<Quotation[]> => {
+
+  return customFetch<Quotation[]>(getListAdminQuotationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminQuotationsQueryKey = (params?: ListAdminQuotationsParams,) => {
+    return [
+    `/api/admin/quotations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminQuotationsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminQuotations>>, TError = ErrorType<unknown>>(params?: ListAdminQuotationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminQuotations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminQuotationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminQuotations>>> = ({ signal }) => listAdminQuotations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminQuotations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminQuotationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminQuotations>>>
+export type ListAdminQuotationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 報價單列表
+ */
+
+export function useListAdminQuotations<TData = Awaited<ReturnType<typeof listAdminQuotations>>, TError = ErrorType<unknown>>(
+ params?: ListAdminQuotationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminQuotations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminQuotationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminQuotationUrl = () => {
+
+
+
+
+  return `/api/admin/quotations`
+}
+
+/**
+ * @summary 建立報價單
+ */
+export const createAdminQuotation = async (quotationInput: QuotationInput, options?: Parameters<typeof customFetch>[1]): Promise<Quotation> => {
+
+  return customFetch<Quotation>(getCreateAdminQuotationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(quotationInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminQuotationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminQuotation>>, TError,{data: BodyType<QuotationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminQuotation>>, TError,{data: BodyType<QuotationInput>}, TContext> => {
+
+const mutationKey = ['createAdminQuotation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminQuotation>>, {data: BodyType<QuotationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminQuotation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminQuotationMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminQuotation>>>
+    export type CreateAdminQuotationMutationBody = BodyType<QuotationInput>
+    export type CreateAdminQuotationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 建立報價單
+ */
+export const useCreateAdminQuotation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminQuotation>>, TError,{data: BodyType<QuotationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminQuotation>>,
+        TError,
+        {data: BodyType<QuotationInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminQuotationMutationOptions(options));
+    }
+
+export const getGetAdminQuotationUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/quotations/${id}`
+}
+
+/**
+ * @summary 報價單明細
+ */
+export const getAdminQuotation = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Quotation> => {
+
+  return customFetch<Quotation>(getGetAdminQuotationUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminQuotationQueryKey = (id: number,) => {
+    return [
+    `/api/admin/quotations/${id}`
+    ] as const;
+    }
+
+
+export const getGetAdminQuotationQueryOptions = <TData = Awaited<ReturnType<typeof getAdminQuotation>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminQuotation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminQuotationQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminQuotation>>> = ({ signal }) => getAdminQuotation(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminQuotation>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminQuotationQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminQuotation>>>
+export type GetAdminQuotationQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 報價單明細
+ */
+
+export function useGetAdminQuotation<TData = Awaited<ReturnType<typeof getAdminQuotation>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminQuotation>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminQuotationQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAdminQuotationStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/quotations/${id}/status`
+}
+
+/**
+ * @summary 變更報價單狀態（sent / accepted / cancelled）
+ */
+export const updateAdminQuotationStatus = async (id: number,
+    quotationStatusUpdate: QuotationStatusUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Quotation> => {
+
+  return customFetch<Quotation>(getUpdateAdminQuotationStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(quotationStatusUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminQuotationStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminQuotationStatus>>, TError,{id: number;data: BodyType<QuotationStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminQuotationStatus>>, TError,{id: number;data: BodyType<QuotationStatusUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminQuotationStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminQuotationStatus>>, {id: number;data: BodyType<QuotationStatusUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminQuotationStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminQuotationStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminQuotationStatus>>>
+    export type UpdateAdminQuotationStatusMutationBody = BodyType<QuotationStatusUpdate>
+    export type UpdateAdminQuotationStatusMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 變更報價單狀態（sent / accepted / cancelled）
+ */
+export const useUpdateAdminQuotationStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminQuotationStatus>>, TError,{id: number;data: BodyType<QuotationStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminQuotationStatus>>,
+        TError,
+        {id: number;data: BodyType<QuotationStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminQuotationStatusMutationOptions(options));
+    }
+
+export const getConvertAdminQuotationUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/quotations/${id}/convert`
+}
+
+/**
+ * @summary 報價單轉訂單（依報價價格建立訂單並扣庫存）
+ */
+export const convertAdminQuotation = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Quotation> => {
+
+  return customFetch<Quotation>(getConvertAdminQuotationUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConvertAdminQuotationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof convertAdminQuotation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof convertAdminQuotation>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['convertAdminQuotation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof convertAdminQuotation>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  convertAdminQuotation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConvertAdminQuotationMutationResult = NonNullable<Awaited<ReturnType<typeof convertAdminQuotation>>>
+
+    export type ConvertAdminQuotationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 報價單轉訂單（依報價價格建立訂單並扣庫存）
+ */
+export const useConvertAdminQuotation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof convertAdminQuotation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof convertAdminQuotation>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getConvertAdminQuotationMutationOptions(options));
     }
 

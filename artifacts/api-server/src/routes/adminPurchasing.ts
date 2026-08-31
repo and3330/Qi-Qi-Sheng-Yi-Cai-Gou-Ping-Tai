@@ -6,6 +6,7 @@ import {
   purchaseOrdersTable,
   purchaseOrderItemsTable,
   productsTable,
+  productVariantsTable,
   stockMovementsTable,
   type Supplier,
   type PurchaseOrder,
@@ -55,6 +56,8 @@ function serializePO(
     items: items.map((i) => ({
       id: i.id,
       productId: i.productId,
+      variantId: i.variantId,
+      variantName: i.variantName,
       productName: i.productName,
       productCode: i.productCode,
       unitCost: i.unitCost,
@@ -205,10 +208,55 @@ router.post("/admin/purchase-orders", requireOps, async (req, res) => {
     .from(productsTable)
     .where(inArray(productsTable.id, productIds));
   const byId = new Map(products.map((p) => [p.id, p]));
+
+  const variantIds = input.items
+    .map((i) => i.variantId)
+    .filter((v): v is number => v != null);
+  const variants = variantIds.length
+    ? await db
+        .select()
+        .from(productVariantsTable)
+        .where(inArray(productVariantsTable.id, variantIds))
+    : [];
+  const variantById = new Map(variants.map((v) => [v.id, v]));
+
+  // 有啟用規格的商品，進貨必須指定規格（否則庫存會記到主商品）
+  const noVariantProductIds = input.items
+    .filter((i) => i.variantId == null)
+    .map((i) => i.productId);
+  const requiresVariantRows = noVariantProductIds.length
+    ? await db
+        .select({ productId: productVariantsTable.productId })
+        .from(productVariantsTable)
+        .where(
+          and(
+            inArray(productVariantsTable.productId, noVariantProductIds),
+            eq(productVariantsTable.isActive, true),
+          ),
+        )
+    : [];
+  const requiresVariant = new Set(requiresVariantRows.map((r) => r.productId));
+
   for (const line of input.items) {
-    if (!byId.has(line.productId)) {
+    const p = byId.get(line.productId);
+    if (!p) {
       res.status(400).json({ error: `商品不存在 (id=${line.productId})` });
       return;
+    }
+    if (line.variantId == null && requiresVariant.has(line.productId)) {
+      res.status(400).json({ error: `「${p.name}」有多種規格，請指定進貨規格` });
+      return;
+    }
+    if (line.variantId != null) {
+      const v = variantById.get(line.variantId);
+      if (!v || v.productId !== line.productId) {
+        res.status(400).json({ error: `「${p.name}」的規格不存在` });
+        return;
+      }
+      if (!v.isActive) {
+        res.status(400).json({ error: `「${p.name}（${v.name}）」已停售，請先啟用該規格再進貨` });
+        return;
+      }
     }
   }
 
@@ -234,9 +282,12 @@ router.post("/admin/purchase-orders", requireOps, async (req, res) => {
       .values(
         input.items.map((l) => {
           const p = byId.get(l.productId)!;
+          const v = l.variantId != null ? variantById.get(l.variantId)! : null;
           return {
             purchaseOrderId: po.id,
             productId: p.id,
+            variantId: v?.id ?? null,
+            variantName: v?.name ?? null,
             productName: p.name,
             productCode: p.code,
             unitCost: l.unitCost,
@@ -343,21 +394,39 @@ router.post(
           .where(eq(purchaseOrderItemsTable.purchaseOrderId, id));
 
         for (const item of items) {
-          const [updated] = await tx
-            .update(productsTable)
-            .set({
-              stock: sql`${productsTable.stock} + ${item.quantity}`,
-              costPrice: item.unitCost,
-            })
-            .where(eq(productsTable.id, item.productId))
-            .returning();
-          if (!updated) continue;
+          let stockAfter: number | null = null;
+          if (item.variantId != null) {
+            // 多規格：補到指定規格庫存並更新規格成本
+            const [updated] = await tx
+              .update(productVariantsTable)
+              .set({
+                stock: sql`${productVariantsTable.stock} + ${item.quantity}`,
+                costPrice: item.unitCost,
+              })
+              .where(eq(productVariantsTable.id, item.variantId))
+              .returning();
+            if (updated) stockAfter = updated.stock;
+          } else {
+            const [updated] = await tx
+              .update(productsTable)
+              .set({
+                stock: sql`${productsTable.stock} + ${item.quantity}`,
+                costPrice: item.unitCost,
+              })
+              .where(eq(productsTable.id, item.productId))
+              .returning();
+            if (updated) stockAfter = updated.stock;
+          }
+          if (stockAfter == null) continue;
           await tx.insert(stockMovementsTable).values({
             productId: item.productId,
+            variantId: item.variantId,
             type: "purchase",
             quantity: item.quantity,
-            stockAfter: updated.stock,
-            reason: "採購進貨",
+            stockAfter,
+            reason: item.variantName
+              ? `採購進貨（${item.variantName}）`
+              : "採購進貨",
             refNo: po.poNo,
           });
         }

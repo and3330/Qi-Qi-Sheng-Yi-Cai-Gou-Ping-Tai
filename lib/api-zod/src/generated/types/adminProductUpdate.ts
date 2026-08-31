@@ -5,6 +5,7 @@
  * 七期生醫採購平台 API
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminProductUpdateAllowedGradesItem } from './adminProductUpdateAllowedGradesItem';
 
 export interface AdminProductUpdate {
   /** @minLength 1 */
@@ -30,4 +31,9 @@ export interface AdminProductUpdate {
   isActive?: boolean;
   /** @nullable */
   spec?: string | null;
+  /**
+     * 授權可銷售機構分級；null 或空陣列 = 不限
+     * @nullable
+     */
+  allowedGrades?: AdminProductUpdateAllowedGradesItem[] | null;
 }

@@ -5,6 +5,7 @@
  * 七期生醫採購平台 API
  * OpenAPI spec version: 0.1.0
  */
+import type { InstitutionGrade } from './institutionGrade';
 import type { InstitutionType } from './institutionType';
 
 export interface Institution {
@@ -19,4 +20,9 @@ export interface Institution {
   /** @nullable */
   hours?: string | null;
   departments?: string[];
+  /**
+     * 機構分級
+     * @nullable
+     */
+  grade?: InstitutionGrade;
 }

@@ -23,12 +23,16 @@ import {
   walletTransactionsTable,
   institutionsTable,
   institutionWalletTransactionsTable,
+  pointTransactionsTable,
   type Order,
   type OrderItem,
 } from "@workspace/db";
 import { CreateOrderBody, GetOrderParams } from "@workspace/api-zod";
 import { reindex } from "../lib/aiIndex";
 import { requireMember } from "../middlewares/requireMember";
+import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
+
+class InsufficientPointsError extends Error {}
 
 const router: IRouter = Router();
 
@@ -45,6 +49,8 @@ function serializeOrder(o: Order, items: OrderItem[]) {
     receiverName: o.receiverName,
     receiverPhone: o.receiverPhone,
     note: o.note,
+    pointsUsed: o.pointsUsed ?? 0,
+    pointsEarned: o.pointsEarned ?? 0,
     shipmentPhotos: o.shipmentPhotos ?? [],
     createdAt: o.createdAt.toISOString(),
     items: items.map((i) => ({
@@ -137,6 +143,7 @@ router.post("/orders", async (req, res) => {
     productsRequiringVariant.map((r) => r.productId),
   );
 
+  const memberGrade = await resolveMemberGrade(req.member);
   for (const line of input.items) {
     const p = byId.get(line.productId);
     if (!p) {
@@ -145,6 +152,10 @@ router.post("/orders", async (req, res) => {
     }
     if (!p.isActive) {
       res.status(400).json({ error: `「${p.name}」已下架，請自購物車移除後再結帳` });
+      return;
+    }
+    if (!gradeAllowed(p.allowedGrades, memberGrade)) {
+      res.status(400).json({ error: `「${p.name}」未開放您的機構分級購買，請自購物車移除後再結帳` });
       return;
     }
     if (line.variantId == null && requiresVariant.has(line.productId)) {
@@ -179,10 +190,26 @@ router.post("/orders", async (req, res) => {
       unitCost: v ? v.costPrice : p.costPrice,
     };
   });
-  const totalAmount = lines.reduce(
+  const grossAmount = lines.reduce(
     (sum, l) => sum + l.unitPrice * l.quantity,
     0,
   );
+
+  // 點數折抵：1 點 = NT$1，不可超過持有點數與訂單金額
+  const pointsToUse = Math.floor(input.pointsToUse ?? 0);
+  if (pointsToUse < 0) {
+    res.status(400).json({ error: "點數折抵格式不正確" });
+    return;
+  }
+  if (pointsToUse > 0 && pointsToUse > req.member!.points) {
+    res.status(400).json({ error: "點數不足" });
+    return;
+  }
+  if (pointsToUse > grossAmount) {
+    res.status(400).json({ error: "折抵點數不可超過訂單金額" });
+    return;
+  }
+  const totalAmount = grossAmount - pointsToUse;
 
   const orderNo = `QB${Date.now()}${String(req.member!.id).padStart(3, "0")}`;
 
@@ -228,6 +255,28 @@ router.post("/orders", async (req, res) => {
           }
           stockAfterByKey.set(`${line.productId}:`, decremented[0].stock);
         }
+      }
+
+      // 點數折抵：原子扣點（餘額不足則失敗），並寫入點數異動紀錄
+      if (pointsToUse > 0) {
+        const [deducted] = await tx
+          .update(membersTable)
+          .set({ points: sql`${membersTable.points} - ${pointsToUse}` })
+          .where(
+            and(
+              eq(membersTable.id, req.member!.id),
+              gte(membersTable.points, pointsToUse),
+            ),
+          )
+          .returning({ points: membersTable.points });
+        if (!deducted) throw new InsufficientPointsError();
+        await tx.insert(pointTransactionsTable).values({
+          memberId: req.member!.id,
+          type: "redeem",
+          delta: -pointsToUse,
+          balanceAfter: deducted.points,
+          note: `訂單折抵 ${orderNo}`,
+        });
       }
 
       // 錢包付款：已審核綁定院所的機構會員扣「機構共用錢包」，其他扣個人錢包
@@ -296,6 +345,7 @@ router.post("/orders", async (req, res) => {
           paymentMethod: input.paymentMethod,
           walletSource,
           totalAmount,
+          pointsUsed: pointsToUse,
           shippingAddress: input.shippingAddress,
           receiverName: input.receiverName,
           receiverPhone: input.receiverPhone,
@@ -307,6 +357,18 @@ router.post("/orders", async (req, res) => {
         .insert(orderItemsTable)
         .values(lines.map((l) => ({ ...l, orderId: order.id })))
         .returning();
+
+      if (pointsToUse > 0) {
+        await tx
+          .update(pointTransactionsTable)
+          .set({ orderId: order.id })
+          .where(
+            and(
+              eq(pointTransactionsTable.memberId, req.member!.id),
+              eq(pointTransactionsTable.note, `訂單折抵 ${orderNo}`),
+            ),
+          );
+      }
 
       // Record sale stock movements
       await tx.insert(stockMovementsTable).values(
@@ -346,6 +408,10 @@ router.post("/orders", async (req, res) => {
     }
     if (err instanceof InsufficientWalletError) {
       res.status(400).json({ error: "錢包餘額不足" });
+      return;
+    }
+    if (err instanceof InsufficientPointsError) {
+      res.status(400).json({ error: "點數不足" });
       return;
     }
     throw err;

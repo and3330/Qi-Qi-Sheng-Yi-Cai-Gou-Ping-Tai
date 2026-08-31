@@ -12,6 +12,8 @@ export const institutionsTable = pgTable("institutions", {
   phone: text("phone"),
   hours: text("hours"),
   departments: jsonb("departments").$type<string[]>().notNull().default([]),
+  // 機構分級 A/B/C；null = 未分級
+  grade: text("grade"),
   // 機構共用錢包餘額 (NT$)，全機構成員共用
   walletBalance: integer("wallet_balance").notNull().default(0),
 });

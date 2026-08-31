@@ -26,6 +26,10 @@ export const ordersTable = pgTable("orders", {
   // 出貨照片存證（物件路徑陣列，如 ["/objects/uploads/xxx"]）
   shipmentPhotos: jsonb("shipment_photos").$type<string[]>().notNull().default([]),
   totalAmount: integer("total_amount").notNull(),
+  // 點數折抵：本單使用點數（1 點 = NT$1，折抵後為 totalAmount）與折抵前金額
+  pointsUsed: integer("points_used").notNull().default(0),
+  // 完成訂單時累積的點數（每滿 NT$100 得 1 點）
+  pointsEarned: integer("points_earned").notNull().default(0),
   shippingAddress: text("shipping_address"),
   receiverName: text("receiver_name"),
   receiverPhone: text("receiver_phone"),

@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./AdminLayout";
+import { PoLineItem } from "@/components/PoLineItem";
 
 const poStatusLabel: Record<string, string> = {
   draft: "草稿",
@@ -67,7 +68,7 @@ type SupplierForm = {
   isActive: boolean;
 };
 
-type PoLine = { productId: string; unitCost: string; quantity: string };
+type PoLine = { productId: string; variantId: string; unitCost: string; quantity: string };
 
 export default function AdminPurchasingPage() {
   const { toast } = useToast();
@@ -163,7 +164,7 @@ export default function AdminPurchasingPage() {
   const [poSupplier, setPoSupplier] = useState("");
   const [poNote, setPoNote] = useState("");
   const [poLines, setPoLines] = useState<PoLine[]>([
-    { productId: "", unitCost: "", quantity: "" },
+    { productId: "", variantId: "", unitCost: "", quantity: "" },
   ]);
   const [poDetail, setPoDetail] = useState<AdminPurchaseOrder | null>(null);
 
@@ -190,7 +191,7 @@ export default function AdminPurchasingPage() {
         setPoCreateOpen(false);
         setPoSupplier("");
         setPoNote("");
-        setPoLines([{ productId: "", unitCost: "", quantity: "" }]);
+        setPoLines([{ productId: "", variantId: "", unitCost: "", quantity: "" }]);
       },
       onError: (err: any) =>
         toast({
@@ -248,6 +249,7 @@ export default function AdminPurchasingPage() {
       .filter((l) => l.productId)
       .map((l) => ({
         productId: Number(l.productId),
+        variantId: l.variantId ? Number(l.variantId) : undefined,
         unitCost: Number(l.unitCost),
         quantity: Number(l.quantity),
       }));
@@ -656,76 +658,21 @@ export default function AdminPurchasingPage() {
             <div className="space-y-2">
               <Label>採購明細 *</Label>
               {poLines.map((line, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <Select
-                    value={line.productId}
-                    onValueChange={(v) => {
-                      const next = [...poLines];
-                      const product = (products ?? []).find(
-                        (p) => String(p.id) === v,
-                      );
-                      next[idx] = {
-                        ...next[idx],
-                        productId: v,
-                        unitCost:
-                          next[idx].unitCost ||
-                          (product ? String(product.costPrice) : ""),
-                      };
-                      setPoLines(next);
-                    }}
-                  >
-                    <SelectTrigger
-                      className="flex-1"
-                      data-testid={`select-po-product-${idx}`}
-                    >
-                      <SelectValue placeholder="選擇商品" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(products ?? []).map((p) => (
-                        <SelectItem key={p.id} value={String(p.id)}>
-                          {p.code} {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="進價"
-                    className="w-24"
-                    value={line.unitCost}
-                    onChange={(e) => {
-                      const next = [...poLines];
-                      next[idx] = { ...next[idx], unitCost: e.target.value };
-                      setPoLines(next);
-                    }}
-                    data-testid={`input-po-cost-${idx}`}
-                  />
-                  <Input
-                    type="number"
-                    min={1}
-                    placeholder="數量"
-                    className="w-20"
-                    value={line.quantity}
-                    onChange={(e) => {
-                      const next = [...poLines];
-                      next[idx] = { ...next[idx], quantity: e.target.value };
-                      setPoLines(next);
-                    }}
-                    data-testid={`input-po-qty-${idx}`}
-                  />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    disabled={poLines.length === 1}
-                    onClick={() =>
-                      setPoLines(poLines.filter((_, i) => i !== idx))
-                    }
-                    data-testid={`button-remove-po-line-${idx}`}
-                  >
-                    <Trash2 size={15} className="text-muted-foreground" />
-                  </Button>
-                </div>
+                <PoLineItem
+                  key={idx}
+                  idx={idx}
+                  line={line}
+                  products={products ?? []}
+                  canRemove={poLines.length > 1}
+                  onChange={(index, nextLine) => {
+                    const next = [...poLines];
+                    next[index] = nextLine;
+                    setPoLines(next);
+                  }}
+                  onRemove={(index) => {
+                    setPoLines(poLines.filter((_, i) => i !== index));
+                  }}
+                />
               ))}
               <Button
                 size="sm"
@@ -733,7 +680,7 @@ export default function AdminPurchasingPage() {
                 onClick={() =>
                   setPoLines([
                     ...poLines,
-                    { productId: "", unitCost: "", quantity: "" },
+                    { productId: "", variantId: "", unitCost: "", quantity: "" },
                   ])
                 }
                 data-testid="button-add-po-line"

@@ -5,6 +5,7 @@ import {
   integer,
   boolean,
   timestamp,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -25,6 +26,8 @@ export const productsTable = pgTable("products", {
   isHot: boolean("is_hot").notNull().default(false),
   isNew: boolean("is_new").notNull().default(false),
   spec: text("spec"),
+  // 授權可銷售機構分級（["A","B"] 等）；null 或空陣列 = 不限（所有人可購）
+  allowedGrades: jsonb("allowed_grades").$type<string[] | null>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

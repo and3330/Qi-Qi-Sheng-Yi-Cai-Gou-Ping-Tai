@@ -39,6 +39,7 @@ export function serializeAdminProduct(p: Product) {
     isNew: p.isNew,
     isActive: p.isActive,
     spec: p.spec,
+    allowedGrades: p.allowedGrades ?? null,
     createdAt: p.createdAt.toISOString(),
   };
 }
@@ -126,6 +127,7 @@ router.post("/admin/products", requireOps, async (req, res) => {
         isNew: data.isNew ?? true,
         isActive: data.isActive ?? true,
         spec: data.spec ?? null,
+        allowedGrades: data.allowedGrades ?? null,
       })
       .returning();
     if (initialStock > 0) {
