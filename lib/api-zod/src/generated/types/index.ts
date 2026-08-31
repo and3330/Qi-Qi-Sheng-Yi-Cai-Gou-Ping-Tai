@@ -55,6 +55,7 @@ export * from './aiIndexRebuildResultCounts';
 export * from './announcement';
 export * from './article';
 export * from './articleKind';
+export * from './assistantActionConfirmation';
 export * from './assistantConversation';
 export * from './cartItem';
 export * from './cartItemInput';

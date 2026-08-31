@@ -1748,7 +1748,6 @@ export interface ChatMessage {
   metadata?: ChatMessageMetadata;
   createdAt: string;
 }
-
 export type AiIndexRebuildResultCounts = {[key: string]: number};
 
 export interface AiIndexRebuildResult {
@@ -2170,3 +2169,11 @@ export type ListAdminQuotationsParams = {
 status?: string;
 };
 
+
+export interface AssistantActionConfirmation {
+  ok: boolean;
+  confirmationId: number;
+  action: string;
+  result: unknown;
+  message: ChatMessage;
+}

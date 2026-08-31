@@ -143,8 +143,6 @@ export const UpdateAdminMemberParams = zod.object({
 })
 
 
-
-
 export const UpdateAdminMemberBody = zod.object({
   "name": zod.string().min(1).optional(),
   "email": zod.string().nullish(),
@@ -210,7 +208,6 @@ export const ListAdminProductsResponse = zod.array(ListAdminProductsResponseItem
  */
 
 
-
 export const createAdminProductBodyPriceHospitalMin = 0;
 
 export const createAdminProductBodyPriceClinicMin = 0;
@@ -220,7 +217,6 @@ export const createAdminProductBodyPriceConsumerMin = 0;
 export const createAdminProductBodyCostPriceMin = 0;
 
 export const createAdminProductBodyStockMin = 0;
-
 
 
 export const CreateAdminProductBody = zod.object({
@@ -270,8 +266,6 @@ export const UpdateAdminProductParams = zod.object({
 })
 
 
-
-
 export const updateAdminProductBodyPriceHospitalMin = 0;
 
 export const updateAdminProductBodyPriceClinicMin = 0;
@@ -279,7 +273,6 @@ export const updateAdminProductBodyPriceClinicMin = 0;
 export const updateAdminProductBodyPriceConsumerMin = 0;
 
 export const updateAdminProductBodyCostPriceMin = 0;
-
 
 
 export const UpdateAdminProductBody = zod.object({
@@ -323,7 +316,6 @@ export const UpdateAdminProductResponse = zod.object({
 /**
  * @summary 手動調整庫存（盤點 / 報廢等，限管理員）
  */
-
 
 
 export const AdjustAdminStockBody = zod.object({
@@ -400,7 +392,6 @@ export const ListAdminSuppliersResponse = zod.array(ListAdminSuppliersResponseIt
  */
 
 
-
 export const CreateAdminSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -431,8 +422,6 @@ export const CreateAdminSupplierResponse = zod.object({
 export const UpdateAdminSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateAdminSupplierBody = zod.object({
@@ -496,9 +485,6 @@ export const ListAdminPurchaseOrdersResponse = zod.array(ListAdminPurchaseOrders
  * @summary 建立採購單（限管理員）
  */
 export const createAdminPurchaseOrderBodyItemsItemUnitCostMin = 0;
-
-
-
 
 
 export const CreateAdminPurchaseOrderBody = zod.object({
@@ -794,8 +780,6 @@ export const registerBodyPasswordMin = 8;
 export const registerBodyPasswordMax = 72;
 
 
-
-
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax).regex(registerBodyUsernameRegExp),
   "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
@@ -824,8 +808,6 @@ export const RegisterResponse = zod.object({
 /**
  * @summary Log in with username and password (starts session)
  */
-
-
 
 
 export const LoginBody = zod.object({
@@ -877,7 +859,6 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Update current member profile
  */
-
 
 
 export const UpdateMeBody = zod.object({
@@ -1027,7 +1008,6 @@ export const GetCartResponse = zod.array(GetCartResponseItem)
  */
 
 
-
 export const AddCartItemBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -1089,8 +1069,6 @@ export const ClearCartResponse = zod.void()
 export const UpdateCartItemParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateCartItemBody = zod.object({
@@ -1186,11 +1164,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  */
 
 
-
 export const createOrderBodyPointsToUseMin = 0;
-
-
-
 
 
 export const CreateOrderBody = zod.object({
@@ -1528,7 +1502,6 @@ export const AdjustAdminMemberWalletParams = zod.object({
 export const adjustAdminMemberWalletBodyReasonMax = 200;
 
 
-
 export const AdjustAdminMemberWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -1686,7 +1659,6 @@ export const AdjustInstitutionWalletParams = zod.object({
 export const adjustInstitutionWalletBodyReasonMax = 200;
 
 
-
 export const AdjustInstitutionWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -1748,7 +1720,6 @@ export const createAdminArticleBodySummaryMax = 500;
 export const createAdminArticleBodyImageUrlMax = 500;
 
 
-
 export const CreateAdminArticleBody = zod.object({
   "kind": zod.enum(['article', 'faq']),
   "title": zod.string().min(1).max(createAdminArticleBodyTitleMax),
@@ -1787,7 +1758,6 @@ export const updateAdminArticleBodyCategoryMax = 50;
 export const updateAdminArticleBodySummaryMax = 500;
 
 export const updateAdminArticleBodyImageUrlMax = 500;
-
 
 
 export const UpdateAdminArticleBody = zod.object({
@@ -1854,7 +1824,6 @@ export const createAdminAnnouncementBodyCategoryMax = 50;
 export const createAdminAnnouncementBodyImageUrlMax = 500;
 
 
-
 export const CreateAdminAnnouncementBody = zod.object({
   "title": zod.string().min(1).max(createAdminAnnouncementBodyTitleMax),
   "category": zod.string().min(1).max(createAdminAnnouncementBodyCategoryMax),
@@ -1887,7 +1856,6 @@ export const updateAdminAnnouncementBodyTitleMax = 200;
 export const updateAdminAnnouncementBodyCategoryMax = 50;
 
 export const updateAdminAnnouncementBodyImageUrlMax = 500;
-
 
 
 export const UpdateAdminAnnouncementBody = zod.object({
@@ -1949,18 +1917,11 @@ export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevis
  */
 
 
-
-
-
 export const RequestUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.int().min(1),
   "contentType": zod.string().min(1)
 })
-
-
-
-
 
 
 export const RequestUploadUrlResponse = zod.object({
@@ -2004,7 +1965,6 @@ export const UpdateShipmentPhotosParams = zod.object({
 export const updateShipmentPhotosBodyPhotosItemMax = 500;
 
 export const updateShipmentPhotosBodyPhotosMax = 10;
-
 
 
 export const UpdateShipmentPhotosBody = zod.object({
@@ -2058,7 +2018,6 @@ export const createAdminProductVariantBodyCostPriceMin = 0;
 export const createAdminProductVariantBodyStockMin = 0;
 
 
-
 export const CreateAdminProductVariantBody = zod.object({
   "name": zod.string().min(1).max(createAdminProductVariantBodyNameMax),
   "priceHospital": zod.int().min(createAdminProductVariantBodyPriceHospitalMin),
@@ -2099,7 +2058,6 @@ export const updateAdminProductVariantBodyPriceClinicMin = 0;
 export const updateAdminProductVariantBodyPriceConsumerMin = 0;
 
 export const updateAdminProductVariantBodyCostPriceMin = 0;
-
 
 
 export const UpdateAdminProductVariantBody = zod.object({
@@ -2158,7 +2116,6 @@ export const createAdminProfitRuleBodyPercentBpsMin = 0;
 export const createAdminProfitRuleBodyPercentBpsMax = 10000;
 
 
-
 export const CreateAdminProfitRuleBody = zod.object({
   "name": zod.string().min(1).max(createAdminProfitRuleBodyNameMax),
   "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
@@ -2187,7 +2144,6 @@ export const updateAdminProfitRuleBodyNameMax = 100;
 
 export const updateAdminProfitRuleBodyPercentBpsMin = 0;
 export const updateAdminProfitRuleBodyPercentBpsMax = 10000;
-
 
 
 export const UpdateAdminProfitRuleBody = zod.object({
@@ -2282,7 +2238,6 @@ export const createAdminExpenseBodyTitleMax = 200;
 
 
 export const createAdminExpenseBodyNoteMax = 500;
-
 
 
 export const CreateAdminExpenseBody = zod.object({
@@ -2421,7 +2376,6 @@ export const SendAssistantMessageParams = zod.object({
 export const sendAssistantMessageBodyContentMax = 4000;
 
 
-
 export const SendAssistantMessageBody = zod.object({
   "content": zod.string().min(1).max(sendAssistantMessageBodyContentMax)
 })
@@ -2434,7 +2388,13 @@ export const SendAssistantMessageResponse = zod.object({
   "createdAt": zod.string()
 })
 
-
+/**
+ * @summary 管理者明確確認待執行的 AI 操作
+ */
+export const ConfirmAssistantActionParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "actionId": zod.coerce.number().int()
+})
 /**
  * @summary 全量重建 AI 知識庫索引（僅系統管理員）
  */
@@ -2503,7 +2463,6 @@ export const SendSupportMessageParams = zod.object({
 export const sendSupportMessageBodyContentMax = 4000;
 
 
-
 export const SendSupportMessageBody = zod.object({
   "content": zod.string().min(1).max(sendSupportMessageBodyContentMax)
 })
@@ -2569,7 +2528,6 @@ export const ReplySupportConversationParams = zod.object({
 })
 
 export const replySupportConversationBodyContentMax = 4000;
-
 
 
 export const ReplySupportConversationBody = zod.object({
@@ -2694,9 +2652,6 @@ export const ListAdminQuotationsResponse = zod.array(ListAdminQuotationsResponse
  */
 
 export const createAdminQuotationBodyItemsItemUnitPriceMin = 0;
-
-
-
 
 
 export const CreateAdminQuotationBody = zod.object({
@@ -2850,3 +2805,16 @@ export const ConvertAdminQuotationResponse = zod.object({
 })
 
 
+export const ConfirmAssistantActionResponse = zod.object({
+  "ok": zod.boolean(),
+  "confirmationId": zod.int(),
+  "action": zod.string(),
+  "result": zod.unknown(),
+  "message": zod.object({
+  "id": zod.int(),
+  "role": zod.string(),
+  "content": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "createdAt": zod.string()
+})
+})

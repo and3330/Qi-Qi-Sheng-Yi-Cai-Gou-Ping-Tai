@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, inArray, lte, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, lte, lt, sql } from "drizzle-orm";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import {
   db,
@@ -20,7 +20,7 @@ import { reindex, searchDocuments } from "./aiIndex";
 /**
  * AI 行政助理工具集
  * 讀取類：直接查詢內建 ERP 資料（進銷存、財務、訂單、佣金）
- * 操作類：執行後寫入 ai_action_logs 稽核；模型須先取得管理者確認
+ * 操作類：執行後寫入 ai_action_logs 稽核；必須先經管理者於專用確認端點明確確認
  */
 
 function tierPrice(
@@ -769,7 +769,7 @@ export interface ToolContext {
   memberId: number;
   memberRole: string;
   conversationId: number;
-  /** 本次 HTTP 請求代碼；pending 操作必須在「下一個請求」才可執行，強制經過使用者確認 */
+  /** 本次 HTTP 請求代碼；僅用於稽核，不作為授權依據 */
   requestNonce: string;
 }
 
@@ -797,78 +797,121 @@ export async function executeTool(
     }
   }
 
-  // ---- 操作類工具：伺服器端兩段式確認 ----
+  // ---- 操作類工具：伺服器端明確確認 ----
   if (ADMIN_ONLY_ACTIONS.has(name) && ctx.memberRole !== "admin") {
     return { result: { error: "此操作僅限系統管理員執行" }, isError: true };
   }
 
   const { confirmationId, ...payloadArgs } = args ?? {};
 
-  if (!confirmationId) {
-    // 第一階段：建立待確認紀錄，不執行
-    const [row] = await db
-      .insert(aiActionLogsTable)
-      .values({
-        memberId: ctx.memberId,
-        action: name,
-        payload: payloadArgs,
-        status: "pending",
-        conversationId: ctx.conversationId,
-        requestNonce: ctx.requestNonce,
-      })
-      .returning({ id: aiActionLogsTable.id });
+  if (confirmationId) {
     return {
       result: {
-        requiresConfirmation: true,
-        confirmationId: row.id,
-        notice:
-          "此操作尚未執行。請向管理者完整複述操作內容並請其確認；待管理者在下一則訊息明確同意後，再以相同參數加上 confirmationId 重新呼叫本工具。",
+        error:
+          "模型不可授權或執行待確認操作；只有管理者按下介面上的確認按鈕，才能由伺服器直接執行。",
       },
-      isError: false,
+      isError: true,
     };
   }
 
-  // 第二階段：原子性認領 pending 紀錄（單次使用、需來自不同請求、10 分鐘內、同對話同人同工具）
+  // 第一階段：只建立待確認紀錄，不執行。
+  const [row] = await db
+    .insert(aiActionLogsTable)
+    .values({
+      memberId: ctx.memberId,
+      action: name,
+      payload: payloadArgs,
+      status: "pending",
+      conversationId: ctx.conversationId,
+      requestNonce: ctx.requestNonce,
+    })
+    .returning({ id: aiActionLogsTable.id });
+  return {
+    result: {
+      requiresConfirmation: true,
+      confirmationId: row.id,
+      notice:
+        "此操作尚未執行。請向管理者完整複述操作內容，並請其使用介面上的「確認執行」按鈕。一般對話文字不構成授權。",
+    },
+    isError: false,
+  };
+}
+
+export async function confirmAndExecuteAction(
+  actionId: number,
+  ctx: Omit<ToolContext, "requestNonce">,
+): Promise<
+  | { ok: true; action: string; result: unknown }
+  | { ok: false; error: string; status: number }
+> {
   const cutoff = new Date(Date.now() - CONFIRM_TTL_MS);
-  const claimed = await db
+  const [claimed] = await db
     .update(aiActionLogsTable)
     .set({ status: "executing" })
     .where(
       and(
-        eq(aiActionLogsTable.id, Number(confirmationId)),
+        eq(aiActionLogsTable.id, actionId),
         eq(aiActionLogsTable.status, "pending"),
         eq(aiActionLogsTable.memberId, ctx.memberId),
-        eq(aiActionLogsTable.action, name),
         eq(aiActionLogsTable.conversationId, ctx.conversationId),
-        ne(aiActionLogsTable.requestNonce, ctx.requestNonce),
         gt(aiActionLogsTable.createdAt, cutoff),
       ),
     )
-    .returning({ id: aiActionLogsTable.id, payload: aiActionLogsTable.payload });
-  if (!claimed.length) {
+    .returning({
+      id: aiActionLogsTable.id,
+      action: aiActionLogsTable.action,
+      payload: aiActionLogsTable.payload,
+    });
+  if (!claimed) {
     return {
-      result: { error: "確認碼無效、已使用或已逾時（10 分鐘）。請重新提出操作並再次向管理者確認。" },
-      isError: true,
+      ok: false,
+      error: "待確認操作不存在、已執行或已逾時",
+      status: 409,
     };
   }
-  const logId = claimed[0].id;
+
+  if (
+    ADMIN_ONLY_ACTIONS.has(claimed.action) &&
+    ctx.memberRole !== "admin"
+  ) {
+    await db
+      .update(aiActionLogsTable)
+      .set({ status: "rejected", result: "此操作僅限系統管理員執行" })
+      .where(eq(aiActionLogsTable.id, claimed.id));
+    return {
+      ok: false,
+      error: "此操作僅限系統管理員執行",
+      status: 403,
+    };
+  }
+
+  const fn = executors[claimed.action];
+  if (!fn || !ACTION_TOOLS.has(claimed.action)) {
+    await db
+      .update(aiActionLogsTable)
+      .set({ status: "error", result: "未知或非操作類工具" })
+      .where(eq(aiActionLogsTable.id, claimed.id));
+    return { ok: false, error: "未知或非操作類工具", status: 400 };
+  }
+
   try {
     // 一律以 pending 時保存的參數執行，避免確認後被抽換內容
-    const result = await fn(claimed[0].payload ?? {});
+    const result = await fn(claimed.payload ?? {});
     await db
       .update(aiActionLogsTable)
       .set({ status: "ok", result: JSON.stringify(result).slice(0, 2000) })
-      .where(eq(aiActionLogsTable.id, logId))
+      .where(eq(aiActionLogsTable.id, claimed.id))
       .catch(() => {});
-    return { result, isError: false };
+    return { ok: true, action: claimed.action, result };
   } catch (err) {
     const message = err instanceof ToolError ? err.message : "執行失敗";
-    if (!(err instanceof ToolError)) console.error(`[assistant] tool ${name} failed:`, err);
+    if (!(err instanceof ToolError))
+      console.error(`[assistant] confirmed tool ${claimed.action} failed:`, err);
     await db
       .update(aiActionLogsTable)
       .set({ status: "error", result: message })
-      .where(eq(aiActionLogsTable.id, logId))
+      .where(eq(aiActionLogsTable.id, claimed.id))
       .catch(() => {});
-    return { result: { error: message }, isError: true };
+    return { ok: false, error: message, status: 400 };
   }
 }

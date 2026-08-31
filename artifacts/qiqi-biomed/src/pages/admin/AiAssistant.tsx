@@ -4,6 +4,7 @@ import {
   useGetAssistantMessages, 
   useCreateAssistantConversation, 
   useSendAssistantMessage, 
+  useConfirmAssistantAction,
   useRebuildAiIndex,
   getGetAssistantMessagesQueryKey,
   type AssistantConversation,
@@ -13,7 +14,7 @@ import { AdminLayout } from "./AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Bot, Database, Loader2, Sparkles, MessageSquare } from "lucide-react";
+import { Send, Bot, Database, Loader2, Sparkles, MessageSquare, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 // A simple markdown renderer for bold, lists, and tables (no large libraries)
@@ -147,9 +148,13 @@ export default function AdminAiAssistantPage() {
 
   const createConv = useCreateAssistantConversation();
   const sendMsg = useSendAssistantMessage();
+  const confirmAction = useConfirmAssistantAction();
   const rebuildIndex = useRebuildAiIndex();
 
   const [input, setInput] = useState("");
+  const [confirmedActionIds, setConfirmedActionIds] = useState<Set<number>>(
+    () => new Set(),
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -189,6 +194,21 @@ export default function AdminAiAssistantPage() {
       });
     } catch (e: any) {
       toast({ title: "重建失敗", description: e?.data?.error || "請稍後再試", variant: "destructive" });
+    }
+  };
+
+  const handleConfirmAction = async (actionId: number) => {
+    if (!activeConvId || confirmedActionIds.has(actionId)) return;
+    try {
+      await confirmAction.mutateAsync({ id: activeConvId, actionId });
+      setConfirmedActionIds((previous) => new Set(previous).add(actionId));
+      await refetchMessages();
+    } catch (e: any) {
+      toast({
+        title: "確認失敗",
+        description: e?.data?.error || "操作可能已確認、已執行或逾時，請重新提出。",
+        variant: "destructive",
+      });
     }
   };
 
@@ -249,7 +269,26 @@ export default function AdminAiAssistantPage() {
               <>
                 {messages?.map((msg: ChatMessage) => {
                   const isUser = msg.role === 'user';
-                  const hasAction = !!(msg.metadata?.tools && Array.isArray(msg.metadata.tools) && msg.metadata.tools.some(t => t.isAction));
+                  const tools = Array.isArray(msg.metadata?.tools)
+                    ? (msg.metadata.tools as Array<{
+                        tool?: string;
+                        isAction?: boolean;
+                        isError?: boolean;
+                        status?: "pending" | "executed";
+                        confirmationId?: number;
+                      }>)
+                    : [];
+                  const pendingActions = tools.filter(
+                    (tool) =>
+                      tool.isAction &&
+                      !tool.isError &&
+                      tool.status === "pending" &&
+                      typeof tool.confirmationId === "number",
+                  );
+                  const hasExecutedAction = tools.some(
+                    (tool) =>
+                      tool.isAction && !tool.isError && tool.status === "executed",
+                  );
                   
                   return (
                     <div key={msg.id} className={`flex gap-4 max-w-3xl ${isUser ? 'ml-auto flex-row-reverse' : ''}`}>
@@ -264,7 +303,36 @@ export default function AdminAiAssistantPage() {
                             <SimpleMarkdown content={msg.content} />
                           )}
                         </div>
-                        {hasAction ? (
+                        {pendingActions.map((action) => {
+                          const actionId = action.confirmationId!;
+                          const confirmed = confirmedActionIds.has(actionId);
+                          return (
+                            <Button
+                              key={actionId}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 gap-1.5 border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                              onClick={() => handleConfirmAction(actionId)}
+                              disabled={
+                                confirmed ||
+                                confirmAction.isPending ||
+                                sendMsg.isPending
+                              }
+                              data-testid={`button-confirm-assistant-action-${actionId}`}
+                            >
+                              {confirmAction.isPending ? (
+                                <Loader2 size={13} className="animate-spin" />
+                              ) : (
+                                <ShieldCheck size={13} />
+                              )}
+                              {confirmed
+                                ? "已確認並執行"
+                                : `確認執行 ${action.tool ?? "此操作"}`}
+                            </Button>
+                          );
+                        })}
+                        {hasExecutedAction ? (
                           <div className="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                             <Sparkles size={10} /> 已執行操作
                           </div>

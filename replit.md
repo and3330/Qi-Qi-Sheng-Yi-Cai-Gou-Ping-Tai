@@ -31,6 +31,7 @@ Mobile-first B2B2C 醫藥採購 WebApp：三種會員身份（A 醫院 / B 診�
 - 三層價格存於 product 欄位（priceHospital/priceClinic/priceConsumer）；下單時價格一律由伺服器依 `member.tier` 計算，不信任 client。
 - `PATCH /me` 不允許自行修改 tier（防止自我升級取得低價）；tier 由平台審核調整。
 - 下單使用 DB transaction 原子扣庫存，庫存不足回 400。
+- 外部 OpenAI embedding 僅處理已發佈的衛教文章／FAQ；會員、訂單、地址與財務等內部資料固定使用本地關鍵字檢索，不得送往外部向量服務。
 - 付款僅開放 bank_transfer / cod；`wallet` enum 值預留給未來機構錢包模組。
 - ERP、分潤、ICOPE、AI 客服等模組刻意未建，資料結構保留擴充點（member.points、institutions 綁定）。
 - codegen script 內含 sed 將 zod import 改為 `zod/v4`（orval 產出 v4 語法）。

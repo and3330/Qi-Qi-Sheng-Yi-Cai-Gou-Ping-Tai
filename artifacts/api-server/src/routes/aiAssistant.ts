@@ -4,7 +4,12 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import { db, conversations, messages, aiActionLogsTable } from "@workspace/db";
 import { requireOps, requireAdmin } from "../middlewares/requireMember";
-import { toolDefinitions, executeTool, ACTION_TOOLS } from "../lib/assistantTools";
+import {
+  toolDefinitions,
+  executeTool,
+  confirmAndExecuteAction,
+  ACTION_TOOLS,
+} from "../lib/assistantTools";
 import { backfillAll, embeddingEnabled } from "../lib/aiIndex";
 
 const router: IRouter = Router();
@@ -15,6 +20,7 @@ const router: IRouter = Router();
  * - GET  /admin/assistant/conversations           對話列表
  * - GET  /admin/assistant/conversations/:id/messages 歷史訊息
  * - POST /admin/assistant/conversations/:id/messages 送出訊息（工具呼叫迴圈，非串流）
+ * - POST /admin/assistant/conversations/:id/actions/:actionId/confirm 管理者明確確認操作
  * - POST /admin/ai-index/rebuild                  全量重建知識庫索引（僅系統管理員）
  */
 
@@ -24,8 +30,8 @@ const SYSTEM_PROMPT = `你是「七期生醫」後台的 AI 行政助理，是�
 
 規則：
 1. 查詢類問題直接使用工具取得即時數據回答，數字要精確，不可臆測。
-2. 操作類工具採「兩段式確認」：第一次呼叫（不帶 confirmationId）不會執行，只會回傳 confirmationId 與待確認內容。收到後，向管理者完整複述操作內容（對象、品項、數量、金額）並請其確認。
-3. 只有在管理者於「下一則訊息」明確同意（例如「確認」「可以」「執行吧」）後，才以相同參數加上該 confirmationId 再次呼叫工具完成執行。confirmationId 為單次有效、10 分鐘內有效。若管理者拒絕或修改內容，放棄舊確認碼並重新提出。
+2. 操作類工具採「兩段式確認」：第一次呼叫（不帶 confirmationId）不會執行，只會建立待確認操作。收到後，向管理者完整複述操作內容（對象、品項、數量、金額），並請其使用介面上的「確認執行」按鈕。
+3. 一般對話中的「確認」「可以」「執行吧」都不構成授權，也不可用 confirmationId 呼叫工具。管理者按下確認按鈕後，伺服器會直接執行已保存的參數，不需要也不允許你再次執行。確認碼為單次有效、10 分鐘內有效。
 4. 金額單位為新台幣元。日期使用 YYYY-MM-DD。
 5. 回覆精簡、條列清楚；統計結果用表格或列點呈現。
 6. 你只能透過提供的工具存取資料，不要編造工具沒有回傳的內容。
@@ -91,6 +97,64 @@ router.get("/admin/assistant/conversations/:id/messages", requireOps, async (req
   );
 });
 
+router.post(
+  "/admin/assistant/conversations/:id/actions/:actionId/confirm",
+  requireOps,
+  async (req, res) => {
+    const conversationId = Number(req.params.id);
+    const actionId = Number(req.params.actionId);
+    if (!Number.isInteger(conversationId) || !Number.isInteger(actionId)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const conv = await loadConversation(conversationId, req.member!.id, "admin");
+    if (!conv) {
+      res.status(404).json({ error: "找不到此對話" });
+      return;
+    }
+    const execution = await confirmAndExecuteAction(actionId, {
+      memberId: req.member!.id,
+      memberRole: req.member!.role,
+      conversationId,
+    });
+    if (!execution.ok) {
+      res.status(execution.status).json({ error: execution.error });
+      return;
+    }
+    const [saved] = await db
+      .insert(messages)
+      .values({
+        conversationId,
+        role: "assistant",
+        content: "操作已由管理者確認並執行完成。",
+        metadata: {
+          tools: [
+            {
+              tool: execution.action,
+              isAction: true,
+              isError: false,
+              status: "executed",
+            },
+          ],
+        },
+      })
+      .returning();
+    res.json({
+      ok: true,
+      confirmationId: actionId,
+      action: execution.action,
+      result: execution.result,
+      message: {
+        id: saved.id,
+        role: saved.role,
+        content: saved.content,
+        metadata: saved.metadata,
+        createdAt: saved.createdAt.toISOString(),
+      },
+    });
+  },
+);
+
 router.post("/admin/assistant/conversations/:id/messages", requireOps, async (req, res) => {
   const id = Number(req.params.id);
   const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
@@ -147,7 +211,7 @@ router.post("/admin/assistant/conversations/:id/messages", requireOps, async (re
     .orderBy(desc(aiActionLogsTable.id))
     .limit(1);
   const pendingNote = pendingAction
-    ? `目前有待確認操作：工具 ${pendingAction.action}，confirmationId=${pendingAction.id}，參數 ${JSON.stringify(pendingAction.payload)}。若管理者這一則訊息是明確同意，請以相同參數加上 confirmationId=${pendingAction.id} 呼叫該工具執行；若拒絕或要求修改，忽略此確認碼。`
+    ? `目前有待確認操作：工具 ${pendingAction.action}，confirmationId=${pendingAction.id}，參數 ${JSON.stringify(pendingAction.payload)}。不論本次對話文字為何，都不可加上 confirmationId 呼叫工具；只有管理者按下介面上的確認按鈕時，伺服器才會直接執行。`
     : null;
   const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -157,7 +221,13 @@ router.post("/admin/assistant/conversations/:id/messages", requireOps, async (re
       .map((m) => ({ role: m.role as "user" | "assistant", content: m.content.slice(0, 4000) })),
   ];
 
-  const executed: Array<{ tool: string; isAction: boolean; isError: boolean }> = [];
+  const executed: Array<{
+    tool: string;
+    isAction: boolean;
+    isError: boolean;
+    status?: "pending" | "executed";
+    confirmationId?: number;
+  }> = [];
   const requestNonce = `${id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   try {
     let finalText = "";
@@ -186,7 +256,24 @@ router.post("/admin/assistant/conversations/:id/messages", requireOps, async (re
             conversationId: id,
             requestNonce,
           });
-          executed.push({ tool: call.function.name, isAction: ACTION_TOOLS.has(call.function.name), isError });
+          const isAction = ACTION_TOOLS.has(call.function.name);
+          const confirmationId =
+            isAction &&
+            result &&
+            typeof result === "object" &&
+            "requiresConfirmation" in result &&
+            result.requiresConfirmation === true &&
+            "confirmationId" in result &&
+            typeof result.confirmationId === "number"
+              ? result.confirmationId
+              : undefined;
+          executed.push({
+            tool: call.function.name,
+            isAction,
+            isError,
+            status: isAction ? (confirmationId ? "pending" : "executed") : undefined,
+            confirmationId,
+          });
           chatMessages.push({
             role: "tool",
             tool_call_id: call.id,

@@ -48,12 +48,12 @@ export const aiActionLogsTable = pgTable("ai_action_logs", {
   action: text("action").notNull(),
   // 傳入參數快照
   payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
-  // pending（待確認）| ok | error | rejected
+  // pending（待確認）| executing | ok | error | rejected
   status: text("status").notNull(),
   result: text("result"),
   // 所屬對話（伺服器端確認機制）
   conversationId: integer("conversation_id"),
-  // 建立 pending 時的請求代碼；執行時必須來自「不同」請求，強制經過使用者確認回合
+  // 建立 pending 時的請求代碼（稽核用途；不可作為授權依據）
   requestNonce: text("request_nonce"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

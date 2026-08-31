@@ -1998,6 +1998,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChatMessage"
+  /admin/assistant/conversations/{id}/actions/{actionId}/confirm:
+    post:
+      tags: [assistant]
+      operationId: confirmAssistantAction
+      summary: 管理者明確確認待執行的 AI 操作
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: actionId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantActionConfirmation"
+        "409":
+          description: Pending action is invalid, already confirmed, or expired
   /admin/ai-index/rebuild:
     post:
       tags: [assistant]
@@ -3459,6 +3482,16 @@ components:
         content: { type: string }
         metadata: { type: object, additionalProperties: true }
         createdAt: { type: string }
+    AssistantActionConfirmation:
+      type: object
+      required: [ok, confirmationId, action, result, message]
+      properties:
+        ok: { type: boolean }
+        confirmationId: { type: integer }
+        action: { type: string }
+        result: {}
+        message:
+          $ref: "#/components/schemas/ChatMessage"
     AiIndexRebuildResult:
       type: object
       required: [ok, embedding, counts]

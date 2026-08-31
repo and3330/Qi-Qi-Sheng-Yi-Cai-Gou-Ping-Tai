@@ -16,7 +16,8 @@ import {
 
 /**
  * AI 知識庫索引（RAG 底層）
- * - 有 OPENAI_API_KEY：內容向量化（text-embedding-3-small, 1536 維），語意檢索
+ * - 有 OPENAI_API_KEY：只將已發佈衛教文章／FAQ 向量化（text-embedding-3-small, 1536 維）
+ * - 會員、訂單、地址、財務等內部資料不送往外部 embedding 服務，僅使用本地關鍵字檢索
  * - 無金鑰：embedding 為 null，檢索自動退回關鍵字比對（ILIKE）
  * 資料新增／修改時由各路由呼叫 reindex()（非同步、不阻塞回應）
  */
@@ -49,7 +50,10 @@ type DocInput = {
 };
 
 async function upsertDoc(doc: DocInput) {
-  const embedding = await embed(`${doc.title}\n${doc.content}`);
+  const embedding =
+    doc.entityKind === "article" && doc.scope === "public"
+      ? await embed(`${doc.title}\n${doc.content}`)
+      : null;
   await db
     .insert(aiDocumentsTable)
     .values({
@@ -291,7 +295,9 @@ export async function searchDocuments(query: string, opts: SearchOptions) {
   if (opts.scope === "public") conditions.push(eq(aiDocumentsTable.scope, "public"));
   if (opts.kinds?.length) conditions.push(inArray(aiDocumentsTable.entityKind, opts.kinds));
 
-  const queryEmbedding = await embed(query).catch(() => null);
+  // 外部向量服務只用於公開衛教客服；staff 搜尋可能含敏感營運資料，固定留在本地關鍵字檢索。
+  const queryEmbedding =
+    opts.scope === "public" ? await embed(query).catch(() => null) : null;
   if (queryEmbedding) {
     const distance = sql<number>`${aiDocumentsTable.embedding} <=> ${JSON.stringify(queryEmbedding)}::vector`;
     const rows = await db
