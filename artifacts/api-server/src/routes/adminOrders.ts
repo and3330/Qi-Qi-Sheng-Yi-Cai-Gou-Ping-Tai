@@ -9,6 +9,9 @@ import {
   stockMovementsTable,
   purchaseOrdersTable,
   purchaseOrderItemsTable,
+  profitRulesTable,
+  profitShareRecordsTable,
+  walletTransactionsTable,
   type Order,
   type OrderItem,
 } from "@workspace/db";
@@ -166,7 +169,93 @@ router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
       if (!ORDER_TRANSITIONS[order.status]?.includes(target))
         throw new Error(`BAD_TRANSITION:${order.status}`);
 
+      if (target === "completed") {
+        // 訂單完成 → 依分潤規則入帳（會員層級優先於「全部」規則）
+        const [existing] = await tx
+          .select({ id: profitShareRecordsTable.id })
+          .from(profitShareRecordsTable)
+          .where(eq(profitShareRecordsTable.orderId, id))
+          .limit(1);
+        if (!existing) {
+          const [member] = await tx
+            .select()
+            .from(membersTable)
+            .where(eq(membersTable.id, order.memberId))
+            .for("update")
+            .limit(1);
+          if (member) {
+            // 確定性選擇：身份專屬優先於「全部」，同身份取最新建立的規則
+            // （建立/更新 API 亦強制同身份僅一條啟用規則）
+            const rules = await tx
+              .select()
+              .from(profitRulesTable)
+              .where(eq(profitRulesTable.isActive, true))
+              .orderBy(
+                desc(profitRulesTable.createdAt),
+                desc(profitRulesTable.id),
+              );
+            const rule =
+              rules.find((r) => r.tier === member.tier) ??
+              rules.find((r) => r.tier === "all");
+            if (rule && rule.percentBps > 0) {
+              const amount = Math.floor(
+                (order.totalAmount * rule.percentBps) / 10000,
+              );
+              if (amount > 0) {
+                const newBalance = member.walletBalance + amount;
+                await tx
+                  .update(membersTable)
+                  .set({ walletBalance: newBalance })
+                  .where(eq(membersTable.id, member.id));
+                await tx.insert(walletTransactionsTable).values({
+                  memberId: member.id,
+                  type: "profit_share",
+                  amount,
+                  balanceAfter: newBalance,
+                  reason: `利潤分享（${rule.name}）`,
+                  refNo: order.orderNo,
+                });
+                await tx.insert(profitShareRecordsTable).values({
+                  orderId: order.id,
+                  orderNo: order.orderNo,
+                  memberId: member.id,
+                  ruleId: rule.id,
+                  ruleName: rule.name,
+                  percentBps: rule.percentBps,
+                  baseAmount: order.totalAmount,
+                  amount,
+                });
+              }
+            }
+          }
+        }
+      }
+
       if (target === "cancelled") {
+        // 錢包已付款的訂單取消 → 退款回錢包
+        if (order.paymentMethod === "wallet" && order.status !== "pending") {
+          const [member] = await tx
+            .select()
+            .from(membersTable)
+            .where(eq(membersTable.id, order.memberId))
+            .for("update")
+            .limit(1);
+          if (member) {
+            const newBalance = member.walletBalance + order.totalAmount;
+            await tx
+              .update(membersTable)
+              .set({ walletBalance: newBalance })
+              .where(eq(membersTable.id, member.id));
+            await tx.insert(walletTransactionsTable).values({
+              memberId: member.id,
+              type: "refund",
+              amount: order.totalAmount,
+              balanceAfter: newBalance,
+              reason: "訂單取消退款",
+              refNo: order.orderNo,
+            });
+          }
+        }
         // Restock the order items and record movements
         const items = await tx
           .select()

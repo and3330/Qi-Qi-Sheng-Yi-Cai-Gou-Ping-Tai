@@ -11,6 +11,10 @@ import adminRouter from "./admin";
 import adminProductsRouter from "./adminProducts";
 import adminPurchasingRouter from "./adminPurchasing";
 import adminOrdersRouter from "./adminOrders";
+import walletRouter from "./wallet";
+import adminWalletsRouter from "./adminWallets";
+import adminProfitSharingRouter from "./adminProfitSharing";
+import adminFinanceRouter from "./adminFinance";
 
 const router: IRouter = Router();
 
@@ -26,5 +30,9 @@ router.use(adminRouter);
 router.use(adminProductsRouter);
 router.use(adminPurchasingRouter);
 router.use(adminOrdersRouter);
+router.use(walletRouter);
+router.use(adminWalletsRouter);
+router.use(adminProfitSharingRouter);
+router.use(adminFinanceRouter);
 
 export default router;

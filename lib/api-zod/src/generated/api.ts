@@ -1010,7 +1010,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
 
 
 export const CreateOrderBody = zod.object({
-  "paymentMethod": zod.enum(['bank_transfer', 'cod']),
+  "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']),
   "receiverName": zod.string().min(1),
   "receiverPhone": zod.string().min(1),
   "shippingAddress": zod.string().min(1),
@@ -1226,6 +1226,346 @@ export const GetHomeSummaryResponse = zod.object({
   "content": zod.string().nullish().describe('Markdown 內文'),
   "imageUrl": zod.string().nullish(),
   "publishedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary 會員錢包餘額與交易明細
+ */
+export const GetWalletResponse = zod.object({
+  "balance": zod.int().describe('錢包餘額 (NT$)'),
+  "transactions": zod.array(zod.object({
+  "id": zod.int(),
+  "type": zod.enum(['deposit', 'payment', 'refund', 'profit_share', 'adjust']),
+  "amount": zod.int().describe('正=入帳、負=扣款 (NT$)'),
+  "balanceAfter": zod.int(),
+  "reason": zod.string().nullish(),
+  "refNo": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 會員錢包統計總覽（限管理員）
+ */
+export const GetAdminWalletStatsQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const GetAdminWalletStatsResponse = zod.object({
+  "from": zod.coerce.date().nullish(),
+  "to": zod.coerce.date().nullish(),
+  "totalBalance": zod.int().describe('全體錢包餘額'),
+  "depositTotal": zod.int().describe('期間儲值合計'),
+  "spendTotal": zod.int().describe('期間消費合計（正數）'),
+  "profitShareTotal": zod.int().describe('期間分潤發放合計'),
+  "adjustTotal": zod.int().describe('期間管理調整合計（含正負）'),
+  "members": zod.array(zod.object({
+  "memberId": zod.int(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "balance": zod.int(),
+  "depositTotal": zod.int().describe('期間儲值合計'),
+  "spendTotal": zod.int().describe('期間消費合計（正數）'),
+  "profitShareTotal": zod.int().describe('期間分潤入帳合計')
+}))
+})
+
+
+/**
+ * @summary 單一會員錢包明細（限管理員）
+ */
+export const GetAdminMemberWalletParams = zod.object({
+  "memberId": zod.coerce.number().int()
+})
+
+export const GetAdminMemberWalletResponse = zod.object({
+  "memberId": zod.int(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "balance": zod.int(),
+  "transactions": zod.array(zod.object({
+  "id": zod.int(),
+  "type": zod.enum(['deposit', 'payment', 'refund', 'profit_share', 'adjust']),
+  "amount": zod.int().describe('正=入帳、負=扣款 (NT$)'),
+  "balanceAfter": zod.int(),
+  "reason": zod.string().nullish(),
+  "refNo": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 管理員儲值／調整會員錢包（限管理員）
+ */
+export const AdjustAdminMemberWalletParams = zod.object({
+  "memberId": zod.coerce.number().int()
+})
+
+export const adjustAdminMemberWalletBodyReasonMax = 200;
+
+
+
+export const AdjustAdminMemberWalletBody = zod.object({
+  "type": zod.enum(['deposit', 'adjust']),
+  "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
+  "reason": zod.string().max(adjustAdminMemberWalletBodyReasonMax).nullish()
+})
+
+export const AdjustAdminMemberWalletResponse = zod.object({
+  "memberId": zod.int(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "balance": zod.int(),
+  "transactions": zod.array(zod.object({
+  "id": zod.int(),
+  "type": zod.enum(['deposit', 'payment', 'refund', 'profit_share', 'adjust']),
+  "amount": zod.int().describe('正=入帳、負=扣款 (NT$)'),
+  "balanceAfter": zod.int(),
+  "reason": zod.string().nullish(),
+  "refNo": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 分潤規則列表（限管理員）
+ */
+export const ListAdminProfitRulesResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
+  "percentBps": zod.int().describe('分潤比例 basis points（100 = 1%）'),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminProfitRulesResponse = zod.array(ListAdminProfitRulesResponseItem)
+
+
+/**
+ * @summary 新增分潤規則（限管理員）
+ */
+export const createAdminProfitRuleBodyNameMax = 100;
+
+export const createAdminProfitRuleBodyPercentBpsMin = 0;
+export const createAdminProfitRuleBodyPercentBpsMax = 10000;
+
+
+
+export const CreateAdminProfitRuleBody = zod.object({
+  "name": zod.string().min(1).max(createAdminProfitRuleBodyNameMax),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
+  "percentBps": zod.int().min(createAdminProfitRuleBodyPercentBpsMin).max(createAdminProfitRuleBodyPercentBpsMax),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateAdminProfitRuleResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
+  "percentBps": zod.int().describe('分潤比例 basis points（100 = 1%）'),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 更新分潤規則（限管理員）
+ */
+export const UpdateAdminProfitRuleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateAdminProfitRuleBodyNameMax = 100;
+
+export const updateAdminProfitRuleBodyPercentBpsMin = 0;
+export const updateAdminProfitRuleBodyPercentBpsMax = 10000;
+
+
+
+export const UpdateAdminProfitRuleBody = zod.object({
+  "name": zod.string().min(1).max(updateAdminProfitRuleBodyNameMax),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
+  "percentBps": zod.int().min(updateAdminProfitRuleBodyPercentBpsMin).max(updateAdminProfitRuleBodyPercentBpsMax),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAdminProfitRuleResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
+  "percentBps": zod.int().describe('分潤比例 basis points（100 = 1%）'),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 刪除分潤規則（限管理員）
+ */
+export const DeleteAdminProfitRuleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteAdminProfitRuleResponse = zod.void()
+
+
+/**
+ * @summary 利潤分享報表（期間／會員彙總，限管理員）
+ */
+export const GetAdminProfitReportQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "memberId": zod.coerce.number().int().optional()
+})
+
+export const GetAdminProfitReportResponse = zod.object({
+  "from": zod.coerce.date().nullish(),
+  "to": zod.coerce.date().nullish(),
+  "totalAmount": zod.int(),
+  "recordCount": zod.int(),
+  "recordsTruncated": zod.boolean().optional().describe('明細僅回傳最新 500 筆時為 true（彙總數字仍為全部）'),
+  "members": zod.array(zod.object({
+  "memberId": zod.int(),
+  "memberName": zod.string(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "orderCount": zod.int(),
+  "amount": zod.int()
+})),
+  "records": zod.array(zod.object({
+  "id": zod.int(),
+  "orderId": zod.int(),
+  "orderNo": zod.string(),
+  "memberId": zod.int(),
+  "memberName": zod.string(),
+  "ruleName": zod.string(),
+  "percentBps": zod.int(),
+  "baseAmount": zod.int(),
+  "amount": zod.int(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary 支出紀錄列表（限管理員）
+ */
+export const ListAdminExpensesQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "category": zod.enum(['purchase', 'operating', 'logistics', 'marketing', 'other']).optional()
+})
+
+export const ListAdminExpensesResponseItem = zod.object({
+  "id": zod.int(),
+  "category": zod.enum(['purchase', 'operating', 'logistics', 'marketing', 'other']),
+  "title": zod.string(),
+  "amount": zod.int(),
+  "note": zod.string().nullish(),
+  "spentAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminExpensesResponse = zod.array(ListAdminExpensesResponseItem)
+
+
+/**
+ * @summary 登錄支出（限管理員）
+ */
+export const createAdminExpenseBodyTitleMax = 200;
+
+
+export const createAdminExpenseBodyNoteMax = 500;
+
+
+
+export const CreateAdminExpenseBody = zod.object({
+  "category": zod.enum(['purchase', 'operating', 'logistics', 'marketing', 'other']),
+  "title": zod.string().min(1).max(createAdminExpenseBodyTitleMax),
+  "amount": zod.int().min(1),
+  "note": zod.string().max(createAdminExpenseBodyNoteMax).nullish(),
+  "spentAt": zod.coerce.date().nullish()
+})
+
+export const CreateAdminExpenseResponse = zod.object({
+  "id": zod.int(),
+  "category": zod.enum(['purchase', 'operating', 'logistics', 'marketing', 'other']),
+  "title": zod.string(),
+  "amount": zod.int(),
+  "note": zod.string().nullish(),
+  "spentAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 刪除支出紀錄（限管理員）
+ */
+export const DeleteAdminExpenseParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteAdminExpenseResponse = zod.void()
+
+
+/**
+ * @summary 收支流水（訂單收入自動納入，限管理員）
+ */
+export const GetAdminFinanceLedgerQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "kind": zod.enum(['income', 'expense']).optional()
+})
+
+export const GetAdminFinanceLedgerResponse = zod.object({
+  "from": zod.coerce.date().nullish(),
+  "to": zod.coerce.date().nullish(),
+  "incomeTotal": zod.int(),
+  "expenseTotal": zod.int(),
+  "net": zod.int(),
+  "entries": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "kind": zod.enum(['income', 'expense']),
+  "category": zod.string().describe('income=order；expense=支出分類'),
+  "title": zod.string(),
+  "amount": zod.int().describe('正數金額 (NT$)'),
+  "refNo": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary 期間損益報表（限管理員）
+ */
+export const GetAdminPnlReportQueryParams = zod.object({
+  "from": zod.date().optional(),
+  "to": zod.date().optional()
+})
+
+export const GetAdminPnlReportResponse = zod.object({
+  "from": zod.coerce.date().nullish(),
+  "to": zod.coerce.date().nullish(),
+  "revenue": zod.int().describe('營收（不含已取消訂單）'),
+  "cogs": zod.int().describe('銷貨成本（依訂單成本快照）'),
+  "grossProfit": zod.int(),
+  "expenseTotal": zod.int(),
+  "profitShareTotal": zod.int(),
+  "netProfit": zod.int(),
+  "months": zod.array(zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "revenue": zod.int(),
+  "cogs": zod.int(),
+  "grossProfit": zod.int(),
+  "expenses": zod.int(),
+  "profitShare": zod.int(),
+  "netProfit": zod.int()
 }))
 })
 

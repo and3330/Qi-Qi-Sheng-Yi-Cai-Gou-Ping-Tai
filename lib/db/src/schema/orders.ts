@@ -37,6 +37,8 @@ export const orderItemsTable = pgTable("order_items", {
   productCode: text("product_code").notNull(),
   unitPrice: integer("unit_price").notNull(),
   quantity: integer("quantity").notNull(),
+  // 成本快照（下單當時的商品成本，NT$）
+  unitCost: integer("unit_cost").notNull().default(0),
 });
 
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({

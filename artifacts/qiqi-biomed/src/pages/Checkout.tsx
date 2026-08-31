@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, CheckCircle2, Building2, Truck, CreditCard, Wallet } from "lucide-react";
-import { useGetCart, useCreateOrder, useGetMe, getGetCartQueryKey, getListOrdersQueryKey } from "@workspace/api-client-react";
+import { useGetCart, useCreateOrder, useGetMe, getGetCartQueryKey, getListOrdersQueryKey, useGetWallet, getGetWalletQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "cod">("bank_transfer");
+  const { data: wallet } = useGetWallet();
+  const [paymentMethod, setPaymentMethod] = useState<"bank_transfer" | "cod" | "wallet">("bank_transfer");
   const [receiverName, setReceiverName] = useState(me?.name || "");
   const [receiverPhone, setReceiverPhone] = useState(me?.phone || "");
   const [shippingAddress, setShippingAddress] = useState(me?.shippingAddress || "");
@@ -63,8 +64,11 @@ export default function CheckoutPage() {
       setSuccessOrderNo(order.orderNo);
       queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
       queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
-    } catch (e) {
-      toast({ title: "結帳失敗，請重試", variant: "destructive" });
+      if (paymentMethod === "wallet") {
+        queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+      }
+    } catch (e: any) {
+      toast({ title: e?.data?.error || "結帳失敗，請重試", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -148,15 +152,43 @@ export default function CheckoutPage() {
               <input type="radio" className="hidden" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
             </label>
 
-            <label className="flex items-center p-3 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed">
-              <div className="w-5 h-5 rounded-full border border-gray-300 mr-3" />
-              <Wallet size={20} className="text-gray-400 mr-3" />
-              <div className="flex-1">
-                <div className="font-bold text-sm text-gray-600 flex items-center justify-between">
-                  機構錢包扣款 <span className="bg-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded">即將推出</span>
-                </div>
-              </div>
-            </label>
+            {(() => {
+              const balance = wallet?.balance ?? 0;
+              const insufficient = balance < total;
+              if (insufficient) {
+                return (
+                  <label className="flex items-center p-3 rounded-xl border-2 border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed" data-testid="option-payment-wallet">
+                    <div className="w-5 h-5 rounded-full border border-gray-300 mr-3" />
+                    <Wallet size={20} className="text-gray-400 mr-3" />
+                    <div className="flex-1">
+                      <div className="font-bold text-sm text-gray-600 flex items-center justify-between">
+                        錢包扣款
+                        <span className="bg-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded">餘額不足</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">目前餘額 NT${balance.toLocaleString()}</div>
+                    </div>
+                  </label>
+                );
+              }
+              return (
+                <label
+                  className={`flex items-center p-3 rounded-xl border-2 transition-colors cursor-pointer ${paymentMethod === 'wallet' ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
+                  data-testid="option-payment-wallet"
+                >
+                  <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center mr-3">
+                    {paymentMethod === 'wallet' && <div className="w-3 h-3 bg-primary rounded-full" />}
+                  </div>
+                  <Wallet size={20} className="text-gray-500 mr-3" />
+                  <div className="flex-1">
+                    <div className="font-bold text-sm">錢包扣款</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      目前餘額 NT${balance.toLocaleString()}，結帳時直接扣款
+                    </div>
+                  </div>
+                  <input type="radio" className="hidden" checked={paymentMethod === 'wallet'} onChange={() => setPaymentMethod('wallet')} />
+                </label>
+              );
+            })()}
           </div>
         </section>
 

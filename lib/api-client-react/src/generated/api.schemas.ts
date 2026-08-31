@@ -302,6 +302,7 @@ export type OrderInputPaymentMethod = typeof OrderInputPaymentMethod[keyof typeo
 export const OrderInputPaymentMethod = {
   bank_transfer: 'bank_transfer',
   cod: 'cod',
+  wallet: 'wallet',
 } as const;
 
 export interface OrderInput {
@@ -733,6 +734,311 @@ export interface HomeSummary {
   latestArticles: Article[];
 }
 
+export type WalletTransactionType = typeof WalletTransactionType[keyof typeof WalletTransactionType];
+
+
+export const WalletTransactionType = {
+  deposit: 'deposit',
+  payment: 'payment',
+  refund: 'refund',
+  profit_share: 'profit_share',
+  adjust: 'adjust',
+} as const;
+
+export interface WalletTransaction {
+  id: number;
+  type: WalletTransactionType;
+  /** 正=入帳、負=扣款 (NT$) */
+  amount: number;
+  balanceAfter: number;
+  /** @nullable */
+  reason?: string | null;
+  /** @nullable */
+  refNo?: string | null;
+  createdAt: string;
+}
+
+export interface Wallet {
+  /** 錢包餘額 (NT$) */
+  balance: number;
+  transactions: WalletTransaction[];
+}
+
+export type WalletMemberRowTier = typeof WalletMemberRowTier[keyof typeof WalletMemberRowTier];
+
+
+export const WalletMemberRowTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export interface WalletMemberRow {
+  memberId: number;
+  username: string;
+  name: string;
+  tier: WalletMemberRowTier;
+  balance: number;
+  /** 期間儲值合計 */
+  depositTotal: number;
+  /** 期間消費合計（正數） */
+  spendTotal: number;
+  /** 期間分潤入帳合計 */
+  profitShareTotal: number;
+}
+
+export interface WalletStats {
+  /** @nullable */
+  from?: string | null;
+  /** @nullable */
+  to?: string | null;
+  /** 全體錢包餘額 */
+  totalBalance: number;
+  /** 期間儲值合計 */
+  depositTotal: number;
+  /** 期間消費合計（正數） */
+  spendTotal: number;
+  /** 期間分潤發放合計 */
+  profitShareTotal: number;
+  /** 期間管理調整合計（含正負） */
+  adjustTotal: number;
+  members: WalletMemberRow[];
+}
+
+export type AdminMemberWalletTier = typeof AdminMemberWalletTier[keyof typeof AdminMemberWalletTier];
+
+
+export const AdminMemberWalletTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export interface AdminMemberWallet {
+  memberId: number;
+  username: string;
+  name: string;
+  tier: AdminMemberWalletTier;
+  balance: number;
+  transactions: WalletTransaction[];
+}
+
+export type WalletAdjustInputType = typeof WalletAdjustInputType[keyof typeof WalletAdjustInputType];
+
+
+export const WalletAdjustInputType = {
+  deposit: 'deposit',
+  adjust: 'adjust',
+} as const;
+
+export interface WalletAdjustInput {
+  type: WalletAdjustInputType;
+  /** 儲值必須為正；調整可為正負 (NT$) */
+  amount: number;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  reason?: string | null;
+}
+
+export type ProfitRuleTier = typeof ProfitRuleTier[keyof typeof ProfitRuleTier];
+
+
+export const ProfitRuleTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+  all: 'all',
+} as const;
+
+export interface ProfitRule {
+  id: number;
+  name: string;
+  tier: ProfitRuleTier;
+  /** 分潤比例 basis points（100 = 1%） */
+  percentBps: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type ProfitRuleInputTier = typeof ProfitRuleInputTier[keyof typeof ProfitRuleInputTier];
+
+
+export const ProfitRuleInputTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+  all: 'all',
+} as const;
+
+export interface ProfitRuleInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  tier: ProfitRuleInputTier;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  percentBps: number;
+  isActive?: boolean;
+}
+
+export interface ProfitShareRecord {
+  id: number;
+  orderId: number;
+  orderNo: string;
+  memberId: number;
+  memberName: string;
+  ruleName: string;
+  percentBps: number;
+  baseAmount: number;
+  amount: number;
+  createdAt: string;
+}
+
+export type ProfitReportMemberRowTier = typeof ProfitReportMemberRowTier[keyof typeof ProfitReportMemberRowTier];
+
+
+export const ProfitReportMemberRowTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export interface ProfitReportMemberRow {
+  memberId: number;
+  memberName: string;
+  tier: ProfitReportMemberRowTier;
+  orderCount: number;
+  amount: number;
+}
+
+export interface ProfitReport {
+  /** @nullable */
+  from?: string | null;
+  /** @nullable */
+  to?: string | null;
+  totalAmount: number;
+  recordCount: number;
+  /** 明細僅回傳最新 500 筆時為 true（彙總數字仍為全部） */
+  recordsTruncated?: boolean;
+  members: ProfitReportMemberRow[];
+  records: ProfitShareRecord[];
+}
+
+export type ExpenseCategory = typeof ExpenseCategory[keyof typeof ExpenseCategory];
+
+
+export const ExpenseCategory = {
+  purchase: 'purchase',
+  operating: 'operating',
+  logistics: 'logistics',
+  marketing: 'marketing',
+  other: 'other',
+} as const;
+
+export interface Expense {
+  id: number;
+  category: ExpenseCategory;
+  title: string;
+  amount: number;
+  /** @nullable */
+  note?: string | null;
+  spentAt: string;
+  createdAt: string;
+}
+
+export type ExpenseInputCategory = typeof ExpenseInputCategory[keyof typeof ExpenseInputCategory];
+
+
+export const ExpenseInputCategory = {
+  purchase: 'purchase',
+  operating: 'operating',
+  logistics: 'logistics',
+  marketing: 'marketing',
+  other: 'other',
+} as const;
+
+export interface ExpenseInput {
+  category: ExpenseInputCategory;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /** @minimum 1 */
+  amount: number;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  note?: string | null;
+  /** @nullable */
+  spentAt?: string | null;
+}
+
+export type LedgerEntryKind = typeof LedgerEntryKind[keyof typeof LedgerEntryKind];
+
+
+export const LedgerEntryKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export interface LedgerEntry {
+  date: string;
+  kind: LedgerEntryKind;
+  /** income=order；expense=支出分類 */
+  category: string;
+  title: string;
+  /** 正數金額 (NT$) */
+  amount: number;
+  /** @nullable */
+  refNo?: string | null;
+}
+
+export interface Ledger {
+  /** @nullable */
+  from?: string | null;
+  /** @nullable */
+  to?: string | null;
+  incomeTotal: number;
+  expenseTotal: number;
+  net: number;
+  entries: LedgerEntry[];
+}
+
+export interface PnlMonthRow {
+  /** YYYY-MM */
+  month: string;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  expenses: number;
+  profitShare: number;
+  netProfit: number;
+}
+
+export interface PnlReport {
+  /** @nullable */
+  from?: string | null;
+  /** @nullable */
+  to?: string | null;
+  /** 營收（不含已取消訂單） */
+  revenue: number;
+  /** 銷貨成本（依訂單成本快照） */
+  cogs: number;
+  grossProfit: number;
+  expenseTotal: number;
+  profitShareTotal: number;
+  netProfit: number;
+  months: PnlMonthRow[];
+}
+
 export type ListAdminMembersParams = {
 /**
  * 搜尋帳號 / 姓名 / Email / 電話
@@ -866,4 +1172,51 @@ export const ListArticlesKind = {
   article: 'article',
   faq: 'faq',
 } as const;
+
+export type GetAdminWalletStatsParams = {
+from?: string;
+to?: string;
+};
+
+export type GetAdminProfitReportParams = {
+from?: string;
+to?: string;
+memberId?: number;
+};
+
+export type ListAdminExpensesParams = {
+from?: string;
+to?: string;
+category?: ListAdminExpensesCategory;
+};
+
+export type ListAdminExpensesCategory = typeof ListAdminExpensesCategory[keyof typeof ListAdminExpensesCategory];
+
+
+export const ListAdminExpensesCategory = {
+  purchase: 'purchase',
+  operating: 'operating',
+  logistics: 'logistics',
+  marketing: 'marketing',
+  other: 'other',
+} as const;
+
+export type GetAdminFinanceLedgerParams = {
+from?: string;
+to?: string;
+kind?: GetAdminFinanceLedgerKind;
+};
+
+export type GetAdminFinanceLedgerKind = typeof GetAdminFinanceLedgerKind[keyof typeof GetAdminFinanceLedgerKind];
+
+
+export const GetAdminFinanceLedgerKind = {
+  income: 'income',
+  expense: 'expense',
+} as const;
+
+export type GetAdminPnlReportParams = {
+from?: string;
+to?: string;
+};
 

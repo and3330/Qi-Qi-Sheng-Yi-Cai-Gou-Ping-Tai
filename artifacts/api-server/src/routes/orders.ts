@@ -6,6 +6,11 @@ class InsufficientStockError extends Error {
     super(`Insufficient stock: ${productName}`);
   }
 }
+class InsufficientWalletError extends Error {
+  constructor() {
+    super("Insufficient wallet balance");
+  }
+}
 import {
   db,
   ordersTable,
@@ -13,6 +18,8 @@ import {
   productsTable,
   cartItemsTable,
   stockMovementsTable,
+  membersTable,
+  walletTransactionsTable,
   type Order,
   type OrderItem,
 } from "@workspace/db";
@@ -114,6 +121,7 @@ router.post("/orders", async (req, res) => {
       productCode: p.code,
       unitPrice: tierPrice(tier, p),
       quantity: line.quantity,
+      unitCost: p.costPrice,
     };
   });
   const totalAmount = lines.reduce(
@@ -146,12 +154,37 @@ router.post("/orders", async (req, res) => {
         stockAfterById.set(line.productId, decremented[0].stock);
       }
 
+      // 錢包付款：鎖定會員列、檢查餘額並扣款（餘額不可為負）
+      if (input.paymentMethod === "wallet") {
+        const [member] = await tx
+          .select({ walletBalance: membersTable.walletBalance })
+          .from(membersTable)
+          .where(eq(membersTable.id, req.member!.id))
+          .for("update")
+          .limit(1);
+        if (!member || member.walletBalance < totalAmount)
+          throw new InsufficientWalletError();
+        const newBalance = member.walletBalance - totalAmount;
+        await tx
+          .update(membersTable)
+          .set({ walletBalance: newBalance })
+          .where(eq(membersTable.id, req.member!.id));
+        await tx.insert(walletTransactionsTable).values({
+          memberId: req.member!.id,
+          type: "payment",
+          amount: -totalAmount,
+          balanceAfter: newBalance,
+          reason: "訂單錢包付款",
+          refNo: orderNo,
+        });
+      }
+
       const [order] = await tx
         .insert(ordersTable)
         .values({
           orderNo,
           memberId: req.member!.id,
-          status: "pending",
+          status: input.paymentMethod === "wallet" ? "paid" : "pending",
           paymentMethod: input.paymentMethod,
           totalAmount,
           shippingAddress: input.shippingAddress,
@@ -196,6 +229,10 @@ router.post("/orders", async (req, res) => {
   } catch (err) {
     if (err instanceof InsufficientStockError) {
       res.status(400).json({ error: `庫存不足：${err.productName}` });
+      return;
+    }
+    if (err instanceof InsufficientWalletError) {
+      res.status(400).json({ error: "錢包餘額不足" });
       return;
     }
     throw err;

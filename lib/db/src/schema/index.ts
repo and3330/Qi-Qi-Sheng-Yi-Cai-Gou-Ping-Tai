@@ -9,3 +9,6 @@ export * from "./sessions";
 export * from "./suppliers";
 export * from "./purchasing";
 export * from "./stockMovements";
+export * from "./wallet";
+export * from "./profitSharing";
+export * from "./expenses";

@@ -994,6 +994,318 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HomeSummary"
+  /wallet:
+    get:
+      operationId: getWallet
+      tags: [me]
+      summary: 會員錢包餘額與交易明細
+      responses:
+        "200":
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/wallets/stats:
+    get:
+      operationId: getAdminWalletStats
+      tags: [admin]
+      summary: 會員錢包統計總覽（限管理員）
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Wallet stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletStats"
+  /admin/wallets/{memberId}:
+    get:
+      operationId: getAdminMemberWallet
+      tags: [admin]
+      summary: 單一會員錢包明細（限管理員）
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Member wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberWallet"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/wallets/{memberId}/adjust:
+    post:
+      operationId: adjustAdminMemberWallet
+      tags: [admin]
+      summary: 管理員儲值／調整會員錢包（限管理員）
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletAdjustInput"
+      responses:
+        "200":
+          description: Updated member wallet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMemberWallet"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/profit-rules:
+    get:
+      operationId: listAdminProfitRules
+      tags: [admin]
+      summary: 分潤規則列表（限管理員）
+      responses:
+        "200":
+          description: Rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProfitRule"
+    post:
+      operationId: createAdminProfitRule
+      tags: [admin]
+      summary: 新增分潤規則（限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfitRuleInput"
+      responses:
+        "201":
+          description: Created rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitRule"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/profit-rules/{id}:
+    patch:
+      operationId: updateAdminProfitRule
+      tags: [admin]
+      summary: 更新分潤規則（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfitRuleInput"
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitRule"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    delete:
+      operationId: deleteAdminProfitRule
+      tags: [admin]
+      summary: 刪除分潤規則（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/profit-report:
+    get:
+      operationId: getAdminProfitReport
+      tags: [admin]
+      summary: 利潤分享報表（期間／會員彙總，限管理員）
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: memberId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Profit report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitReport"
+  /admin/expenses:
+    get:
+      operationId: listAdminExpenses
+      tags: [admin]
+      summary: 支出紀錄列表（限管理員）
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [purchase, operating, logistics, marketing, other]
+      responses:
+        "200":
+          description: Expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createAdminExpense
+      tags: [admin]
+      summary: 登錄支出（限管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/expenses/{id}:
+    delete:
+      operationId: deleteAdminExpense
+      tags: [admin]
+      summary: 刪除支出紀錄（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/finance/ledger:
+    get:
+      operationId: getAdminFinanceLedger
+      tags: [admin]
+      summary: 收支流水（訂單收入自動納入，限管理員）
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [income, expense]
+      responses:
+        "200":
+          description: Ledger
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ledger"
+  /admin/finance/pnl:
+    get:
+      operationId: getAdminPnlReport
+      tags: [admin]
+      summary: 期間損益報表（限管理員）
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Profit and loss report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PnlReport"
 components:
   schemas:
     HealthStatus:
@@ -1183,7 +1495,7 @@ components:
       properties:
         paymentMethod:
           type: string
-          enum: [bank_transfer, cod]
+          enum: [bank_transfer, cod, wallet]
         receiverName: { type: string, minLength: 1 }
         receiverPhone: { type: string, minLength: 1 }
         shippingAddress: { type: string, minLength: 1 }
@@ -1488,3 +1800,220 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Article"
+    WalletTransaction:
+      type: object
+      required: [id, type, amount, balanceAfter, createdAt]
+      properties:
+        id: { type: integer }
+        type:
+          type: string
+          enum: [deposit, payment, refund, profit_share, adjust]
+        amount: { type: integer, description: "正=入帳、負=扣款 (NT$)" }
+        balanceAfter: { type: integer }
+        reason: { type: ["string", "null"] }
+        refNo: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    Wallet:
+      type: object
+      required: [balance, transactions]
+      properties:
+        balance: { type: integer, description: "錢包餘額 (NT$)" }
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletTransaction"
+    WalletMemberRow:
+      type: object
+      required: [memberId, username, name, tier, balance, depositTotal, spendTotal, profitShareTotal]
+      properties:
+        memberId: { type: integer }
+        username: { type: string }
+        name: { type: string }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer]
+        balance: { type: integer }
+        depositTotal: { type: integer, description: "期間儲值合計" }
+        spendTotal: { type: integer, description: "期間消費合計（正數）" }
+        profitShareTotal: { type: integer, description: "期間分潤入帳合計" }
+    WalletStats:
+      type: object
+      required: [totalBalance, depositTotal, spendTotal, profitShareTotal, adjustTotal, members]
+      properties:
+        from: { type: ["string", "null"], format: date }
+        to: { type: ["string", "null"], format: date }
+        totalBalance: { type: integer, description: "全體錢包餘額" }
+        depositTotal: { type: integer, description: "期間儲值合計" }
+        spendTotal: { type: integer, description: "期間消費合計（正數）" }
+        profitShareTotal: { type: integer, description: "期間分潤發放合計" }
+        adjustTotal: { type: integer, description: "期間管理調整合計（含正負）" }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletMemberRow"
+    AdminMemberWallet:
+      type: object
+      required: [memberId, username, name, tier, balance, transactions]
+      properties:
+        memberId: { type: integer }
+        username: { type: string }
+        name: { type: string }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer]
+        balance: { type: integer }
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletTransaction"
+    WalletAdjustInput:
+      type: object
+      required: [type, amount]
+      properties:
+        type:
+          type: string
+          enum: [deposit, adjust]
+        amount:
+          type: integer
+          description: "儲值必須為正；調整可為正負 (NT$)"
+        reason: { type: ["string", "null"], maxLength: 200 }
+    ProfitRule:
+      type: object
+      required: [id, name, tier, percentBps, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer, all]
+        percentBps: { type: integer, description: "分潤比例 basis points（100 = 1%）" }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ProfitRuleInput:
+      type: object
+      required: [name, tier, percentBps]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer, all]
+        percentBps: { type: integer, minimum: 0, maximum: 10000 }
+        isActive: { type: boolean }
+    ProfitShareRecord:
+      type: object
+      required: [id, orderId, orderNo, memberId, memberName, ruleName, percentBps, baseAmount, amount, createdAt]
+      properties:
+        id: { type: integer }
+        orderId: { type: integer }
+        orderNo: { type: string }
+        memberId: { type: integer }
+        memberName: { type: string }
+        ruleName: { type: string }
+        percentBps: { type: integer }
+        baseAmount: { type: integer }
+        amount: { type: integer }
+        createdAt: { type: string, format: date-time }
+    ProfitReportMemberRow:
+      type: object
+      required: [memberId, memberName, tier, orderCount, amount]
+      properties:
+        memberId: { type: integer }
+        memberName: { type: string }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer]
+        orderCount: { type: integer }
+        amount: { type: integer }
+    ProfitReport:
+      type: object
+      required: [totalAmount, recordCount, members, records]
+      properties:
+        from: { type: ["string", "null"], format: date }
+        to: { type: ["string", "null"], format: date }
+        totalAmount: { type: integer }
+        recordCount: { type: integer }
+        recordsTruncated: { type: boolean, description: "明細僅回傳最新 500 筆時為 true（彙總數字仍為全部）" }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfitReportMemberRow"
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProfitShareRecord"
+    Expense:
+      type: object
+      required: [id, category, title, amount, spentAt, createdAt]
+      properties:
+        id: { type: integer }
+        category:
+          type: string
+          enum: [purchase, operating, logistics, marketing, other]
+        title: { type: string }
+        amount: { type: integer }
+        note: { type: ["string", "null"] }
+        spentAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+    ExpenseInput:
+      type: object
+      required: [category, title, amount]
+      properties:
+        category:
+          type: string
+          enum: [purchase, operating, logistics, marketing, other]
+        title: { type: string, minLength: 1, maxLength: 200 }
+        amount: { type: integer, minimum: 1 }
+        note: { type: ["string", "null"], maxLength: 500 }
+        spentAt: { type: ["string", "null"], format: date }
+    LedgerEntry:
+      type: object
+      required: [date, kind, category, title, amount]
+      properties:
+        date: { type: string, format: date-time }
+        kind:
+          type: string
+          enum: [income, expense]
+        category: { type: string, description: "income=order；expense=支出分類" }
+        title: { type: string }
+        amount: { type: integer, description: "正數金額 (NT$)" }
+        refNo: { type: ["string", "null"] }
+    Ledger:
+      type: object
+      required: [incomeTotal, expenseTotal, net, entries]
+      properties:
+        from: { type: ["string", "null"], format: date }
+        to: { type: ["string", "null"], format: date }
+        incomeTotal: { type: integer }
+        expenseTotal: { type: integer }
+        net: { type: integer }
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+    PnlMonthRow:
+      type: object
+      required: [month, revenue, cogs, grossProfit, expenses, profitShare, netProfit]
+      properties:
+        month: { type: string, description: "YYYY-MM" }
+        revenue: { type: integer }
+        cogs: { type: integer }
+        grossProfit: { type: integer }
+        expenses: { type: integer }
+        profitShare: { type: integer }
+        netProfit: { type: integer }
+    PnlReport:
+      type: object
+      required: [revenue, cogs, grossProfit, expenseTotal, profitShareTotal, netProfit, months]
+      properties:
+        from: { type: ["string", "null"], format: date }
+        to: { type: ["string", "null"], format: date }
+        revenue: { type: integer, description: "營收（不含已取消訂單）" }
+        cogs: { type: integer, description: "銷貨成本（依訂單成本快照）" }
+        grossProfit: { type: integer }
+        expenseTotal: { type: integer }
+        profitShareTotal: { type: integer }
+        netProfit: { type: integer }
+        months:
+          type: array
+          items:
+            $ref: "#/components/schemas/PnlMonthRow"

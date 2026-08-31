@@ -28,12 +28,14 @@ import SignUpPage from "./pages/SignUp";
 import { AdminGuard } from "./pages/admin/AdminGuard";
 import AdminDashboardPage from "./pages/admin/Dashboard";
 import AdminMembersPage from "./pages/admin/Members";
-import AdminPlaceholderPage from "./pages/admin/Placeholder";
 import AdminProductsPage from "./pages/admin/Products";
 import AdminInventoryPage from "./pages/admin/Inventory";
 import AdminPurchasingPage from "./pages/admin/Purchasing";
 import AdminOrdersPage from "./pages/admin/Orders";
 import AdminReportsPage from "./pages/admin/Reports";
+import AdminFinancePage from "./pages/admin/Finance";
+import AdminProfitSharingPage from "./pages/admin/ProfitSharing";
+import AdminWalletsPage from "./pages/admin/Wallets";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,15 +83,9 @@ function AdminArea() {
           <Route path="/admin/purchasing" component={AdminPurchasingPage} />
           <Route path="/admin/orders" component={AdminOrdersPage} />
           <Route path="/admin/reports" component={AdminReportsPage} />
-          <Route path="/admin/finance">
-            <AdminPlaceholderPage title="財務管理" />
-          </Route>
-          <Route path="/admin/profit-sharing">
-            <AdminPlaceholderPage title="利潤分享" />
-          </Route>
-          <Route path="/admin/wallets">
-            <AdminPlaceholderPage title="會員錢包" />
-          </Route>
+          <Route path="/admin/finance" component={AdminFinancePage} />
+          <Route path="/admin/profit-sharing" component={AdminProfitSharingPage} />
+          <Route path="/admin/wallets" component={AdminWalletsPage} />
           <Route>
             <Redirect to="/admin" />
           </Route>

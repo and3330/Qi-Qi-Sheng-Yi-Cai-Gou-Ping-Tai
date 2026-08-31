@@ -22,6 +22,7 @@ import type {
 import type {
   AdminMember,
   AdminMemberUpdate,
+  AdminMemberWallet,
   AdminOrder,
   AdminProduct,
   AdminProductInput,
@@ -35,12 +36,20 @@ import type {
   CartItemInput,
   CartItemUpdate,
   ErrorMessage,
+  Expense,
+  ExpenseInput,
   FavoriteInput,
+  GetAdminFinanceLedgerParams,
   GetAdminInventoryReportParams,
+  GetAdminPnlReportParams,
+  GetAdminProfitReportParams,
+  GetAdminWalletStatsParams,
   HealthStatus,
   HomeSummary,
   Institution,
   InventoryReport,
+  Ledger,
+  ListAdminExpensesParams,
   ListAdminMembersParams,
   ListAdminOrdersParams,
   ListAdminProductsParams,
@@ -56,14 +65,21 @@ import type {
   Order,
   OrderInput,
   OrderStatusUpdate,
+  PnlReport,
   Product,
+  ProfitReport,
+  ProfitRule,
+  ProfitRuleInput,
   PurchaseOrderInput,
   PurchaseOrderStatusUpdate,
   RegisterInput,
   StockAdjustInput,
   Supplier,
   SupplierInput,
-  SupplierUpdate
+  SupplierUpdate,
+  Wallet,
+  WalletAdjustInput,
+  WalletStats
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -3496,6 +3512,1085 @@ export function useGetHomeSummary<TData = Awaited<ReturnType<typeof getHomeSumma
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetHomeSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetWalletUrl = () => {
+
+
+
+
+  return `/api/wallet`
+}
+
+/**
+ * @summary 會員錢包餘額與交易明細
+ */
+export const getWallet = async ( options?: Parameters<typeof customFetch>[1]): Promise<Wallet> => {
+
+  return customFetch<Wallet>(getGetWalletUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWalletQueryKey = () => {
+    return [
+    `/api/wallet`
+    ] as const;
+    }
+
+
+export const getGetWalletQueryOptions = <TData = Awaited<ReturnType<typeof getWallet>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWalletQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWallet>>> = ({ signal }) => getWallet({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWallet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWalletQueryResult = NonNullable<Awaited<ReturnType<typeof getWallet>>>
+export type GetWalletQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 會員錢包餘額與交易明細
+ */
+
+export function useGetWallet<TData = Awaited<ReturnType<typeof getWallet>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWalletQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminWalletStatsUrl = (params?: GetAdminWalletStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/wallets/stats?${stringifiedParams}` : `/api/admin/wallets/stats`
+}
+
+/**
+ * @summary 會員錢包統計總覽（限管理員）
+ */
+export const getAdminWalletStats = async (params?: GetAdminWalletStatsParams, options?: Parameters<typeof customFetch>[1]): Promise<WalletStats> => {
+
+  return customFetch<WalletStats>(getGetAdminWalletStatsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminWalletStatsQueryKey = (params?: GetAdminWalletStatsParams,) => {
+    return [
+    `/api/admin/wallets/stats`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminWalletStatsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminWalletStats>>, TError = ErrorType<unknown>>(params?: GetAdminWalletStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminWalletStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminWalletStatsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminWalletStats>>> = ({ signal }) => getAdminWalletStats(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminWalletStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminWalletStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminWalletStats>>>
+export type GetAdminWalletStatsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 會員錢包統計總覽（限管理員）
+ */
+
+export function useGetAdminWalletStats<TData = Awaited<ReturnType<typeof getAdminWalletStats>>, TError = ErrorType<unknown>>(
+ params?: GetAdminWalletStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminWalletStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminWalletStatsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminMemberWalletUrl = (memberId: number,) => {
+
+
+
+
+  return `/api/admin/wallets/${memberId}`
+}
+
+/**
+ * @summary 單一會員錢包明細（限管理員）
+ */
+export const getAdminMemberWallet = async (memberId: number, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberWallet> => {
+
+  return customFetch<AdminMemberWallet>(getGetAdminMemberWalletUrl(memberId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminMemberWalletQueryKey = (memberId: number,) => {
+    return [
+    `/api/admin/wallets/${memberId}`
+    ] as const;
+    }
+
+
+export const getGetAdminMemberWalletQueryOptions = <TData = Awaited<ReturnType<typeof getAdminMemberWallet>>, TError = ErrorType<ErrorMessage>>(memberId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminMemberWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminMemberWalletQueryKey(memberId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminMemberWallet>>> = ({ signal }) => getAdminMemberWallet(memberId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: memberId !== null && memberId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminMemberWallet>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminMemberWalletQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminMemberWallet>>>
+export type GetAdminMemberWalletQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 單一會員錢包明細（限管理員）
+ */
+
+export function useGetAdminMemberWallet<TData = Awaited<ReturnType<typeof getAdminMemberWallet>>, TError = ErrorType<ErrorMessage>>(
+ memberId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminMemberWallet>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminMemberWalletQueryOptions(memberId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAdjustAdminMemberWalletUrl = (memberId: number,) => {
+
+
+
+
+  return `/api/admin/wallets/${memberId}/adjust`
+}
+
+/**
+ * @summary 管理員儲值／調整會員錢包（限管理員）
+ */
+export const adjustAdminMemberWallet = async (memberId: number,
+    walletAdjustInput: WalletAdjustInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminMemberWallet> => {
+
+  return customFetch<AdminMemberWallet>(getAdjustAdminMemberWalletUrl(memberId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(walletAdjustInput)
+  }
+);}
+
+
+
+
+
+export const getAdjustAdminMemberWalletMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adjustAdminMemberWallet>>, TError,{memberId: number;data: BodyType<WalletAdjustInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof adjustAdminMemberWallet>>, TError,{memberId: number;data: BodyType<WalletAdjustInput>}, TContext> => {
+
+const mutationKey = ['adjustAdminMemberWallet'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof adjustAdminMemberWallet>>, {memberId: number;data: BodyType<WalletAdjustInput>}> = (props) => {
+          const {memberId,data} = props ?? {};
+
+          return  adjustAdminMemberWallet(memberId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdjustAdminMemberWalletMutationResult = NonNullable<Awaited<ReturnType<typeof adjustAdminMemberWallet>>>
+    export type AdjustAdminMemberWalletMutationBody = BodyType<WalletAdjustInput>
+    export type AdjustAdminMemberWalletMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 管理員儲值／調整會員錢包（限管理員）
+ */
+export const useAdjustAdminMemberWallet = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof adjustAdminMemberWallet>>, TError,{memberId: number;data: BodyType<WalletAdjustInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof adjustAdminMemberWallet>>,
+        TError,
+        {memberId: number;data: BodyType<WalletAdjustInput>},
+        TContext
+      > => {
+      return useMutation(getAdjustAdminMemberWalletMutationOptions(options));
+    }
+
+export const getListAdminProfitRulesUrl = () => {
+
+
+
+
+  return `/api/admin/profit-rules`
+}
+
+/**
+ * @summary 分潤規則列表（限管理員）
+ */
+export const listAdminProfitRules = async ( options?: Parameters<typeof customFetch>[1]): Promise<ProfitRule[]> => {
+
+  return customFetch<ProfitRule[]>(getListAdminProfitRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminProfitRulesQueryKey = () => {
+    return [
+    `/api/admin/profit-rules`
+    ] as const;
+    }
+
+
+export const getListAdminProfitRulesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminProfitRules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminProfitRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminProfitRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminProfitRules>>> = ({ signal }) => listAdminProfitRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminProfitRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminProfitRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminProfitRules>>>
+export type ListAdminProfitRulesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 分潤規則列表（限管理員）
+ */
+
+export function useListAdminProfitRules<TData = Awaited<ReturnType<typeof listAdminProfitRules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminProfitRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminProfitRulesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminProfitRuleUrl = () => {
+
+
+
+
+  return `/api/admin/profit-rules`
+}
+
+/**
+ * @summary 新增分潤規則（限管理員）
+ */
+export const createAdminProfitRule = async (profitRuleInput: ProfitRuleInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfitRule> => {
+
+  return customFetch<ProfitRule>(getCreateAdminProfitRuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(profitRuleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminProfitRuleMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminProfitRule>>, TError,{data: BodyType<ProfitRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminProfitRule>>, TError,{data: BodyType<ProfitRuleInput>}, TContext> => {
+
+const mutationKey = ['createAdminProfitRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminProfitRule>>, {data: BodyType<ProfitRuleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminProfitRule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminProfitRuleMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminProfitRule>>>
+    export type CreateAdminProfitRuleMutationBody = BodyType<ProfitRuleInput>
+    export type CreateAdminProfitRuleMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 新增分潤規則（限管理員）
+ */
+export const useCreateAdminProfitRule = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminProfitRule>>, TError,{data: BodyType<ProfitRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminProfitRule>>,
+        TError,
+        {data: BodyType<ProfitRuleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminProfitRuleMutationOptions(options));
+    }
+
+export const getUpdateAdminProfitRuleUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/profit-rules/${id}`
+}
+
+/**
+ * @summary 更新分潤規則（限管理員）
+ */
+export const updateAdminProfitRule = async (id: number,
+    profitRuleInput: ProfitRuleInput, options?: Parameters<typeof customFetch>[1]): Promise<ProfitRule> => {
+
+  return customFetch<ProfitRule>(getUpdateAdminProfitRuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(profitRuleInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminProfitRuleMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminProfitRule>>, TError,{id: number;data: BodyType<ProfitRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminProfitRule>>, TError,{id: number;data: BodyType<ProfitRuleInput>}, TContext> => {
+
+const mutationKey = ['updateAdminProfitRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminProfitRule>>, {id: number;data: BodyType<ProfitRuleInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminProfitRule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminProfitRuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminProfitRule>>>
+    export type UpdateAdminProfitRuleMutationBody = BodyType<ProfitRuleInput>
+    export type UpdateAdminProfitRuleMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 更新分潤規則（限管理員）
+ */
+export const useUpdateAdminProfitRule = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminProfitRule>>, TError,{id: number;data: BodyType<ProfitRuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminProfitRule>>,
+        TError,
+        {id: number;data: BodyType<ProfitRuleInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminProfitRuleMutationOptions(options));
+    }
+
+export const getDeleteAdminProfitRuleUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/profit-rules/${id}`
+}
+
+/**
+ * @summary 刪除分潤規則（限管理員）
+ */
+export const deleteAdminProfitRule = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminProfitRuleUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminProfitRuleMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProfitRule>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProfitRule>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAdminProfitRule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminProfitRule>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminProfitRule(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminProfitRuleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminProfitRule>>>
+
+    export type DeleteAdminProfitRuleMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 刪除分潤規則（限管理員）
+ */
+export const useDeleteAdminProfitRule = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminProfitRule>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminProfitRule>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminProfitRuleMutationOptions(options));
+    }
+
+export const getGetAdminProfitReportUrl = (params?: GetAdminProfitReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/profit-report?${stringifiedParams}` : `/api/admin/profit-report`
+}
+
+/**
+ * @summary 利潤分享報表（期間／會員彙總，限管理員）
+ */
+export const getAdminProfitReport = async (params?: GetAdminProfitReportParams, options?: Parameters<typeof customFetch>[1]): Promise<ProfitReport> => {
+
+  return customFetch<ProfitReport>(getGetAdminProfitReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminProfitReportQueryKey = (params?: GetAdminProfitReportParams,) => {
+    return [
+    `/api/admin/profit-report`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminProfitReportQueryOptions = <TData = Awaited<ReturnType<typeof getAdminProfitReport>>, TError = ErrorType<unknown>>(params?: GetAdminProfitReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminProfitReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminProfitReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminProfitReport>>> = ({ signal }) => getAdminProfitReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminProfitReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminProfitReportQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminProfitReport>>>
+export type GetAdminProfitReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 利潤分享報表（期間／會員彙總，限管理員）
+ */
+
+export function useGetAdminProfitReport<TData = Awaited<ReturnType<typeof getAdminProfitReport>>, TError = ErrorType<unknown>>(
+ params?: GetAdminProfitReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminProfitReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminProfitReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminExpensesUrl = (params?: ListAdminExpensesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/expenses?${stringifiedParams}` : `/api/admin/expenses`
+}
+
+/**
+ * @summary 支出紀錄列表（限管理員）
+ */
+export const listAdminExpenses = async (params?: ListAdminExpensesParams, options?: Parameters<typeof customFetch>[1]): Promise<Expense[]> => {
+
+  return customFetch<Expense[]>(getListAdminExpensesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminExpensesQueryKey = (params?: ListAdminExpensesParams,) => {
+    return [
+    `/api/admin/expenses`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminExpensesQueryOptions = <TData = Awaited<ReturnType<typeof listAdminExpenses>>, TError = ErrorType<unknown>>(params?: ListAdminExpensesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminExpensesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminExpenses>>> = ({ signal }) => listAdminExpenses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminExpenses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminExpensesQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminExpenses>>>
+export type ListAdminExpensesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 支出紀錄列表（限管理員）
+ */
+
+export function useListAdminExpenses<TData = Awaited<ReturnType<typeof listAdminExpenses>>, TError = ErrorType<unknown>>(
+ params?: ListAdminExpensesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminExpensesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminExpenseUrl = () => {
+
+
+
+
+  return `/api/admin/expenses`
+}
+
+/**
+ * @summary 登錄支出（限管理員）
+ */
+export const createAdminExpense = async (expenseInput: ExpenseInput, options?: Parameters<typeof customFetch>[1]): Promise<Expense> => {
+
+  return customFetch<Expense>(getCreateAdminExpenseUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(expenseInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminExpenseMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminExpense>>, TError,{data: BodyType<ExpenseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminExpense>>, TError,{data: BodyType<ExpenseInput>}, TContext> => {
+
+const mutationKey = ['createAdminExpense'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminExpense>>, {data: BodyType<ExpenseInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminExpense(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminExpenseMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminExpense>>>
+    export type CreateAdminExpenseMutationBody = BodyType<ExpenseInput>
+    export type CreateAdminExpenseMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 登錄支出（限管理員）
+ */
+export const useCreateAdminExpense = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminExpense>>, TError,{data: BodyType<ExpenseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminExpense>>,
+        TError,
+        {data: BodyType<ExpenseInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminExpenseMutationOptions(options));
+    }
+
+export const getDeleteAdminExpenseUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/expenses/${id}`
+}
+
+/**
+ * @summary 刪除支出紀錄（限管理員）
+ */
+export const deleteAdminExpense = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminExpenseUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminExpenseMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExpense>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExpense>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAdminExpense'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminExpense>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminExpense(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminExpenseMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminExpense>>>
+
+    export type DeleteAdminExpenseMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 刪除支出紀錄（限管理員）
+ */
+export const useDeleteAdminExpense = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminExpense>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminExpense>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminExpenseMutationOptions(options));
+    }
+
+export const getGetAdminFinanceLedgerUrl = (params?: GetAdminFinanceLedgerParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/finance/ledger?${stringifiedParams}` : `/api/admin/finance/ledger`
+}
+
+/**
+ * @summary 收支流水（訂單收入自動納入，限管理員）
+ */
+export const getAdminFinanceLedger = async (params?: GetAdminFinanceLedgerParams, options?: Parameters<typeof customFetch>[1]): Promise<Ledger> => {
+
+  return customFetch<Ledger>(getGetAdminFinanceLedgerUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminFinanceLedgerQueryKey = (params?: GetAdminFinanceLedgerParams,) => {
+    return [
+    `/api/admin/finance/ledger`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminFinanceLedgerQueryOptions = <TData = Awaited<ReturnType<typeof getAdminFinanceLedger>>, TError = ErrorType<unknown>>(params?: GetAdminFinanceLedgerParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceLedger>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminFinanceLedgerQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminFinanceLedger>>> = ({ signal }) => getAdminFinanceLedger(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceLedger>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminFinanceLedgerQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminFinanceLedger>>>
+export type GetAdminFinanceLedgerQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 收支流水（訂單收入自動納入，限管理員）
+ */
+
+export function useGetAdminFinanceLedger<TData = Awaited<ReturnType<typeof getAdminFinanceLedger>>, TError = ErrorType<unknown>>(
+ params?: GetAdminFinanceLedgerParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminFinanceLedger>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminFinanceLedgerQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminPnlReportUrl = (params?: GetAdminPnlReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/finance/pnl?${stringifiedParams}` : `/api/admin/finance/pnl`
+}
+
+/**
+ * @summary 期間損益報表（限管理員）
+ */
+export const getAdminPnlReport = async (params?: GetAdminPnlReportParams, options?: Parameters<typeof customFetch>[1]): Promise<PnlReport> => {
+
+  return customFetch<PnlReport>(getGetAdminPnlReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminPnlReportQueryKey = (params?: GetAdminPnlReportParams,) => {
+    return [
+    `/api/admin/finance/pnl`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAdminPnlReportQueryOptions = <TData = Awaited<ReturnType<typeof getAdminPnlReport>>, TError = ErrorType<unknown>>(params?: GetAdminPnlReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPnlReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminPnlReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPnlReport>>> = ({ signal }) => getAdminPnlReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminPnlReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminPnlReportQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminPnlReport>>>
+export type GetAdminPnlReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 期間損益報表（限管理員）
+ */
+
+export function useGetAdminPnlReport<TData = Awaited<ReturnType<typeof getAdminPnlReport>>, TError = ErrorType<unknown>>(
+ params?: GetAdminPnlReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminPnlReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminPnlReportQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

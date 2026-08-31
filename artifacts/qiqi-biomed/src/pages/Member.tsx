@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck } from "lucide-react";
-import { useGetMe, useUpdateMe, useListInstitutions, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useGetMe, useUpdateMe, useListInstitutions, useLogout, getGetMeQueryKey, useGetWallet } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getTierName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,75 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const TX_TYPE_LABEL: Record<string, string> = {
+  deposit: "儲值",
+  payment: "消費",
+  refund: "退款",
+  profit_share: "利潤分享",
+  adjust: "調整",
+};
+
+function WalletCard() {
+  const { data: wallet, isLoading } = useGetWallet();
+  const [open, setOpen] = useState(false);
+
+  if (isLoading || !wallet) {
+    return <Skeleton className="h-20 w-full rounded-2xl" />;
+  }
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100" data-testid="card-wallet">
+      <div className="flex justify-between items-center">
+        <div>
+          <p className="text-xs text-gray-500 font-medium mb-1">錢包餘額</p>
+          <p className="text-2xl font-bold text-gray-900" data-testid="text-wallet-balance">
+            NT${wallet.balance.toLocaleString()}
+          </p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="rounded-full text-xs" data-testid="button-wallet-transactions">
+              交易明細
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="w-[90vw] max-w-[420px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>錢包交易明細</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-50">
+              {wallet.transactions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">尚無交易紀錄</p>
+              ) : (
+                wallet.transactions.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between py-3" data-testid={`row-wallet-tx-${t.id}`}>
+                    <div className="min-w-0 mr-3">
+                      <p className="text-sm font-bold text-gray-800">
+                        {TX_TYPE_LABEL[t.type] ?? t.type}
+                        {t.refNo ? <span className="ml-1 text-[10px] font-normal text-gray-400">{t.refNo}</span> : null}
+                      </p>
+                      <p className="text-[11px] text-gray-400 truncate">
+                        {new Date(t.createdAt).toLocaleString("zh-TW")}
+                        {t.reason ? `｜${t.reason}` : ""}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-sm font-bold ${t.amount >= 0 ? "text-green-600" : "text-red-500"}`}>
+                        {t.amount >= 0 ? "+" : ""}
+                        {t.amount.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-gray-400">餘額 {t.balanceAfter.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}
 
 function EditProfileDialog({ me }: { me: any }) {
   const { mutateAsync: updateMe } = useUpdateMe();
@@ -186,6 +255,9 @@ export default function MemberPage() {
           </Button>
         </div>
 
+        {/* Wallet Card */}
+        <WalletCard />
+
         {/* Links */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
           <Link href="/orders" className="flex items-center p-4 hover:bg-slate-50 transition-colors">
@@ -202,14 +274,6 @@ export default function MemberPage() {
             <span className="font-bold text-gray-800 flex-1">收藏清單</span>
             <span className="text-gray-300">›</span>
           </Link>
-          <div className="flex items-center p-4 opacity-50">
-            <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center mr-3">
-              <CreditCard size={16} />
-            </div>
-            <span className="font-bold text-gray-800 flex-1">機構錢包</span>
-            <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded mr-2">即將推出</span>
-            <span className="text-gray-300">›</span>
-          </div>
           <Link href="/knowledge" className="flex items-center p-4 hover:bg-slate-50 transition-colors">
             <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3">
               <HelpCircle size={16} />

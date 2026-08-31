@@ -27,6 +27,8 @@ export const membersTable = pgTable("members", {
   boundInstitutionId: integer("bound_institution_id"),
   boundDepartment: text("bound_department"),
   points: integer("points").notNull().default(0),
+  // 錢包餘額 (NT$)
+  walletBalance: integer("wallet_balance").notNull().default(0),
   shippingAddress: text("shipping_address"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
