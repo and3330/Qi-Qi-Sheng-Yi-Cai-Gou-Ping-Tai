@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
@@ -19,6 +19,7 @@ import {
   FileText,
   Bot,
   Headphones,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -26,56 +27,129 @@ export type AdminNavItem = {
   name: string;
   path: string;
   icon: typeof LayoutDashboard;
-  roles?: string[]; // null means all admin/ops/support
+  roles?: string[]; // undefined = admin/ops/support 皆可見
 };
 
-export const adminNavItems: AdminNavItem[] = [
-  { name: "儀表板", path: "/admin", icon: LayoutDashboard },
-  { name: "商品管理", path: "/admin/products", icon: Package, roles: ["admin", "ops"] },
-  { name: "進銷存", path: "/admin/inventory", icon: Boxes, roles: ["admin", "ops"] },
-  { name: "採購進貨", path: "/admin/purchasing", icon: PackagePlus, roles: ["admin", "ops"] },
-  { name: "訂單管理", path: "/admin/orders", icon: ClipboardList }, // ops/support read-only enforced inside component or backend
-  { name: "內容管理", path: "/admin/content", icon: FileText, roles: ["admin", "ops"] },
-  { name: "客服對話", path: "/admin/support", icon: Headphones }, 
-  { name: "AI 助理", path: "/admin/ai-assistant", icon: Bot, roles: ["admin", "ops"] },
-  { name: "進銷存報表", path: "/admin/reports", icon: BarChart3, roles: ["admin"] },
-  { name: "財務管理", path: "/admin/finance", icon: Landmark, roles: ["admin"] },
-  { name: "佣金報表", path: "/admin/commissions", icon: HandCoins, roles: ["admin"] },
-  { name: "利潤分享", path: "/admin/profit-sharing", icon: HandCoins, roles: ["admin"] },
-  { name: "機構錢包", path: "/admin/institution-wallets", icon: Building2, roles: ["admin"] },
-  { name: "會員錢包", path: "/admin/wallets", icon: Wallet, roles: ["admin"] },
-  { name: "使用者管理", path: "/admin/members", icon: Users },
+export type AdminNavGroup = {
+  title: string;
+  items: AdminNavItem[];
+};
+
+export const adminNavGroups: AdminNavGroup[] = [
+  {
+    title: "總覽",
+    items: [
+      { name: "儀表板", path: "/admin", icon: LayoutDashboard },
+      { name: "AI 助理", path: "/admin/ai-assistant", icon: Bot, roles: ["admin", "ops"] },
+    ],
+  },
+  {
+    title: "商品與庫存",
+    items: [
+      { name: "商品管理", path: "/admin/products", icon: Package, roles: ["admin", "ops"] },
+      { name: "進銷存", path: "/admin/inventory", icon: Boxes, roles: ["admin", "ops"] },
+      { name: "採購進貨", path: "/admin/purchasing", icon: PackagePlus, roles: ["admin", "ops"] },
+      { name: "進銷存報表", path: "/admin/reports", icon: BarChart3, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "訂單與客服",
+    items: [
+      { name: "訂單管理", path: "/admin/orders", icon: ClipboardList },
+      { name: "客服對話", path: "/admin/support", icon: Headphones },
+    ],
+  },
+  {
+    title: "財務與分潤",
+    items: [
+      { name: "財務管理", path: "/admin/finance", icon: Landmark, roles: ["admin"] },
+      { name: "佣金報表", path: "/admin/commissions", icon: HandCoins, roles: ["admin"] },
+      { name: "利潤分享", path: "/admin/profit-sharing", icon: HandCoins, roles: ["admin"] },
+      { name: "機構錢包", path: "/admin/institution-wallets", icon: Building2, roles: ["admin"] },
+      { name: "會員錢包", path: "/admin/wallets", icon: Wallet, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "內容與會員",
+    items: [
+      { name: "內容管理", path: "/admin/content", icon: FileText, roles: ["admin", "ops"] },
+      { name: "使用者管理", path: "/admin/members", icon: Users },
+    ],
+  },
 ];
+
+/** 相容用途：攤平的選單清單 */
+export const adminNavItems: AdminNavItem[] = adminNavGroups.flatMap((g) => g.items);
+
+function isItemActive(location: string, path: string) {
+  return path === "/admin" ? location === "/admin" : location.startsWith(path);
+}
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const { me } = useAuth();
-  
+  const role = me?.role as string;
+
+  const visibleGroups = adminNavGroups
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((item) => !item.roles || item.roles.includes(role)),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  // 預設展開「目前頁面所在」的群組，其餘收合；使用者可自行切換
+  const activeTitle = visibleGroups.find((g) =>
+    g.items.some((item) => isItemActive(location, item.path)),
+  )?.title;
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (activeTitle) setOpenGroups((prev) => ({ ...prev, [activeTitle]: true }));
+  }, [activeTitle]);
+
   return (
     <nav className="flex flex-col gap-1 px-3">
-      {adminNavItems
-        .filter(item => !item.roles || item.roles.includes(me?.role as string))
-        .map((item) => {
-        const isActive =
-          item.path === "/admin"
-            ? location === "/admin"
-            : location.startsWith(item.path);
-        const Icon = item.icon;
+      {visibleGroups.map((group) => {
+        const hasActive = group.items.some((item) => isItemActive(location, item.path));
+        const open = openGroups[group.title] ?? hasActive;
         return (
-          <Link
-            key={item.path}
-            href={item.path}
-            onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              isActive
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
-            }`}
-            data-testid={`link-admin-nav-${item.path.replace(/\//g, "-")}`}
-          >
-            <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
-            {item.name}
-          </Link>
+          <div key={group.title} className="mb-1">
+            <button
+              type="button"
+              onClick={() => setOpenGroups((prev) => ({ ...prev, [group.title]: !open }))}
+              className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/60"
+              data-testid={`button-admin-navgroup-${group.title}`}
+            >
+              {group.title}
+              <ChevronDown
+                size={14}
+                className={`transition-transform ${open ? "rotate-180" : ""}`}
+              />
+            </button>
+            {open && (
+              <div className="mt-0.5 flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const isActive = isItemActive(location, item.path);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      onClick={onNavigate}
+                      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                      }`}
+                      data-testid={`link-admin-nav-${item.path.replace(/\//g, "-")}`}
+                    >
+                      <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         );
       })}
     </nav>
