@@ -8,7 +8,7 @@ import {
   type AdminProduct,
   type ListAdminProductsParams,
 } from "@workspace/api-client-react";
-import { Search, Plus, Pencil, PackageX, PackageCheck } from "lucide-react";
+import { Search, Plus, Pencil, PackageX, PackageCheck, AlertTriangle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,7 @@ export default function AdminProductsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
+  const [zeroCostOnly, setZeroCostOnly] = useState(false);
   const [form, setForm] = useState<FormState | null>(null);
 
   const params = useMemo(() => {
@@ -92,6 +93,15 @@ export default function AdminProductsPage() {
   const { data: products, isLoading } = useListAdminProducts(params, {
     query: { queryKey: getListAdminProductsQueryKey(params) },
   });
+
+  const zeroCostCount = useMemo(
+    () => products?.filter((p) => p.costPrice === 0).length ?? 0,
+    [products],
+  );
+  const visibleProducts = useMemo(
+    () => (zeroCostOnly ? products?.filter((p) => p.costPrice === 0) : products),
+    [products, zeroCostOnly],
+  );
 
   const invalidate = () => {
     queryClient.invalidateQueries({
@@ -249,13 +259,37 @@ export default function AdminProductsPage() {
         </Button>
       </div>
 
+      {!isLoading && zeroCostCount > 0 && (
+        <div
+          className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between"
+          data-testid="banner-zero-cost-warning"
+        >
+          <div className="flex items-start gap-2 text-sm text-amber-800">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+            <p>
+              有 <span className="font-semibold">{zeroCostCount}</span>{" "}
+              項商品的成本價為 0，將導致損益報表的毛利數字失真。請補齊成本價（編輯商品，或透過採購收貨自動更新）。
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+            onClick={() => setZeroCostOnly((v) => !v)}
+            data-testid="button-toggle-zero-cost-filter"
+          >
+            {zeroCostOnly ? "顯示全部商品" : "只看成本為 0 的商品"}
+          </Button>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-16 w-full rounded-2xl" />
           ))}
         </div>
-      ) : !products?.length ? (
+      ) : !visibleProducts?.length ? (
         <div className="rounded-2xl border border-dashed bg-white py-16 text-center text-muted-foreground">
           找不到符合條件的商品
         </div>
@@ -277,10 +311,12 @@ export default function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
+                {visibleProducts.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b last:border-0 hover:bg-muted/30"
+                    className={`border-b last:border-0 hover:bg-muted/30 ${
+                      p.costPrice === 0 ? "bg-amber-50/60" : ""
+                    }`}
                     data-testid={`row-product-${p.id}`}
                   >
                     <td className="px-4 py-3">
@@ -296,8 +332,19 @@ export default function AdminProductsPage() {
                     <td className="px-4 py-3 text-right">NT${p.priceHospital.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right">NT${p.priceClinic.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right">NT${p.priceConsumer.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">
-                      NT${p.costPrice.toLocaleString()}
+                    <td className="px-4 py-3 text-right">
+                      {p.costPrice === 0 ? (
+                        <span
+                          className="inline-flex items-center gap-1 font-semibold text-amber-600"
+                          data-testid={`text-zero-cost-${p.id}`}
+                        >
+                          <AlertTriangle size={13} /> NT$0
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          NT${p.costPrice.toLocaleString()}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className={p.stock <= 10 ? "font-semibold text-red-600" : ""}>
@@ -451,6 +498,15 @@ export default function AdminProductsPage() {
                   </div>
                 ))}
               </div>
+              {Number(form.costPrice || 0) === 0 && (
+                <p
+                  className="flex items-center gap-1 text-xs text-amber-600"
+                  data-testid="text-cost-zero-hint"
+                >
+                  <AlertTriangle size={13} className="shrink-0" />
+                  成本價為 0 會使損益報表的毛利失真，建議填寫實際進貨成本（採購收貨時也會自動更新）
+                </p>
+              )}
               {form.id === null && (
                 <div className="space-y-1.5">
                   <Label>期初庫存</Label>
