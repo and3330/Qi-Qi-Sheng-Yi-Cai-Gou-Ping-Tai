@@ -5,4 +5,3 @@ export * from "./orders";
 export * from "./institutions";
 export * from "./content";
 export * from "./favorites";
-export * from "./sessions";

@@ -14,47 +14,6 @@ export interface ErrorMessage {
 }
 
 /**
- * 由專屬註冊連結帶入的會員身份（預設 consumer）
- */
-export type RegisterInputTier = typeof RegisterInputTier[keyof typeof RegisterInputTier];
-
-
-export const RegisterInputTier = {
-  hospital: 'hospital',
-  clinic: 'clinic',
-  consumer: 'consumer',
-} as const;
-
-export interface RegisterInput {
-  /**
-     * @minLength 3
-     * @maxLength 30
-     * @pattern ^[a-zA-Z0-9_.-]+$
-     */
-  username: string;
-  /**
-     * @minLength 8
-     * @maxLength 72
-     */
-  password: string;
-  /** @minLength 1 */
-  name: string;
-  /** @nullable */
-  phone?: string | null;
-  /** @nullable */
-  email?: string | null;
-  /** 由專屬註冊連結帶入的會員身份（預設 consumer） */
-  tier?: RegisterInputTier;
-}
-
-export interface LoginInput {
-  /** @minLength 1 */
-  username: string;
-  /** @minLength 1 */
-  password: string;
-}
-
-/**
  * A 醫院 / B 診所藥局 / C 消費者
  */
 export type MemberTier = typeof MemberTier[keyof typeof MemberTier];
@@ -66,9 +25,16 @@ export const MemberTier = {
   consumer: 'consumer',
 } as const;
 
+export type MemberRole = typeof MemberRole[keyof typeof MemberRole];
+
+
+export const MemberRole = {
+  admin: 'admin',
+  member: 'member',
+} as const;
+
 export interface Member {
   id: number;
-  username: string;
   name: string;
   /** @nullable */
   email?: string | null;
@@ -76,6 +42,7 @@ export interface Member {
   phone?: string | null;
   /** A 醫院 / B 診所藥局 / C 消費者 */
   tier: MemberTier;
+  role?: MemberRole;
   /** @nullable */
   boundInstitutionId?: number | null;
   /** @nullable */
@@ -83,6 +50,87 @@ export interface Member {
   /** @nullable */
   boundDepartment?: string | null;
   points: number;
+  /** @nullable */
+  shippingAddress?: string | null;
+}
+
+export interface AdminStats {
+  /** 訂單總數 */
+  orderCount: number;
+  /** 待處理訂單數 */
+  pendingOrderCount: number;
+  /** 營收（不含已取消，NT$） */
+  totalRevenue: number;
+  /** 會員總數 */
+  memberCount: number;
+  /** 低庫存品項數（庫存 <= 10） */
+  lowStockCount: number;
+}
+
+export type AdminMemberTier = typeof AdminMemberTier[keyof typeof AdminMemberTier];
+
+
+export const AdminMemberTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export type AdminMemberRole = typeof AdminMemberRole[keyof typeof AdminMemberRole];
+
+
+export const AdminMemberRole = {
+  admin: 'admin',
+  member: 'member',
+} as const;
+
+export interface AdminMember {
+  id: number;
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  tier: AdminMemberTier;
+  role: AdminMemberRole;
+  isActive: boolean;
+  points: number;
+  /** @nullable */
+  boundInstitutionId?: number | null;
+  /** @nullable */
+  boundDepartment?: string | null;
+  /** @nullable */
+  shippingAddress?: string | null;
+  createdAt: string;
+}
+
+export type AdminMemberUpdateTier = typeof AdminMemberUpdateTier[keyof typeof AdminMemberUpdateTier];
+
+
+export const AdminMemberUpdateTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export type AdminMemberUpdateRole = typeof AdminMemberUpdateRole[keyof typeof AdminMemberUpdateRole];
+
+
+export const AdminMemberUpdateRole = {
+  admin: 'admin',
+  member: 'member',
+} as const;
+
+export interface AdminMemberUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  tier?: AdminMemberUpdateTier;
+  role?: AdminMemberUpdateRole;
+  isActive?: boolean;
   /** @nullable */
   shippingAddress?: string | null;
 }
@@ -281,7 +329,8 @@ export interface Announcement {
   title: string;
   /** @nullable */
   content?: string | null;
-  category: string;
+  /** @nullable */
+  category?: string | null;
   /** @nullable */
   imageUrl?: string | null;
   publishedAt: string;
@@ -296,6 +345,23 @@ export interface HomeSummary {
   announcements: Announcement[];
   latestArticles: Article[];
 }
+
+export type ListAdminMembersParams = {
+/**
+ * 搜尋帳號 / 姓名 / Email / 電話
+ */
+search?: string;
+tier?: ListAdminMembersTier;
+};
+
+export type ListAdminMembersTier = typeof ListAdminMembersTier[keyof typeof ListAdminMembersTier];
+
+
+export const ListAdminMembersTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
 
 export type ListProductsParams = {
 category?: string;

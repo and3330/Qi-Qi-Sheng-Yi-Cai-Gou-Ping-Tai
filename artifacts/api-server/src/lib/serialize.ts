@@ -6,11 +6,11 @@ export function serializeMember(
 ) {
   return {
     id: m.id,
-    username: m.username,
     name: m.name,
     email: m.email,
     phone: m.phone,
     tier: m.tier,
+    role: m.role,
     boundInstitutionId: m.boundInstitutionId,
     boundInstitutionName,
     boundDepartment: m.boundDepartment,

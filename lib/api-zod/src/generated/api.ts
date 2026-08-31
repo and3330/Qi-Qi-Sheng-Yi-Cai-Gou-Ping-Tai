@@ -9,6 +9,102 @@ import * as zod from 'zod/v4';
 
 
 /**
+ * @summary 後台儀表板統計數字（限管理員）
+ */
+export const GetAdminStatsResponse = zod.object({
+  "orderCount": zod.int().describe('訂單總數'),
+  "pendingOrderCount": zod.int().describe('待處理訂單數'),
+  "totalRevenue": zod.int().describe('營收（不含已取消，NT$）'),
+  "memberCount": zod.int().describe('會員總數'),
+  "lowStockCount": zod.int().describe('低庫存品項數（庫存 <= 10）')
+})
+
+
+/**
+ * @summary 會員列表（限管理員）
+ */
+export const ListAdminMembersQueryParams = zod.object({
+  "search": zod.coerce.string().optional().describe('搜尋帳號 \/ 姓名 \/ Email \/ 電話'),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']).optional()
+})
+
+export const ListAdminMembersResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "role": zod.enum(['admin', 'member']),
+  "isActive": zod.boolean(),
+  "points": zod.int(),
+  "boundInstitutionId": zod.int().nullish(),
+  "boundDepartment": zod.string().nullish(),
+  "shippingAddress": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminMembersResponse = zod.array(ListAdminMembersResponseItem)
+
+
+/**
+ * @summary 會員詳情（限管理員）
+ */
+export const GetAdminMemberParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetAdminMemberResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "role": zod.enum(['admin', 'member']),
+  "isActive": zod.boolean(),
+  "points": zod.int(),
+  "boundInstitutionId": zod.int().nullish(),
+  "boundDepartment": zod.string().nullish(),
+  "shippingAddress": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 編輯會員資料 / 等級 / 角色 / 啟用狀態（限管理員）
+ */
+export const UpdateAdminMemberParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+export const UpdateAdminMemberBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']).optional(),
+  "role": zod.enum(['admin', 'member']).optional(),
+  "isActive": zod.boolean().optional(),
+  "shippingAddress": zod.string().nullish()
+})
+
+export const UpdateAdminMemberResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "role": zod.enum(['admin', 'member']),
+  "isActive": zod.boolean(),
+  "points": zod.int(),
+  "boundInstitutionId": zod.int().nullish(),
+  "boundDepartment": zod.string().nullish(),
+  "shippingAddress": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -17,86 +113,15 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Register a new member account (starts session)
- */
-export const registerBodyUsernameMin = 3;
-export const registerBodyUsernameMax = 30;
-
-
-export const registerBodyUsernameRegExp = new RegExp('^[a-zA-Z0-9_.-]+$');
-export const registerBodyPasswordMin = 8;
-export const registerBodyPasswordMax = 72;
-
-
-
-
-export const RegisterBody = zod.object({
-  "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax).regex(registerBodyUsernameRegExp),
-  "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
-  "name": zod.string().min(1),
-  "phone": zod.string().nullish(),
-  "email": zod.string().nullish(),
-  "tier": zod.enum(['hospital', 'clinic', 'consumer']).optional().describe('由專屬註冊連結帶入的會員身份（預設 consumer）')
-})
-
-export const RegisterResponse = zod.object({
-  "id": zod.int(),
-  "username": zod.string(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
-  "boundInstitutionId": zod.int().nullish(),
-  "boundInstitutionName": zod.string().nullish(),
-  "boundDepartment": zod.string().nullish(),
-  "points": zod.int(),
-  "shippingAddress": zod.string().nullish()
-})
-
-
-/**
- * @summary Log in with username and password (starts session)
- */
-
-
-
-
-export const LoginBody = zod.object({
-  "username": zod.string().min(1),
-  "password": zod.string().min(1)
-})
-
-export const LoginResponse = zod.object({
-  "id": zod.int(),
-  "username": zod.string(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
-  "boundInstitutionId": zod.int().nullish(),
-  "boundInstitutionName": zod.string().nullish(),
-  "boundDepartment": zod.string().nullish(),
-  "points": zod.int(),
-  "shippingAddress": zod.string().nullish()
-})
-
-
-/**
- * @summary Log out (destroys session)
- */
-export const LogoutResponse = zod.void()
-
-
-/**
  * @summary Get current member profile
  */
 export const GetMeResponse = zod.object({
   "id": zod.int(),
-  "username": zod.string(),
   "name": zod.string(),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
+  "role": zod.enum(['admin', 'member']).optional(),
   "boundInstitutionId": zod.int().nullish(),
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
@@ -121,11 +146,11 @@ export const UpdateMeBody = zod.object({
 
 export const UpdateMeResponse = zod.object({
   "id": zod.int(),
-  "username": zod.string(),
   "name": zod.string(),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).describe('A 醫院 \/ B 診所藥局 \/ C 消費者'),
+  "role": zod.enum(['admin', 'member']).optional(),
   "boundInstitutionId": zod.int().nullish(),
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
@@ -465,7 +490,7 @@ export const ListAnnouncementsResponseItem = zod.object({
   "id": zod.int(),
   "title": zod.string(),
   "content": zod.string().nullish(),
-  "category": zod.string(),
+  "category": zod.string().nullish(),
   "imageUrl": zod.string().nullish(),
   "publishedAt": zod.string()
 })
@@ -536,7 +561,7 @@ export const GetHomeSummaryResponse = zod.object({
   "id": zod.int(),
   "title": zod.string(),
   "content": zod.string().nullish(),
-  "category": zod.string(),
+  "category": zod.string().nullish(),
   "imageUrl": zod.string().nullish(),
   "publishedAt": zod.string()
 })),

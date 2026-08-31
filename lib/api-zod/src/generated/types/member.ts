@@ -5,11 +5,11 @@
  * 七期生醫採購平台 API
  * OpenAPI spec version: 0.1.0
  */
+import type { MemberRole } from './memberRole';
 import type { MemberTier } from './memberTier';
 
 export interface Member {
   id: number;
-  username: string;
   name: string;
   /** @nullable */
   email?: string | null;
@@ -17,6 +17,7 @@ export interface Member {
   phone?: string | null;
   /** A 醫院 / B 診所藥局 / C 消費者 */
   tier: MemberTier;
+  role?: MemberRole;
   /** @nullable */
   boundInstitutionId?: number | null;
   /** @nullable */

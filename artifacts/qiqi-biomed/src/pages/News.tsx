@@ -153,7 +153,7 @@ export default function NewsPage() {
                         <span className="text-[10px] text-gray-400 font-medium font-mono">
                           {new Date(item.publishedAt).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
                         </span>
-                        <span className={classNames("text-[9px] font-bold px-1.5 py-0.5 rounded border", getCategoryStyle(item.category))}>
+                        <span className={classNames("text-[9px] font-bold px-1.5 py-0.5 rounded border", getCategoryStyle(item.category ?? ""))}>
                           {item.category}
                         </span>
                       </div>

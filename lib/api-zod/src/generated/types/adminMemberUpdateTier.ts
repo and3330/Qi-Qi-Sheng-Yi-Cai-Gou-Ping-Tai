@@ -6,13 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-/**
- * 由專屬註冊連結帶入的會員身份（預設 consumer）
- */
-export type RegisterInputTier = typeof RegisterInputTier[keyof typeof RegisterInputTier];
+export type AdminMemberUpdateTier = typeof AdminMemberUpdateTier[keyof typeof AdminMemberUpdateTier];
 
 
-export const RegisterInputTier = {
+export const AdminMemberUpdateTier = {
   hospital: 'hospital',
   clinic: 'clinic',
   consumer: 'consumer',

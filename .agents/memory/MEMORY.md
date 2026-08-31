@@ -1,1 +1,1 @@
-- [Session store vs esbuild bundling](session-store-bundling.md) — connect-pg-simple createTableIfMissing fails silently in bundled server; session table lives in drizzle schema.
+- [Identity & schema-evolution decisions](auth-and-sessions.md) — identity is Clerk-only (JIT member rows, no email auto-linking); schema changes must be nullable/defaulted and prompt-free to stay deployable.

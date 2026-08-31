@@ -4,17 +4,20 @@ import {
   text,
   integer,
   timestamp,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const membersTable = pgTable("members", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
   // 預留：之後串接 LINE / Google 額外綁定
   lineUserId: text("line_user_id").unique(),
   googleUserId: text("google_user_id").unique(),
+  clerkUserId: text("clerk_user_id").notNull().unique(),
+  // admin | member
+  role: text("role").notNull().default("member"),
+  isActive: boolean("is_active").notNull().default(true),
   name: text("name").notNull().default(""),
   email: text("email"),
   phone: text("phone"),

@@ -18,7 +18,121 @@ tags:
   - name: announcements
   - name: favorites
   - name: home
+  - name: admin
 paths:
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: 後台儀表板統計數字（限管理員）
+      responses:
+        "200":
+          description: Admin dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/members:
+    get:
+      operationId: listAdminMembers
+      tags: [admin]
+      summary: 會員列表（限管理員）
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+          description: 搜尋帳號 / 姓名 / Email / 電話
+        - name: tier
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [hospital, clinic, consumer]
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminMember"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /admin/members/{id}:
+    get:
+      operationId: getAdminMember
+      tags: [admin]
+      summary: 會員詳情（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMember"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    patch:
+      operationId: updateAdminMember
+      tags: [admin]
+      summary: 編輯會員資料 / 等級 / 角色 / 啟用狀態（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMemberUpdate"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminMember"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
   /healthz:
     get:
       operationId: healthCheck
@@ -31,62 +145,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
-  /auth/register:
-    post:
-      operationId: register
-      tags: [me]
-      summary: Register a new member account (starts session)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RegisterInput"
-      responses:
-        "201":
-          description: Registered member
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Member"
-        "400":
-          description: Invalid input or username taken
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorMessage"
-  /auth/login:
-    post:
-      operationId: login
-      tags: [me]
-      summary: Log in with username and password (starts session)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LoginInput"
-      responses:
-        "200":
-          description: Logged-in member
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Member"
-        "401":
-          description: Wrong username or password
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorMessage"
-  /auth/logout:
-    post:
-      operationId: logout
-      tags: [me]
-      summary: Log out (destroys session)
-      responses:
-        "204":
-          description: Logged out
   /me:
     get:
       operationId: getMe
@@ -454,31 +512,11 @@ components:
       properties:
         error: { type: string }
       required: [error]
-    RegisterInput:
-      type: object
-      required: [username, password, name]
-      properties:
-        username: { type: string, minLength: 3, maxLength: 30, pattern: "^[a-zA-Z0-9_.-]+$" }
-        password: { type: string, minLength: 8, maxLength: 72 }
-        name: { type: string, minLength: 1 }
-        phone: { type: ["string", "null"] }
-        email: { type: ["string", "null"] }
-        tier:
-          type: string
-          enum: [hospital, clinic, consumer]
-          description: 由專屬註冊連結帶入的會員身份（預設 consumer）
-    LoginInput:
-      type: object
-      required: [username, password]
-      properties:
-        username: { type: string, minLength: 1 }
-        password: { type: string, minLength: 1 }
     Member:
       type: object
-      required: [id, username, name, tier, points]
+      required: [id, name, tier, points]
       properties:
         id: { type: integer }
-        username: { type: string }
         name: { type: string }
         email: { type: ["string", "null"] }
         phone: { type: ["string", "null"] }
@@ -486,10 +524,56 @@ components:
           type: string
           enum: [hospital, clinic, consumer]
           description: A 醫院 / B 診所藥局 / C 消費者
+        role:
+          type: string
+          enum: [admin, member]
         boundInstitutionId: { type: ["integer", "null"] }
         boundInstitutionName: { type: ["string", "null"] }
         boundDepartment: { type: ["string", "null"] }
         points: { type: integer }
+        shippingAddress: { type: ["string", "null"] }
+    AdminStats:
+      type: object
+      required: [orderCount, pendingOrderCount, totalRevenue, memberCount, lowStockCount]
+      properties:
+        orderCount: { type: integer, description: "訂單總數" }
+        pendingOrderCount: { type: integer, description: "待處理訂單數" }
+        totalRevenue: { type: integer, description: "營收（不含已取消，NT$）" }
+        memberCount: { type: integer, description: "會員總數" }
+        lowStockCount: { type: integer, description: "低庫存品項數（庫存 <= 10）" }
+    AdminMember:
+      type: object
+      required: [id, name, tier, role, isActive, points, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer]
+        role:
+          type: string
+          enum: [admin, member]
+        isActive: { type: boolean }
+        points: { type: integer }
+        boundInstitutionId: { type: ["integer", "null"] }
+        boundDepartment: { type: ["string", "null"] }
+        shippingAddress: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    AdminMemberUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer]
+        role:
+          type: string
+          enum: [admin, member]
+        isActive: { type: boolean }
         shippingAddress: { type: ["string", "null"] }
     MemberUpdate:
       type: object
@@ -627,12 +711,12 @@ components:
         publishedAt: { type: string }
     Announcement:
       type: object
-      required: [id, title, category, publishedAt]
+      required: [id, title, publishedAt]
       properties:
         id: { type: integer }
         title: { type: string }
         content: { type: ["string", "null"] }
-        category: { type: string }
+        category: { type: ["string", "null"] }
         imageUrl: { type: ["string", "null"] }
         publishedAt: { type: string }
     FavoriteInput:
