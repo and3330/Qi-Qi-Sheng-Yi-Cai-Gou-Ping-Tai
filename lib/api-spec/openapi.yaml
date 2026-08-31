@@ -3,20 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: 七期生醫採購平台 API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: me
+  - name: products
+  - name: cart
+  - name: orders
+  - name: institutions
+  - name: knowledge
+  - name: announcements
+  - name: favorites
+  - name: home
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +31,550 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /me:
+    get:
+      operationId: getMe
+      tags: [me]
+      summary: Get current member profile
+      responses:
+        "200":
+          description: Member profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+    patch:
+      operationId: updateMe
+      tags: [me]
+      summary: Update current member profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberUpdate"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Member"
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products
+      parameters:
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [recommended, priceAsc, priceDesc, newest]
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /cart:
+    get:
+      operationId: getCart
+      tags: [cart]
+      summary: Get current member cart
+      responses:
+        "200":
+          description: Cart items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CartItem"
+    post:
+      operationId: addCartItem
+      tags: [cart]
+      summary: Add item to cart (upserts quantity)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemInput"
+      responses:
+        "200":
+          description: Updated cart item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartItem"
+    delete:
+      operationId: clearCart
+      tags: [cart]
+      summary: Clear cart
+      responses:
+        "204":
+          description: Cleared
+  /cart/{id}:
+    patch:
+      operationId: updateCartItem
+      tags: [cart]
+      summary: Update cart item quantity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemUpdate"
+      responses:
+        "200":
+          description: Updated cart item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartItem"
+    delete:
+      operationId: removeCartItem
+      tags: [cart]
+      summary: Remove cart item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Removed
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List current member orders
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create order from explicit items (checkout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Invalid order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /institutions:
+    get:
+      operationId: listInstitutions
+      tags: [institutions]
+      summary: List partner institutions (hospitals / clinics / pharmacies)
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [hospital, clinic, pharmacy]
+        - name: city
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Institutions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Institution"
+  /articles:
+    get:
+      operationId: listArticles
+      tags: [knowledge]
+      summary: List knowledge articles and FAQs
+      parameters:
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [article, faq]
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Article"
+  /articles/{id}:
+    get:
+      operationId: getArticle
+      tags: [knowledge]
+      summary: Get article detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Article"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorMessage"
+  /announcements:
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      summary: List platform announcements (最新消息)
+      responses:
+        "200":
+          description: Announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Announcement"
+  /favorites:
+    get:
+      operationId: listFavorites
+      tags: [favorites]
+      summary: List favorite products of current member
+      responses:
+        "200":
+          description: Favorite products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: addFavorite
+      tags: [favorites]
+      summary: Add a product to favorites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FavoriteInput"
+      responses:
+        "204":
+          description: Added
+  /favorites/{productId}:
+    delete:
+      operationId: removeFavorite
+      tags: [favorites]
+      summary: Remove a product from favorites
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Removed
+  /home/summary:
+    get:
+      operationId: getHomeSummary
+      tags: [home]
+      summary: Home page aggregate (hot products, announcements, latest articles)
+      responses:
+        "200":
+          description: Home summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeSummary"
 components:
   schemas:
     HealthStatus:
       type: object
       properties:
+        status: { type: string }
+      required: [status]
+    ErrorMessage:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    Member:
+      type: object
+      required: [id, name, tier, points]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        tier:
+          type: string
+          enum: [hospital, clinic, consumer]
+          description: A 醫院 / B 診所藥局 / C 消費者
+        boundInstitutionId: { type: ["integer", "null"] }
+        boundInstitutionName: { type: ["string", "null"] }
+        boundDepartment: { type: ["string", "null"] }
+        points: { type: integer }
+        shippingAddress: { type: ["string", "null"] }
+    MemberUpdate:
+      type: object
+      description: 會員身份 (tier) 由平台審核後台調整，不開放自行修改
+      properties:
+        name: { type: string, minLength: 1 }
+        phone: { type: ["string", "null"] }
+        boundInstitutionId: { type: ["integer", "null"] }
+        boundDepartment: { type: ["string", "null"] }
+        shippingAddress: { type: ["string", "null"] }
+    Product:
+      type: object
+      required: [id, code, name, category, priceHospital, priceClinic, priceConsumer, stock, isHot, isNew]
+      properties:
+        id: { type: integer }
+        code: { type: string, description: "商品編號，如 10011" }
+        name: { type: string }
+        category:
+          type: string
+          description: "保健食品 / 醫療耗材 / 保養清潔 / 院所專區"
+        description: { type: ["string", "null"] }
+        imageUrl: { type: ["string", "null"] }
+        priceHospital: { type: integer, description: "A 醫院價 (NT$)" }
+        priceClinic: { type: integer, description: "B 診所/藥局價 (NT$)" }
+        priceConsumer: { type: integer, description: "C 消費者/會員價 (NT$)" }
+        stock: { type: integer }
+        isHot: { type: boolean }
+        isNew: { type: boolean }
+        spec: { type: ["string", "null"], description: "規格，如 90粒/瓶" }
+    CartItem:
+      type: object
+      required: [id, productId, quantity, product]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        quantity: { type: integer }
+        product:
+          $ref: "#/components/schemas/Product"
+    CartItemInput:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: integer }
+        quantity: { type: integer, minimum: 1 }
+    CartItemUpdate:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: { type: integer, minimum: 1 }
+    OrderItem:
+      type: object
+      required: [id, productId, productName, productCode, unitPrice, quantity]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        productCode: { type: string }
+        unitPrice: { type: integer }
+        quantity: { type: integer }
+    Order:
+      type: object
+      required: [id, orderNo, status, paymentMethod, totalAmount, createdAt, items]
+      properties:
+        id: { type: integer }
+        orderNo: { type: string }
         status:
           type: string
-      required:
-        - status
-
+          enum: [pending, paid, shipped, completed, cancelled]
+        paymentMethod:
+          type: string
+          enum: [bank_transfer, cod, wallet]
+          description: 匯款 / 貨到付款 / 錢包扣款(預留)
+        totalAmount: { type: integer }
+        shippingAddress: { type: ["string", "null"] }
+        receiverName: { type: ["string", "null"] }
+        receiverPhone: { type: ["string", "null"] }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+    OrderLineInput:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: integer }
+        quantity: { type: integer, minimum: 1 }
+    OrderInput:
+      type: object
+      required: [paymentMethod, items, receiverName, receiverPhone, shippingAddress]
+      properties:
+        paymentMethod:
+          type: string
+          enum: [bank_transfer, cod]
+        receiverName: { type: string, minLength: 1 }
+        receiverPhone: { type: string, minLength: 1 }
+        shippingAddress: { type: string, minLength: 1 }
+        note: { type: string }
+        clearCart: { type: boolean, description: "下單後是否清空購物車" }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/OrderLineInput"
+    Institution:
+      type: object
+      required: [id, name, type, city]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type:
+          type: string
+          enum: [hospital, clinic, pharmacy]
+        city: { type: string }
+        address: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        hours: { type: ["string", "null"] }
+        departments:
+          type: array
+          items: { type: string }
+    Article:
+      type: object
+      required: [id, kind, title, category, publishedAt]
+      properties:
+        id: { type: integer }
+        kind:
+          type: string
+          enum: [article, faq]
+        title: { type: string }
+        category: { type: string }
+        summary: { type: ["string", "null"] }
+        content: { type: ["string", "null"], description: "Markdown 內文" }
+        imageUrl: { type: ["string", "null"] }
+        publishedAt: { type: string }
+    Announcement:
+      type: object
+      required: [id, title, publishedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        content: { type: ["string", "null"] }
+        publishedAt: { type: string }
+    FavoriteInput:
+      type: object
+      required: [productId]
+      properties:
+        productId: { type: integer }
+    HomeSummary:
+      type: object
+      required: [hotProducts, announcements, latestArticles]
+      properties:
+        hotProducts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        announcements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Announcement"
+        latestArticles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Article"

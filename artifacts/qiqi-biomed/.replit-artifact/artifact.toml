@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "七期生醫採購平台"
+description = "A mobile-first B2B2C medical procurement web app for 七期生醫 (Qiqi Biomed): a private-domain shop for health supplements and medical supplies, with tiered member pricing (hospital / clinic-pharmacy / consumer), quick-order, cart & orders, member center, partner hospital directory, and a health knowledge / FAQ section, plus an admin backoffice for orders, products, members, and content."
+version = "1.0.0"
+id = "artifacts/qiqi-biomed"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21059
+
+[services.development]
+run = "pnpm --filter @workspace/qiqi-biomed run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/qiqi-biomed", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/qiqi-biomed/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21059"
+BASE_PATH = "/"

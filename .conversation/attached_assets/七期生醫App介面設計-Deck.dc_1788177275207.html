@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#111;}
+a{color:#1F6B54;text-decoration:none;}
+a:hover{color:#164F3F;}
+</style>
+</helmet>
+
+<x-import component-from-global-scope="deck-stage" from="./deck-stage.js" width="1920" height="1080" hint-size="100%,100%">
+
+<section data-label="標題" style="background:#1F6B54;display:flex;flex-direction:column;justify-content:center;padding:0 160px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:22px;letter-spacing:4px;color:rgba(255,255,255,0.7);font-weight:600;text-transform:uppercase;">SEVEN PERIOD BIOMEDICAL</div>
+  <div style="font-size:76px;font-weight:900;color:#fff;margin-top:20px;line-height:1.25;">七期生醫整合系統<br/>App 介面設計</div>
+  <div style="font-size:32px;color:rgba(255,255,255,0.85);margin-top:28px;">使用者端　·　機構端　·　管理者端（網頁）</div>
+  <div style="font-size:22px;color:rgba(255,255,255,0.55);margin-top:60px;">v1.0　·　2026 年 7 月</div>
+</section>
+
+<section data-label="使用者端-分隔" style="background:#FAF9F5;display:flex;flex-direction:column;justify-content:center;padding:0 160px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:22px;letter-spacing:4px;color:#1F6B54;font-weight:700;text-transform:uppercase;">01</div>
+  <div style="font-size:72px;font-weight:900;color:#22241D;margin-top:16px;">使用者端 App</div>
+  <div style="font-size:30px;color:#5A5A50;margin-top:24px;max-width:1100px;line-height:1.7;">私域商城購物、會員中心、合作醫院據點查詢與衛教知識專區，並整合 AI 智慧客服。</div>
+</section>
+
+<section data-label="使用者-首頁" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">使用者端　·　首頁</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">商城首頁</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">最新消息與熱門商品一目了然，會員一進入 App 即可掌握品牌動態與快速下單。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#FAF9F5;display:flex;flex-direction:column;">
+      <div style="flex-shrink:0;background:#1F6B54;padding:16px;display:flex;align-items:center;justify-content:space-between;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <span style="color:#fff;font-weight:700;font-size:16px;">七期生醫</span>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8"><path d="M3 4h2l2.4 12.5a2 2 0 002 1.5h8.6a2 2 0 002-1.6L21 8H6"/></svg>
+      </div>
+      <div style="flex:1;overflow:hidden;">
+        <div style="margin:14px;border-radius:14px;height:130px;background:repeating-linear-gradient(135deg,#EFE8D8,#EFE8D8 10px,#E7DEC8 10px,#E7DEC8 20px);display:flex;align-items:center;justify-content:center;"><span style="font-size:16px;font-weight:800;color:#5B5230;">品質認證榮耀</span></div>
+        <div style="padding:0 18px;font-size:16px;font-weight:800;color:#22241D;margin-bottom:10px;">最新消息</div>
+        <div style="padding:0 18px;font-size:13px;color:#3A3A34;margin-bottom:8px;">2026/07/10　《產品快報》995 生技營養品新品上市</div>
+        <div style="padding:0 18px;font-size:13px;color:#3A3A34;margin-bottom:18px;">2026/07/05　《醫療新知》益生菌與腸道健康的關聯</div>
+        <div style="padding:0 18px;font-size:16px;font-weight:800;color:#22241D;margin-bottom:10px;">熱門商品</div>
+        <div style="padding:0 18px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="border:1px solid #EDEBE3;border-radius:10px;background:#fff;overflow:hidden;"><div style="height:64px;background:repeating-linear-gradient(45deg,#F1EFE8,#F1EFE8 8px,#E7E4D8 8px,#E7E4D8 16px);"></div><div style="padding:8px;font-size:12px;color:#22241D;">995生技營養品<br/><b style="color:#1F6B54;">$5,990</b></div></div>
+          <div style="border:1px solid #EDEBE3;border-radius:10px;background:#fff;overflow:hidden;"><div style="height:64px;background:repeating-linear-gradient(45deg,#F1EFE8,#F1EFE8 8px,#E7E4D8 8px,#E7E4D8 16px);"></div><div style="padding:8px;font-size:12px;color:#22241D;">永生福朗膠囊<br/><b style="color:#1F6B54;">$1,770</b></div></div>
+        </div>
+      </div>
+      <div style="flex-shrink:0;display:flex;border-top:1px solid #EDEBE3;background:#fff;padding:10px 4px 16px;">
+        <div style="flex:1;text-align:center;color:#1F6B54;font-size:11px;">●<br/>首頁</div>
+        <div style="flex:1;text-align:center;color:#B5B3A8;font-size:11px;">▢<br/>商品</div>
+        <div style="flex:1;text-align:center;color:#B5B3A8;font-size:11px;">▤<br/>衛教</div>
+        <div style="flex:1;text-align:center;color:#B5B3A8;font-size:11px;">◐<br/>客服</div>
+        <div style="flex:1;text-align:center;color:#B5B3A8;font-size:11px;">◯<br/>我的</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-label="使用者-商品列表與詳情" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">使用者端　·　商城</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">商品列表與詳情</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">支援分類搜尋與規格／數量選擇，商品詳情頁清楚呈現說明與規格選項。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;display:flex;flex-direction:column;">
+      <div style="flex-shrink:0;height:200px;background:repeating-linear-gradient(45deg,#F1EFE8,#F1EFE8 10px,#E7E4D8 10px,#E7E4D8 20px);"></div>
+      <div style="padding:20px;">
+        <div style="font-size:12px;color:#9A9788;">10011</div>
+        <div style="font-size:19px;font-weight:800;color:#22241D;margin-top:4px;">995生技營養品</div>
+        <div style="font-size:23px;font-weight:900;color:#1F6B54;margin-top:10px;">$5,990</div>
+        <div style="height:1px;background:#EDEBE3;margin:16px 0;"></div>
+        <div style="font-size:13px;font-weight:700;color:#22241D;margin-bottom:8px;">規格</div>
+        <div style="display:flex;gap:8px;">
+          <span style="border:1.5px solid #1F6B54;color:#1F6B54;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;">單瓶</span>
+          <span style="border:1.5px solid #EDEBE3;color:#8C8A80;font-size:12px;padding:6px 12px;border-radius:8px;">三入組合</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-label="使用者-購物車與結帳" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">使用者端　·　結帳</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">購物車與結帳</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">支援匯款、貨到付款、會員儲值扣款三種付款方式，結帳流程簡單清楚。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;display:flex;flex-direction:column;padding:20px;box-sizing:border-box;">
+      <div style="font-size:15px;font-weight:700;color:#22241D;margin-bottom:12px;">付款方式</div>
+      <div style="display:flex;align-items:center;gap:10px;border:1.5px solid #1F6B54;border-radius:10px;padding:14px;background:#F5F8F5;margin-bottom:10px;"><div style="width:16px;height:16px;border-radius:50%;border:4px solid #1F6B54;"></div><span style="font-size:13px;font-weight:600;">匯款轉帳</span></div>
+      <div style="display:flex;align-items:center;gap:10px;border:1px solid #EDEBE3;border-radius:10px;padding:14px;margin-bottom:10px;"><div style="width:16px;height:16px;border-radius:50%;border:1.5px solid #C9C6BA;"></div><span style="font-size:13px;color:#5A5A50;">貨到付款</span></div>
+      <div style="display:flex;align-items:center;gap:10px;border:1px solid #EDEBE3;border-radius:10px;padding:14px;"><div style="width:16px;height:16px;border-radius:50%;border:1.5px solid #C9C6BA;"></div><span style="font-size:13px;color:#5A5A50;">會員儲值扣款</span></div>
+      <div style="flex:1;"></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid #EDEBE3;padding-top:14px;"><span style="font-size:14px;color:#5A5A50;">應付金額</span><span style="font-size:18px;font-weight:800;color:#22241D;">$9,810</span></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="使用者-會員中心" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">使用者端　·　會員</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">會員中心</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">訂單查詢、收藏清單、綁定醫院／科室設定，會員資訊集中管理。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#FAF9F5;padding:20px;box-sizing:border-box;">
+      <div style="background:#1F6B54;border-radius:14px;padding:18px;color:#fff;margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:700;">王小明</div>
+        <div style="font-size:12px;opacity:0.85;margin-top:4px;">會員編號 M20260145　·　金卡會員</div>
+      </div>
+      <div style="background:#fff;border:1px solid #EDEBE3;border-radius:12px;overflow:hidden;">
+        <div style="padding:15px;border-bottom:1px solid #EDEBE3;font-size:13px;color:#22241D;">訂單查詢</div>
+        <div style="padding:15px;border-bottom:1px solid #EDEBE3;font-size:13px;color:#22241D;">收藏清單</div>
+        <div style="padding:15px;display:flex;justify-content:space-between;font-size:13px;color:#22241D;">綁定醫院／科室 <span style="color:#1F6B54;">康寧診所</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-label="使用者-合作醫院據點" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">使用者端　·　據點</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">合作醫院據點查詢</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">列出全台合作醫院與服務時間，方便會員就近前往門診。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="border:1px solid #EDEBE3;border-radius:12px;padding:14px;margin-bottom:12px;"><div style="font-size:14px;font-weight:700;color:#22241D;">台北旗艦中心</div><div style="font-size:12px;color:#7A7A72;margin-top:4px;">台北市中山區南京東路二段 88 號</div></div>
+      <div style="border:1px solid #EDEBE3;border-radius:12px;padding:14px;margin-bottom:12px;"><div style="font-size:14px;font-weight:700;color:#22241D;">桃園營運中心</div><div style="font-size:12px;color:#7A7A72;margin-top:4px;">桃園市桃園區中正路 168 號</div></div>
+      <div style="border:1px solid #EDEBE3;border-radius:12px;padding:14px;"><div style="font-size:14px;font-weight:700;color:#22241D;">台中營運中心</div><div style="font-size:12px;color:#7A7A72;margin-top:4px;">台中市西區台灣大道二段 200 號</div></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="使用者-衛教知識專區" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">使用者端　·　衛教</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">衛教知識專區</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">衛教文章與常見問題列表，內容同時作為 AI 客服的知識庫來源。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="display:flex;gap:12px;border:1px solid #EDEBE3;border-radius:12px;padding:12px;margin-bottom:12px;"><div style="width:56px;height:56px;flex-shrink:0;border-radius:8px;background:repeating-linear-gradient(45deg,#F1EFE8,#F1EFE8 6px,#E7E4D8 6px,#E7E4D8 12px);"></div><div><span style="font-size:10px;color:#1F6B54;font-weight:700;background:#EAF2EC;padding:2px 7px;border-radius:8px;">衛教</span><div style="font-size:13px;font-weight:600;color:#22241D;margin-top:6px;">益生菌與腸道健康的關聯</div></div></div>
+      <div style="display:flex;gap:12px;border:1px solid #EDEBE3;border-radius:12px;padding:12px;"><div style="width:56px;height:56px;flex-shrink:0;border-radius:8px;background:repeating-linear-gradient(45deg,#F1EFE8,#F1EFE8 6px,#E7E4D8 6px,#E7E4D8 12px);"></div><div><span style="font-size:10px;color:#8A6A2E;font-weight:700;background:#F5EEDD;padding:2px 7px;border-radius:8px;">常見問題</span><div style="font-size:13px;font-weight:600;color:#22241D;margin-top:6px;">高齡營養補充常見問題</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="使用者-AI客服" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">使用者端　·　客服</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">AI 智慧客服</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">採 RAG 檢索增強生成，回覆附上知識庫來源；涉及醫療判斷則轉真人客服。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;gap:8px;max-width:88%;"><div style="width:26px;height:26px;flex-shrink:0;border-radius:50%;background:#1F6B54;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;">AI</div><div style="background:#F1EFE8;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.6;">您好，請問想了解商品資訊，還是衛教相關問題呢？</div></div>
+      <div style="align-self:flex-end;max-width:88%;background:#1F6B54;color:#fff;border-radius:10px;padding:10px 12px;font-size:12.5px;">益生菌可以跟其他藥物一起吃嗎？</div>
+      <div style="display:flex;gap:8px;max-width:90%;"><div style="width:26px;height:26px;flex-shrink:0;border-radius:50%;background:#1F6B54;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;">AI</div><div style="background:#F1EFE8;border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.6;">建議洽詢醫師或合作醫院藥師確認。<div style="margin-top:6px;font-size:10.5px;color:#7A7A72;border-top:1px solid #E2DFD3;padding-top:5px;">來源：衛教知識庫</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="機構端-分隔" style="background:#22241D;display:flex;flex-direction:column;justify-content:center;padding:0 160px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:22px;letter-spacing:4px;color:#8FD9BB;font-weight:700;text-transform:uppercase;">02</div>
+  <div style="font-size:72px;font-weight:900;color:#fff;margin-top:16px;">機構端 App</div>
+  <div style="font-size:30px;color:rgba(255,255,255,0.75);margin-top:24px;max-width:1100px;line-height:1.7;">醫院／診所／藥局依 A／B／C 分級批貨，並管理錢包、佣金與患者綁定。</div>
+</section>
+
+<section data-label="機構-儀表板" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">機構端　·　總覽</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">機構儀表板</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">掌握本月批貨、待處理訂單、應收佣金與錢包餘額，並快速進入各項功能。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="border:1px solid #EDEBE3;border-radius:12px;padding:14px;margin-bottom:14px;"><div style="font-size:13px;font-weight:800;color:#22241D;">康寧診所</div><div style="font-size:11px;color:#7A7A72;margin-top:3px;">B 級機構</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="border:1px solid #EDEBE3;border-radius:10px;padding:12px;"><div style="font-size:10.5px;color:#9A9788;">本月批貨</div><div style="font-size:16px;font-weight:800;color:#22241D;">$86,400</div></div>
+        <div style="border:1px solid #EDEBE3;border-radius:10px;padding:12px;"><div style="font-size:10.5px;color:#9A9788;">應收佣金</div><div style="font-size:16px;font-weight:800;color:#1F6B54;">$18,650</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-label="機構-批貨下單" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">機構端　·　批貨</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">批貨下單</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">依機構分級（A／B／C）顯示對應批貨單價，快速勾選商品與數量下單。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="font-size:12px;color:#7A7A72;margin-bottom:12px;">B 級機構批貨價</div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #F1EFE8;"><span style="font-size:13px;color:#22241D;">995生技營養品</span><span style="font-size:13px;font-weight:700;color:#22241D;">$5,590</span></div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #F1EFE8;"><span style="font-size:13px;color:#22241D;">永生福朗膠囊</span><span style="font-size:13px;font-weight:700;color:#22241D;">$1,590</span></div>
+      <div style="display:flex;justify-content:space-between;padding:12px 0;"><span style="font-size:13px;color:#22241D;">康貝兒(N)乳酸菌顆粒</span><span style="font-size:13px;font-weight:700;color:#22241D;">$1,690</span></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="機構-錢包" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">機構端　·　錢包</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">機構錢包</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">餘額、儲值與扣款紀錄一覽，支援批貨自動扣款付款方式。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="background:#1F6B54;border-radius:14px;padding:18px;color:#fff;margin-bottom:16px;"><div style="font-size:12px;opacity:0.85;">機構錢包餘額</div><div style="font-size:24px;font-weight:900;margin-top:6px;">$128,400</div></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F1EFE8;font-size:12.5px;"><span>批貨扣款 #B20260711</span><span style="color:#B03A2E;font-weight:700;">－$14,220</span></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:12.5px;"><span>儲值入帳</span><span style="color:#1F6B54;font-weight:700;">＋$50,000</span></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="機構-佣金報表" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">機構端　·　佣金</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">佣金報表</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">依縣市／醫院／科室維度統計，並清楚列出佣金明細供機構核對。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="border:1px solid #EDEBE3;border-radius:12px;padding:14px;margin-bottom:14px;"><div style="font-size:11px;color:#9A9788;">本月應付佣金</div><div style="font-size:20px;font-weight:900;color:#1F6B54;margin-top:4px;">$18,650</div></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F1EFE8;font-size:12px;"><span>患者A · 995生技營養品</span><span style="color:#1F6B54;font-weight:700;">$599</span></div>
+      <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:12px;"><span>患者B · 康貝兒(N)乳酸菌顆粒</span><span style="color:#1F6B54;font-weight:700;">$191</span></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="機構-門診銷售與綁定" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">機構端　·　門診</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">門診銷售登錄與患者綁定</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">看診時登錄銷售紀錄即時回寫後台，並管理患者綁定關係作為佣金計算依據。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="font-size:13px;font-weight:700;color:#22241D;margin-bottom:8px;">選擇患者</div>
+      <div style="border:1px solid #EDEBE3;border-radius:10px;padding:12px;margin-bottom:16px;font-size:12.5px;">患者A（P-10234）· 家醫科</div>
+      <div style="width:100%;background:#1F6B54;color:#fff;border-radius:10px;padding:13px;font-size:13px;font-weight:700;text-align:center;">送出銷售紀錄</div>
+    </div>
+  </div>
+</section>
+
+<section data-label="機構-訂單出貨追蹤" style="background:#FAF9F5;display:flex;align-items:center;padding:0 140px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="flex:1;padding-right:60px;">
+    <div style="font-size:20px;font-weight:700;color:#1F6B54;">機構端　·　追蹤</div>
+    <div style="font-size:52px;font-weight:900;color:#22241D;margin-top:16px;line-height:1.3;">訂單／出貨追蹤</div>
+    <div style="font-size:26px;color:#5A5A50;margin-top:22px;line-height:1.7;">批貨訂單狀態一目了然，出貨附實拍照片作為佐證。</div>
+  </div>
+  <div style="width:380px;height:820px;flex-shrink:0;border-radius:44px;background:#1a1a1a;padding:14px;box-shadow:0 40px 80px rgba(0,0,0,0.25);">
+    <div style="width:100%;height:100%;border-radius:32px;overflow:hidden;background:#fff;padding:20px;box-sizing:border-box;">
+      <div style="border:1px solid #EDEBE3;border-radius:12px;padding:13px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><span style="font-size:13px;font-weight:700;">#B20260711</span><span style="font-size:10.5px;color:#8A6A2E;background:#F5EEDD;padding:2px 8px;border-radius:8px;">待出貨</span></div></div>
+      <div style="border:1px solid #EDEBE3;border-radius:12px;padding:13px;"><div style="display:flex;justify-content:space-between;"><span style="font-size:13px;font-weight:700;">#B20260628</span><span style="font-size:10.5px;color:#1F6B54;background:#EAF2EC;padding:2px 8px;border-radius:8px;">已出貨</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="管理者端-分隔" style="background:#20221C;display:flex;flex-direction:column;justify-content:center;padding:0 160px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:22px;letter-spacing:4px;color:#8FD9BB;font-weight:700;text-transform:uppercase;">03</div>
+  <div style="font-size:72px;font-weight:900;color:#fff;margin-top:16px;">管理者端（網頁）</div>
+  <div style="font-size:30px;color:rgba(255,255,255,0.75);margin-top:24px;max-width:1100px;line-height:1.7;">七期生醫後台管理系統：訂單出貨、報價單、機構錢包、佣金、商品、發票、知識內容集中管理。</div>
+</section>
+
+<section data-label="管理者-儀表板" style="background:#FAF9F5;display:flex;flex-direction:column;justify-content:center;padding:70px 120px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:20px;font-weight:700;color:#1F6B54;margin-bottom:8px;">管理者端　·　總覽</div>
+  <div style="font-size:44px;font-weight:900;color:#22241D;margin-bottom:26px;">後台儀表板</div>
+  <div style="border-radius:16px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,0.14);border:1px solid #E5E2D8;background:#fff;display:flex;height:560px;">
+    <div style="width:220px;flex-shrink:0;background:#20221C;padding:20px 14px;color:#fff;font-size:14px;font-weight:800;">七期生醫後台</div>
+    <div style="flex:1;padding:28px 32px;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;">
+        <div style="background:#F5F3EC;border-radius:10px;padding:14px;"><div style="font-size:11px;color:#9A9788;">今日訂單</div><div style="font-size:20px;font-weight:800;color:#22241D;">42</div></div>
+        <div style="background:#F5F3EC;border-radius:10px;padding:14px;"><div style="font-size:11px;color:#9A9788;">待出貨</div><div style="font-size:20px;font-weight:800;color:#22241D;">9</div></div>
+        <div style="background:#F5F3EC;border-radius:10px;padding:14px;"><div style="font-size:11px;color:#9A9788;">本月營收</div><div style="font-size:20px;font-weight:800;color:#22241D;">$2,384,000</div></div>
+        <div style="background:#F5F3EC;border-radius:10px;padding:14px;"><div style="font-size:11px;color:#9A9788;">佣金支出</div><div style="font-size:20px;font-weight:800;color:#1F6B54;">$186,500</div></div>
+      </div>
+      <div style="border:1px solid #EAE7DD;border-radius:10px;overflow:hidden;">
+        <div style="display:flex;padding:11px 14px;font-size:11px;color:#9A9788;background:#F5F3EC;"><span style="flex:1;">訂單編號</span><span style="flex:1;">客戶／機構</span><span style="flex:0.6;">金額</span></div>
+        <div style="display:flex;padding:12px 14px;font-size:12.5px;color:#3A3A34;border-top:1px solid #F1EFE8;"><span style="flex:1;">O20260716-08</span><span style="flex:1;">王小明</span><span style="flex:0.6;">$9,810</span></div>
+        <div style="display:flex;padding:12px 14px;font-size:12.5px;color:#3A3A34;border-top:1px solid #F1EFE8;"><span style="flex:1;">B20260716-03</span><span style="flex:1;">康寧診所</span><span style="flex:0.6;">$14,220</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-label="管理者-訂單出貨管理" style="background:#FAF9F5;display:flex;flex-direction:column;justify-content:center;padding:70px 120px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:20px;font-weight:700;color:#1F6B54;margin-bottom:8px;">管理者端</div>
+  <div style="font-size:44px;font-weight:900;color:#22241D;margin-bottom:26px;">訂單／出貨管理</div>
+  <div style="background:#fff;border:1px solid #EAE7DD;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.1);">
+    <div style="display:flex;padding:14px 24px;font-size:14px;color:#9A9788;background:#F5F3EC;"><span style="flex:1;">訂單編號</span><span style="flex:0.8;">類型</span><span style="flex:1;">客戶／機構</span><span style="flex:0.7;">金額</span><span style="flex:0.8;">出貨照片</span><span style="flex:0.7;">狀態</span></div>
+    <div style="display:flex;align-items:center;padding:16px 24px;font-size:15px;color:#3A3A34;border-top:1px solid #F1EFE8;"><span style="flex:1;">O20260716-08</span><span style="flex:0.8;">顧客訂單</span><span style="flex:1;">王小明</span><span style="flex:0.7;">$9,810</span><span style="flex:0.8;">—</span><span style="flex:0.7;color:#8A6A2E;">待出貨</span></div>
+    <div style="display:flex;align-items:center;padding:16px 24px;font-size:15px;color:#3A3A34;border-top:1px solid #F1EFE8;"><span style="flex:1;">B20260716-03</span><span style="flex:0.8;">機構批貨</span><span style="flex:1;">康寧診所</span><span style="flex:0.7;">$14,220</span><span style="flex:0.8;">—</span><span style="flex:0.7;color:#8A6A2E;">待出貨</span></div>
+    <div style="display:flex;align-items:center;padding:16px 24px;font-size:15px;color:#3A3A34;border-top:1px solid #F1EFE8;"><span style="flex:1;">O20260715-21</span><span style="flex:0.8;">顧客訂單</span><span style="flex:1;">陳美華</span><span style="flex:0.7;">$3,680</span><span style="flex:0.8;"><div style="width:32px;height:32px;border-radius:6px;background:repeating-linear-gradient(45deg,#F1EFE8,#F1EFE8 5px,#E7E4D8 5px,#E7E4D8 10px);"></div></span><span style="flex:0.7;color:#1F6B54;">已出貨</span></div>
+  </div>
+</section>
+
+<section data-label="管理者-報價單與機構錢包" style="background:#FAF9F5;display:flex;flex-direction:column;justify-content:center;padding:70px 120px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:20px;font-weight:700;color:#1F6B54;margin-bottom:8px;">管理者端</div>
+  <div style="font-size:44px;font-weight:900;color:#22241D;margin-bottom:26px;">報價單管理　／　機構與錢包管理</div>
+  <div style="display:flex;gap:24px;">
+    <div style="flex:1;background:#fff;border:1px solid #EAE7DD;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.1);">
+      <div style="display:flex;padding:13px 20px;font-size:13px;color:#9A9788;background:#F5F3EC;"><span style="flex:1;">報價單編號</span><span style="flex:1;">機構</span><span style="flex:0.6;">狀態</span></div>
+      <div style="display:flex;padding:14px 20px;font-size:14px;border-top:1px solid #F1EFE8;"><span style="flex:1;">Q20260710-02</span><span style="flex:1;">康寧診所</span><span style="flex:0.6;color:#8A6A2E;">待確認</span></div>
+      <div style="display:flex;padding:14px 20px;font-size:14px;border-top:1px solid #F1EFE8;"><span style="flex:1;">Q20260705-01</span><span style="flex:1;">仁愛藥局</span><span style="flex:0.6;color:#1F6B54;">已核准</span></div>
+    </div>
+    <div style="flex:1;background:#fff;border:1px solid #EAE7DD;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.1);">
+      <div style="display:flex;padding:13px 20px;font-size:13px;color:#9A9788;background:#F5F3EC;"><span style="flex:1.2;">機構名稱</span><span style="flex:0.6;">分級</span><span style="flex:1;">錢包餘額</span></div>
+      <div style="display:flex;padding:14px 20px;font-size:14px;border-top:1px solid #F1EFE8;"><span style="flex:1.2;">台北旗艦醫院</span><span style="flex:0.6;">A</span><span style="flex:1;">$482,000</span></div>
+      <div style="display:flex;padding:14px 20px;font-size:14px;border-top:1px solid #F1EFE8;"><span style="flex:1.2;">康寧診所</span><span style="flex:0.6;">B</span><span style="flex:1;">$128,400</span></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="管理者-佣金管理" style="background:#FAF9F5;display:flex;flex-direction:column;justify-content:center;padding:70px 120px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:20px;font-weight:700;color:#1F6B54;margin-bottom:8px;">管理者端</div>
+  <div style="font-size:44px;font-weight:900;color:#22241D;margin-bottom:26px;">佣金管理</div>
+  <div style="background:#fff;border:1px solid #EAE7DD;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.1);">
+    <div style="display:flex;padding:14px 24px;font-size:14px;color:#9A9788;background:#F5F3EC;"><span style="flex:0.7;">縣市</span><span style="flex:1;">醫院／機構</span><span style="flex:0.8;">科室</span><span style="flex:0.8;">期間</span><span style="flex:0.8;">應付佣金</span><span style="flex:0.6;">狀態</span></div>
+    <div style="display:flex;padding:16px 24px;font-size:15px;border-top:1px solid #F1EFE8;"><span style="flex:0.7;">台北市</span><span style="flex:1;">康寧診所</span><span style="flex:0.8;">家醫科</span><span style="flex:0.8;">2026/06</span><span style="flex:0.8;">$18,650</span><span style="flex:0.6;color:#8A6A2E;">待撥付</span></div>
+    <div style="display:flex;padding:16px 24px;font-size:15px;border-top:1px solid #F1EFE8;"><span style="flex:0.7;">新北市</span><span style="flex:1;">仁愛藥局</span><span style="flex:0.8;">—</span><span style="flex:0.8;">2026/06</span><span style="flex:0.8;">$9,240</span><span style="flex:0.6;color:#1F6B54;">已撥付</span></div>
+  </div>
+</section>
+
+<section data-label="管理者-商品與發票" style="background:#FAF9F5;display:flex;flex-direction:column;justify-content:center;padding:70px 120px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:20px;font-weight:700;color:#1F6B54;margin-bottom:8px;">管理者端</div>
+  <div style="font-size:44px;font-weight:900;color:#22241D;margin-bottom:26px;">商品管理　／　發票管理</div>
+  <div style="display:flex;gap:24px;">
+    <div style="flex:1.3;background:#fff;border:1px solid #EAE7DD;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.1);">
+      <div style="display:flex;padding:13px 20px;font-size:13px;color:#9A9788;background:#F5F3EC;"><span style="flex:0.6;">編號</span><span style="flex:1.2;">商品名</span><span style="flex:0.7;">A級價</span><span style="flex:0.7;">B級價</span><span style="flex:0.7;">C級價</span></div>
+      <div style="display:flex;padding:14px 20px;font-size:14px;border-top:1px solid #F1EFE8;"><span style="flex:0.6;">10011</span><span style="flex:1.2;">995生技營養品</span><span style="flex:0.7;">$5,290</span><span style="flex:0.7;">$5,590</span><span style="flex:0.7;">$5,990</span></div>
+      <div style="display:flex;padding:14px 20px;font-size:14px;border-top:1px solid #F1EFE8;"><span style="flex:0.6;">10020</span><span style="flex:1.2;">永生福朗膠囊</span><span style="flex:0.7;">$1,490</span><span style="flex:0.7;">$1,590</span><span style="flex:0.7;">$1,770</span></div>
+    </div>
+    <div style="flex:1;background:#fff;border:1px solid #EAE7DD;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.1);">
+      <div style="display:flex;padding:13px 20px;font-size:13px;color:#9A9788;background:#F5F3EC;"><span style="flex:1.2;">發票編號</span><span style="flex:0.8;">金額</span><span style="flex:0.7;">狀態</span></div>
+      <div style="display:flex;padding:14px 20px;font-size:14px;border-top:1px solid #F1EFE8;"><span style="flex:1.2;">AB-20260716-091</span><span style="flex:0.8;">$9,810</span><span style="flex:0.7;color:#1F6B54;">已開立</span></div>
+    </div>
+  </div>
+</section>
+
+<section data-label="管理者-知識內容管理" style="background:#FAF9F5;display:flex;flex-direction:column;justify-content:center;padding:70px 120px;font-family:'Noto Sans TC',-apple-system,sans-serif;">
+  <div style="font-size:20px;font-weight:700;color:#1F6B54;margin-bottom:8px;">管理者端</div>
+  <div style="font-size:44px;font-weight:900;color:#22241D;margin-bottom:26px;">知識內容管理（CMS）</div>
+  <div style="background:#fff;border:1px solid #EAE7DD;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.1);">
+    <div style="display:flex;padding:14px 24px;font-size:14px;color:#9A9788;background:#F5F3EC;"><span style="flex:1.4;">標題</span><span style="flex:0.7;">分類</span><span style="flex:0.7;">審核狀態</span><span style="flex:0.7;">更新日期</span></div>
+    <div style="display:flex;padding:16px 24px;font-size:15px;border-top:1px solid #F1EFE8;"><span style="flex:1.4;">益生菌與腸道健康的關聯</span><span style="flex:0.7;">衛教</span><span style="flex:0.7;color:#1F6B54;">已上架</span><span style="flex:0.7;">2026/07/05</span></div>
+    <div style="display:flex;padding:16px 24px;font-size:15px;border-top:1px solid #F1EFE8;"><span style="flex:1.4;">高齡營養補充常見問題</span><span style="flex:0.7;">常見問題</span><span style="flex:0.7;color:#8A6A2E;">審核中</span><span style="flex:0.7;">2026/06/10</span></div>
+  </div>
+</section>
+
+</x-import>
+
+</x-dc>
+</body>
+</html>

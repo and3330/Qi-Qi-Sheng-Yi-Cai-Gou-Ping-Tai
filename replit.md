@@ -1,44 +1,55 @@
-# [Project name]
+# 七期生醫採購平台 (Qiqi Biomed)
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Mobile-first B2B2C 醫藥採購 WebApp：三種會員身份（A 醫院 / B 診所藥局 / C 消費者）依身份顯示不同採購價，含商城、快速訂購、購物車、訂單追蹤、知識專區、合作醫院名錄與會員中心。
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Workflows: `artifacts/api-server: API Server`（/api，port 由 PORT 決定）、`artifacts/qiqi-biomed: web`（前端，previewPath `/`）
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/api-server exec tsx src/seed.ts` — seed demo data (idempotent, skips if products exist)
+- Required env: `DATABASE_URL`; Clerk keys auto-provisioned (`CLERK_*`, `VITE_CLERK_PUBLISHABLE_KEY`)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- API: Express 5 + Clerk (`@clerk/express`), Drizzle ORM + PostgreSQL
+- Frontend: React + Vite + wouter + TanStack Query（Orval 產生 hooks）+ shadcn/Tailwind v4
+- Auth: Replit-managed Clerk（web 為 cookie-based；勿加 token handling）
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- OpenAPI 契約（single source of truth）：`lib/api-spec/openapi.yaml`
+- DB schema：`lib/db/src/schema/`（members, products, carts, orders, institutions, content, favorites）
+- API routes：`artifacts/api-server/src/routes/`；auth middleware：`src/middlewares/requireMember.ts`（JIT 建立 member）
+- 前端頁面：`artifacts/qiqi-biomed/src/pages/`；產品圖：`artifacts/qiqi-biomed/public/images/products/`
+- Seed：`artifacts/api-server/src/seed.ts`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- 三層價格存於 product 欄位（priceHospital/priceClinic/priceConsumer）；下單時價格一律由伺服器依 `member.tier` 計算，不信任 client。
+- `PATCH /me` 不允許自行修改 tier（防止自我升級取得低價）；tier 由平台審核調整。
+- 下單使用 DB transaction 原子扣庫存，庫存不足回 400。
+- 付款僅開放 bank_transfer / cod；`wallet` enum 值預留給未來機構錢包模組。
+- ERP、分潤、ICOPE、AI 客服等模組刻意未建，資料結構保留擴充點（member.points、institutions 綁定）。
+- codegen script 內含 sed 將 zod import 改為 `zod/v4`（orval 產出 v4 語法）。
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- 公開瀏覽：首頁、商城（顯示消費者價）、知識專區、最新消息、合作醫院
+- 登入後：購物車、快速訂購、結帳（匯款/貨到付款）、訂單狀態追蹤、收藏、會員中心（綁定院所/科室）
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- 介面全繁體中文（zh-TW）、不用 emoji；使用者為非技術背景，以繁中溝通、少術語。
+- 品牌：深綠醫療風（參考葡眾/葡萄王 App）。
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- 改 `lib/api-spec/openapi.yaml` 後必跑 codegen；body schema 命名用實體名（如 `ProductInput`）避免 TS2308。
+- Clerk wiring（publishableKeyFromHost、unconditional proxyUrl、`/sign-in/*?` routes）須照 clerk-auth skill 範本，勿改。
+- 前端受保護的 query hooks 必須以 `isLoaded && isSignedIn` gate，否則登出狀態狂打 401。
 
 ## Pointers
 
