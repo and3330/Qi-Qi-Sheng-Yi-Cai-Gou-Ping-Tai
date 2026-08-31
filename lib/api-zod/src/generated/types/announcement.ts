@@ -11,8 +11,7 @@ export interface Announcement {
   title: string;
   /** @nullable */
   content?: string | null;
-  /** @nullable */
-  category?: string | null;
+  category: string;
   /** @nullable */
   imageUrl?: string | null;
   publishedAt: string;

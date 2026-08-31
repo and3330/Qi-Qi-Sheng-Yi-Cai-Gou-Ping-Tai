@@ -17,6 +17,7 @@ const LOW_STOCK_THRESHOLD = 10;
 function serializeAdminMember(m: Member) {
   return {
     id: m.id,
+    username: m.username,
     name: m.name,
     email: m.email,
     phone: m.phone,
@@ -68,6 +69,7 @@ router.get("/admin/members", requireAdmin, async (req, res) => {
     const pattern = `%${search}%`;
     conditions.push(
       or(
+        ilike(membersTable.username, pattern),
         ilike(membersTable.name, pattern),
         ilike(membersTable.email, pattern),
         ilike(membersTable.phone, pattern),

@@ -1,8 +1,8 @@
 import { ReactNode } from "react";
 import { Link } from "wouter";
-import { Show } from "@clerk/react";
 import { Redirect } from "wouter";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useAuth } from "../../hooks/use-auth";
 import { ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -45,14 +45,17 @@ function AdminOnly({ children }: { children: ReactNode }) {
 }
 
 export function AdminGuard({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <Show when="signed-in">
-        <AdminOnly>{children}</AdminOnly>
-      </Show>
-      <Show when="signed-out">
-        <Redirect to="/sign-in" />
-      </Show>
-    </>
-  );
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-muted/40">
+        <Spinner className="size-8 text-primary" />
+      </div>
+    );
+  }
+  if (!isSignedIn) {
+    return <Redirect to="/sign-in" />;
+  }
+  return <AdminOnly>{children}</AdminOnly>;
 }

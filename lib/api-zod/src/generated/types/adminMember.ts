@@ -10,6 +10,7 @@ import type { AdminMemberTier } from './adminMemberTier';
 
 export interface AdminMember {
   id: number;
+  username: string;
   name: string;
   /** @nullable */
   email?: string | null;

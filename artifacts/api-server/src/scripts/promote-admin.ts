@@ -2,14 +2,14 @@
  * 將既有會員升級為管理員（種子方式）。
  *
  * 用法（在 repo 根目錄執行）：
- *   pnpm --filter @workspace/api-server exec tsx src/scripts/promote-admin.ts <email 或 clerk user id>
+ *   pnpm --filter @workspace/api-server exec tsx src/scripts/promote-admin.ts <帳號 username 或 email>
  */
 import { eq, or } from "drizzle-orm";
 import { db, membersTable } from "@workspace/db";
 
 const identifier = process.argv[2]?.trim();
 if (!identifier) {
-  console.error("用法: tsx src/scripts/promote-admin.ts <email 或 clerk user id>");
+  console.error("用法: tsx src/scripts/promote-admin.ts <帳號 username 或 email>");
   process.exit(1);
 }
 
@@ -19,7 +19,7 @@ const [updated] = await db
   .where(
     or(
       eq(membersTable.email, identifier.toLowerCase()),
-      eq(membersTable.clerkUserId, identifier),
+      eq(membersTable.username, identifier.toLowerCase()),
     ),
   )
   .returning();

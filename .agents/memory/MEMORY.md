@@ -1,1 +1,1 @@
-- [Identity & schema-evolution decisions](auth-and-sessions.md) — identity is Clerk-only (JIT member rows, no email auto-linking); schema changes must be nullable/defaulted and prompt-free to stay deployable.
+- [Auth & schema-evolution decisions](auth-and-sessions.md) — auth is session-based username/password (Clerk removed for good); audit task-agent merges for reverts of recent main changes; schema changes must be nullable/defaulted and prompt-free.

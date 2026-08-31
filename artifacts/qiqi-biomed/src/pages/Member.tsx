@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck } from "lucide-react";
-import { useGetMe, useUpdateMe, useListInstitutions, getGetMeQueryKey } from "@workspace/api-client-react";
-import { useClerk } from "@clerk/react";
+import { useGetMe, useUpdateMe, useListInstitutions, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getTierName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -105,13 +104,13 @@ function EditProfileDialog({ me }: { me: any }) {
 
 export default function MemberPage() {
   const { data: me, isLoading } = useGetMe();
-  const { signOut } = useClerk();
+  const { mutateAsync: logout } = useLogout();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
   const handleLogout = async () => {
     try {
-      await signOut();
+      await logout();
       queryClient.clear();
       setLocation("/");
     } catch (e) {
@@ -189,15 +188,6 @@ export default function MemberPage() {
 
         {/* Links */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
-          {me.role === "admin" && (
-            <Link href="/admin" className="flex items-center p-4 hover:bg-slate-50 transition-colors" data-testid="link-admin-panel">
-              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-3">
-                <ShieldCheck size={16} />
-              </div>
-              <span className="font-bold text-gray-800 flex-1">後台管理系統</span>
-              <span className="text-gray-300">›</span>
-            </Link>
-          )}
           <Link href="/orders" className="flex items-center p-4 hover:bg-slate-50 transition-colors">
             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mr-3">
               <Package size={16} />

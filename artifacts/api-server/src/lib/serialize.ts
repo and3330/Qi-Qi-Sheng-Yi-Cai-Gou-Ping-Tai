@@ -6,6 +6,7 @@ export function serializeMember(
 ) {
   return {
     id: m.id,
+    username: m.username,
     name: m.name,
     email: m.email,
     phone: m.phone,

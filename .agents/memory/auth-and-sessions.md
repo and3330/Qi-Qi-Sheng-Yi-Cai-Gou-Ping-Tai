@@ -1,13 +1,19 @@
 ---
-name: Identity & schema-evolution decisions
-description: Clerk-only identity decision and safe DB schema-evolution guidance for this project
+name: Auth architecture & schema-evolution decisions
+description: Session-based username/password auth is the current decision; Clerk was fully removed. Plus safe DB schema-evolution guidance.
 ---
 
-# Identity is Clerk-only (decision)
+# Auth is session-based username/password (current decision)
 
-- Members exist only as Clerk identities: a member row is JIT-provisioned on the first authenticated request. There is no username/password auth, no server-side session store, and no email-based auto-linking between accounts.
-- **Why:** a parallel legacy auth path was tried and rejected in security review — unverified emails enable account takeover in both directions, and required credential columns broke schema deployability. Clerk-only keeps a single trust anchor.
-- **How to apply:** protected endpoints use `requireMember`/`requireAdmin`; never assume a member row exists before the first authenticated request; never link accounts by email match alone. Admin seeding is an explicit promotion (script/SQL by email or Clerk user id), not sign-up logic.
+- Members register/login with their own 帳號/密碼 (bcryptjs + express-session + connect-pg-simple; "session" table managed in the drizzle schema). Clerk was completely removed at the user's explicit request. LINE/Google are reserved future *bindings* (`lineUserId`/`googleUserId` columns), not identities.
+- Member tier (hospital/clinic/consumer) is assigned at registration via dedicated sign-up links (`/sign-up?type=hospital|clinic`); the user accepted the risk of link leakage and cancelled the invite-code follow-up task.
+- **Why:** the user rejected third-party-hosted auth and wants everyone to set their own account/password.
+- **How to apply:** never reintroduce Clerk code, deps, or `clerkUserId` columns. Login must reject `isActive=false` accounts before creating a session. `requireMember` loads from `session.memberId`; `requireAdmin` additionally checks `role === "admin"`. Admin promotion via promote-admin script (username or email).
+
+# Task-agent merges can revert recent architecture changes
+
+- A task agent branched before the Clerk→session-auth migration; its merge silently restored Clerk (schema, middleware, pages, deps) and deleted the session auth. Repair required restoring pre-merge files and re-integrating the new module on top.
+- **How to apply:** after any task merge, diff the merge commit against the pre-merge commit in areas recently changed on main (esp. auth, schema, openapi). If the task branched before a big main-branch change, expect stomps and reconcile manually before pushing schema.
 
 # Schema evolution must stay deployable (rule)
 
