@@ -14,6 +14,47 @@ export interface ErrorMessage {
 }
 
 /**
+ * 由專屬註冊連結帶入的會員身份（預設 consumer）
+ */
+export type RegisterInputTier = typeof RegisterInputTier[keyof typeof RegisterInputTier];
+
+
+export const RegisterInputTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export interface RegisterInput {
+  /**
+     * @minLength 3
+     * @maxLength 30
+     * @pattern ^[a-zA-Z0-9_.-]+$
+     */
+  username: string;
+  /**
+     * @minLength 8
+     * @maxLength 72
+     */
+  password: string;
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** 由專屬註冊連結帶入的會員身份（預設 consumer） */
+  tier?: RegisterInputTier;
+}
+
+export interface LoginInput {
+  /** @minLength 1 */
+  username: string;
+  /** @minLength 1 */
+  password: string;
+}
+
+/**
  * A 醫院 / B 診所藥局 / C 消費者
  */
 export type MemberTier = typeof MemberTier[keyof typeof MemberTier];
@@ -27,6 +68,7 @@ export const MemberTier = {
 
 export interface Member {
   id: number;
+  username: string;
   name: string;
   /** @nullable */
   email?: string | null;
@@ -239,6 +281,9 @@ export interface Announcement {
   title: string;
   /** @nullable */
   content?: string | null;
+  category: string;
+  /** @nullable */
+  imageUrl?: string | null;
   publishedAt: string;
 }
 

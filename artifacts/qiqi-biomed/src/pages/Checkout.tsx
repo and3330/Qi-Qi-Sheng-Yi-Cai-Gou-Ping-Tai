@@ -92,7 +92,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-32 animate-in fade-in">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-36 animate-in fade-in">
       <div className="bg-white px-4 pt-safe pb-3 shadow-sm sticky top-0 z-40 flex items-center gap-3">
         <Button variant="ghost" size="icon" className="-ml-2" onClick={() => window.history.back()}>
           <ArrowLeft size={20} />
@@ -184,7 +184,7 @@ export default function CheckoutPage() {
         </section>
       </div>
 
-      <div className="fixed bottom-0 z-40 w-full max-w-md bg-white border-t rounded-t-3xl shadow-[0_-8px_20px_rgba(0,0,0,0.08)] pb-safe">
+      <div className="fixed bottom-nav-offset z-40 w-full max-w-md bg-white border-t rounded-t-3xl shadow-[0_-8px_20px_rgba(0,0,0,0.08)]">
         <div className="p-4">
           <Button 
             className="w-full h-12 text-base font-bold rounded-xl"

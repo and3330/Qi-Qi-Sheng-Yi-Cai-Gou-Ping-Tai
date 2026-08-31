@@ -9,20 +9,20 @@ Mobile-first B2B2C 醫藥採購 WebApp：三種會員身份（A 醫院 / B 診�
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server exec tsx src/seed.ts` — seed demo data (idempotent, skips if products exist)
-- Required env: `DATABASE_URL`; Clerk keys auto-provisioned (`CLERK_*`, `VITE_CLERK_PUBLISHABLE_KEY`)
+- Required env: `DATABASE_URL`, `SESSION_SECRET`（Clerk 已移除，`CLERK_*` 環境變數不再使用）
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5 + Clerk (`@clerk/express`), Drizzle ORM + PostgreSQL
+- API: Express 5 + express-session (connect-pg-simple) + bcryptjs, Drizzle ORM + PostgreSQL
 - Frontend: React + Vite + wouter + TanStack Query（Orval 產生 hooks）+ shadcn/Tailwind v4
-- Auth: Replit-managed Clerk（web 為 cookie-based；勿加 token handling）
+- Auth: 自建帳號密碼會員系統（session cookie；`/api/auth/register|login|logout`、`GET /api/me` 未登入回 401）。members 表預留 `lineUserId`/`googleUserId` 供未來 LINE/Google 額外綁定。session 表由 drizzle schema 管理（`lib/db/src/schema/sessions.ts`）；`createTableIfMissing` 在 esbuild bundle 下會壞，勿開啟。
 
 ## Where things live
 
 - OpenAPI 契約（single source of truth）：`lib/api-spec/openapi.yaml`
 - DB schema：`lib/db/src/schema/`（members, products, carts, orders, institutions, content, favorites）
-- API routes：`artifacts/api-server/src/routes/`；auth middleware：`src/middlewares/requireMember.ts`（JIT 建立 member）
+- API routes：`artifacts/api-server/src/routes/`；auth middleware：`src/middlewares/requireMember.ts`（讀 session.memberId 載入 member）
 - 前端頁面：`artifacts/qiqi-biomed/src/pages/`；產品圖：`artifacts/qiqi-biomed/public/images/products/`
 - Seed：`artifacts/api-server/src/seed.ts`
 
@@ -48,7 +48,7 @@ Mobile-first B2B2C 醫藥採購 WebApp：三種會員身份（A 醫院 / B 診�
 ## Gotchas
 
 - 改 `lib/api-spec/openapi.yaml` 後必跑 codegen；body schema 命名用實體名（如 `ProductInput`）避免 TS2308。
-- Clerk wiring（publishableKeyFromHost、unconditional proxyUrl、`/sign-in/*?` routes）須照 clerk-auth skill 範本，勿改。
+- 前端登入狀態以 `useGetMe`（401 = 未登入）判斷，見 `src/hooks/use-auth.ts`；受保護頁未登入導向 `/sign-in`。
 - 前端受保護的 query hooks 必須以 `isLoaded && isSignedIn` gate，否則登出狀態狂打 401。
 
 ## Pointers

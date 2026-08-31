@@ -83,19 +83,23 @@ router.get("/articles/:id", async (req, res) => {
   res.json(serializeArticle(row));
 });
 
+function serializeAnnouncement(a: typeof announcementsTable.$inferSelect) {
+  return {
+    id: a.id,
+    title: a.title,
+    content: a.content,
+    category: a.category,
+    imageUrl: a.imageUrl,
+    publishedAt: a.publishedAt.toISOString(),
+  };
+}
+
 router.get("/announcements", async (_req, res) => {
   const rows = await db
     .select()
     .from(announcementsTable)
     .orderBy(desc(announcementsTable.publishedAt));
-  res.json(
-    rows.map((a) => ({
-      id: a.id,
-      title: a.title,
-      content: a.content,
-      publishedAt: a.publishedAt.toISOString(),
-    })),
-  );
+  res.json(rows.map(serializeAnnouncement));
 });
 
 router.get("/home/summary", async (_req, res) => {
@@ -120,12 +124,7 @@ router.get("/home/summary", async (_req, res) => {
   ]);
   res.json({
     hotProducts: hot.map(serializeProduct),
-    announcements: announcements.map((a) => ({
-      id: a.id,
-      title: a.title,
-      content: a.content,
-      publishedAt: a.publishedAt.toISOString(),
-    })),
+    announcements: announcements.map(serializeAnnouncement),
     latestArticles: latest.map(serializeArticle),
   });
 });

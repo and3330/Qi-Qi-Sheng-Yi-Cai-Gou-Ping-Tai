@@ -9,6 +9,7 @@ import type { MemberTier } from './memberTier';
 
 export interface Member {
   id: number;
+  username: string;
   name: string;
   /** @nullable */
   email?: string | null;

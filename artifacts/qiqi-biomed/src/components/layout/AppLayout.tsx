@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { Home, Newspaper, ShoppingBag, User, ShoppingCart } from "lucide-react";
 import { useGetCart, getGetCartQueryKey } from "@workspace/api-client-react";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/hooks/use-auth";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();

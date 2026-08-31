@@ -1,0 +1,1 @@
+- [Session store vs esbuild bundling](session-store-bundling.md) — connect-pg-simple createTableIfMissing fails silently in bundled server; session table lives in drizzle schema.

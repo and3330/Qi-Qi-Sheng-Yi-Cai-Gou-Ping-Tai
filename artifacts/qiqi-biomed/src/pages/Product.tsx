@@ -15,7 +15,7 @@ import {
 } from "@workspace/api-client-react";
 import { formatPrice, classNames } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useToast } from "@/hooks/use-toast";
@@ -109,7 +109,7 @@ export default function ProductPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background animate-in fade-in pb-24">
+    <div className="flex flex-col min-h-screen bg-background animate-in fade-in pb-36">
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-md max-w-md mx-auto">
         <Button variant="ghost" size="icon" className="rounded-full bg-white shadow-sm" onClick={() => window.history.back()}>
@@ -148,7 +148,7 @@ export default function ProductPage() {
         <div className="my-4 p-4 rounded-xl bg-gray-50 border border-gray-100 flex items-end justify-between">
           <div>
             <p className="text-xs text-gray-500 mb-1">
-              {me?.tier === 'hospital' ? '醫院專屬價' : me?.tier === 'clinic' ? '診所藥局價' : '會員價'}
+              {me?.tier === 'hospital' ? '醫院專屬價' : me?.tier === 'clinic' ? '合作價' : '一般售價'}
             </p>
             <p className="text-2xl font-bold text-primary">{formatPrice(currentPrice)}</p>
           </div>
@@ -182,7 +182,7 @@ export default function ProductPage() {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 z-50 w-full max-w-md bg-white border-t p-3 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+      <div className="fixed bottom-nav-offset z-50 w-full max-w-md bg-white border-t p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-3">
           <div className="flex items-center border rounded-lg overflow-hidden h-12 bg-gray-50">
             <button 

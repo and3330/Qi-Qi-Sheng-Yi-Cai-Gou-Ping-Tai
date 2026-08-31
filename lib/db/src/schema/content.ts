@@ -18,6 +18,9 @@ export const announcementsTable = pgTable("announcements", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content"),
+  // 平台公告 | 產品快報 | 活動訊息 | 合作醫院 | 知識文章
+  category: text("category").notNull().default("平台公告"),
+  imageUrl: text("image_url"),
   publishedAt: timestamp("published_at").notNull().defaultNow(),
 });
 

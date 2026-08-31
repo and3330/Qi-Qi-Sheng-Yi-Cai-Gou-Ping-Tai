@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { Search, ShoppingCart, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useListProducts, useGetMe, useAddCartItem, getGetCartQueryKey, getGetMeQueryKey } from "@workspace/api-client-react";
@@ -6,7 +6,7 @@ import { formatPrice, classNames } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/hooks/use-auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,11 +16,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 
 const CATEGORIES = ["全部", "保健食品", "醫療耗材", "保養清潔", "院所專區"];
-const IDENTITIES = [
-  { id: "hospital", label: "醫院", subLabel: "院所專屬價" },
-  { id: "clinic", label: "診所/藥局", subLabel: "合作價" },
-  { id: "consumer", label: "消費者", subLabel: "一般會員價" },
-] as const;
 
 export default function ShopPage() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -30,11 +25,6 @@ export default function ShopPage() {
   const [category, setCategory] = useState("全部");
   const [sort, setSort] = useState<"recommended" | "priceAsc" | "priceDesc" | "newest">("recommended");
   
-  // Default to user's tier if logged in, otherwise consumer
-  const [previewTier, setPreviewTier] = useState<"hospital" | "clinic" | "consumer">(
-    (me?.tier as any) || "consumer"
-  );
-
   const { data: products, isLoading } = useListProducts({
     search: search || undefined,
     category: category === "全部" ? undefined : category,
@@ -58,9 +48,15 @@ export default function ShopPage() {
   };
 
   const getPrice = (product: any) => {
-    if (previewTier === "hospital") return product.priceHospital;
-    if (previewTier === "clinic") return product.priceClinic;
+    if (me?.tier === "hospital") return product.priceHospital;
+    if (me?.tier === "clinic") return product.priceClinic;
     return product.priceConsumer;
+  };
+
+  const getTierLabel = () => {
+    if (me?.tier === "hospital") return "醫院專屬價";
+    if (me?.tier === "clinic") return "合作價";
+    return "一般售價";
   };
 
   return (
@@ -97,40 +93,10 @@ export default function ShopPage() {
       </div>
 
       <div className="p-4">
-        {/* Identity Selector */}
-        <div className="mb-6">
-          <div className="flex items-center text-xs text-muted-foreground mb-2 px-1">
-            選擇身分以查看對應會員價
-          </div>
-          <div className="flex bg-white rounded-xl p-1 shadow-sm border border-gray-100 relative">
-            {IDENTITIES.map((id) => (
-              <button
-                key={id.id}
-                onClick={() => setPreviewTier(id.id)}
-                className={classNames(
-                  "flex-1 py-2 flex flex-col items-center justify-center rounded-lg relative z-10 transition-colors",
-                  previewTier === id.id ? "text-primary" : "text-gray-500 hover:text-gray-900"
-                )}
-              >
-                <span className="font-bold text-sm">{id.label}</span>
-                <span className="text-[10px] scale-90">{id.subLabel}</span>
-              </button>
-            ))}
-            {/* Animated background pill */}
-            <div 
-              className="absolute top-1 bottom-1 w-[calc(33.333%-4px)] bg-primary/10 border border-primary/20 rounded-lg transition-transform duration-300 ease-out z-0"
-              style={{ 
-                transform: `translateX(${IDENTITIES.findIndex(id => id.id === previewTier) * 100}%)`,
-                left: '4px'
-              }}
-            />
-          </div>
-        </div>
-
         {/* Filters & Sort */}
         <div className="flex justify-between items-center mb-4 px-1">
           <div className="flex items-center text-sm font-medium text-gray-700">
-            <SlidersHorizontal size={16} className="mr-2" /> 篩選
+            <span className="text-gray-500 font-normal">共 {products?.length || 0} 件商品</span>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -185,7 +151,7 @@ export default function ShopPage() {
                 
                 <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] text-gray-400 block -mb-0.5">會員價</span>
+                    <span className="text-[10px] text-gray-400 block -mb-0.5">{getTierLabel()}</span>
                     <span className="text-primary font-bold text-sm">{formatPrice(getPrice(product))}</span>
                   </div>
                   <Button 

@@ -77,7 +77,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-32 animate-in fade-in">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-40 animate-in fade-in">
       <div className="bg-white px-4 pt-safe pb-4 shadow-sm sticky top-0 z-40 flex justify-between items-center">
         <h1 className="font-bold text-xl text-gray-900 pt-2">購物車 ({cart.length})</h1>
         <Button variant="ghost" size="sm" className="text-gray-400 hover:text-destructive mt-2" onClick={handleClearCart}>
@@ -134,7 +134,7 @@ export default function CartPage() {
         ))}
       </div>
 
-      <div className="fixed bottom-16 z-40 w-full max-w-md bg-white border-t rounded-t-3xl shadow-[0_-8px_20px_rgba(0,0,0,0.08)]">
+      <div className="fixed bottom-nav-offset z-40 w-full max-w-md bg-white border-t rounded-t-3xl shadow-[0_-8px_20px_rgba(0,0,0,0.08)]">
         <div className="p-5">
           <div className="flex justify-between items-center mb-4">
             <span className="text-gray-500 text-sm">結帳總金額</span>

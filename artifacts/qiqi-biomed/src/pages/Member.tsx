@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck } from "lucide-react";
-import { useClerk } from "@clerk/react";
-import { useGetMe, useUpdateMe, useListInstitutions, getGetMeQueryKey } from "@workspace/api-client-react";
+import { useGetMe, useUpdateMe, useListInstitutions, useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getTierName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -105,10 +104,18 @@ function EditProfileDialog({ me }: { me: any }) {
 
 export default function MemberPage() {
   const { data: me, isLoading } = useGetMe();
-  const { signOut } = useClerk();
+  const { mutateAsync: logout } = useLogout();
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
-  const handleLogout = () => {
-    signOut({ redirectUrl: "/" });
+  const handleLogout = async () => {
+    try {
+      await logout();
+      queryClient.clear();
+      setLocation("/");
+    } catch (e) {
+      console.error("Logout failed", e);
+    }
   };
 
   if (isLoading) {

@@ -1,12 +1,25 @@
 import { Link } from "wouter";
-import { ShoppingBag, Building2, BookOpen, Bell, Search, Zap, ArrowRight, ShoppingCart, User } from "lucide-react";
-import { useGetHomeSummary, useAddCartItem, getGetCartQueryKey } from "@workspace/api-client-react";
+import { 
+  ShoppingBag, Building2, BookOpen, Bell, Search, 
+  ShoppingCart, User, ShieldCheck, CheckCircle2, 
+  Truck, Crown, Menu, CreditCard, HeadphonesIcon 
+} from "lucide-react";
+import { useGetHomeSummary, useAddCartItem, getGetCartQueryKey, useGetCart } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/use-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatPrice, classNames } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 export default function HomePage() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { data: cart } = useGetCart({ 
+    query: { 
+      enabled: isLoaded && !!isSignedIn,
+      queryKey: getGetCartQueryKey() 
+    } 
+  });
+  const cartCount = cart?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+
   const { data: summary, isLoading } = useGetHomeSummary();
   const { mutate: addToCart } = useAddCartItem();
   const queryClient = useQueryClient();
@@ -25,162 +38,228 @@ export default function HomePage() {
   };
 
   const features = [
-    { name: "商城", desc: "私域商城採購", icon: ShoppingBag, path: "/shop", color: "bg-emerald-50 text-emerald-600" },
-    { name: "合作醫院", desc: "院所清單", icon: Building2, path: "/hospitals", color: "bg-blue-50 text-blue-600" },
-    { name: "知識專區", desc: "文章/常見問題", icon: BookOpen, path: "/knowledge", color: "bg-indigo-50 text-indigo-600" },
-    { name: "最新消息", desc: "平台公告", icon: Bell, path: "/news", color: "bg-orange-50 text-orange-600", badge: "新" },
-    { name: "訂單查詢", desc: "出貨/追蹤", icon: Search, path: "/orders", color: "bg-teal-50 text-teal-600" },
-    { name: "快速訂購", desc: "批次下單", icon: Zap, path: "/quick-order", color: "bg-purple-50 text-purple-600" },
+    { name: "商城", desc: "私域商城採購", icon: ShoppingBag, path: "/shop" },
+    { name: "合作醫院", desc: "院所清單", icon: Building2, path: "/hospitals" },
+    { name: "知識專區", desc: "文章・常見問題", icon: BookOpen, path: "/knowledge" },
+    { name: "最新消息", desc: "平台公告", icon: Bell, path: "/news", badge: "新" },
+    { name: "訂單查詢", desc: "出貨・追蹤", icon: Search, path: "/orders" },
+    { name: "會員分級", desc: "等級・權益", icon: Crown, path: "/member" },
   ];
 
   return (
-    <div className="flex flex-col animate-in fade-in duration-500 pb-8">
-      {/* Hero Banner */}
-      <div className="bg-primary pt-12 pb-24 px-6 text-white rounded-b-[2.5rem] relative overflow-hidden">
-        <div className="absolute top-0 right-0 opacity-10 pointer-events-none transform translate-x-1/3 -translate-y-1/3">
-          <svg width="200" height="200" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-          </svg>
+    <div className="flex flex-col animate-in fade-in duration-500 pb-8 bg-gray-50 min-h-screen">
+      
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-40 bg-primary px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
+        <div className="p-2 text-white/90 hover:text-white transition-colors -ml-2 cursor-pointer">
+          <Menu size={24} />
         </div>
-        <div className="relative z-10">
-          <p className="text-primary-foreground/80 font-medium mb-2 tracking-widest text-sm">專業醫療・用心守護</p>
-          <h1 className="text-3xl font-bold mb-4">一站式醫藥採購平台</h1>
-          <p className="text-primary-foreground/90 text-sm mb-6 max-w-[280px]">
-            醫院・診所・藥局・消費者<br/>共創健康價值
-          </p>
-          <div className="flex gap-4 text-xs font-medium text-primary-foreground/90">
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-white"/> 正品保障</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-white"/> 快速出貨</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-white"/> 會員專享</span>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-1 shadow-sm">
+            <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+          </div>
+          <span className="text-white font-bold text-lg tracking-wide">七期生醫採購平台</span>
+        </div>
+        <div className="flex items-center gap-1 -mr-2">
+          <Link href="/shop" className="p-2 text-white/90 hover:text-white transition-colors">
+            <Search size={22} />
+          </Link>
+          <Link href="/cart" className="p-2 text-white/90 hover:text-white transition-colors relative">
+            <ShoppingCart size={22} />
+            {cartCount > 0 && (
+              <span className="absolute top-1.5 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm ring-1 ring-primary">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            )}
+          </Link>
+        </div>
+      </div>
+
+      {/* Hero Banner */}
+      <div className="bg-primary pb-12 pt-4 relative overflow-hidden -mb-6 rounded-b-[2rem]">
+        <div className="px-4">
+          <div className="bg-[#2a7a44] rounded-2xl relative overflow-hidden flex items-center min-h-[220px] shadow-lg border border-white/10">
+            {/* Content left */}
+            <div className="flex-1 p-5 z-10 relative text-white max-w-[65%]">
+              <span className="inline-block px-2.5 py-1 bg-white/20 text-white text-[10px] font-medium rounded-full mb-3 backdrop-blur-sm shadow-sm border border-white/10">
+                專業醫療・用心守護
+              </span>
+              <h1 className="text-2xl font-bold mb-2 leading-tight drop-shadow-sm">一站式醫藥採購平台</h1>
+              <p className="text-[11px] text-white/90 mb-4 leading-relaxed whitespace-nowrap drop-shadow-sm font-medium">
+                醫院・診所・藥局・消費者<br/>共創健康價值
+              </p>
+              
+              <div className="flex flex-wrap gap-x-2 gap-y-1.5 text-[9px] text-white mb-5 max-w-[180px] font-medium">
+                <span className="flex items-center gap-0.5"><CheckCircle2 size={10} className="text-green-300"/>正品保障</span>
+                <span className="flex items-center gap-0.5"><Truck size={10} className="text-green-300"/>快速出貨</span>
+                <span className="flex items-center gap-0.5"><ShieldCheck size={10} className="text-green-300"/>合規透明</span>
+                <span className="flex items-center gap-0.5"><User size={10} className="text-green-300"/>會員專屬</span>
+              </div>
+              
+              <div className="bg-white text-primary text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-white/90 transition-colors inline-block cursor-pointer active:scale-95">
+                了解更多 →
+              </div>
+            </div>
+            
+            {/* Illustration right */}
+            <div className="absolute right-0 bottom-0 top-0 w-1/2 z-0">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#2a7a44] via-[#2a7a44]/80 to-transparent z-10 w-full"></div>
+              <img src="/images/hero-banner.jpg" alt="Hero Illustration" className="w-full h-full object-cover object-left opacity-90 mix-blend-luminosity" />
+            </div>
+          </div>
+          
+          {/* Dots */}
+          <div className="flex justify-center gap-1.5 mt-4">
+            <div className="w-5 h-1.5 rounded-full bg-white shadow-sm"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-white/40 shadow-sm"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-white/40 shadow-sm"></div>
           </div>
         </div>
       </div>
 
       {/* Feature Grid */}
-      <div className="px-4 -mt-16 relative z-20">
-        <div className="bg-white rounded-2xl shadow-xl p-4 grid grid-cols-2 gap-4">
+      <div className="px-4 relative z-20 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 grid grid-cols-2 gap-y-3 gap-x-2">
           {features.map((f, i) => (
-            <Link key={i} href={f.path} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors active-elevate">
-              <div className={classNames("w-10 h-10 rounded-full flex items-center justify-center relative flex-shrink-0", f.color)}>
-                <f.icon size={20} />
+            <Link key={i} href={f.path} className="flex items-center gap-3 p-2 rounded-xl hover:bg-[#f8faf9] transition-colors active-elevate group">
+              <div className="w-12 h-12 rounded-xl bg-[#eaf4ed] text-primary flex items-center justify-center relative flex-shrink-0 group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                <f.icon size={22} strokeWidth={2} />
                 {f.badge && (
-                  <span className="absolute -top-1 -right-1 bg-destructive text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  <span className="absolute -top-1 -right-1 bg-destructive text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white shadow-sm">
                     {f.badge}
                   </span>
                 )}
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="font-bold text-gray-800 whitespace-nowrap">{f.name}</span>
-                <span className="text-[10px] text-gray-500 whitespace-nowrap overflow-hidden text-ellipsis">{f.desc}</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-gray-800 text-[13px] whitespace-nowrap mb-0.5">{f.name}</h3>
+                <p className="text-[10px] text-gray-400 truncate">{f.desc}</p>
               </div>
             </Link>
           ))}
         </div>
       </div>
 
-      {/* 最新消息 Announcements */}
-      <div className="px-6 mt-8">
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="text-lg font-bold text-gray-900">最新消息</h2>
-          <Link href="/news" className="text-sm text-muted-foreground flex items-center hover:text-primary transition-colors">
-            查看全部 <ArrowRight size={14} className="ml-1" />
-          </Link>
-        </div>
-        
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-100 overflow-hidden">
-          {isLoading ? (
-            Array(3).fill(0).map((_, i) => (
-              <div key={i} className="p-4 flex gap-3 animate-pulse">
-                <div className="w-2 h-2 rounded-full bg-gray-200 mt-1.5 flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded w-1/4" />
+      {/* Announcements */}
+      <div className="px-4 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-gray-900 text-base">
+              最新消息
+            </h2>
+            <Link href="/news" className="text-[11px] text-gray-400 hover:text-primary flex items-center">
+              查看全部 &gt;
+            </Link>
+          </div>
+          <div className="space-y-3.5">
+            {isLoading ? (
+              Array(3).fill(0).map((_, i) => (
+                <div key={i} className="flex justify-between items-center animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-2/3" />
+                  <div className="h-3 bg-gray-100 rounded w-16" />
                 </div>
-              </div>
-            ))
-          ) : summary?.announcements.slice(0, 3).map((ann, i) => (
-            <div key={ann.id} className="p-4 flex gap-3 hover:bg-slate-50 transition-colors">
-              <div className={classNames("w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0", i === 0 ? "bg-destructive" : "bg-primary")} />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 line-clamp-1">{ann.title}</p>
-                <p className="text-xs text-gray-400 mt-1">{new Date(ann.publishedAt).toLocaleDateString()}</p>
-              </div>
-            </div>
-          ))}
+              ))
+            ) : summary?.announcements?.slice(0, 3).map(ann => (
+              <Link key={ann.id} href={`/news`} className="flex justify-between items-center group">
+                <div className="flex items-center gap-2.5 overflow-hidden flex-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></div>
+                  <span className="text-[13px] font-medium text-gray-700 truncate group-hover:text-primary transition-colors">{ann.title}</span>
+                </div>
+                <span className="text-[10px] text-gray-400 flex-shrink-0 ml-3">
+                  {new Date(ann.publishedAt).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* 熱門商品 Hot Products */}
-      <div className="px-6 mt-10 mb-6">
-        <div className="flex justify-between items-end mb-4">
-          <h2 className="text-lg font-bold text-gray-900">熱門商品</h2>
-          <Link href="/shop?sort=recommended" className="text-sm text-muted-foreground flex items-center hover:text-primary transition-colors">
-            查看全部 <ArrowRight size={14} className="ml-1" />
+      {/* Hot Products */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between px-4 mb-3">
+          <h2 className="font-bold text-gray-900 text-base">熱門商品</h2>
+          <Link href="/shop" className="text-[11px] text-gray-400 hover:text-primary flex items-center">
+            查看全部 &gt;
           </Link>
         </div>
-
-        <div className="grid grid-cols-2 gap-3">
+        
+        {/* Horizontal Scroll */}
+        <div className="flex overflow-x-auto gap-3 px-4 pb-4 snap-x snap-mandatory hide-scrollbar">
           {isLoading ? (
             Array(4).fill(0).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col h-full animate-pulse">
-                <div className="aspect-square bg-gray-100 rounded-xl mb-3" />
-                <div className="h-4 bg-gray-200 rounded w-full mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-2/3 mb-auto" />
-                <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between">
-                  <div className="h-5 bg-gray-200 rounded w-1/2" />
+              <div key={i} className="w-[140px] flex-shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 p-2 animate-pulse snap-start">
+                <div className="aspect-square bg-gray-100 rounded-lg mb-2" />
+                <div className="h-3 bg-gray-200 rounded w-full mb-1" />
+                <div className="h-3 bg-gray-200 rounded w-2/3 mb-2" />
+                <div className="mt-2 pt-2 border-t border-gray-50 flex justify-between">
+                  <div className="h-4 bg-gray-200 rounded w-1/2" />
                   <div className="w-6 h-6 bg-gray-200 rounded-full" />
                 </div>
               </div>
             ))
-          ) : summary?.hotProducts.slice(0, 4).map(product => (
-            <Link key={product.id} href={`/product/${product.id}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col h-full hover-elevate">
-              <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-gray-50 flex items-center justify-center">
+          ) : summary?.hotProducts.map(product => (
+            <Link key={product.id} href={`/product/${product.id}`} className="w-[140px] flex-shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 p-2 flex flex-col snap-start active-elevate group">
+              <div className="relative aspect-square rounded-lg overflow-hidden mb-2 bg-gray-50 flex items-center justify-center">
                 {product.imageUrl ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply" />
+                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-300" />
                 ) : (
-                  <ShoppingBag className="text-gray-200" size={32} />
+                  <ShoppingBag className="text-gray-200" size={24} />
                 )}
                 {product.isHot && (
-                  <span className="absolute top-2 left-2 bg-destructive text-white text-[10px] font-bold px-1.5 py-0.5 rounded-sm">熱銷</span>
+                  <span className="absolute top-1.5 left-1.5 bg-destructive text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">熱銷</span>
                 )}
               </div>
               
-              <h3 className="text-sm font-bold text-gray-800 line-clamp-1 mb-1">{product.name}</h3>
-              <p className="text-[10px] text-gray-500 line-clamp-1 mb-auto">{product.description || product.category}</p>
+              <h3 className="text-xs font-bold text-gray-800 line-clamp-2 mb-1 leading-snug">{product.name}</h3>
+              <p className="text-[10px] text-gray-400 line-clamp-1 mb-auto">{product.description || product.category || '規格詳情'}</p>
               
-              <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
+              <div className="mt-2 pt-2 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-gray-400 block -mb-0.5">一般售價</span>
-                  <span className="text-primary font-bold text-sm">{formatPrice(product.priceConsumer)}</span>
+                  <span className="text-primary font-bold text-sm leading-none">{formatPrice(product.priceConsumer)}</span>
                 </div>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-7 w-7 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white"
-                  onClick={(e) => { e.preventDefault(); handleAddCart(product.id); }}
+                <div 
+                  role="button"
+                  tabIndex={0}
+                  className="h-6 w-6 rounded-full bg-primary text-white hover:bg-primary/90 flex-shrink-0 shadow-sm flex items-center justify-center transition-colors"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddCart(product.id); }}
                 >
-                  <ShoppingCart size={14} />
-                </Button>
+                  <ShoppingCart size={12} />
+                </div>
               </div>
             </Link>
           ))}
         </div>
       </div>
-      
-      {/* Promise Bar */}
-      <div className="px-6 mb-8">
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 flex justify-between divide-x divide-gray-100">
-          <div className="flex-1 flex flex-col items-center text-center px-1">
-            <span className="text-xs font-bold text-gray-800 mb-1 flex items-center"><Zap size={12} className="text-amber-500 mr-1"/> 原廠授權</span>
-            <span className="text-[10px] text-gray-500">合規正品保障</span>
+
+      {/* Light Strip Features */}
+      <div className="px-4 mb-4">
+        <div className="bg-[#f8faf9] border border-[#edf3f0] rounded-2xl p-4 flex justify-between gap-1 shadow-sm">
+          <div className="flex-1 flex flex-col items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
+              <ShieldCheck size={16} />
+            </div>
+            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">合規正品</span>
+            <span className="text-[9px] text-gray-500 whitespace-nowrap">原廠授權</span>
           </div>
-          <div className="flex-1 flex flex-col items-center text-center px-1">
-            <span className="text-xs font-bold text-gray-800 mb-1 flex items-center"><User size={12} className="text-blue-500 mr-1"/> 會員專屬</span>
-            <span className="text-[10px] text-gray-500">合約價優惠</span>
+          <div className="flex-1 flex flex-col items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
+              <Crown size={16} />
+            </div>
+            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">合約價優惠</span>
+            <span className="text-[9px] text-gray-500 whitespace-nowrap">會員專屬</span>
           </div>
-          <div className="flex-1 flex flex-col items-center text-center px-1">
-            <span className="text-xs font-bold text-gray-800 mb-1 flex items-center"><Building2 size={12} className="text-indigo-500 mr-1"/> 彈性付款</span>
-            <span className="text-[10px] text-gray-500">線上/貨到付款</span>
+          <div className="flex-1 flex flex-col items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
+              <CreditCard size={16} />
+            </div>
+            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">彈性付款</span>
+            <span className="text-[9px] text-gray-500 whitespace-nowrap">線上對帳</span>
+          </div>
+          <div className="flex-1 flex flex-col items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
+              <HeadphonesIcon size={16} />
+            </div>
+            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">專業客服</span>
+            <span className="text-[9px] text-gray-500 whitespace-nowrap">即時支援</span>
           </div>
         </div>
       </div>
