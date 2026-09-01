@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getListErpSalesOrdersQueryKey, getListErpSalesReturnsQueryKey,
   useCreateErpSalesReturn, useListErpSalesOrders, useListErpSalesReturns,
-  useUpdateErpSalesReturnStatus, type ErpReturnStatusUpdateStatus, type ErpSalesReturn,
+  useListErpWarehouses, useUpdateErpSalesReturnStatus, type ErpReturnStatusUpdateStatus, type ErpSalesReturn,
 } from "@workspace/api-client-react";
 import { Eye, Loader2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -24,16 +24,17 @@ const errorMessage = (e: any) => e?.response?.data?.error || e?.data?.error || e
 export default function SalesReturnsPage() {
   const queryClient = useQueryClient(); const { toast } = useToast();
   const [status, setStatus] = useState("all"); const [createOpen, setCreateOpen] = useState(false); const [view, setView] = useState<ErpSalesReturn | null>(null);
-  const [orderId, setOrderId] = useState(""); const [quantities, setQuantities] = useState<Record<number, string>>({}); const [reason, setReason] = useState(""); const [note, setNote] = useState("");
+  const [orderId, setOrderId] = useState(""); const [warehouseId, setWarehouseId] = useState("default"); const [quantities, setQuantities] = useState<Record<number, string>>({}); const [reason, setReason] = useState(""); const [note, setNote] = useState("");
   const { data: returns, isLoading } = useListErpSalesReturns({ status: status === "all" ? undefined : status });
   const { data: shipped } = useListErpSalesOrders({ status: "shipped" }); const { data: completed } = useListErpSalesOrders({ status: "completed" });
+  const { data: warehouses } = useListErpWarehouses();
   const orders = useMemo(() => [...(shipped?.items || []), ...(completed?.items || [])].filter((o, i, all) => all.findIndex((x) => x.id === o.id) === i), [shipped, completed]);
   const selectedOrder = orders.find((o) => o.id === Number(orderId));
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListErpSalesReturnsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListErpSalesOrdersQueryKey() });
   };
-  const reset = () => { setOrderId(""); setQuantities({}); setReason(""); setNote(""); };
+  const reset = () => { setOrderId(""); setWarehouseId("default"); setQuantities({}); setReason(""); setNote(""); };
   const create = useCreateErpSalesReturn({ mutation: {
     onSuccess: () => { invalidate(); toast({ title: "已建立銷貨退回單" }); setCreateOpen(false); reset(); },
     onError: (e: any) => toast({ title: "建立失敗", description: errorMessage(e), variant: "destructive" }),
@@ -48,7 +49,7 @@ export default function SalesReturnsPage() {
     const items = selectedOrder.items.map((item) => ({ salesOrderItemId: item.id, quantity: Number(quantities[item.id] || 0) })).filter((item) => item.quantity > 0);
     const invalid = items.some((item) => item.quantity > (selectedOrder.items.find((x) => x.id === item.salesOrderItemId)?.quantity || 0));
     if (!items.length || invalid) { toast({ title: "請填寫有效退回數量", description: "退回數量不可超過原銷貨數量", variant: "destructive" }); return; }
-    create.mutate({ data: { salesOrderId: selectedOrder.id, reason: reason || null, note: note || null, items } });
+    create.mutate({ data: { salesOrderId: selectedOrder.id, warehouseId: warehouseId === "default" ? null : Number(warehouseId), reason: reason || null, note: note || null, items } });
   };
 
   return <div className="space-y-6">
@@ -60,6 +61,7 @@ export default function SalesReturnsPage() {
 
     <Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>建立銷貨退回</DialogTitle></DialogHeader>
       <div className="space-y-4"><div className="space-y-2"><Label>銷貨單 *</Label><Select value={orderId} onValueChange={(v) => { setOrderId(v); setQuantities({}); }}><SelectTrigger><SelectValue placeholder="選擇已出貨或已完成銷貨單" /></SelectTrigger><SelectContent>{orders.map((o) => <SelectItem key={o.id} value={String(o.id)}>{o.soNo}－{o.customerName}</SelectItem>)}</SelectContent></Select></div>
+        <div className="space-y-2"><Label>收貨倉</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">預設倉</SelectItem>{warehouses?.filter((w) => w.isActive).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}</SelectContent></Select></div>
         {selectedOrder && <Table><TableHeader><TableRow><TableHead>品項</TableHead><TableHead>規格</TableHead><TableHead className="text-right">原數量</TableHead><TableHead className="w-32">退回數量</TableHead></TableRow></TableHeader><TableBody>{selectedOrder.items.map((item) => <TableRow key={item.id}><TableCell>{item.productName} {item.isVirtual && <Badge variant="secondary">虛擬</Badge>}</TableCell><TableCell>{item.variantName || "—"}</TableCell><TableCell className="text-right">{item.quantity}</TableCell><TableCell><Input type="number" min="0" max={item.quantity} value={quantities[item.id] || ""} onChange={(e) => setQuantities({ ...quantities, [item.id]: e.target.value })} /></TableCell></TableRow>)}</TableBody></Table>}
         <div className="space-y-2"><Label>退回原因</Label><Input value={reason} onChange={(e) => setReason(e.target.value)} /></div>
         <div className="space-y-2"><Label>備註</Label><Textarea value={note} onChange={(e) => setNote(e.target.value)} /></div>

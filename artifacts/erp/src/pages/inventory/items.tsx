@@ -2,8 +2,12 @@ import { useEffect, useState } from 'react';
 import {
   getListErpItemsQueryKey,
   getListErpStockMovementsQueryKey,
+  getListErpWarehousesQueryKey,
+  getListErpWarehouseStockQueryKey,
   useErpAdjustStock,
   useListErpItems,
+  useListErpWarehouses,
+  useListErpWarehouseStock,
   useUpdateErpItem,
   type ErpItem,
 } from '@workspace/api-client-react';
@@ -30,6 +34,7 @@ export default function ItemsPage() {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [editing, setEditing] = useState<ErpItem | null>(null);
   const [adjusting, setAdjusting] = useState<ErpItem | null>(null);
+  const [breakdown, setBreakdown] = useState<ErpItem | null>(null);
   const { data: items, isLoading } = useListErpItems({ search, includeInactive: String(includeInactive) });
 
   return (
@@ -68,7 +73,7 @@ export default function ItemsPage() {
                   <TableCell>{item.safetyStock}</TableCell><TableCell>NT$ {money(item.costPrice)}</TableCell><TableCell>NT$ {money(item.priceConsumer)}</TableCell>
                   <TableCell>{item.isVirtual ? <Badge variant="secondary">虛擬</Badge> : '否'}</TableCell>
                   <TableCell><Badge variant={item.isActive ? 'default' : 'secondary'}>{item.isActive ? '啟用' : '停用'}</Badge></TableCell>
-                  <TableCell><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setEditing(item)}>編輯</Button><Button size="sm" variant="outline" disabled={item.isVirtual} title={item.isVirtual ? '虛擬品項不動庫存' : undefined} onClick={() => setAdjusting(item)}>{item.isVirtual ? '虛擬品項不動庫存' : '庫存調整'}</Button></div></TableCell>
+                  <TableCell><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setEditing(item)}>編輯</Button><Button size="sm" variant="outline" disabled={item.isVirtual} title={item.isVirtual ? '虛擬品項不動庫存' : undefined} onClick={() => setAdjusting(item)}>{item.isVirtual ? '虛擬品項不動庫存' : '庫存調整'}</Button><Button size="sm" variant="outline" disabled={item.isVirtual} onClick={() => setBreakdown(item)}>分倉</Button></div></TableCell>
                 </TableRow>;
               })}
           </TableBody>
@@ -76,6 +81,7 @@ export default function ItemsPage() {
       </Card>
       <EditDialog item={editing} onClose={() => setEditing(null)} />
       <AdjustDialog item={adjusting} onClose={() => setAdjusting(null)} />
+      <WarehouseStockDialog item={breakdown} onClose={() => setBreakdown(null)} />
     </div>
   );
 }
@@ -117,23 +123,45 @@ function AdjustDialog({ item, onClose }: { item: ErpItem | null; onClose: () => 
   const { toast } = useToast();
   const activeVariants = item?.variants.filter((v) => v.isActive) || [];
   const [variantId, setVariantId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('盤點');
   const [note, setNote] = useState('');
-  useEffect(() => { setVariantId(''); setQuantity(''); setReason('盤點'); setNote(''); }, [item]);
+  const { data: warehouses } = useListErpWarehouses({ query: { queryKey: getListErpWarehousesQueryKey(), enabled: !!item } });
+  useEffect(() => { setVariantId(''); setQuantity(''); setReason('盤點'); setNote(''); setWarehouseId(''); }, [item]);
+  useEffect(() => {
+    if (item && !warehouseId && warehouses?.length) setWarehouseId(String(warehouses.find((w) => w.isDefault)?.id ?? warehouses[0].id));
+  }, [item, warehouseId, warehouses]);
   const mutation = useErpAdjustStock({ mutation: {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListErpItemsQueryKey() }); queryClient.invalidateQueries({ queryKey: getListErpStockMovementsQueryKey() }); toast({ title: '調整成功', description: '庫存已更新' }); onClose(); },
     onError: (err) => toast({ title: '調整失敗', description: errorMessage(err), variant: 'destructive' }),
   } });
-  const valid = !!item && Number.isInteger(Number(quantity)) && Number(quantity) !== 0 && (!activeVariants.length || !!variantId);
+  const valid = !!item && !!warehouseId && Number.isInteger(Number(quantity)) && Number(quantity) !== 0 && (!activeVariants.length || !!variantId);
   return <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent>
     <DialogHeader><DialogTitle>庫存調整－{item?.name}</DialogTitle></DialogHeader>
     <div className="grid gap-4 py-2">
+      <div className="space-y-2"><Label>倉庫</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue placeholder="選擇倉庫" /></SelectTrigger><SelectContent>{warehouses?.filter((w) => w.isActive).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}{w.isDefault ? '（預設）' : ''}</SelectItem>)}</SelectContent></Select></div>
       {activeVariants.length > 0 && <div className="space-y-2"><Label>規格（必填）</Label><Select value={variantId} onValueChange={setVariantId}><SelectTrigger><SelectValue placeholder="選擇規格" /></SelectTrigger><SelectContent>{activeVariants.map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.name}（目前 {v.stock}）</SelectItem>)}</SelectContent></Select></div>}
       <div className="space-y-2"><Label>調整數量（正數增加、負數減少）</Label><Input type="number" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="例如：10 或 -3" /></div>
       <div className="space-y-2"><Label>原因</Label><Select value={reason} onValueChange={setReason}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['盤點', '報廢', '其他'].map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-2"><Label>備註</Label><Textarea value={note} onChange={(e) => setNote(e.target.value)} /></div>
     </div>
-    <DialogFooter><Button variant="outline" onClick={onClose}>取消</Button><Button disabled={!valid || mutation.isPending} onClick={() => item && mutation.mutate({ data: { productId: item.id, variantId: variantId ? Number(variantId) : null, quantity: Number(quantity), reason, note: note || null } })}>確認調整</Button></DialogFooter>
+    <DialogFooter><Button variant="outline" onClick={onClose}>取消</Button><Button disabled={!valid || mutation.isPending} onClick={() => item && mutation.mutate({ data: { productId: item.id, variantId: variantId ? Number(variantId) : null, warehouseId: Number(warehouseId), quantity: Number(quantity), reason, note: note || null } })}>確認調整</Button></DialogFooter>
+  </DialogContent></Dialog>;
+}
+
+function WarehouseStockDialog({ item, onClose }: { item: ErpItem | null; onClose: () => void }) {
+  const { data, isLoading } = useListErpWarehouseStock(
+    { productId: item?.id },
+    { query: { queryKey: getListErpWarehouseStockQueryKey({ productId: item?.id }), enabled: !!item } },
+  );
+  return <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}><DialogContent className="max-w-2xl">
+    <DialogHeader><DialogTitle>分倉庫存－{item?.name}</DialogTitle></DialogHeader>
+    <Table><TableHeader><TableRow><TableHead>倉庫</TableHead><TableHead>規格</TableHead><TableHead className="text-right">數量</TableHead></TableRow></TableHeader><TableBody>
+      {isLoading ? <TableRow><TableCell colSpan={3} className="h-24"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></TableCell></TableRow>
+        : !data?.length ? <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">尚無分倉庫存</TableCell></TableRow>
+        : data.map((row) => <TableRow key={row.id}><TableCell>{row.warehouseCode}－{row.warehouseName}</TableCell><TableCell>{row.variantName || '—'}</TableCell><TableCell className="text-right font-medium">{row.quantity}</TableCell></TableRow>)}
+    </TableBody></Table>
+    <DialogFooter><Button variant="outline" onClick={onClose}>關閉</Button></DialogFooter>
   </DialogContent></Dialog>;
 }

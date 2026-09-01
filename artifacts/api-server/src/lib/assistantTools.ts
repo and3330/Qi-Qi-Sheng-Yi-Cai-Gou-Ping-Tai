@@ -16,6 +16,12 @@ import {
 } from "@workspace/db";
 import { applyOrderStatusChange } from "../routes/adminOrders";
 import { reindex, searchDocuments } from "./aiIndex";
+import {
+  WarehouseStockError,
+  getDefaultWarehouseId,
+  adjustWarehouseStock,
+  allocateSellableStock,
+} from "./warehouseStock";
 
 /**
  * AI 行政助理工具集
@@ -304,6 +310,15 @@ async function adjustStock(args: { productId: number; variantId?: number; quanti
   const variantId = args.variantId ?? null;
   const reason = args.reason || "AI 助理調整";
   const result = await db.transaction(async (tx) => {
+    // AI 助理調整一律使用預設倉；虛擬品項不可調庫存（與 ERP 調整一致）
+    const [prod] = await tx
+      .select({ isVirtual: productsTable.isVirtual })
+      .from(productsTable)
+      .where(eq(productsTable.id, args.productId))
+      .limit(1);
+    if (!prod) throw new ToolError("商品不存在");
+    if (prod.isVirtual) throw new ToolError("虛擬品項不可調整庫存");
+    const warehouseId = await getDefaultWarehouseId(tx);
     let stockAfter: number;
     let variantName: string | null = null;
     if (variantId != null) {
@@ -336,12 +351,24 @@ async function adjustStock(args: { productId: number; variantId?: number; quanti
       if (!updated) throw new ToolError("商品不存在或庫存不足以扣減");
       stockAfter = updated.stock;
     }
+    try {
+      await adjustWarehouseStock(tx, {
+        warehouseId,
+        productId: args.productId,
+        variantId,
+        quantity: args.quantity,
+      });
+    } catch (err) {
+      if (err instanceof WarehouseStockError) throw new ToolError(err.message);
+      throw err;
+    }
     await tx.insert(stockMovementsTable).values({
       productId: args.productId,
       variantId,
       type: "adjust",
       quantity: args.quantity,
       stockAfter,
+      warehouseId,
       reason: variantName ? `${reason}（${variantName}）` : reason,
     });
     return { stockAfter, variantName };
@@ -464,7 +491,41 @@ async function createOrder(args: {
 
   const order = await db.transaction(async (tx) => {
     const stockAfterByKey = new Map<string, number>();
-    for (const line of args.items) {
+    const allocationsByKey = new Map<string, Array<{ warehouseId: number; quantity: number }>>();
+    // 同一商品/規格可能出現多列：先彙總數量，避免分配結果被後列覆蓋
+    const aggregatedItems = new Map<
+      string,
+      { productId: number; variantId: number | null; quantity: number }
+    >();
+    for (const item of args.items) {
+      if (byId.get(item.productId)!.isVirtual) continue; // 虛擬品項不動庫存
+      const key = `${item.productId}:${item.variantId ?? ""}`;
+      const agg = aggregatedItems.get(key);
+      if (agg) agg.quantity += item.quantity;
+      else
+        aggregatedItems.set(key, {
+          productId: item.productId,
+          variantId: item.variantId ?? null,
+          quantity: item.quantity,
+        });
+    }
+    for (const line of aggregatedItems.values()) {
+      // 分倉：依可售倉分配扣減
+      try {
+        const allocations = await allocateSellableStock(tx, {
+          productId: line.productId,
+          variantId: line.variantId ?? null,
+          quantity: line.quantity,
+        });
+        allocationsByKey.set(`${line.productId}:${line.variantId ?? ""}`, allocations);
+      } catch (err) {
+        if (err instanceof WarehouseStockError) {
+          const p = byId.get(line.productId)!;
+          const v = line.variantId != null ? variantById.get(line.variantId) : null;
+          throw new ToolError(`庫存不足：${p.name}${v ? `（${v.name}）` : ""}`);
+        }
+        throw err;
+      }
       if (line.variantId != null) {
         const dec = await tx
           .update(productVariantsTable)
@@ -515,17 +576,27 @@ async function createOrder(args: {
       })
       .returning();
     await tx.insert(orderItemsTable).values(lines.map((l) => ({ ...l, orderId: order.id })));
-    await tx.insert(stockMovementsTable).values(
-      lines.map((l) => ({
-        productId: l.productId,
-        variantId: l.variantId,
-        type: "sale",
-        quantity: -l.quantity,
-        stockAfter: stockAfterByKey.get(`${l.productId}:${l.variantId ?? ""}`) ?? 0,
-        reason: l.variantName ? `銷售出貨（${l.variantName}）` : "銷售出貨",
-        refNo: orderNo,
-      })),
-    );
+    const seenMovementKeys = new Set<string>();
+    const movementValues =
+      lines.flatMap((l) => {
+        if (byId.get(l.productId)!.isVirtual) return []; // 虛擬品項不動庫存
+        const key = `${l.productId}:${l.variantId ?? ""}`;
+        if (seenMovementKeys.has(key)) return []; // 重複列已彙總於分配結果
+        seenMovementKeys.add(key);
+        const stockAfter = stockAfterByKey.get(key) ?? 0;
+        const allocations = allocationsByKey.get(key) ?? [];
+        return allocations.map((a) => ({
+          productId: l.productId,
+          variantId: l.variantId,
+          type: "sale",
+          quantity: -a.quantity,
+          stockAfter,
+          warehouseId: a.warehouseId,
+          reason: l.variantName ? `銷售出貨（${l.variantName}）` : "銷售出貨",
+          refNo: orderNo,
+        }));
+      });
+    if (movementValues.length > 0) await tx.insert(stockMovementsTable).values(movementValues);
     return order;
   });
   reindex("order", order.id);

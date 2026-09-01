@@ -11,5 +11,6 @@ export interface ErpWarehouseUpdate {
   name?: string;
   address?: string | null;
   note?: string | null;
+  isSellable?: boolean;
   isActive?: boolean;
 }

@@ -15,6 +15,7 @@ export interface ErpSalesOrder {
   customerName: string;
   orderId?: number | null;
   orderNo?: string | null;
+  warehouseId?: number | null;
   status: string;
   totalAmount: number;
   note?: string | null;

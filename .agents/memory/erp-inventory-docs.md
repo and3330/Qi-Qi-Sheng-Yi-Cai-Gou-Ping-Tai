@@ -17,6 +17,17 @@ description: 庫存所有權與退貨不變式等跨模組業務規則
 **Why:** 逐列檢查+無鎖 check-then-insert 有競態；狀態機外直寫 orders.status 會漏掉財務沖回並破壞報表/篩選。
 **How to apply:** 任何「對既有單據建立沖銷/退回單」的新路徑都套同一模式；新增訂單終態要同步 openapi enum、報表排除條件與前端標籤。
 
+## 分倉庫存不變式
+- 總量欄位（products.stock / product_variants.stock）仍是權威；任何動庫存的路徑必須在同一交易內同步更新 warehouse_stock（總量 = 各倉合計）。
+- 出庫一律用 guarded UPDATE（quantity >= n）針對指定倉；商城下單走可售倉貪婪分配（預設倉優先），可售倉合計不足即擋單。
+- 調撥（transfer 類型 movement）不改總量，stockAfter 記當下總量；每筆調撥寫出庫+入庫兩筆 movement 各帶 warehouseId。
+
+- 同一商品/規格在單內出現多列時，必須先彙總再分配/寫 movement，否則以 key 覆蓋的分配結果會重複或遺漏。
+- 佈署回填必須冪等且能校正部分同步（以「總量-各倉合計」差額補預設倉），不能只在建立預設倉時回填。
+
+**Why:** 雙寫不同步會讓分倉合計偏離總量，之後所有可售量、調撥與稽核 movement 都失真；舊環境預設倉早已存在，只靠初次建立時回填會漏掉。
+**How to apply:** 新增任何扣/補庫存路徑時，同交易配對更新總量與分倉並在 movement 記倉庫；新增回填/遷移一律寫成可重跑的差額校正。
+
 ## OpenAPI/orval 陷阱
 - request body 一律用 $ref component schema；inline body 會與 orval 產生的 {OperationId}Body 型別名稱衝突。
 

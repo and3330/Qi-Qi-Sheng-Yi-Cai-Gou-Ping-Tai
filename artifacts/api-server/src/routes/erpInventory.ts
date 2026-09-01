@@ -12,9 +12,21 @@ import {
   priceListItemsTable,
   membersTable,
   erpAuditLogsTable,
+  warehouseStockTable,
+  stockTransfersTable,
+  stockTransferItemsTable,
   type Supplier,
   type ErpCustomer,
+  type StockTransfer,
+  type StockTransferItem,
 } from "@workspace/db";
+import {
+  WarehouseStockError,
+  resolveWarehouseId,
+  adjustWarehouseStock,
+  decreaseWarehouseStock,
+  increaseWarehouseStock,
+} from "../lib/warehouseStock";
 import {
   ErpAdjustStockBody,
   UpdateErpItemBody,
@@ -27,11 +39,15 @@ import {
   CreateErpPriceListBody,
   UpdateErpPriceListBody,
   PutErpPriceListItemsBody,
+  CreateErpStockTransferBody,
+  UpdateErpStockTransferStatusBody,
 } from "@workspace/api-zod";
 import { requireErpMenu } from "../middlewares/requireErp";
 import { reindex } from "../lib/aiIndex";
 
 const router: IRouter = Router();
+
+class DocError extends Error {}
 
 async function audit(
   req: { member?: { id: number; name: string; username: string } },
@@ -208,6 +224,7 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
       if (!product) throw new Error("ADJUST_FAILED");
       if (product.isVirtual) throw new Error("VIRTUAL_ITEM");
 
+      const warehouseId = await resolveWarehouseId(tx, parsed.data.warehouseId ?? null);
       let stockAfter: number;
       let variantName: string | null = null;
       if (variantId != null) {
@@ -251,6 +268,14 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
         if (!updatedProduct) throw new Error("ADJUST_FAILED");
         stockAfter = updatedProduct.stock;
       }
+      // 分倉庫存同步調整（出庫時該倉不足會擲錯回滾）
+      await adjustWarehouseStock(tx, {
+        warehouseId,
+        productId,
+        variantId,
+        quantity,
+        label: variantName ? `${product.name}（${variantName}）` : product.name,
+      });
       const baseReason = note ? `${reason}：${note}` : reason;
       const [movement] = await tx
         .insert(stockMovementsTable)
@@ -260,7 +285,7 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
           type: "adjust",
           quantity,
           stockAfter,
-          warehouseId: parsed.data.warehouseId ?? null,
+          warehouseId,
           reason: variantName ? `${baseReason}（${variantName}）` : baseReason,
         })
         .returning();
@@ -296,6 +321,10 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
       res.status(400).json({ error: "虛擬品項不可調整庫存" });
       return;
     }
+    if (err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     throw err;
   }
 });
@@ -307,11 +336,14 @@ router.get("/erp/stock-movements", requireErpMenu("/inventory/movements"), async
   const pageSize = 30;
   const conds: SQL[] = [];
   const type = typeof req.query.type === "string" ? req.query.type : "";
-  if (["purchase", "sale", "adjust", "sale_return", "purchase_return"].includes(type))
+  if (["purchase", "sale", "adjust", "sale_return", "purchase_return", "transfer"].includes(type))
     conds.push(eq(stockMovementsTable.type, type));
   const productId = Number(req.query.productId);
   if (Number.isInteger(productId) && productId > 0)
     conds.push(eq(stockMovementsTable.productId, productId));
+  const whId = Number(req.query.warehouseId);
+  if (Number.isInteger(whId) && whId > 0)
+    conds.push(eq(stockMovementsTable.warehouseId, whId));
   const where = conds.length ? and(...conds) : undefined;
   const [[total], rows] = await Promise.all([
     db.select({ n: count() }).from(stockMovementsTable).where(where),
@@ -359,6 +391,7 @@ function serializeWarehouse(w: typeof erpWarehousesTable.$inferSelect) {
     address: w.address,
     note: w.note,
     isDefault: w.isDefault,
+    isSellable: w.isSellable,
     isActive: w.isActive,
     createdAt: w.createdAt.toISOString(),
   };
@@ -394,6 +427,7 @@ router.post("/erp/warehouses", requireErpMenu("/inventory/warehouses"), async (r
       name: parsed.data.name,
       address: parsed.data.address ?? null,
       note: parsed.data.note ?? null,
+      isSellable: parsed.data.isSellable ?? true,
     })
     .returning();
   await audit(req, {
@@ -437,6 +471,7 @@ router.patch("/erp/warehouses/:id", requireErpMenu("/inventory/warehouses"), asy
       name: parsed.data.name ?? before.name,
       address: "address" in parsed.data ? parsed.data.address ?? null : before.address,
       note: "note" in parsed.data ? parsed.data.note ?? null : before.note,
+      isSellable: parsed.data.isSellable ?? before.isSellable,
       isActive: parsed.data.isActive ?? before.isActive,
     })
     .where(eq(erpWarehousesTable.id, id))
@@ -451,6 +486,392 @@ router.patch("/erp/warehouses/:id", requireErpMenu("/inventory/warehouses"), asy
     newValues: parsed.data,
   });
   res.json(serializeWarehouse(updated));
+});
+
+/* ---------- 分倉庫存 ---------- */
+
+router.get("/erp/warehouse-stock", requireErpMenu("/inventory/items"), async (req, res) => {
+  const conds: SQL[] = [];
+  const productId = Number(req.query.productId);
+  if (Number.isInteger(productId) && productId > 0)
+    conds.push(eq(warehouseStockTable.productId, productId));
+  const whId = Number(req.query.warehouseId);
+  if (Number.isInteger(whId) && whId > 0)
+    conds.push(eq(warehouseStockTable.warehouseId, whId));
+  const rows = await db
+    .select({
+      ws: warehouseStockTable,
+      warehouseName: erpWarehousesTable.name,
+      warehouseCode: erpWarehousesTable.code,
+      productName: productsTable.name,
+      productCode: productsTable.code,
+      variantName: productVariantsTable.name,
+    })
+    .from(warehouseStockTable)
+    .innerJoin(erpWarehousesTable, eq(warehouseStockTable.warehouseId, erpWarehousesTable.id))
+    .innerJoin(productsTable, eq(warehouseStockTable.productId, productsTable.id))
+    .leftJoin(productVariantsTable, eq(warehouseStockTable.variantId, productVariantsTable.id))
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(
+      asc(warehouseStockTable.productId),
+      asc(sql`COALESCE(${warehouseStockTable.variantId}, 0)`),
+      desc(erpWarehousesTable.isDefault),
+      asc(warehouseStockTable.warehouseId),
+    )
+    .limit(2000);
+  res.json(
+    rows.map((r) => ({
+      id: r.ws.id,
+      warehouseId: r.ws.warehouseId,
+      warehouseCode: r.warehouseCode,
+      warehouseName: r.warehouseName,
+      productId: r.ws.productId,
+      productCode: r.productCode,
+      productName: r.productName,
+      variantId: r.ws.variantId,
+      variantName: r.variantName ?? null,
+      quantity: r.ws.quantity,
+    })),
+  );
+});
+
+/* ---------- 庫存調撥 ---------- */
+
+function serializeST(
+  st: StockTransfer,
+  items: StockTransferItem[],
+  fromName: string,
+  toName: string,
+) {
+  return {
+    id: st.id,
+    stNo: st.stNo,
+    fromWarehouseId: st.fromWarehouseId,
+    fromWarehouseName: fromName,
+    toWarehouseId: st.toWarehouseId,
+    toWarehouseName: toName,
+    status: st.status,
+    note: st.note,
+    createdAt: st.createdAt.toISOString(),
+    confirmedAt: st.confirmedAt ? st.confirmedAt.toISOString() : null,
+    items: items.map((i) => ({
+      id: i.id,
+      productId: i.productId,
+      variantId: i.variantId,
+      variantName: i.variantName,
+      productName: i.productName,
+      productCode: i.productCode,
+      quantity: i.quantity,
+    })),
+  };
+}
+
+async function loadST(id: number) {
+  const [st] = await db
+    .select()
+    .from(stockTransfersTable)
+    .where(eq(stockTransfersTable.id, id))
+    .limit(1);
+  if (!st) return null;
+  const items = await db
+    .select()
+    .from(stockTransferItemsTable)
+    .where(eq(stockTransferItemsTable.stockTransferId, id));
+  const whs = await db
+    .select({ id: erpWarehousesTable.id, name: erpWarehousesTable.name })
+    .from(erpWarehousesTable)
+    .where(inArray(erpWarehousesTable.id, [st.fromWarehouseId, st.toWarehouseId]));
+  const nameById = new Map(whs.map((w) => [w.id, w.name]));
+  return serializeST(
+    st,
+    items,
+    nameById.get(st.fromWarehouseId) ?? "",
+    nameById.get(st.toWarehouseId) ?? "",
+  );
+}
+
+router.get("/erp/stock-transfers", requireErpMenu("/inventory/transfers"), async (req, res) => {
+  const status = typeof req.query.status === "string" ? req.query.status : "";
+  const conds: SQL[] = [];
+  if (["draft", "confirmed", "cancelled"].includes(status))
+    conds.push(eq(stockTransfersTable.status, status));
+  const rows = await db
+    .select()
+    .from(stockTransfersTable)
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(desc(stockTransfersTable.id))
+    .limit(300);
+  const ids = rows.map((r) => r.id);
+  const items = ids.length
+    ? await db
+        .select()
+        .from(stockTransferItemsTable)
+        .where(inArray(stockTransferItemsTable.stockTransferId, ids))
+    : [];
+  const whs = await db
+    .select({ id: erpWarehousesTable.id, name: erpWarehousesTable.name })
+    .from(erpWarehousesTable);
+  const nameById = new Map(whs.map((w) => [w.id, w.name]));
+  res.json(
+    rows.map((st) =>
+      serializeST(
+        st,
+        items.filter((i) => i.stockTransferId === st.id),
+        nameById.get(st.fromWarehouseId) ?? "",
+        nameById.get(st.toWarehouseId) ?? "",
+      ),
+    ),
+  );
+});
+
+/** 建立調撥單（草稿） */
+router.post("/erp/stock-transfers", requireErpMenu("/inventory/transfers"), async (req, res) => {
+  const parsed = CreateErpStockTransferBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "調撥單資料不完整" });
+    return;
+  }
+  const input = parsed.data;
+  if (input.fromWarehouseId === input.toWarehouseId) {
+    res.status(400).json({ error: "來源倉與目的倉不可相同" });
+    return;
+  }
+  for (const line of input.items) {
+    if (line.quantity <= 0) {
+      res.status(400).json({ error: "調撥數量須大於 0" });
+      return;
+    }
+  }
+  // 同品項規格重複列 → 合併數量
+  const qtyByKey = new Map<string, { productId: number; variantId: number | null; quantity: number }>();
+  for (const line of input.items) {
+    const k = `${line.productId}:${line.variantId ?? ""}`;
+    const prev = qtyByKey.get(k);
+    qtyByKey.set(k, {
+      productId: line.productId,
+      variantId: line.variantId ?? null,
+      quantity: (prev?.quantity ?? 0) + line.quantity,
+    });
+  }
+  if (qtyByKey.size === 0) {
+    res.status(400).json({ error: "調撥單沒有品項" });
+    return;
+  }
+
+  const stNo = `ST${Date.now()}`;
+  let result;
+  try {
+    result = await db.transaction(async (tx) => {
+      // 倉庫檢核（須存在且啟用）
+      await resolveWarehouseId(tx, input.fromWarehouseId);
+      await resolveWarehouseId(tx, input.toWarehouseId);
+
+      const productIds = [...new Set([...qtyByKey.values()].map((l) => l.productId))];
+      const prods = await tx
+        .select()
+        .from(productsTable)
+        .where(inArray(productsTable.id, productIds));
+      const prodById = new Map(prods.map((p) => [p.id, p]));
+      const variantIds = [...qtyByKey.values()]
+        .map((l) => l.variantId)
+        .filter((v): v is number => v != null);
+      const variants = variantIds.length
+        ? await tx
+            .select()
+            .from(productVariantsTable)
+            .where(inArray(productVariantsTable.id, variantIds))
+        : [];
+      const variantById = new Map(variants.map((v) => [v.id, v]));
+
+      const lines: Omit<StockTransferItem, "id" | "stockTransferId">[] = [];
+      for (const l of qtyByKey.values()) {
+        const p = prodById.get(l.productId);
+        if (!p) throw new DocError("包含不存在的品項");
+        if (p.isVirtual) throw new DocError(`虛擬品項不可調撥：${p.name}`);
+        let variantName: string | null = null;
+        if (l.variantId != null) {
+          const v = variantById.get(l.variantId);
+          if (!v || v.productId !== l.productId)
+            throw new DocError(`規格不存在：${p.name}`);
+          variantName = v.name;
+        } else {
+          const [hasVariant] = await tx
+            .select({ id: productVariantsTable.id })
+            .from(productVariantsTable)
+            .where(
+              and(
+                eq(productVariantsTable.productId, l.productId),
+                eq(productVariantsTable.isActive, true),
+              ),
+            )
+            .limit(1);
+          if (hasVariant) throw new DocError(`「${p.name}」有多種規格，請指定規格`);
+        }
+        lines.push({
+          productId: l.productId,
+          variantId: l.variantId,
+          variantName,
+          productName: p.name,
+          productCode: p.code,
+          quantity: l.quantity,
+        });
+      }
+
+      const [st] = await tx
+        .insert(stockTransfersTable)
+        .values({
+          stNo,
+          fromWarehouseId: input.fromWarehouseId,
+          toWarehouseId: input.toWarehouseId,
+          status: "draft",
+          note: input.note ?? null,
+          createdBy: req.member!.id,
+        })
+        .returning();
+      const items = await tx
+        .insert(stockTransferItemsTable)
+        .values(lines.map((l) => ({ ...l, stockTransferId: st.id })))
+        .returning();
+      return { st, items };
+    });
+  } catch (err) {
+    if (err instanceof DocError || err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+  await audit(req, {
+    action: "create",
+    module: "inventory",
+    documentType: "stock_transfer",
+    documentId: String(result.st.id),
+    description: `建立調撥單 ${stNo}`,
+  });
+  res.status(201).json(await loadST(result.st.id));
+});
+
+/** 調撥單狀態：draft→confirmed（來源倉出庫、目的倉入庫，同交易列鎖）、draft→cancelled */
+router.patch("/erp/stock-transfers/:id/status", requireErpMenu("/inventory/transfers"), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const parsed = UpdateErpStockTransferStatusBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "狀態不正確" });
+    return;
+  }
+  const target = parsed.data.status;
+
+  let stNo = "";
+  try {
+    await db.transaction(async (tx) => {
+      const [st] = await tx
+        .select()
+        .from(stockTransfersTable)
+        .where(eq(stockTransfersTable.id, id))
+        .for("update")
+        .limit(1);
+      if (!st) throw new DocError("找不到此調撥單");
+      if (st.status !== "draft")
+        throw new DocError(`無法從「${st.status}」變更為「${target}」`);
+      stNo = st.stNo;
+
+      if (target === "confirmed") {
+        // 倉庫須仍啟用
+        await resolveWarehouseId(tx, st.fromWarehouseId);
+        await resolveWarehouseId(tx, st.toWarehouseId);
+        const items = await tx
+          .select()
+          .from(stockTransferItemsTable)
+          .where(eq(stockTransferItemsTable.stockTransferId, id));
+        for (const item of items) {
+          // 列鎖商品，序列化同品項併發異動
+          const [p] = await tx
+            .select()
+            .from(productsTable)
+            .where(eq(productsTable.id, item.productId))
+            .for("update")
+            .limit(1);
+          if (!p) throw new DocError(`品項不存在：${item.productName}`);
+          const label = item.variantName
+            ? `${item.productName}（${item.variantName}）`
+            : item.productName;
+          await decreaseWarehouseStock(tx, {
+            warehouseId: st.fromWarehouseId,
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            label,
+          });
+          await increaseWarehouseStock(tx, {
+            warehouseId: st.toWarehouseId,
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
+          // 調撥不影響總量：stockAfter 記錄目前總量
+          const stockAfter =
+            item.variantId != null
+              ? (
+                  await tx
+                    .select({ stock: productVariantsTable.stock })
+                    .from(productVariantsTable)
+                    .where(eq(productVariantsTable.id, item.variantId))
+                    .limit(1)
+                )[0]?.stock ?? 0
+              : p.stock;
+          await tx.insert(stockMovementsTable).values([
+            {
+              productId: item.productId,
+              variantId: item.variantId,
+              type: "transfer",
+              quantity: -item.quantity,
+              stockAfter,
+              warehouseId: st.fromWarehouseId,
+              reason: item.variantName ? `調撥出庫（${item.variantName}）` : "調撥出庫",
+              refNo: st.stNo,
+            },
+            {
+              productId: item.productId,
+              variantId: item.variantId,
+              type: "transfer",
+              quantity: item.quantity,
+              stockAfter,
+              warehouseId: st.toWarehouseId,
+              reason: item.variantName ? `調撥入庫（${item.variantName}）` : "調撥入庫",
+              refNo: st.stNo,
+            },
+          ]);
+        }
+      }
+
+      await tx
+        .update(stockTransfersTable)
+        .set(
+          target === "confirmed"
+            ? { status: "confirmed", confirmedAt: new Date() }
+            : { status: "cancelled" },
+        )
+        .where(eq(stockTransfersTable.id, id));
+    });
+  } catch (err) {
+    if (err instanceof DocError || err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+  await audit(req, {
+    action: target,
+    module: "inventory",
+    documentType: "stock_transfer",
+    documentId: String(id),
+    description: `調撥單 ${stNo} → ${target}`,
+  });
+  res.json(await loadST(id));
 });
 
 /* ---------- 客戶 ---------- */

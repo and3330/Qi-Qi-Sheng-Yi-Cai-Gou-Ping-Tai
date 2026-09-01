@@ -24,6 +24,12 @@ import {
 } from "@workspace/api-zod";
 import { requireErpMenu } from "../middlewares/requireErp";
 import { reindex } from "../lib/aiIndex";
+import {
+  WarehouseStockError,
+  resolveWarehouseId,
+  increaseWarehouseStock,
+  decreaseWarehouseStock,
+} from "../lib/warehouseStock";
 
 import { autoPost, postPurchaseOrderInvoice } from "../lib/erpAutoPost";
 
@@ -63,6 +69,7 @@ function serializePO(po: PurchaseOrder, supplierName: string, items: PurchaseOrd
     poNo: po.poNo,
     supplierId: po.supplierId,
     supplierName,
+    warehouseId: po.warehouseId,
     status: po.status,
     totalAmount: po.totalAmount,
     note: po.note,
@@ -221,12 +228,18 @@ router.post("/erp/purchase-orders", requireErpMenu("/purchasing/orders"), async 
   const totalAmount = input.items.reduce((sum, l) => sum + l.unitCost * l.quantity, 0);
   const poNo = `PO${Date.now()}`;
 
-  const result = await db.transaction(async (tx) => {
+  let result;
+  try {
+  result = await db.transaction(async (tx) => {
+    // 收貨倉：未指定則於收貨時使用預設倉
+    const warehouseId =
+      input.warehouseId != null ? await resolveWarehouseId(tx, input.warehouseId) : null;
     const [po] = await tx
       .insert(purchaseOrdersTable)
       .values({
         poNo,
         supplierId: input.supplierId,
+        warehouseId,
         status: "draft",
         totalAmount,
         note: input.note ?? null,
@@ -254,6 +267,13 @@ router.post("/erp/purchase-orders", requireErpMenu("/purchasing/orders"), async 
       .returning();
     return { po, items };
   });
+  } catch (err) {
+    if (err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
   await audit(req, {
     action: "create",
     module: "purchasing",
@@ -336,6 +356,15 @@ router.post("/erp/purchase-orders/:id/receive", requireErpMenu("/purchasing/rece
       if (!po) throw new DocError("找不到此採購單");
       if (po.status !== "ordered") throw new DocError("只有「已下單」的採購單可以收貨");
       poNo = po.poNo;
+      // 收貨倉：可由請求指定，否則用單據上的倉，再不然用預設倉
+      const bodyWarehouseId =
+        req.body && Number.isInteger(req.body.warehouseId) && req.body.warehouseId > 0
+          ? Number(req.body.warehouseId)
+          : null;
+      const receiveWarehouseId = await resolveWarehouseId(
+        tx,
+        bodyWarehouseId ?? po.warehouseId,
+      );
 
       const items = await tx
         .select()
@@ -374,12 +403,19 @@ router.post("/erp/purchase-orders/:id/receive", requireErpMenu("/purchasing/rece
           if (updated) stockAfter = updated.stock;
         }
         if (stockAfter == null) continue;
+        await increaseWarehouseStock(tx, {
+          warehouseId: receiveWarehouseId,
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+        });
         await tx.insert(stockMovementsTable).values({
           productId: item.productId,
           variantId: item.variantId,
           type: "purchase",
           quantity: item.quantity,
           stockAfter,
+          warehouseId: receiveWarehouseId,
           reason: item.variantName ? `採購進貨（${item.variantName}）` : "採購進貨",
           refNo: po.poNo,
         });
@@ -387,12 +423,20 @@ router.post("/erp/purchase-orders/:id/receive", requireErpMenu("/purchasing/rece
 
       await tx
         .update(purchaseOrdersTable)
-        .set({ status: "received", receivedAt: new Date() })
+        .set({
+          status: "received",
+          receivedAt: new Date(),
+          warehouseId: receiveWarehouseId,
+        })
         .where(eq(purchaseOrdersTable.id, id));
     });
     // 採購收貨 → 自動開立 AP 發票 + 傳票（冪等、失敗不阻斷）
     autoPost(`erp_po_invoice:${id}`, () => postPurchaseOrderInvoice(id));
   } catch (err) {
+    if (err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     if (err instanceof DocError) {
       res.status(err.message === "找不到此採購單" ? 404 : 400).json({ error: err.message });
       return;
@@ -425,6 +469,7 @@ function serializePR(
     supplierName,
     purchaseOrderId: pr.purchaseOrderId,
     purchaseOrderNo: poNo ?? null,
+    warehouseId: pr.warehouseId,
     status: pr.status,
     totalAmount: pr.totalAmount,
     reason: pr.reason,
@@ -607,12 +652,17 @@ router.post("/erp/purchase-returns", requireErpMenu("/purchasing/returns"), asyn
       }
 
       const totalAmount = lines.reduce((s, l) => s + l.unitCost * l.quantity, 0);
+      const returnWarehouseId =
+        input.warehouseId != null
+          ? await resolveWarehouseId(tx, input.warehouseId)
+          : po.warehouseId;
       const [pr] = await tx
         .insert(purchaseReturnsTable)
         .values({
           prNo,
           supplierId: po.supplierId,
           purchaseOrderId: po.id,
+          warehouseId: returnWarehouseId,
           status: "draft",
           totalAmount,
           reason: input.reason ?? null,
@@ -627,6 +677,10 @@ router.post("/erp/purchase-returns", requireErpMenu("/purchasing/returns"), asyn
       return { pr, items, poNo: po.poNo };
     });
   } catch (err) {
+    if (err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     if (err instanceof DocError) {
       res.status(400).json({ error: err.message });
       return;
@@ -676,8 +730,19 @@ router.patch("/erp/purchase-returns/:id/status", requireErpMenu("/purchasing/ret
           .from(purchaseReturnItemsTable)
           .where(eq(purchaseReturnItemsTable.purchaseReturnId, id));
         reindexProductIds = items.map((i) => i.productId);
+        const prWarehouseId = await resolveWarehouseId(tx, pr.warehouseId);
         for (const item of items) {
           if (item.isVirtual) continue;
+          const label = item.variantName
+            ? `${item.productName}（${item.variantName}）`
+            : item.productName;
+          await decreaseWarehouseStock(tx, {
+            warehouseId: prWarehouseId,
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            label,
+          });
           if (item.variantId != null) {
             const dec = await tx
               .update(productVariantsTable)
@@ -699,6 +764,7 @@ router.patch("/erp/purchase-returns/:id/status", requireErpMenu("/purchasing/ret
               type: "purchase_return",
               quantity: -item.quantity,
               stockAfter: dec[0].stock,
+              warehouseId: prWarehouseId,
               reason: `採購退回出庫（${item.variantName}）`,
               refNo: pr.prNo,
             });
@@ -721,6 +787,7 @@ router.patch("/erp/purchase-returns/:id/status", requireErpMenu("/purchasing/ret
               type: "purchase_return",
               quantity: -item.quantity,
               stockAfter: dec[0].stock,
+              warehouseId: prWarehouseId,
               reason: "採購退回出庫",
               refNo: pr.prNo,
             });
@@ -738,6 +805,10 @@ router.patch("/erp/purchase-returns/:id/status", requireErpMenu("/purchasing/ret
         .where(eq(purchaseReturnsTable.id, id));
     });
   } catch (err) {
+    if (err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     if (err instanceof DocError) {
       res.status(400).json({ error: err.message });
       return;

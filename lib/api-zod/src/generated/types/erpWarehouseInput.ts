@@ -13,4 +13,5 @@ export interface ErpWarehouseInput {
   name: string;
   address?: string | null;
   note?: string | null;
+  isSellable?: boolean;
 }

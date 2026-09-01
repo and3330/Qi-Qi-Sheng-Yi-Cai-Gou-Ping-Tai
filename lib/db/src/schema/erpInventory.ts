@@ -21,8 +21,68 @@ export const erpWarehousesTable = pgTable("erp_warehouses", {
   address: text("address"),
   note: text("note"),
   isDefault: boolean("is_default").notNull().default(false),
+  // 商城可售倉：商城可售量 = 各可售倉合計
+  isSellable: boolean("is_sellable").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+/** 分倉庫存：product/variant × warehouse 的數量；總量（products/product_variants.stock）= 各倉合計 */
+export const warehouseStockTable = pgTable(
+  "warehouse_stock",
+  {
+    id: serial("id").primaryKey(),
+    warehouseId: integer("warehouse_id")
+      .notNull()
+      .references(() => erpWarehousesTable.id),
+    productId: integer("product_id").notNull(),
+    // 多規格：無規格商品為 null
+    variantId: integer("variant_id"),
+    quantity: integer("quantity").notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex("uq_warehouse_stock_line").on(
+      t.warehouseId,
+      t.productId,
+      sql`COALESCE(variant_id, 0)`,
+    ),
+    index("idx_warehouse_stock_product").on(t.productId),
+  ],
+);
+
+/** 庫存調撥單：來源倉 → 目的倉 */
+export const stockTransfersTable = pgTable(
+  "stock_transfers",
+  {
+    id: serial("id").primaryKey(),
+    stNo: text("st_no").notNull().unique(),
+    fromWarehouseId: integer("from_warehouse_id")
+      .notNull()
+      .references(() => erpWarehousesTable.id),
+    toWarehouseId: integer("to_warehouse_id")
+      .notNull()
+      .references(() => erpWarehousesTable.id),
+    // draft | confirmed | cancelled
+    status: text("status").notNull().default("draft"),
+    note: text("note"),
+    createdBy: integer("created_by"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    confirmedAt: timestamp("confirmed_at"),
+  },
+  (t) => [index("idx_stock_transfers_status").on(t.status, t.createdAt)],
+);
+
+export const stockTransferItemsTable = pgTable("stock_transfer_items", {
+  id: serial("id").primaryKey(),
+  stockTransferId: integer("stock_transfer_id")
+    .notNull()
+    .references(() => stockTransfersTable.id),
+  productId: integer("product_id").notNull(),
+  variantId: integer("variant_id"),
+  variantName: text("variant_name"),
+  productName: text("product_name").notNull(),
+  productCode: text("product_code").notNull(),
+  quantity: integer("quantity").notNull(),
 });
 
 /** ERP 客戶：商城會員自動對應（member_id 唯一），也可建立非會員客戶 */
@@ -209,6 +269,9 @@ export const purchaseReturnItemsTable = pgTable("purchase_return_items", {
 });
 
 export type ErpWarehouse = typeof erpWarehousesTable.$inferSelect;
+export type WarehouseStock = typeof warehouseStockTable.$inferSelect;
+export type StockTransfer = typeof stockTransfersTable.$inferSelect;
+export type StockTransferItem = typeof stockTransferItemsTable.$inferSelect;
 export type ErpCustomer = typeof erpCustomersTable.$inferSelect;
 export type PriceList = typeof priceListsTable.$inferSelect;
 export type PriceListItem = typeof priceListItemsTable.$inferSelect;

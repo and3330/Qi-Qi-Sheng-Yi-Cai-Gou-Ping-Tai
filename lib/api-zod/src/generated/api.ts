@@ -143,6 +143,8 @@ export const UpdateAdminMemberParams = zod.object({
 })
 
 
+
+
 export const UpdateAdminMemberBody = zod.object({
   "name": zod.string().min(1).optional(),
   "email": zod.string().nullish(),
@@ -208,6 +210,7 @@ export const ListAdminProductsResponse = zod.array(ListAdminProductsResponseItem
  */
 
 
+
 export const createAdminProductBodyPriceHospitalMin = 0;
 
 export const createAdminProductBodyPriceClinicMin = 0;
@@ -217,6 +220,7 @@ export const createAdminProductBodyPriceConsumerMin = 0;
 export const createAdminProductBodyCostPriceMin = 0;
 
 export const createAdminProductBodyStockMin = 0;
+
 
 
 export const CreateAdminProductBody = zod.object({
@@ -266,6 +270,8 @@ export const UpdateAdminProductParams = zod.object({
 })
 
 
+
+
 export const updateAdminProductBodyPriceHospitalMin = 0;
 
 export const updateAdminProductBodyPriceClinicMin = 0;
@@ -273,6 +279,7 @@ export const updateAdminProductBodyPriceClinicMin = 0;
 export const updateAdminProductBodyPriceConsumerMin = 0;
 
 export const updateAdminProductBodyCostPriceMin = 0;
+
 
 
 export const UpdateAdminProductBody = zod.object({
@@ -316,6 +323,7 @@ export const UpdateAdminProductResponse = zod.object({
 /**
  * @summary 手動調整庫存（盤點 / 報廢等，限管理員）
  */
+
 
 
 export const AdjustAdminStockBody = zod.object({
@@ -392,6 +400,7 @@ export const ListAdminSuppliersResponse = zod.array(ListAdminSuppliersResponseIt
  */
 
 
+
 export const CreateAdminSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -422,6 +431,8 @@ export const CreateAdminSupplierResponse = zod.object({
 export const UpdateAdminSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateAdminSupplierBody = zod.object({
@@ -461,6 +472,7 @@ export const ListAdminPurchaseOrdersResponseItem = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -487,8 +499,12 @@ export const ListAdminPurchaseOrdersResponse = zod.array(ListAdminPurchaseOrders
 export const createAdminPurchaseOrderBodyItemsItemUnitCostMin = 0;
 
 
+
+
+
 export const CreateAdminPurchaseOrderBody = zod.object({
   "supplierId": zod.int(),
+  "warehouseId": zod.int().nullish(),
   "note": zod.string().nullish(),
   "items": zod.array(zod.object({
   "productId": zod.int(),
@@ -503,6 +519,7 @@ export const CreateAdminPurchaseOrderResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -534,6 +551,7 @@ export const GetAdminPurchaseOrderResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -569,6 +587,7 @@ export const UpdateAdminPurchaseOrderStatusResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -600,6 +619,7 @@ export const ReceiveAdminPurchaseOrderResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -780,6 +800,8 @@ export const registerBodyPasswordMin = 8;
 export const registerBodyPasswordMax = 72;
 
 
+
+
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax).regex(registerBodyUsernameRegExp),
   "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
@@ -809,6 +831,8 @@ export const RegisterResponse = zod.object({
 /**
  * @summary Log in with username and password (starts session)
  */
+
+
 
 
 export const LoginBody = zod.object({
@@ -862,6 +886,7 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Update current member profile
  */
+
 
 
 export const UpdateMeBody = zod.object({
@@ -1012,6 +1037,7 @@ export const GetCartResponse = zod.array(GetCartResponseItem)
  */
 
 
+
 export const AddCartItemBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -1073,6 +1099,8 @@ export const ClearCartResponse = zod.void()
 export const UpdateCartItemParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateCartItemBody = zod.object({
@@ -1168,7 +1196,11 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  */
 
 
+
 export const createOrderBodyPointsToUseMin = 0;
+
+
+
 
 
 export const CreateOrderBody = zod.object({
@@ -1399,6 +1431,8 @@ export const ListMyLinktreeLinksResponse = zod.array(ListMyLinktreeLinksResponse
  */
 
 
+
+
 export const CreateMyLinktreeLinkBody = zod.object({
   "title": zod.string().min(1),
   "subtitle": zod.string().nullish(),
@@ -1430,6 +1464,9 @@ export const CreateMyLinktreeLinkResponse = zod.object({
 export const UpdateMyLinktreeLinkParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
+
 
 
 export const UpdateMyLinktreeLinkBody = zod.object({
@@ -1738,6 +1775,7 @@ export const AdjustAdminMemberWalletParams = zod.object({
 export const adjustAdminMemberWalletBodyReasonMax = 200;
 
 
+
 export const AdjustAdminMemberWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -1895,6 +1933,7 @@ export const AdjustInstitutionWalletParams = zod.object({
 export const adjustInstitutionWalletBodyReasonMax = 200;
 
 
+
 export const AdjustInstitutionWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -1956,6 +1995,7 @@ export const createAdminArticleBodySummaryMax = 500;
 export const createAdminArticleBodyImageUrlMax = 500;
 
 
+
 export const CreateAdminArticleBody = zod.object({
   "kind": zod.enum(['article', 'faq']),
   "title": zod.string().min(1).max(createAdminArticleBodyTitleMax),
@@ -1994,6 +2034,7 @@ export const updateAdminArticleBodyCategoryMax = 50;
 export const updateAdminArticleBodySummaryMax = 500;
 
 export const updateAdminArticleBodyImageUrlMax = 500;
+
 
 
 export const UpdateAdminArticleBody = zod.object({
@@ -2060,6 +2101,7 @@ export const createAdminAnnouncementBodyCategoryMax = 50;
 export const createAdminAnnouncementBodyImageUrlMax = 500;
 
 
+
 export const CreateAdminAnnouncementBody = zod.object({
   "title": zod.string().min(1).max(createAdminAnnouncementBodyTitleMax),
   "category": zod.string().min(1).max(createAdminAnnouncementBodyCategoryMax),
@@ -2092,6 +2134,7 @@ export const updateAdminAnnouncementBodyTitleMax = 200;
 export const updateAdminAnnouncementBodyCategoryMax = 50;
 
 export const updateAdminAnnouncementBodyImageUrlMax = 500;
+
 
 
 export const UpdateAdminAnnouncementBody = zod.object({
@@ -2153,11 +2196,18 @@ export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevis
  */
 
 
+
+
+
 export const RequestUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.int().min(1),
   "contentType": zod.string().min(1)
 })
+
+
+
+
 
 
 export const RequestUploadUrlResponse = zod.object({
@@ -2201,6 +2251,7 @@ export const UpdateShipmentPhotosParams = zod.object({
 export const updateShipmentPhotosBodyPhotosItemMax = 500;
 
 export const updateShipmentPhotosBodyPhotosMax = 10;
+
 
 
 export const UpdateShipmentPhotosBody = zod.object({
@@ -2254,6 +2305,7 @@ export const createAdminProductVariantBodyCostPriceMin = 0;
 export const createAdminProductVariantBodyStockMin = 0;
 
 
+
 export const CreateAdminProductVariantBody = zod.object({
   "name": zod.string().min(1).max(createAdminProductVariantBodyNameMax),
   "priceHospital": zod.int().min(createAdminProductVariantBodyPriceHospitalMin),
@@ -2294,6 +2346,7 @@ export const updateAdminProductVariantBodyPriceClinicMin = 0;
 export const updateAdminProductVariantBodyPriceConsumerMin = 0;
 
 export const updateAdminProductVariantBodyCostPriceMin = 0;
+
 
 
 export const UpdateAdminProductVariantBody = zod.object({
@@ -2352,6 +2405,7 @@ export const createAdminProfitRuleBodyPercentBpsMin = 0;
 export const createAdminProfitRuleBodyPercentBpsMax = 10000;
 
 
+
 export const CreateAdminProfitRuleBody = zod.object({
   "name": zod.string().min(1).max(createAdminProfitRuleBodyNameMax),
   "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
@@ -2380,6 +2434,7 @@ export const updateAdminProfitRuleBodyNameMax = 100;
 
 export const updateAdminProfitRuleBodyPercentBpsMin = 0;
 export const updateAdminProfitRuleBodyPercentBpsMax = 10000;
+
 
 
 export const UpdateAdminProfitRuleBody = zod.object({
@@ -2474,6 +2529,7 @@ export const createAdminExpenseBodyTitleMax = 200;
 
 
 export const createAdminExpenseBodyNoteMax = 500;
+
 
 
 export const CreateAdminExpenseBody = zod.object({
@@ -2612,6 +2668,7 @@ export const SendAssistantMessageParams = zod.object({
 export const sendAssistantMessageBodyContentMax = 4000;
 
 
+
 export const SendAssistantMessageBody = zod.object({
   "content": zod.string().min(1).max(sendAssistantMessageBodyContentMax)
 })
@@ -2716,6 +2773,7 @@ export const SendSupportMessageParams = zod.object({
 export const sendSupportMessageBodyContentMax = 4000;
 
 
+
 export const SendSupportMessageBody = zod.object({
   "content": zod.string().min(1).max(sendSupportMessageBodyContentMax)
 })
@@ -2781,6 +2839,7 @@ export const ReplySupportConversationParams = zod.object({
 })
 
 export const replySupportConversationBodyContentMax = 4000;
+
 
 
 export const ReplySupportConversationBody = zod.object({
@@ -2905,6 +2964,9 @@ export const ListAdminQuotationsResponse = zod.array(ListAdminQuotationsResponse
  */
 
 export const createAdminQuotationBodyItemsItemUnitPriceMin = 0;
+
+
+
 
 
 export const CreateAdminQuotationBody = zod.object({
@@ -3347,6 +3409,7 @@ export const UpdateErpItemResponse = zod.object({
  */
 
 
+
 export const ErpAdjustStockBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -3412,6 +3475,7 @@ export const ListErpWarehousesResponseItem = zod.object({
   "address": zod.string().nullish(),
   "note": zod.string().nullish(),
   "isDefault": zod.boolean(),
+  "isSellable": zod.boolean().optional(),
   "isActive": zod.boolean(),
   "createdAt": zod.string()
 })
@@ -3423,11 +3487,14 @@ export const ListErpWarehousesResponse = zod.array(ListErpWarehousesResponseItem
  */
 
 
+
+
 export const CreateErpWarehouseBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
   "address": zod.string().nullish(),
-  "note": zod.string().nullish()
+  "note": zod.string().nullish(),
+  "isSellable": zod.boolean().optional()
 })
 
 export const CreateErpWarehouseResponse = zod.object({
@@ -3437,6 +3504,7 @@ export const CreateErpWarehouseResponse = zod.object({
   "address": zod.string().nullish(),
   "note": zod.string().nullish(),
   "isDefault": zod.boolean(),
+  "isSellable": zod.boolean().optional(),
   "isActive": zod.boolean(),
   "createdAt": zod.string()
 })
@@ -3450,10 +3518,13 @@ export const UpdateErpWarehouseParams = zod.object({
 })
 
 
+
+
 export const UpdateErpWarehouseBody = zod.object({
   "name": zod.string().min(1).optional(),
   "address": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "isSellable": zod.boolean().optional(),
   "isActive": zod.boolean().optional()
 })
 
@@ -3464,8 +3535,138 @@ export const UpdateErpWarehouseResponse = zod.object({
   "address": zod.string().nullish(),
   "note": zod.string().nullish(),
   "isDefault": zod.boolean(),
+  "isSellable": zod.boolean().optional(),
   "isActive": zod.boolean(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary 分倉庫存清單
+ */
+export const ListErpWarehouseStockQueryParams = zod.object({
+  "productId": zod.coerce.number().int().optional(),
+  "warehouseId": zod.coerce.number().int().optional()
+})
+
+export const ListErpWarehouseStockResponseItem = zod.object({
+  "id": zod.int(),
+  "warehouseId": zod.int(),
+  "warehouseCode": zod.string(),
+  "warehouseName": zod.string(),
+  "productId": zod.int(),
+  "productCode": zod.string(),
+  "productName": zod.string(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "quantity": zod.int()
+})
+export const ListErpWarehouseStockResponse = zod.array(ListErpWarehouseStockResponseItem)
+
+
+/**
+ * @summary 調撥單清單
+ */
+export const ListErpStockTransfersQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListErpStockTransfersResponseItem = zod.object({
+  "id": zod.int(),
+  "stNo": zod.string(),
+  "fromWarehouseId": zod.int(),
+  "fromWarehouseName": zod.string(),
+  "toWarehouseId": zod.int(),
+  "toWarehouseName": zod.string(),
+  "status": zod.string(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "confirmedAt": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "quantity": zod.int()
+}))
+})
+export const ListErpStockTransfersResponse = zod.array(ListErpStockTransfersResponseItem)
+
+
+/**
+ * @summary 建立調撥單（草稿）
+ */
+
+
+
+
+export const CreateErpStockTransferBody = zod.object({
+  "fromWarehouseId": zod.int(),
+  "toWarehouseId": zod.int(),
+  "note": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "quantity": zod.int().min(1)
+})).min(1)
+})
+
+export const CreateErpStockTransferResponse = zod.object({
+  "id": zod.int(),
+  "stNo": zod.string(),
+  "fromWarehouseId": zod.int(),
+  "fromWarehouseName": zod.string(),
+  "toWarehouseId": zod.int(),
+  "toWarehouseName": zod.string(),
+  "status": zod.string(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "confirmedAt": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "quantity": zod.int()
+}))
+})
+
+
+/**
+ * @summary 調撥單狀態變更（確認/取消）
+ */
+export const UpdateErpStockTransferStatusParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpStockTransferStatusBody = zod.object({
+  "status": zod.enum(['confirmed', 'cancelled'])
+})
+
+export const UpdateErpStockTransferStatusResponse = zod.object({
+  "id": zod.int(),
+  "stNo": zod.string(),
+  "fromWarehouseId": zod.int(),
+  "fromWarehouseName": zod.string(),
+  "toWarehouseId": zod.int(),
+  "toWarehouseName": zod.string(),
+  "status": zod.string(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.string(),
+  "confirmedAt": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "quantity": zod.int()
+}))
 })
 
 
@@ -3500,6 +3701,8 @@ export const ListErpCustomersResponse = zod.array(ListErpCustomersResponseItem)
 /**
  * @summary 新增客戶
  */
+
+
 
 
 export const CreateErpCustomerBody = zod.object({
@@ -3541,6 +3744,8 @@ export const CreateErpCustomerResponse = zod.object({
 export const UpdateErpCustomerParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateErpCustomerBody = zod.object({
@@ -3603,6 +3808,7 @@ export const ListErpSuppliersResponse = zod.array(ListErpSuppliersResponseItem)
  */
 
 
+
 export const CreateErpSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -3633,6 +3839,8 @@ export const CreateErpSupplierResponse = zod.object({
 export const UpdateErpSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateErpSupplierBody = zod.object({
@@ -3684,6 +3892,7 @@ export const ListErpPriceListsResponse = zod.array(ListErpPriceListsResponseItem
  */
 
 
+
 export const CreateErpPriceListBody = zod.object({
   "name": zod.string().min(1),
   "description": zod.string().nullish()
@@ -3710,6 +3919,8 @@ export const CreateErpPriceListResponse = zod.object({
 export const UpdateErpPriceListParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateErpPriceListBody = zod.object({
@@ -3804,6 +4015,9 @@ export const ListErpQuotationsResponse = zod.array(ListErpQuotationsResponseItem
  */
 
 export const createErpQuotationBodyItemsItemUnitPriceMin = 0;
+
+
+
 
 
 export const CreateErpQuotationBody = zod.object({
@@ -3975,6 +4189,7 @@ export const ListErpSalesOrdersResponse = zod.object({
   "customerName": zod.string(),
   "orderId": zod.int().nullish(),
   "orderNo": zod.string().nullish(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4006,8 +4221,11 @@ export const ListErpSalesOrdersResponse = zod.object({
  */
 
 
+
+
 export const CreateErpSalesOrderBody = zod.object({
   "customerId": zod.int(),
+  "warehouseId": zod.int().nullish(),
   "note": zod.string().nullish(),
   "items": zod.array(zod.object({
   "productId": zod.int(),
@@ -4025,6 +4243,7 @@ export const CreateErpSalesOrderResponse = zod.object({
   "customerName": zod.string(),
   "orderId": zod.int().nullish(),
   "orderNo": zod.string().nullish(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4062,6 +4281,7 @@ export const GetErpSalesOrderResponse = zod.object({
   "customerName": zod.string(),
   "orderId": zod.int().nullish(),
   "orderNo": zod.string().nullish(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4103,6 +4323,7 @@ export const UpdateErpSalesOrderStatusResponse = zod.object({
   "customerName": zod.string(),
   "orderId": zod.int().nullish(),
   "orderNo": zod.string().nullish(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4139,6 +4360,7 @@ export const ListErpSalesReturnsResponseItem = zod.object({
   "salesOrderNo": zod.string().nullish(),
   "customerId": zod.int().nullish(),
   "customerName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "reason": zod.string().nullish(),
@@ -4165,8 +4387,11 @@ export const ListErpSalesReturnsResponse = zod.array(ListErpSalesReturnsResponse
  */
 
 
+
+
 export const CreateErpSalesReturnBody = zod.object({
   "salesOrderId": zod.int(),
+  "warehouseId": zod.int().nullish(),
   "reason": zod.string().nullish(),
   "note": zod.string().nullish(),
   "items": zod.array(zod.object({
@@ -4182,6 +4407,7 @@ export const CreateErpSalesReturnResponse = zod.object({
   "salesOrderNo": zod.string().nullish(),
   "customerId": zod.int().nullish(),
   "customerName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "reason": zod.string().nullish(),
@@ -4220,6 +4446,7 @@ export const UpdateErpSalesReturnStatusResponse = zod.object({
   "salesOrderNo": zod.string().nullish(),
   "customerId": zod.int().nullish(),
   "customerName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "reason": zod.string().nullish(),
@@ -4252,6 +4479,7 @@ export const ListErpPurchaseOrdersResponseItem = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4278,8 +4506,12 @@ export const ListErpPurchaseOrdersResponse = zod.array(ListErpPurchaseOrdersResp
 export const createErpPurchaseOrderBodyItemsItemUnitCostMin = 0;
 
 
+
+
+
 export const CreateErpPurchaseOrderBody = zod.object({
   "supplierId": zod.int(),
+  "warehouseId": zod.int().nullish(),
   "note": zod.string().nullish(),
   "items": zod.array(zod.object({
   "productId": zod.int(),
@@ -4294,6 +4526,7 @@ export const CreateErpPurchaseOrderResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4325,6 +4558,7 @@ export const GetErpPurchaseOrderResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4360,6 +4594,7 @@ export const UpdateErpPurchaseOrderStatusResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4391,6 +4626,7 @@ export const ReceiveErpPurchaseOrderResponse = zod.object({
   "poNo": zod.string(),
   "supplierId": zod.int(),
   "supplierName": zod.string(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.enum(['draft', 'ordered', 'received', 'cancelled']),
   "totalAmount": zod.int(),
   "note": zod.string().nullish(),
@@ -4424,6 +4660,7 @@ export const ListErpPurchaseReturnsResponseItem = zod.object({
   "supplierName": zod.string(),
   "purchaseOrderId": zod.int().nullish(),
   "purchaseOrderNo": zod.string().nullish(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "reason": zod.string().nullish(),
@@ -4450,8 +4687,11 @@ export const ListErpPurchaseReturnsResponse = zod.array(ListErpPurchaseReturnsRe
  */
 
 
+
+
 export const CreateErpPurchaseReturnBody = zod.object({
   "purchaseOrderId": zod.int(),
+  "warehouseId": zod.int().nullish(),
   "reason": zod.string().nullish(),
   "note": zod.string().nullish(),
   "items": zod.array(zod.object({
@@ -4467,6 +4707,7 @@ export const CreateErpPurchaseReturnResponse = zod.object({
   "supplierName": zod.string(),
   "purchaseOrderId": zod.int().nullish(),
   "purchaseOrderNo": zod.string().nullish(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "reason": zod.string().nullish(),
@@ -4505,6 +4746,7 @@ export const UpdateErpPurchaseReturnStatusResponse = zod.object({
   "supplierName": zod.string(),
   "purchaseOrderId": zod.int().nullish(),
   "purchaseOrderNo": zod.string().nullish(),
+  "warehouseId": zod.int().nullish(),
   "status": zod.string(),
   "totalAmount": zod.int(),
   "reason": zod.string().nullish(),
@@ -4654,6 +4896,7 @@ export const createErpJournalEntryBodyLinesItemCreditMin = 0;
 export const createErpJournalEntryBodyLinesMin = 2;
 
 
+
 export const CreateErpJournalEntryBody = zod.object({
   "entryDate": zod.string(),
   "description": zod.string().nullish(),
@@ -4724,6 +4967,8 @@ export const ListErpVouchersResponse = zod.array(ListErpVouchersResponseItem)
 /**
  * @summary 新增收付款/請款單（可核銷發票）
  */
+
+
 
 
 export const CreateErpVoucherBody = zod.object({
@@ -4816,6 +5061,7 @@ export const ListErpInvoicesResponse = zod.array(ListErpInvoicesResponseItem)
 /**
  * @summary 開立發票
  */
+
 
 
 export const CreateErpInvoiceBody = zod.object({
@@ -4981,6 +5227,7 @@ export const ListErpPaymentRequestsResponse = zod.array(ListErpPaymentRequestsRe
 /**
  * @summary 新增付款申請
  */
+
 
 
 export const CreateErpPaymentRequestBody = zod.object({
@@ -5399,6 +5646,8 @@ export const ListSocialPostsResponse = zod.array(ListSocialPostsResponseItem)
  */
 
 
+
+
 export const CreateSocialPostBody = zod.object({
   "content": zod.string().min(1),
   "platforms": zod.array(zod.string()).min(1),
@@ -5431,6 +5680,9 @@ export const CreateSocialPostResponse = zod.object({
 export const UpdateSocialPostParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 
 export const UpdateSocialPostBody = zod.object({
@@ -5520,6 +5772,7 @@ export const PreviewSocialPostResponse = zod.object({
  */
 
 
+
 export const GenerateSocialContentBody = zod.object({
   "topic": zod.string().min(1),
   "platforms": zod.array(zod.string()),
@@ -5537,6 +5790,7 @@ export const GenerateSocialContentResponse = zod.object({
  */
 
 
+
 export const GenerateSocialImageBody = zod.object({
   "prompt": zod.string().min(1)
 })
@@ -5550,6 +5804,7 @@ export const GenerateSocialImageResponse = zod.object({
 /**
  * @summary AI 對話式內容排程規劃
  */
+
 
 
 export const SocialAiPlannerBody = zod.object({
@@ -5574,6 +5829,9 @@ export const SocialAiPlannerResponse = zod.object({
 /**
  * @summary 批次建立排程貼文（AI Planner 計畫）
  */
+
+
+
 
 
 export const BatchCreateSocialPostsBody = zod.object({
@@ -5605,4 +5863,5 @@ export const BatchCreateSocialPostsResponse = zod.object({
 })),
   "skipped": zod.array(zod.string())
 })
+
 

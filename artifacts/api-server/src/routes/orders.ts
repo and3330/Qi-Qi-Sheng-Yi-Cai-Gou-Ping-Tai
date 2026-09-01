@@ -34,6 +34,7 @@ import {
   createSalesOrderForShopOrder,
 } from "../lib/erpSync";
 import { requireMember } from "../middlewares/requireMember";
+import { WarehouseStockError, allocateSellableStock } from "../lib/warehouseStock";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 
 class InsufficientPointsError extends Error {}
@@ -222,10 +223,43 @@ router.post("/orders", async (req, res) => {
     const result = await db.transaction(async (tx) => {
       // Atomically decrement stock; fail if insufficient.
       // 多規格商品扣規格庫存，無規格商品扣商品庫存。
+      // 分倉：依可售倉（預設倉優先）分配扣減，可售倉合計不足即擋下。
       const stockAfterByKey = new Map<string, number>();
-      for (const line of input.items) {
-        // 虛擬品項不動庫存
-        if (byId.get(line.productId)!.isVirtual) continue;
+      const allocationsByKey = new Map<string, Array<{ warehouseId: number; quantity: number }>>();
+      // 同一商品/規格可能出現多列：先彙總數量，避免分配結果被後列覆蓋
+      const aggregatedLines = new Map<
+        string,
+        { productId: number; variantId: number | null; quantity: number }
+      >();
+      for (const item of input.items) {
+        if (byId.get(item.productId)!.isVirtual) continue; // 虛擬品項不動庫存
+        const key = `${item.productId}:${item.variantId ?? ""}`;
+        const agg = aggregatedLines.get(key);
+        if (agg) agg.quantity += item.quantity;
+        else
+          aggregatedLines.set(key, {
+            productId: item.productId,
+            variantId: item.variantId ?? null,
+            quantity: item.quantity,
+          });
+      }
+      for (const line of aggregatedLines.values()) {
+        {
+          const p = byId.get(line.productId)!;
+          const v = line.variantId != null ? variantById.get(line.variantId)! : null;
+          try {
+            const allocations = await allocateSellableStock(tx, {
+              productId: line.productId,
+              variantId: line.variantId,
+              quantity: line.quantity,
+            });
+            allocationsByKey.set(`${line.productId}:${line.variantId ?? ""}`, allocations);
+          } catch (err) {
+            if (err instanceof WarehouseStockError)
+              throw new InsufficientStockError(v ? `${p.name}（${v.name}）` : p.name);
+            throw err;
+          }
+        }
         if (line.variantId != null) {
           const decremented = await tx
             .update(productVariantsTable)
@@ -377,20 +411,32 @@ router.post("/orders", async (req, res) => {
           );
       }
 
-      // Record sale stock movements（虛擬品項不動庫存）
-      const stockLines = lines.filter((l) => !l.isVirtual);
+      // Record sale stock movements（虛擬品項不動庫存；分倉分配逐倉記錄）
+      const seenMovementKeys = new Set<string>();
+      const stockLines = lines.filter((l) => {
+        if (l.isVirtual) return false;
+        const key = `${l.productId}:${l.variantId ?? ""}`;
+        if (seenMovementKeys.has(key)) return false; // 重複列已彙總於分配結果
+        seenMovementKeys.add(key);
+        return true;
+      });
       if (stockLines.length > 0)
       await tx.insert(stockMovementsTable).values(
-        stockLines.map((l) => ({
-          productId: l.productId,
-          variantId: l.variantId,
-          type: "sale",
-          quantity: -l.quantity,
-          stockAfter:
-            stockAfterByKey.get(`${l.productId}:${l.variantId ?? ""}`) ?? 0,
-          reason: l.variantName ? `銷售出貨（${l.variantName}）` : "銷售出貨",
-          refNo: orderNo,
-        })),
+        stockLines.flatMap((l) => {
+          const key = `${l.productId}:${l.variantId ?? ""}`;
+          const stockAfter = stockAfterByKey.get(key) ?? 0;
+          const allocations = allocationsByKey.get(key) ?? [];
+          return allocations.map((a) => ({
+            productId: l.productId,
+            variantId: l.variantId,
+            type: "sale",
+            quantity: -a.quantity,
+            stockAfter,
+            warehouseId: a.warehouseId,
+            reason: l.variantName ? `銷售出貨（${l.variantName}）` : "銷售出貨",
+            refNo: orderNo,
+          }));
+        }),
       );
 
       // 商城訂單自動產生 ERP 銷貨單（同一交易；order_id 部分唯一索引防重複單據）

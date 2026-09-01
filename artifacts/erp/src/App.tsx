@@ -12,6 +12,7 @@ import UsersPage from '@/pages/system/users';
 import ItemsPage from '@/pages/inventory/items';
 import WarehousesPage from '@/pages/inventory/warehouses';
 import MovementsPage from '@/pages/inventory/movements';
+import TransfersPage from '@/pages/inventory/transfers';
 import QuotationsPage from '@/pages/sales/quotations';
 import SalesOrdersPage from '@/pages/sales/orders';
 import SalesReturnsPage from '@/pages/sales/returns';
@@ -75,6 +76,7 @@ function RouterContent() {
                 <Route path="/inventory/items" component={ItemsPage} />
                 <Route path="/inventory/warehouses" component={WarehousesPage} />
                 <Route path="/inventory/movements" component={MovementsPage} />
+                <Route path="/inventory/transfers" component={TransfersPage} />
                 <Route path="/sales/quotations" component={QuotationsPage} />
                 <Route path="/sales/orders" component={SalesOrdersPage} />
                 <Route path="/sales/returns" component={SalesReturnsPage} />

@@ -34,6 +34,7 @@ import {
   postProfitShare,
 } from "../lib/erpAutoPost";
 import { syncSalesOrderStatusForOrder } from "../lib/erpSync";
+import { getDefaultWarehouseId, increaseWarehouseStock } from "../lib/warehouseStock";
 import {
   salesOrdersTable,
   salesOrderItemsTable,
@@ -503,7 +504,22 @@ export async function applyOrderStatusChange(
         );
         // 退貨時扣除先前「已確認銷退」已回補過的數量，避免重複入庫
         const alreadyRestocked = new Map<string, number>();
+        let confirmedSrNos: string[] = [];
         if (target === "returned") {
+          const srNoRows = await tx
+            .select({ srNo: salesReturnsTable.srNo })
+            .from(salesReturnsTable)
+            .innerJoin(
+              salesOrdersTable,
+              eq(salesReturnsTable.salesOrderId, salesOrdersTable.id),
+            )
+            .where(
+              and(
+                eq(salesOrdersTable.orderId, id),
+                eq(salesReturnsTable.status, "confirmed"),
+              ),
+            );
+          confirmedSrNos = srNoRows.map((r) => r.srNo);
           const restockedRows = await tx
             .select({
               productId: salesReturnItemsTable.productId,
@@ -569,17 +585,60 @@ export async function applyOrderStatusChange(
             if (updated) stockAfter = updated.stock;
           }
           if (stockAfter == null) continue;
-          await tx.insert(stockMovementsTable).values({
-            productId: item.productId,
-            variantId: item.variantId,
-            type: target === "returned" ? "sale_return" : "sale",
-            quantity: restockQty,
-            stockAfter,
-            reason: item.variantName
-              ? `訂單${actionLabel}回補（${item.variantName}）`
-              : `訂單${actionLabel}回補`,
-            refNo: order.orderNo,
-          });
+          // 分倉：依原銷售的分倉扣帳紀錄回補（多倉分配各自歸還；查無紀錄時回補預設倉）
+          const restockRefs = [order.orderNo, ...confirmedSrNos];
+          const saleAllocResult = await tx.execute(sql`
+            SELECT warehouse_id, SUM(-quantity) AS sold
+            FROM stock_movements
+            WHERE ref_no IN (${sql.join(restockRefs.map((r) => sql`${r}`), sql`, `)})
+              AND type IN ('sale', 'sale_return')
+              AND warehouse_id IS NOT NULL
+              AND product_id = ${item.productId}
+              AND variant_id IS NOT DISTINCT FROM ${item.variantId}
+            GROUP BY warehouse_id
+            HAVING SUM(-quantity) > 0
+            ORDER BY warehouse_id
+          `);
+          const saleAllocRows = saleAllocResult.rows as Array<{
+            warehouse_id: number;
+            sold: number;
+          }>;
+          const restockTargets: Array<{ warehouseId: number; quantity: number }> = [];
+          let remainingRestock = restockQty;
+          for (const r of saleAllocRows) {
+            if (remainingRestock <= 0) break;
+            const q = Math.min(Number(r.sold), remainingRestock);
+            if (q > 0) {
+              restockTargets.push({ warehouseId: Number(r.warehouse_id), quantity: q });
+              remainingRestock -= q;
+            }
+          }
+          if (remainingRestock > 0) {
+            const defaultWarehouseId = await getDefaultWarehouseId(tx);
+            const existing = restockTargets.find((t) => t.warehouseId === defaultWarehouseId);
+            if (existing) existing.quantity += remainingRestock;
+            else restockTargets.push({ warehouseId: defaultWarehouseId, quantity: remainingRestock });
+          }
+          for (const t of restockTargets) {
+            await increaseWarehouseStock(tx, {
+              warehouseId: t.warehouseId,
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: t.quantity,
+            });
+            await tx.insert(stockMovementsTable).values({
+              productId: item.productId,
+              variantId: item.variantId,
+              type: target === "returned" ? "sale_return" : "sale",
+              quantity: t.quantity,
+              stockAfter,
+              warehouseId: t.warehouseId,
+              reason: item.variantName
+                ? `訂單${actionLabel}回補（${item.variantName}）`
+                : `訂單${actionLabel}回補`,
+              refNo: order.orderNo,
+            });
+          }
         }
       }
 

@@ -8,6 +8,7 @@ import {
   useListErpItems,
   useListErpPurchaseOrders,
   useListErpSuppliers,
+  useListErpWarehouses,
   useUpdateErpPurchaseOrderStatus,
   type AdminPurchaseOrder,
 } from '@workspace/api-client-react';
@@ -70,6 +71,7 @@ export default function PurchaseOrdersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [supplierId, setSupplierId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('default');
   const [note, setNote] = useState('');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const queryClient = useQueryClient();
@@ -78,13 +80,14 @@ export default function PurchaseOrdersPage() {
   const { data: orders, isLoading } = useListErpPurchaseOrders(params);
   const { data: suppliers } = useListErpSuppliers({});
   const { data: items } = useListErpItems({});
+  const { data: warehouses } = useListErpWarehouses();
   const { data: detail, isLoading: detailLoading } = useGetErpPurchaseOrder(selectedId ?? 0, {
     query: { enabled: selectedId !== null, queryKey: getGetErpPurchaseOrderQueryKey(selectedId ?? 0) },
   });
   const physicalItems = useMemo(() => (items ?? []).filter((item) => !item.isVirtual && item.isActive), [items]);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListErpPurchaseOrdersQueryKey() });
   const resetCreate = () => {
-    setCreateOpen(false); setSupplierId(''); setNote(''); setLines([emptyLine()]);
+    setCreateOpen(false); setSupplierId(''); setWarehouseId('default'); setNote(''); setLines([emptyLine()]);
   };
   const createOrder = useCreateErpPurchaseOrder({
     mutation: {
@@ -116,7 +119,7 @@ export default function PurchaseOrdersPage() {
     }
     createOrder.mutate({
       data: {
-        supplierId: Number(supplierId), note: note.trim() || null,
+        supplierId: Number(supplierId), warehouseId: warehouseId === 'default' ? null : Number(warehouseId), note: note.trim() || null,
         items: chosen.map((line) => ({ productId: Number(line.productId), variantId: line.variantId ? Number(line.variantId) : null, unitCost: Number(line.unitCost), quantity: Number(line.quantity) })),
       },
     });
@@ -156,8 +159,9 @@ export default function PurchaseOrdersPage() {
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader><DialogTitle>建立採購單</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2"><Label>供應商 *</Label><Select value={supplierId} onValueChange={setSupplierId}><SelectTrigger><SelectValue placeholder="選擇供應商" /></SelectTrigger><SelectContent>{(suppliers ?? []).filter((row) => row.isActive).map((row) => <SelectItem key={row.id} value={String(row.id)}>{row.name}</SelectItem>)}</SelectContent></Select></div>
+              <div className="space-y-2"><Label>收貨倉</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">預設倉</SelectItem>{warehouses?.filter((w) => w.isActive).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>備註</Label><Input value={note} onChange={(e) => setNote(e.target.value)} /></div>
             </div>
             <div className="space-y-3">

@@ -14,6 +14,7 @@ export interface ErpSalesReturn {
   salesOrderNo?: string | null;
   customerId?: number | null;
   customerName: string;
+  warehouseId?: number | null;
   status: string;
   totalAmount: number;
   reason?: string | null;

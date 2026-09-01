@@ -29,6 +29,12 @@ import { registerQuotationRoutes } from "./adminQuotations";
 import { applyOrderStatusChange } from "./adminOrders";
 import { reindex } from "../lib/aiIndex";
 import { autoPost, postErpSalesOrderInvoice } from "../lib/erpAutoPost";
+import {
+  WarehouseStockError,
+  resolveWarehouseId,
+  increaseWarehouseStock,
+  decreaseWarehouseStock,
+} from "../lib/warehouseStock";
 
 const router: IRouter = Router();
 
@@ -75,6 +81,7 @@ function serializeSO(so: SalesOrder, items: SalesOrderItem[]) {
     customerName: so.customerName,
     orderId: so.orderId,
     orderNo: so.orderNo,
+    warehouseId: so.warehouseId,
     status: so.status,
     totalAmount: so.totalAmount,
     note: so.note,
@@ -267,7 +274,12 @@ router.post("/erp/sales-orders", requireErpMenu("/sales/orders"), async (req, re
   const totalAmount = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
   const soNo = `SO${Date.now()}`;
 
-  const result = await db.transaction(async (tx) => {
+  let result;
+  try {
+  result = await db.transaction(async (tx) => {
+    // 出貨倉：未指定則於確認時使用預設倉
+    const warehouseId =
+      input.warehouseId != null ? await resolveWarehouseId(tx, input.warehouseId) : null;
     const [so] = await tx
       .insert(salesOrdersTable)
       .values({
@@ -275,6 +287,7 @@ router.post("/erp/sales-orders", requireErpMenu("/sales/orders"), async (req, re
         source: "erp",
         customerId: customer.id,
         customerName: customer.name,
+        warehouseId,
         status: "draft",
         totalAmount,
         note: input.note ?? null,
@@ -287,6 +300,13 @@ router.post("/erp/sales-orders", requireErpMenu("/sales/orders"), async (req, re
       .returning();
     return { so, items };
   });
+  } catch (err) {
+    if (err instanceof WarehouseStockError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
   await audit(req, {
     action: "create",
     module: "sales",
@@ -388,10 +408,23 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
         .from(salesOrderItemsTable)
         .where(eq(salesOrderItemsTable.salesOrderId, id));
 
+      // 出貨倉：單據未指定則用預設倉
+      const soWarehouseId = await resolveWarehouseId(tx, locked.warehouseId);
+
       if (target === "confirmed") {
         // 確認出貨承諾 → 扣庫存（虛擬品項不動庫存）
         for (const item of items) {
           if (item.isVirtual) continue;
+          const label = item.variantName
+            ? `${item.productName}（${item.variantName}）`
+            : item.productName;
+          await decreaseWarehouseStock(tx, {
+            warehouseId: soWarehouseId,
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            label,
+          });
           if (item.variantId != null) {
             const dec = await tx
               .update(productVariantsTable)
@@ -411,6 +444,7 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
               type: "sale",
               quantity: -item.quantity,
               stockAfter: dec[0].stock,
+              warehouseId: soWarehouseId,
               reason: `銷貨出貨（${item.variantName}）`,
               refNo: locked.soNo,
             });
@@ -432,6 +466,7 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
               type: "sale",
               quantity: -item.quantity,
               stockAfter: dec[0].stock,
+              warehouseId: soWarehouseId,
               reason: "銷貨出貨",
               refNo: locked.soNo,
             });
@@ -443,6 +478,12 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
         // 已扣庫存 → 回補（虛擬品項不動庫存）
         for (const item of items) {
           if (item.isVirtual) continue;
+          await increaseWarehouseStock(tx, {
+            warehouseId: soWarehouseId,
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
           if (item.variantId != null) {
             const [u] = await tx
               .update(productVariantsTable)
@@ -456,6 +497,7 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
                 type: "sale",
                 quantity: item.quantity,
                 stockAfter: u.stock,
+                warehouseId: soWarehouseId,
                 reason: `銷貨取消回補（${item.variantName}）`,
                 refNo: locked.soNo,
               });
@@ -472,6 +514,7 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
                 type: "sale",
                 quantity: item.quantity,
                 stockAfter: u.stock,
+                warehouseId: soWarehouseId,
                 reason: "銷貨取消回補",
                 refNo: locked.soNo,
               });
@@ -490,7 +533,7 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
       autoPost(`erp_so_invoice:${id}`, () => postErpSalesOrderInvoice(id));
     }
   } catch (err) {
-    if (err instanceof DocError) {
+    if (err instanceof DocError || err instanceof WarehouseStockError) {
       res.status(400).json({ error: err.message });
       return;
     }
@@ -516,6 +559,7 @@ function serializeSR(sr: SalesReturn, items: SalesReturnItem[], salesOrderNo?: s
     salesOrderNo: salesOrderNo ?? null,
     customerId: sr.customerId,
     customerName: sr.customerName,
+    warehouseId: sr.warehouseId,
     status: sr.status,
     totalAmount: sr.totalAmount,
     reason: sr.reason,
@@ -691,6 +735,19 @@ router.post("/erp/sales-returns", requireErpMenu("/sales/returns"), async (req, 
       }
 
       const totalAmount = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
+      // 回補倉以原出庫紀錄為權威：
+      // - 商城訂單（可能多倉分配）：不接受指定倉，warehouseId 僅供展示（null）
+      // - ERP 銷貨單：固定回補原出貨倉；指定不一致的倉一律拒絕
+      let returnWarehouseId: number | null = null;
+      if (so.orderId != null) {
+        if (input.warehouseId != null)
+          throw new DocError("商城訂單的銷退依原出庫倉自動回補，不可指定倉庫");
+      } else {
+        const soWarehouseId = await resolveWarehouseId(tx, so.warehouseId);
+        if (input.warehouseId != null && input.warehouseId !== soWarehouseId)
+          throw new DocError("銷退回補倉須與原銷貨單出貨倉一致");
+        returnWarehouseId = soWarehouseId;
+      }
       const [sr] = await tx
         .insert(salesReturnsTable)
         .values({
@@ -698,6 +755,7 @@ router.post("/erp/sales-returns", requireErpMenu("/sales/returns"), async (req, 
           salesOrderId: so.id,
           customerId: so.customerId,
           customerName: so.customerName,
+          warehouseId: returnWarehouseId,
           status: "draft",
           totalAmount,
           reason: input.reason ?? null,
@@ -712,7 +770,7 @@ router.post("/erp/sales-returns", requireErpMenu("/sales/returns"), async (req, 
       return { sr, items, soNo: so.soNo };
     });
   } catch (err) {
-    if (err instanceof DocError) {
+    if (err instanceof DocError || err instanceof WarehouseStockError) {
       res.status(400).json({ error: err.message });
       return;
     }
@@ -765,6 +823,7 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
         // 取得來源銷貨單並判斷是否「全數退回」（含先前已確認銷退 + 本單）
         let so: SalesOrder | null = null;
         let fullReturn = false;
+        let prevSrNos: string[] = [];
         if (sr.salesOrderId != null) {
           const [row] = await tx
             .select()
@@ -790,6 +849,9 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
             const prevIds = prevConfirmed
               .map((r) => r.sr.id)
               .filter((rid) => rid !== id);
+            prevSrNos = prevConfirmed
+              .filter((r) => r.sr.id !== id)
+              .map((r) => r.sr.srNo);
             const prevItems = prevIds.length
               ? await tx
                   .select()
@@ -829,8 +891,60 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
           return;
         }
 
+        // 依原出庫的分倉 movement 回補（扣除先前已回補的逐倉數量）；
+        // 查無可歸屬紀錄時的溢額回補至銷貨單出貨倉（無則預設倉）。
+        const fallbackWarehouseId = await resolveWarehouseId(
+          tx,
+          so?.warehouseId ?? sr.warehouseId,
+        );
+        // pool: key -> (warehouseId -> 尚可回補數量)
+        const poolByKey = new Map<string, Map<number, number>>();
+        if (so) {
+          const refs = [so.soNo, so.orderNo, ...prevSrNos].filter(
+            (r): r is string => !!r,
+          );
+          const poolResult = await tx.execute(sql`
+            SELECT product_id, variant_id, warehouse_id, SUM(-quantity) AS pool
+            FROM stock_movements
+            WHERE ref_no IN (${sql.join(refs.map((r) => sql`${r}`), sql`, `)})
+              AND type IN ('sale', 'sale_return')
+              AND warehouse_id IS NOT NULL
+            GROUP BY product_id, variant_id, warehouse_id
+          `);
+          for (const r of poolResult.rows as Array<{
+            product_id: number;
+            variant_id: number | null;
+            warehouse_id: number;
+            pool: number;
+          }>) {
+            const key = `${r.product_id}:${r.variant_id ?? ""}`;
+            let m = poolByKey.get(key);
+            if (!m) poolByKey.set(key, (m = new Map()));
+            m.set(Number(r.warehouse_id), (m.get(Number(r.warehouse_id)) ?? 0) + Number(r.pool));
+          }
+        }
         for (const item of items) {
           if (item.isVirtual) continue;
+          const key = `${item.productId}:${item.variantId ?? ""}`;
+          const targets: Array<{ warehouseId: number; quantity: number }> = [];
+          let remaining = item.quantity;
+          const pool = poolByKey.get(key);
+          if (pool) {
+            for (const [wid, avail] of pool) {
+              if (remaining <= 0) break;
+              if (avail <= 0) continue;
+              const q = Math.min(avail, remaining);
+              targets.push({ warehouseId: wid, quantity: q });
+              pool.set(wid, avail - q);
+              remaining -= q;
+            }
+          }
+          if (remaining > 0) {
+            const existing = targets.find((t) => t.warehouseId === fallbackWarehouseId);
+            if (existing) existing.quantity += remaining;
+            else targets.push({ warehouseId: fallbackWarehouseId, quantity: remaining });
+          }
+          let stockAfter: number;
           if (item.variantId != null) {
             const [u] = await tx
               .update(productVariantsTable)
@@ -838,15 +952,7 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
               .where(eq(productVariantsTable.id, item.variantId))
               .returning({ stock: productVariantsTable.stock });
             if (!u) throw new DocError(`「${item.productName}」規格不存在，無法入庫`);
-            await tx.insert(stockMovementsTable).values({
-              productId: item.productId,
-              variantId: item.variantId,
-              type: "sale_return",
-              quantity: item.quantity,
-              stockAfter: u.stock,
-              reason: `銷貨退回入庫（${item.variantName}）`,
-              refNo: sr.srNo,
-            });
+            stockAfter = u.stock;
           } else {
             const [u] = await tx
               .update(productsTable)
@@ -854,13 +960,25 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
               .where(eq(productsTable.id, item.productId))
               .returning({ stock: productsTable.stock });
             if (!u) throw new DocError(`「${item.productName}」品項不存在，無法入庫`);
+            stockAfter = u.stock;
+          }
+          for (const t of targets) {
+            await increaseWarehouseStock(tx, {
+              warehouseId: t.warehouseId,
+              productId: item.productId,
+              variantId: item.variantId,
+              quantity: t.quantity,
+            });
             await tx.insert(stockMovementsTable).values({
               productId: item.productId,
-              variantId: null,
+              variantId: item.variantId,
               type: "sale_return",
-              quantity: item.quantity,
-              stockAfter: u.stock,
-              reason: "銷貨退回入庫",
+              quantity: t.quantity,
+              stockAfter,
+              warehouseId: t.warehouseId,
+              reason: item.variantName
+                ? `銷貨退回入庫（${item.variantName}）`
+                : "銷貨退回入庫",
               refNo: sr.srNo,
             });
           }
@@ -886,7 +1004,7 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
         .where(eq(salesReturnsTable.id, id));
     });
   } catch (err) {
-    if (err instanceof DocError) {
+    if (err instanceof DocError || err instanceof WarehouseStockError) {
       res.status(400).json({ error: err.message });
       return;
     }

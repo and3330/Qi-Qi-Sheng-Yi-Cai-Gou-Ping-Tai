@@ -19,6 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { requireStaff, requireOps } from "../middlewares/requireMember";
 import { reindex } from "../lib/aiIndex";
+import { getDefaultWarehouseId, increaseWarehouseStock } from "../lib/warehouseStock";
 
 const router: IRouter = Router();
 
@@ -131,11 +132,19 @@ router.post("/admin/products", requireOps, async (req, res) => {
       })
       .returning();
     if (initialStock > 0) {
+      const warehouseId = await getDefaultWarehouseId(tx);
+      await increaseWarehouseStock(tx, {
+        warehouseId,
+        productId: product.id,
+        variantId: null,
+        quantity: initialStock,
+      });
       await tx.insert(stockMovementsTable).values({
         productId: product.id,
         type: "adjust",
         quantity: initialStock,
         stockAfter: initialStock,
+        warehouseId,
         reason: "期初庫存",
       });
     }
@@ -259,12 +268,20 @@ router.post(
         })
         .returning();
       if ((data.stock ?? 0) > 0) {
+        const warehouseId = await getDefaultWarehouseId(tx);
+        await increaseWarehouseStock(tx, {
+          warehouseId,
+          productId,
+          variantId: variant.id,
+          quantity: data.stock ?? 0,
+        });
         await tx.insert(stockMovementsTable).values({
           productId,
           variantId: variant.id,
           type: "adjust",
           quantity: data.stock ?? 0,
           stockAfter: data.stock ?? 0,
+          warehouseId,
           reason: `期初庫存（${variant.name}）`,
         });
       }

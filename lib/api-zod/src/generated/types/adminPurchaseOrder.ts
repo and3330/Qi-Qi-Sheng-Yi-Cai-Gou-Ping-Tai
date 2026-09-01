@@ -13,6 +13,8 @@ export interface AdminPurchaseOrder {
   poNo: string;
   supplierId: number;
   supplierName: string;
+  /** @nullable */
+  warehouseId?: number | null;
   status: AdminPurchaseOrderStatus;
   totalAmount: number;
   /** @nullable */

@@ -107,6 +107,9 @@ import type {
   ErpStockAdjustInput,
   ErpStockMovement,
   ErpStockMovementPage,
+  ErpStockTransfer,
+  ErpStockTransferInput,
+  ErpStockTransferStatusUpdate,
   ErpUser,
   ErpUserUpdate,
   ErpVatReport,
@@ -114,6 +117,7 @@ import type {
   ErpVoucherInput,
   ErpWarehouse,
   ErpWarehouseInput,
+  ErpWarehouseStockRow,
   ErpWarehouseUpdate,
   ErrorMessage,
   Expense,
@@ -171,9 +175,11 @@ import type {
   ListErpSalesOrdersParams,
   ListErpSalesReturnsParams,
   ListErpStockMovementsParams,
+  ListErpStockTransfersParams,
   ListErpSuppliersParams,
   ListErpUsersParams,
   ListErpVouchersParams,
+  ListErpWarehouseStockParams,
   ListInstitutionsParams,
   ListPortalOrdersParams,
   ListProductsParams,
@@ -10406,6 +10412,317 @@ export const useUpdateErpWarehouse = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateErpWarehouseMutationOptions(options));
+    }
+
+export const getListErpWarehouseStockUrl = (params?: ListErpWarehouseStockParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/erp/warehouse-stock?${stringifiedParams}` : `/api/erp/warehouse-stock`
+}
+
+/**
+ * @summary 分倉庫存清單
+ */
+export const listErpWarehouseStock = async (params?: ListErpWarehouseStockParams, options?: Parameters<typeof customFetch>[1]): Promise<ErpWarehouseStockRow[]> => {
+
+  return customFetch<ErpWarehouseStockRow[]>(getListErpWarehouseStockUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListErpWarehouseStockQueryKey = (params?: ListErpWarehouseStockParams,) => {
+    return [
+    `/api/erp/warehouse-stock`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListErpWarehouseStockQueryOptions = <TData = Awaited<ReturnType<typeof listErpWarehouseStock>>, TError = ErrorType<unknown>>(params?: ListErpWarehouseStockParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpWarehouseStock>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListErpWarehouseStockQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listErpWarehouseStock>>> = ({ signal }) => listErpWarehouseStock(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listErpWarehouseStock>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListErpWarehouseStockQueryResult = NonNullable<Awaited<ReturnType<typeof listErpWarehouseStock>>>
+export type ListErpWarehouseStockQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 分倉庫存清單
+ */
+
+export function useListErpWarehouseStock<TData = Awaited<ReturnType<typeof listErpWarehouseStock>>, TError = ErrorType<unknown>>(
+ params?: ListErpWarehouseStockParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpWarehouseStock>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListErpWarehouseStockQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListErpStockTransfersUrl = (params?: ListErpStockTransfersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/erp/stock-transfers?${stringifiedParams}` : `/api/erp/stock-transfers`
+}
+
+/**
+ * @summary 調撥單清單
+ */
+export const listErpStockTransfers = async (params?: ListErpStockTransfersParams, options?: Parameters<typeof customFetch>[1]): Promise<ErpStockTransfer[]> => {
+
+  return customFetch<ErpStockTransfer[]>(getListErpStockTransfersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListErpStockTransfersQueryKey = (params?: ListErpStockTransfersParams,) => {
+    return [
+    `/api/erp/stock-transfers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListErpStockTransfersQueryOptions = <TData = Awaited<ReturnType<typeof listErpStockTransfers>>, TError = ErrorType<unknown>>(params?: ListErpStockTransfersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpStockTransfers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListErpStockTransfersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listErpStockTransfers>>> = ({ signal }) => listErpStockTransfers(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listErpStockTransfers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListErpStockTransfersQueryResult = NonNullable<Awaited<ReturnType<typeof listErpStockTransfers>>>
+export type ListErpStockTransfersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 調撥單清單
+ */
+
+export function useListErpStockTransfers<TData = Awaited<ReturnType<typeof listErpStockTransfers>>, TError = ErrorType<unknown>>(
+ params?: ListErpStockTransfersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpStockTransfers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListErpStockTransfersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateErpStockTransferUrl = () => {
+
+
+
+
+  return `/api/erp/stock-transfers`
+}
+
+/**
+ * @summary 建立調撥單（草稿）
+ */
+export const createErpStockTransfer = async (erpStockTransferInput: ErpStockTransferInput, options?: Parameters<typeof customFetch>[1]): Promise<ErpStockTransfer> => {
+
+  return customFetch<ErpStockTransfer>(getCreateErpStockTransferUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(erpStockTransferInput)
+  }
+);}
+
+
+
+
+
+export const getCreateErpStockTransferMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createErpStockTransfer>>, TError,{data: BodyType<ErpStockTransferInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createErpStockTransfer>>, TError,{data: BodyType<ErpStockTransferInput>}, TContext> => {
+
+const mutationKey = ['createErpStockTransfer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createErpStockTransfer>>, {data: BodyType<ErpStockTransferInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createErpStockTransfer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateErpStockTransferMutationResult = NonNullable<Awaited<ReturnType<typeof createErpStockTransfer>>>
+    export type CreateErpStockTransferMutationBody = BodyType<ErpStockTransferInput>
+    export type CreateErpStockTransferMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 建立調撥單（草稿）
+ */
+export const useCreateErpStockTransfer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createErpStockTransfer>>, TError,{data: BodyType<ErpStockTransferInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createErpStockTransfer>>,
+        TError,
+        {data: BodyType<ErpStockTransferInput>},
+        TContext
+      > => {
+      return useMutation(getCreateErpStockTransferMutationOptions(options));
+    }
+
+export const getUpdateErpStockTransferStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/erp/stock-transfers/${id}/status`
+}
+
+/**
+ * @summary 調撥單狀態變更（確認/取消）
+ */
+export const updateErpStockTransferStatus = async (id: number,
+    erpStockTransferStatusUpdate: ErpStockTransferStatusUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ErpStockTransfer> => {
+
+  return customFetch<ErpStockTransfer>(getUpdateErpStockTransferStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(erpStockTransferStatusUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateErpStockTransferStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateErpStockTransferStatus>>, TError,{id: number;data: BodyType<ErpStockTransferStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateErpStockTransferStatus>>, TError,{id: number;data: BodyType<ErpStockTransferStatusUpdate>}, TContext> => {
+
+const mutationKey = ['updateErpStockTransferStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateErpStockTransferStatus>>, {id: number;data: BodyType<ErpStockTransferStatusUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateErpStockTransferStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateErpStockTransferStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateErpStockTransferStatus>>>
+    export type UpdateErpStockTransferStatusMutationBody = BodyType<ErpStockTransferStatusUpdate>
+    export type UpdateErpStockTransferStatusMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 調撥單狀態變更（確認/取消）
+ */
+export const useUpdateErpStockTransferStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateErpStockTransferStatus>>, TError,{id: number;data: BodyType<ErpStockTransferStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateErpStockTransferStatus>>,
+        TError,
+        {id: number;data: BodyType<ErpStockTransferStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateErpStockTransferStatusMutationOptions(options));
     }
 
 export const getListErpCustomersUrl = (params?: ListErpCustomersParams,) => {

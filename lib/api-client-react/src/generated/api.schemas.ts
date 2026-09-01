@@ -1492,6 +1492,8 @@ export interface AdminPurchaseOrder {
   poNo: string;
   supplierId: number;
   supplierName: string;
+  /** @nullable */
+  warehouseId?: number | null;
   status: AdminPurchaseOrderStatus;
   totalAmount: number;
   /** @nullable */
@@ -1519,6 +1521,7 @@ export interface PurchaseOrderLineInput {
 
 export interface PurchaseOrderInput {
   supplierId: number;
+  warehouseId?: number | null;
   /** @nullable */
   note?: string | null;
   /** @minItems 1 */
@@ -2503,6 +2506,7 @@ export interface ErpWarehouse {
   address?: string | null;
   note?: string | null;
   isDefault: boolean;
+  isSellable?: boolean;
   isActive: boolean;
   createdAt: string;
 }
@@ -2592,6 +2596,7 @@ export interface ErpSalesOrder {
   customerName: string;
   orderId?: number | null;
   orderNo?: string | null;
+  warehouseId?: number | null;
   status: string;
   totalAmount: number;
   note?: string | null;
@@ -2628,6 +2633,7 @@ export interface ErpSalesReturn {
   salesOrderNo?: string | null;
   customerId?: number | null;
   customerName: string;
+  warehouseId?: number | null;
   status: string;
   totalAmount: number;
   reason?: string | null;
@@ -2656,6 +2662,7 @@ export interface ErpPurchaseReturn {
   supplierName: string;
   purchaseOrderId?: number | null;
   purchaseOrderNo?: string | null;
+  warehouseId?: number | null;
   status: string;
   totalAmount: number;
   reason?: string | null;
@@ -2689,6 +2696,7 @@ export interface ErpWarehouseInput {
   name: string;
   address?: string | null;
   note?: string | null;
+  isSellable?: boolean;
 }
 
 export interface ErpWarehouseUpdate {
@@ -2696,7 +2704,72 @@ export interface ErpWarehouseUpdate {
   name?: string;
   address?: string | null;
   note?: string | null;
+  isSellable?: boolean;
   isActive?: boolean;
+}
+
+export interface ErpWarehouseStockRow {
+  id: number;
+  warehouseId: number;
+  warehouseCode: string;
+  warehouseName: string;
+  productId: number;
+  productCode: string;
+  productName: string;
+  variantId?: number | null;
+  variantName?: string | null;
+  quantity: number;
+}
+
+export interface ErpStockTransferItem {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  variantName?: string | null;
+  productName: string;
+  productCode: string;
+  quantity: number;
+}
+
+export interface ErpStockTransfer {
+  id: number;
+  stNo: string;
+  fromWarehouseId: number;
+  fromWarehouseName: string;
+  toWarehouseId: number;
+  toWarehouseName: string;
+  status: string;
+  note?: string | null;
+  createdAt: string;
+  confirmedAt?: string | null;
+  items: ErpStockTransferItem[];
+}
+
+export type ErpStockTransferInputItemsItem = {
+  productId: number;
+  variantId?: number | null;
+  /** @minimum 1 */
+  quantity: number;
+};
+
+export interface ErpStockTransferInput {
+  fromWarehouseId: number;
+  toWarehouseId: number;
+  note?: string | null;
+  /** @minItems 1 */
+  items: ErpStockTransferInputItemsItem[];
+}
+
+export type ErpStockTransferStatusUpdateStatus = typeof ErpStockTransferStatusUpdateStatus[keyof typeof ErpStockTransferStatusUpdateStatus];
+
+
+export const ErpStockTransferStatusUpdateStatus = {
+  confirmed: 'confirmed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ErpStockTransferStatusUpdate {
+  status: ErpStockTransferStatusUpdateStatus;
 }
 
 export interface ErpPriceListInput {
@@ -2732,6 +2805,7 @@ export type ErpSalesOrderInputItemsItem = {
 
 export interface ErpSalesOrderInput {
   customerId: number;
+  warehouseId?: number | null;
   note?: string | null;
   /** @minItems 1 */
   items: ErpSalesOrderInputItemsItem[];
@@ -2759,6 +2833,7 @@ export type ErpSalesReturnInputItemsItem = {
 
 export interface ErpSalesReturnInput {
   salesOrderId: number;
+  warehouseId?: number | null;
   reason?: string | null;
   note?: string | null;
   /** @minItems 1 */
@@ -2773,6 +2848,7 @@ export type ErpPurchaseReturnInputItemsItem = {
 
 export interface ErpPurchaseReturnInput {
   purchaseOrderId: number;
+  warehouseId?: number | null;
   reason?: string | null;
   note?: string | null;
   /** @minItems 1 */
@@ -3439,6 +3515,15 @@ type?: string;
 productId?: number;
 };
 
+export type ListErpWarehouseStockParams = {
+productId?: number;
+warehouseId?: number;
+};
+
+export type ListErpStockTransfersParams = {
+status?: string;
+};
+
 export type ListErpCustomersParams = {
 search?: string;
 };
@@ -3537,3 +3622,4 @@ groupBy?: string;
 export type ListSocialPostsParams = {
 status?: string;
 };
+

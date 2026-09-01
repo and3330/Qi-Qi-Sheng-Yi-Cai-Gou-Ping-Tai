@@ -3,6 +3,7 @@ import { and, asc, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { db, productsTable, productVariantsTable } from "@workspace/db";
 import { ListProductsQueryParams, GetProductParams } from "@workspace/api-zod";
 import { serializeProduct } from "../lib/serialize";
+import { getSellableStockMap } from "../lib/warehouseStock";
 import {
   optionalMember,
   resolveMemberGrade,
@@ -49,7 +50,14 @@ router.get("/products", optionalMember, async (req, res) => {
   const grade = await resolveMemberGrade(req.member);
   const visible = rows.filter((p) => gradeAllowed(p.allowedGrades, grade));
 
-  res.json(visible.map(serializeProduct));
+  // 商城可售量 = 可售倉合計
+  const sellable = await getSellableStockMap(visible.map((p) => p.id));
+  res.json(
+    visible.map((p) => ({
+      ...serializeProduct(p),
+      stock: p.isVirtual ? serializeProduct(p).stock : sellable.get(`${p.id}:`) ?? 0,
+    })),
+  );
 });
 
 router.get("/products/:id", optionalMember, async (req, res) => {
@@ -84,8 +92,11 @@ router.get("/products/:id", optionalMember, async (req, res) => {
       ),
     )
     .orderBy(asc(productVariantsTable.id));
+  // 商城可售量 = 可售倉合計
+  const sellable = await getSellableStockMap([row.id]);
   res.json({
     ...serializeProduct(row),
+    stock: row.isVirtual ? serializeProduct(row).stock : sellable.get(`${row.id}:`) ?? 0,
     variants: variants.map((v) => ({
       id: v.id,
       productId: v.productId,
@@ -93,7 +104,7 @@ router.get("/products/:id", optionalMember, async (req, res) => {
       priceHospital: v.priceHospital,
       priceClinic: v.priceClinic,
       priceConsumer: v.priceConsumer,
-      stock: v.stock,
+      stock: sellable.get(`${row.id}:${v.id}`) ?? 0,
       isActive: v.isActive,
     })),
   });

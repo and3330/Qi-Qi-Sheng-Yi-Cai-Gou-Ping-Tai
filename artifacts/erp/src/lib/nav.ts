@@ -12,6 +12,7 @@ export const NAV_CONFIG: NavItem[] = [
   { path: '/inventory/items', label: '品項', defaultRoles: [], group: '庫存' },
   { path: '/inventory/warehouses', label: '倉庫', defaultRoles: [], group: '庫存' },
   { path: '/inventory/movements', label: '庫存異動', defaultRoles: [], group: '庫存' },
+  { path: '/inventory/transfers', label: '庫存調撥', defaultRoles: [], group: '庫存' },
   { path: '/sales/quotations', label: '報價單', defaultRoles: [], group: '銷售' },
   { path: '/sales/orders', label: '銷貨單', defaultRoles: [], group: '銷售' },
   { path: '/sales/returns', label: '銷貨退回', defaultRoles: [], group: '銷售' },

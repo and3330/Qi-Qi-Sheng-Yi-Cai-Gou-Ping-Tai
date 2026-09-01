@@ -21,6 +21,7 @@ import {
 import { requireOps } from "../middlewares/requireMember";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import { reindex } from "../lib/aiIndex";
+import { WarehouseStockError, allocateSellableStock } from "../lib/warehouseStock";
 import {
   ensureErpCustomerForMember,
   createSalesOrderForShopOrder,
@@ -435,8 +436,24 @@ router.post(`${base}/:id/convert`, guard, async (req, res) => {
 
       // 扣庫存（多規格扣規格、無規格扣主商品；虛擬品項不動庫存）
       const stockAfterByItem = new Map<number, number>();
+      const allocationsByItem = new Map<number, Array<{ warehouseId: number; quantity: number }>>();
       for (const item of items) {
         if (prodById.get(item.productId)?.isVirtual) continue;
+        // 分倉：依可售倉分配扣減
+        try {
+          const allocations = await allocateSellableStock(tx, {
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
+          allocationsByItem.set(item.id, allocations);
+        } catch (err) {
+          if (err instanceof WarehouseStockError)
+            throw new ConvertError(
+              `庫存不足：${item.productName}${item.variantName ? `（${item.variantName}）` : ""}`,
+            );
+          throw err;
+        }
         if (item.variantId != null) {
           const dec = await tx
             .update(productVariantsTable)
@@ -524,17 +541,22 @@ router.post(`${base}/:id/convert`, guard, async (req, res) => {
       );
       if (stockItems.length > 0)
       await tx.insert(stockMovementsTable).values(
-        stockItems.map((i) => ({
-          productId: i.productId,
-          variantId: i.variantId,
-          type: "sale",
-          quantity: -i.quantity,
-          stockAfter: stockAfterByItem.get(i.id) ?? 0,
-          reason: i.variantName
-            ? `報價單轉訂單（${i.variantName}）`
-            : "報價單轉訂單",
-          refNo: orderNo,
-        })),
+        stockItems.flatMap((i) => {
+          const stockAfter = stockAfterByItem.get(i.id) ?? 0;
+          const allocations = allocationsByItem.get(i.id) ?? [];
+          return allocations.map((a) => ({
+            productId: i.productId,
+            variantId: i.variantId,
+            type: "sale",
+            quantity: -a.quantity,
+            stockAfter,
+            warehouseId: a.warehouseId,
+            reason: i.variantName
+              ? `報價單轉訂單（${i.variantName}）`
+              : "報價單轉訂單",
+            refNo: orderNo,
+          }));
+        }),
       );
 
       // 轉單訂單同步產生 ERP 銷貨單

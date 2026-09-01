@@ -9,6 +9,7 @@ import type { ErpPurchaseReturnInputItemsItem } from './erpPurchaseReturnInputIt
 
 export interface ErpPurchaseReturnInput {
   purchaseOrderId: number;
+  warehouseId?: number | null;
   reason?: string | null;
   note?: string | null;
   /** @minItems 1 */

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetErpSalesOrderQueryKey, getListErpSalesOrdersQueryKey, useCreateErpSalesOrder, useGetErpSalesOrder,
-  useListErpCustomers, useListErpItems, useListErpSalesOrders, useUpdateErpSalesOrderStatus,
+  useListErpCustomers, useListErpItems, useListErpSalesOrders, useListErpWarehouses, useUpdateErpSalesOrderStatus,
   type ErpSalesOrderStatusUpdateStatus,
 } from "@workspace/api-client-react";
 import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
@@ -28,19 +28,19 @@ export default function SalesOrdersPage() {
   const { toast } = useToast(); const queryClient = useQueryClient();
   const [page, setPage] = useState(1); const [status, setStatus] = useState("all"); const [source, setSource] = useState("all");
   const [detailId, setDetailId] = useState<number | null>(null); const [createOpen, setCreateOpen] = useState(false);
-  const [customerId, setCustomerId] = useState(""); const [note, setNote] = useState(""); const [lines, setLines] = useState<Line[]>([emptyLine()]);
+  const [customerId, setCustomerId] = useState(""); const [warehouseId, setWarehouseId] = useState("default"); const [note, setNote] = useState(""); const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const params = { page, status: status === "all" ? undefined : status, source: source === "all" ? undefined : source };
-  const { data, isLoading } = useListErpSalesOrders(params); const { data: customers } = useListErpCustomers(); const { data: products } = useListErpItems();
+  const { data, isLoading } = useListErpSalesOrders(params); const { data: customers } = useListErpCustomers(); const { data: products } = useListErpItems(); const { data: warehouses } = useListErpWarehouses();
   const { data: detail, isLoading: detailLoading } = useGetErpSalesOrder(detailId ?? 0, { query: { queryKey: getGetErpSalesOrderQueryKey(detailId ?? 0), enabled: detailId !== null } });
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListErpSalesOrdersQueryKey() });
-  const create = useCreateErpSalesOrder({ mutation: { onSuccess: () => { invalidate(); toast({ title: "已建立銷貨單" }); setCreateOpen(false); setCustomerId(""); setNote(""); setLines([emptyLine()]); }, onError: (e: any) => toast({ title: "建立失敗", description: errorMessage(e), variant: "destructive" }) } });
+  const create = useCreateErpSalesOrder({ mutation: { onSuccess: () => { invalidate(); toast({ title: "已建立銷貨單" }); setCreateOpen(false); setCustomerId(""); setWarehouseId("default"); setNote(""); setLines([emptyLine()]); }, onError: (e: any) => toast({ title: "建立失敗", description: errorMessage(e), variant: "destructive" }) } });
   const update = useUpdateErpSalesOrderStatus({ mutation: { onSuccess: () => { invalidate(); queryClient.invalidateQueries({ queryKey: getGetErpSalesOrderQueryKey(detailId ?? 0) }); toast({ title: "銷貨單狀態已更新" }); }, onError: (e: any) => toast({ title: "更新失敗", description: errorMessage(e), variant: "destructive" }) } });
   const changeStatus = (next: ErpSalesOrderStatusUpdateStatus) => detail && update.mutate({ id: detail.id, data: { status: next } });
   const submit = () => {
     const items = lines.filter((x) => x.productId).map((x) => ({ productId: Number(x.productId), variantId: x.variantId ? Number(x.variantId) : null, quantity: Number(x.quantity), unitPrice: x.unitPrice === "" ? null : Number(x.unitPrice) }));
     const invalidVariant = lines.some((x) => { const p = products?.find((item) => item.id === Number(x.productId)); return !!p?.variants.length && !x.variantId; });
     if (!customerId || !items.length || items.some((x) => x.quantity < 1 || (x.unitPrice !== null && x.unitPrice < 0)) || invalidVariant) { toast({ title: "請完整填寫銷貨資料", description: invalidVariant ? "有規格的品項必須選擇規格" : "數量至少為 1，單價不可小於 0", variant: "destructive" }); return; }
-    create.mutate({ data: { customerId: Number(customerId), note: note || null, items } });
+    create.mutate({ data: { customerId: Number(customerId), warehouseId: warehouseId === "default" ? null : Number(warehouseId), note: note || null, items } });
   };
   const actions = detail ? (detail.source === "erp"
     ? detail.status === "draft" ? [["confirmed", "確認（扣庫存）"], ["cancelled", "取消"]] : detail.status === "confirmed" ? [["shipped", "出貨"], ["cancelled", "取消"]] : detail.status === "shipped" ? [["completed", "完成"]] : []
@@ -57,7 +57,8 @@ export default function SalesOrdersPage() {
     {data && data.total > data.pageSize && <div className="flex justify-end gap-2"><Button variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>上一頁</Button><span className="self-center text-sm">第 {page} 頁</span><Button variant="outline" disabled={page * data.pageSize >= data.total} onClick={() => setPage(page + 1)}>下一頁</Button></div>}
 
     <Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>建立銷貨單</DialogTitle></DialogHeader>
-      <div className="space-y-4"><div className="space-y-2"><Label>客戶 *</Label><Select value={customerId} onValueChange={setCustomerId}><SelectTrigger><SelectValue placeholder="選擇客戶" /></SelectTrigger><SelectContent>{customers?.filter((c) => c.isActive).map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.code}－{c.name}</SelectItem>)}</SelectContent></Select></div>
+      <div className="space-y-4"><div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>客戶 *</Label><Select value={customerId} onValueChange={setCustomerId}><SelectTrigger><SelectValue placeholder="選擇客戶" /></SelectTrigger><SelectContent>{customers?.filter((c) => c.isActive).map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.code}－{c.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="space-y-2"><Label>出貨倉</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">預設倉</SelectItem>{warehouses?.filter((w) => w.isActive && w.isSellable).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}</SelectContent></Select></div></div>
         <div className="space-y-2"><Label>品項 *</Label>{lines.map((line, index) => { const product = products?.find((p) => p.id === Number(line.productId)); return <div key={index} className="grid grid-cols-12 gap-2">
           <Select value={line.productId} onValueChange={(v) => setLines(lines.map((x,i) => i === index ? {...x, productId:v, variantId:""} : x))}><SelectTrigger className="col-span-4"><SelectValue placeholder="品項" /></SelectTrigger><SelectContent>{products?.filter((p) => p.isActive).map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.code}－{p.name}</SelectItem>)}</SelectContent></Select>
           <Select value={line.variantId || "none"} onValueChange={(v) => setLines(lines.map((x,i) => i === index ? {...x, variantId:v === "none" ? "" : v} : x))}><SelectTrigger className="col-span-3"><SelectValue placeholder="規格" /></SelectTrigger><SelectContent>{!product?.variants.length && <SelectItem value="none">無規格</SelectItem>}{product?.variants.filter((v) => v.isActive).map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.name}</SelectItem>)}</SelectContent></Select>

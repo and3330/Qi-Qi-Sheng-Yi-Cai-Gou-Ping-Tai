@@ -9,12 +9,16 @@ import {
 } from "@workspace/api-zod";
 import { requireMember } from "../middlewares/requireMember";
 import { serializeProduct } from "../lib/serialize";
+import { getSellableStockMap } from "../lib/warehouseStock";
 
 const router: IRouter = Router();
 
 router.use("/cart", requireMember);
 
-function serializeVariant(v: typeof productVariantsTable.$inferSelect) {
+function serializeVariant(
+  v: typeof productVariantsTable.$inferSelect,
+  sellable?: Map<string, number>,
+) {
   return {
     id: v.id,
     productId: v.productId,
@@ -22,7 +26,7 @@ function serializeVariant(v: typeof productVariantsTable.$inferSelect) {
     priceHospital: v.priceHospital,
     priceClinic: v.priceClinic,
     priceConsumer: v.priceConsumer,
-    stock: v.stock,
+    stock: sellable ? sellable.get(`${v.productId}:${v.id}`) ?? 0 : v.stock,
     isActive: v.isActive,
   };
 }
@@ -39,13 +43,21 @@ async function cartItemWithProduct(id: number) {
     .where(eq(cartItemsTable.id, id))
     .limit(1);
   if (!row) return null;
+  const sellable = await getSellableStockMap([row.products.id]);
   return {
     id: row.cart_items.id,
     productId: row.cart_items.productId,
     variantId: row.cart_items.variantId,
     quantity: row.cart_items.quantity,
-    product: serializeProduct(row.products),
-    variant: row.product_variants ? serializeVariant(row.product_variants) : null,
+    product: {
+      ...serializeProduct(row.products),
+      stock: row.products.isVirtual
+        ? serializeProduct(row.products).stock
+        : sellable.get(`${row.products.id}:`) ?? 0,
+    },
+    variant: row.product_variants
+      ? serializeVariant(row.product_variants, sellable)
+      : null,
   };
 }
 
@@ -60,15 +72,21 @@ router.get("/cart", async (req, res) => {
     )
     .where(eq(cartItemsTable.memberId, req.member!.id))
     .orderBy(cartItemsTable.id);
+  const sellable = await getSellableStockMap(rows.map((r) => r.products.id));
   res.json(
     rows.map((row) => ({
       id: row.cart_items.id,
       productId: row.cart_items.productId,
       variantId: row.cart_items.variantId,
       quantity: row.cart_items.quantity,
-      product: serializeProduct(row.products),
+      product: {
+        ...serializeProduct(row.products),
+        stock: row.products.isVirtual
+          ? serializeProduct(row.products).stock
+          : sellable.get(`${row.products.id}:`) ?? 0,
+      },
       variant: row.product_variants
-        ? serializeVariant(row.product_variants)
+        ? serializeVariant(row.product_variants, sellable)
         : null,
     })),
   );

@@ -9,6 +9,7 @@ import type { ErpSalesOrderInputItemsItem } from './erpSalesOrderInputItemsItem'
 
 export interface ErpSalesOrderInput {
   customerId: number;
+  warehouseId?: number | null;
   note?: string | null;
   /** @minItems 1 */
   items: ErpSalesOrderInputItemsItem[];

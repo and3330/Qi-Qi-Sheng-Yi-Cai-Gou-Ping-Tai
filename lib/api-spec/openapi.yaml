@@ -3133,6 +3133,88 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErpWarehouse'
+  /erp/warehouse-stock:
+    get:
+      tags: [erp-inventory]
+      operationId: listErpWarehouseStock
+      summary: 分倉庫存清單
+      parameters:
+        - name: productId
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: warehouseId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpWarehouseStockRow"
+  /erp/stock-transfers:
+    get:
+      tags: [erp-inventory]
+      operationId: listErpStockTransfers
+      summary: 調撥單清單
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpStockTransfer"
+    post:
+      tags: [erp-inventory]
+      operationId: createErpStockTransfer
+      summary: 建立調撥單（草稿）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpStockTransferInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpStockTransfer"
+  /erp/stock-transfers/{id}/status:
+    patch:
+      tags: [erp-inventory]
+      operationId: updateErpStockTransferStatus
+      summary: 調撥單狀態變更（確認/取消）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpStockTransferStatusUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpStockTransfer"
   /erp/customers:
     get:
       tags:
@@ -5878,6 +5960,7 @@ components:
         poNo: { type: string }
         supplierId: { type: integer }
         supplierName: { type: string }
+        warehouseId: { type: ["integer", "null"] }
         status:
           type: string
           enum: [draft, ordered, received, cancelled]
@@ -5903,6 +5986,7 @@ components:
       required: [supplierId, items]
       properties:
         supplierId: { type: integer }
+        warehouseId: { type: integer, nullable: true }
         note: { type: ["string", "null"] }
         items:
           type: array
@@ -6690,6 +6774,7 @@ components:
         address: { type: string, nullable: true }
         note: { type: string, nullable: true }
         isDefault: { type: boolean }
+        isSellable: { type: boolean }
         isActive: { type: boolean }
         createdAt: { type: string }
     ErpCustomer:
@@ -6785,6 +6870,7 @@ components:
         customerName: { type: string }
         orderId: { type: integer, nullable: true }
         orderNo: { type: string, nullable: true }
+        warehouseId: { type: integer, nullable: true }
         status: { type: string }
         totalAmount: { type: integer }
         note: { type: string, nullable: true }
@@ -6830,6 +6916,7 @@ components:
         salesOrderNo: { type: string, nullable: true }
         customerId: { type: integer, nullable: true }
         customerName: { type: string }
+        warehouseId: { type: integer, nullable: true }
         status: { type: string }
         totalAmount: { type: integer }
         reason: { type: string, nullable: true }
@@ -6863,6 +6950,7 @@ components:
         supplierName: { type: string }
         purchaseOrderId: { type: integer, nullable: true }
         purchaseOrderNo: { type: string, nullable: true }
+        warehouseId: { type: integer, nullable: true }
         status: { type: string }
         totalAmount: { type: integer }
         reason: { type: string, nullable: true }
@@ -6899,13 +6987,82 @@ components:
         name: { type: string, minLength: 1 }
         address: { type: string, nullable: true }
         note: { type: string, nullable: true }
+        isSellable: { type: boolean }
     ErpWarehouseUpdate:
       type: object
       properties:
         name: { type: string, minLength: 1 }
         address: { type: string, nullable: true }
         note: { type: string, nullable: true }
+        isSellable: { type: boolean }
         isActive: { type: boolean }
+    ErpWarehouseStockRow:
+      type: object
+      required: [id, warehouseId, warehouseCode, warehouseName, productId, productCode, productName, quantity]
+      properties:
+        id: { type: integer }
+        warehouseId: { type: integer }
+        warehouseCode: { type: string }
+        warehouseName: { type: string }
+        productId: { type: integer }
+        productCode: { type: string }
+        productName: { type: string }
+        variantId: { type: integer, nullable: true }
+        variantName: { type: string, nullable: true }
+        quantity: { type: integer }
+    ErpStockTransferItem:
+      type: object
+      required: [id, productId, productName, productCode, quantity]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        variantId: { type: integer, nullable: true }
+        variantName: { type: string, nullable: true }
+        productName: { type: string }
+        productCode: { type: string }
+        quantity: { type: integer }
+    ErpStockTransfer:
+      type: object
+      required: [id, stNo, fromWarehouseId, fromWarehouseName, toWarehouseId, toWarehouseName, status, createdAt, items]
+      properties:
+        id: { type: integer }
+        stNo: { type: string }
+        fromWarehouseId: { type: integer }
+        fromWarehouseName: { type: string }
+        toWarehouseId: { type: integer }
+        toWarehouseName: { type: string }
+        status: { type: string }
+        note: { type: string, nullable: true }
+        createdAt: { type: string }
+        confirmedAt: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpStockTransferItem"
+    ErpStockTransferInput:
+      type: object
+      required: [fromWarehouseId, toWarehouseId, items]
+      properties:
+        fromWarehouseId: { type: integer }
+        toWarehouseId: { type: integer }
+        note: { type: string, nullable: true }
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId: { type: integer }
+              variantId: { type: integer, nullable: true }
+              quantity: { type: integer, minimum: 1 }
+    ErpStockTransferStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [confirmed, cancelled]
     ErpPriceListInput:
       type: object
       required: [name]
@@ -6936,6 +7093,7 @@ components:
       required: [customerId, items]
       properties:
         customerId: { type: integer }
+        warehouseId: { type: integer, nullable: true }
         note: { type: string, nullable: true }
         items:
           type: array
@@ -6960,6 +7118,7 @@ components:
       required: [salesOrderId, items]
       properties:
         salesOrderId: { type: integer }
+        warehouseId: { type: integer, nullable: true }
         reason: { type: string, nullable: true }
         note: { type: string, nullable: true }
         items:
@@ -6976,6 +7135,7 @@ components:
       required: [purchaseOrderId, items]
       properties:
         purchaseOrderId: { type: integer }
+        warehouseId: { type: integer, nullable: true }
         reason: { type: string, nullable: true }
         note: { type: string, nullable: true }
         items:

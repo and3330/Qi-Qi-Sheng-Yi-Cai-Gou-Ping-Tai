@@ -9,6 +9,7 @@ import type { PurchaseOrderLineInput } from './purchaseOrderLineInput';
 
 export interface PurchaseOrderInput {
   supplierId: number;
+  warehouseId?: number | null;
   /** @nullable */
   note?: string | null;
   /** @minItems 1 */

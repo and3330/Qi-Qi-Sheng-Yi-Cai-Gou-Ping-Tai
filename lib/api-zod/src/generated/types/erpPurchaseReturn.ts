@@ -14,6 +14,7 @@ export interface ErpPurchaseReturn {
   supplierName: string;
   purchaseOrderId?: number | null;
   purchaseOrderNo?: string | null;
+  warehouseId?: number | null;
   status: string;
   totalAmount: number;
   reason?: string | null;

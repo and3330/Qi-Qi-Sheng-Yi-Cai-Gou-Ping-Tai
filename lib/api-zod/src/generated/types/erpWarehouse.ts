@@ -13,6 +13,7 @@ export interface ErpWarehouse {
   address?: string | null;
   note?: string | null;
   isDefault: boolean;
+  isSellable?: boolean;
   isActive: boolean;
   createdAt: string;
 }
