@@ -3224,6 +3224,270 @@ export interface ErpVatReport {
 
 export interface ErpFreeformReport { [key: string]: unknown }
 
+export type NewsletterDomainDnsRecordsItem = {
+  record?: string;
+  name?: string;
+  type?: string;
+  value?: string;
+  status?: string;
+  ttl?: string;
+  priority?: number;
+};
+
+export interface NewsletterDomain {
+  id: number;
+  domain: string;
+  resendDomainId?: string | null;
+  status: string;
+  dnsRecords?: NewsletterDomainDnsRecordsItem[] | null;
+  createdAt?: string;
+}
+
+export interface NewsletterDomainInput {
+  /** @minLength 3 */
+  domain: string;
+}
+
+export interface NewsletterApiKey {
+  id: number;
+  name: string;
+  /** 金鑰末 4 碼，僅供辨識 */
+  keyLastFour: string;
+  permissions: string;
+  isActive: boolean;
+  lastUsedAt?: string | null;
+  createdAt?: string;
+}
+
+export type NewsletterApiKeyCreated = NewsletterApiKey & {
+  /** 完整金鑰，僅於建立當下回傳一次，請立即保存 */
+  key: string;
+};
+
+export interface NewsletterV1SubscribeInput {
+  email: string;
+  name?: string | null;
+  tags?: string[];
+}
+
+export interface NewsletterV1UnsubscribeInput {
+  email: string;
+}
+
+export interface NewsletterV1SubscriberResult {
+  id: number;
+  email: string;
+  status: string;
+  existed?: boolean;
+  resubscribed?: boolean;
+}
+
+export interface NewsletterV1SendInput {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+}
+
+export interface NewsletterV1SendResult {
+  ok: boolean;
+  id?: string | null;
+}
+
+export type NewsletterApiKeyInputPermissions = typeof NewsletterApiKeyInputPermissions[keyof typeof NewsletterApiKeyInputPermissions];
+
+
+export const NewsletterApiKeyInputPermissions = {
+  full: 'full',
+  subscribe_only: 'subscribe_only',
+} as const;
+
+export interface NewsletterApiKeyInput {
+  /** @minLength 1 */
+  name: string;
+  permissions?: NewsletterApiKeyInputPermissions;
+}
+
+export type NewsletterApiKeyUpdatePermissions = typeof NewsletterApiKeyUpdatePermissions[keyof typeof NewsletterApiKeyUpdatePermissions];
+
+
+export const NewsletterApiKeyUpdatePermissions = {
+  full: 'full',
+  subscribe_only: 'subscribe_only',
+} as const;
+
+export interface NewsletterApiKeyUpdate {
+  name?: string;
+  permissions?: NewsletterApiKeyUpdatePermissions;
+  isActive?: boolean;
+}
+
+export interface NewsletterSubscriber {
+  id: number;
+  email: string;
+  name?: string | null;
+  tags: string[];
+  status: string;
+  source?: string;
+  createdAt?: string;
+}
+
+export interface NewsletterSubscriberInput {
+  email: string;
+  name?: string | null;
+  tags?: string[];
+}
+
+export type NewsletterSubscriberUpdateStatus = typeof NewsletterSubscriberUpdateStatus[keyof typeof NewsletterSubscriberUpdateStatus];
+
+
+export const NewsletterSubscriberUpdateStatus = {
+  subscribed: 'subscribed',
+  unsubscribed: 'unsubscribed',
+} as const;
+
+export interface NewsletterSubscriberUpdate {
+  email?: string;
+  name?: string | null;
+  tags?: string[];
+  status?: NewsletterSubscriberUpdateStatus;
+}
+
+export interface NewsletterSubscribersImportInput {
+  /** @minLength 1 */
+  csv: string;
+  tags?: string[];
+}
+
+export interface NewsletterImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+export interface NewsletterCampaign {
+  id: number;
+  name: string;
+  subject: string;
+  fromEmail: string;
+  htmlContent?: string;
+  tagFilter?: string | null;
+  status: string;
+  scheduledAt?: string | null;
+  sentAt?: string | null;
+  recipientCount?: number;
+  sentCount?: number;
+  failedCount?: number;
+  createdAt?: string;
+}
+
+export interface NewsletterCampaignInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  subject: string;
+  /** @minLength 3 */
+  fromEmail: string;
+  htmlContent?: string;
+  tagFilter?: string | null;
+}
+
+export interface NewsletterCampaignUpdate {
+  name?: string;
+  subject?: string;
+  fromEmail?: string;
+  htmlContent?: string;
+  tagFilter?: string | null;
+}
+
+export interface NewsletterCampaignScheduleInput {
+  scheduledAt: string;
+}
+
+export interface NewsletterSendLog {
+  id: number;
+  campaignId?: number | null;
+  sequenceStepId?: number | null;
+  subscriberId?: number | null;
+  email: string;
+  subject?: string | null;
+  status: string;
+  error?: string | null;
+  sentAt: string;
+}
+
+export interface NewsletterSequence {
+  id: number;
+  name: string;
+  description?: string | null;
+  fromEmail?: string | null;
+  isActive: boolean;
+  flowData?: unknown | null;
+  stepCount?: number;
+  activeEnrollments?: number;
+  createdAt?: string;
+}
+
+export interface NewsletterSequenceStep {
+  id: number;
+  sequenceId: number;
+  stepOrder: number;
+  delayDays: number;
+  subject: string;
+  htmlContent?: string;
+}
+
+export type NewsletterSequenceDetail = NewsletterSequence & {
+  steps?: NewsletterSequenceStep[];
+  completedEnrollments?: number;
+};
+
+export interface NewsletterSequenceInput {
+  /** @minLength 1 */
+  name: string;
+  description?: string | null;
+  fromEmail?: string | null;
+}
+
+export interface NewsletterSequenceUpdate {
+  name?: string;
+  description?: string | null;
+  fromEmail?: string | null;
+  isActive?: boolean;
+  flowData?: unknown | null;
+}
+
+export interface NewsletterSequenceStepInput {
+  /** @minLength 1 */
+  subject: string;
+  htmlContent?: string;
+  /** @minimum 0 */
+  delayDays?: number;
+  /** @minimum 1 */
+  stepOrder?: number;
+}
+
+export interface NewsletterSequenceStepUpdate {
+  subject?: string;
+  htmlContent?: string;
+  /** @minimum 0 */
+  delayDays?: number;
+  /** @minimum 1 */
+  stepOrder?: number;
+}
+
+export interface NewsletterUsageBucket {
+  total: number;
+  sent: number;
+  failed: number;
+}
+
+export interface NewsletterUsage {
+  configured: boolean;
+  allTime: NewsletterUsageBucket;
+  thisMonth: NewsletterUsageBucket;
+}
+
 export type ListPortalOrdersParams = {
 status?: ListPortalOrdersStatus;
 };
@@ -3621,5 +3885,11 @@ groupBy?: string;
 
 export type ListSocialPostsParams = {
 status?: string;
+};
+
+export type ListNewsletterSubscribersParams = {
+status?: string;
+tag?: string;
+q?: string;
 };
 

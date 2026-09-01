@@ -25,6 +25,10 @@ import {
   Link2,
   Share2,
   Megaphone,
+  Send,
+  Mail,
+  Workflow,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -80,6 +84,15 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { name: "社群帳號", path: "/admin/social-accounts", icon: Share2, roles: ["admin", "ops"] },
       { name: "社群貼文", path: "/admin/social-posts", icon: Megaphone, roles: ["admin", "ops"] },
+    ],
+  },
+  {
+    title: "電子報",
+    items: [
+      { name: "郵件活動", path: "/admin/newsletter/campaigns", icon: Send },
+      { name: "訂閱者", path: "/admin/newsletter/subscribers", icon: Mail },
+      { name: "自動序列", path: "/admin/newsletter/sequences", icon: Workflow },
+      { name: "域名與金鑰", path: "/admin/newsletter/domains", icon: Globe, roles: ["admin", "ops"] },
     ],
   },
   {

@@ -24,6 +24,7 @@ tags:
   - name: erp-accounting
   - name: erp-reports
   - name: social
+  - name: newsletter
 paths:
   /portal/summary:
     get:
@@ -4978,7 +4979,620 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SocialBatchCreateResponse'
+  /newsletter/domains:
+    get:
+      tags: [newsletter]
+      operationId: listNewsletterDomains
+      summary: 寄件域名列表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsletterDomain"
+    post:
+      tags: [newsletter]
+      operationId: createNewsletterDomain
+      summary: 新增寄件域名（Resend）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterDomainInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterDomain"
+  /newsletter/domains/{id}/verify:
+    post:
+      tags: [newsletter]
+      operationId: verifyNewsletterDomain
+      summary: 驗證域名 DNS
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterDomain"
+  /newsletter/domains/{id}:
+    delete:
+      tags: [newsletter]
+      operationId: deleteNewsletterDomain
+      summary: 刪除域名
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /newsletter/api-keys:
+    get:
+      tags: [newsletter]
+      operationId: listNewsletterApiKeys
+      summary: API 金鑰列表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsletterApiKey"
+    post:
+      tags: [newsletter]
+      operationId: createNewsletterApiKey
+      summary: 新增 API 金鑰
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterApiKeyInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterApiKeyCreated"
+  /newsletter/api-keys/{id}:
+    patch:
+      tags: [newsletter]
+      operationId: updateNewsletterApiKey
+      summary: 更新 API 金鑰
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterApiKeyUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterApiKey"
+    delete:
+      tags: [newsletter]
+      operationId: deleteNewsletterApiKey
+      summary: 刪除 API 金鑰
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /newsletter/subscribers:
+    get:
+      tags: [newsletter]
+      operationId: listNewsletterSubscribers
+      summary: 訂閱者列表
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: tag
+          in: query
+          required: false
+          schema: { type: string }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsletterSubscriber"
+    post:
+      tags: [newsletter]
+      operationId: createNewsletterSubscriber
+      summary: 新增訂閱者
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSubscriberInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSubscriber"
+  /newsletter/subscribers/import:
+    post:
+      tags: [newsletter]
+      operationId: importNewsletterSubscribers
+      summary: CSV 匯入訂閱者
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSubscribersImportInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterImportResult"
+  /newsletter/subscribers/{id}:
+    patch:
+      tags: [newsletter]
+      operationId: updateNewsletterSubscriber
+      summary: 更新訂閱者
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSubscriberUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSubscriber"
+    delete:
+      tags: [newsletter]
+      operationId: deleteNewsletterSubscriber
+      summary: 刪除訂閱者
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /newsletter/campaigns:
+    get:
+      tags: [newsletter]
+      operationId: listNewsletterCampaigns
+      summary: 郵件活動列表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsletterCampaign"
+    post:
+      tags: [newsletter]
+      operationId: createNewsletterCampaign
+      summary: 建立郵件活動
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterCampaignInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterCampaign"
+  /newsletter/campaigns/{id}:
+    patch:
+      tags: [newsletter]
+      operationId: updateNewsletterCampaign
+      summary: 更新郵件活動
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterCampaignUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterCampaign"
+    delete:
+      tags: [newsletter]
+      operationId: deleteNewsletterCampaign
+      summary: 刪除郵件活動
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /newsletter/campaigns/{id}/send:
+    post:
+      tags: [newsletter]
+      operationId: sendNewsletterCampaign
+      summary: 立即發送活動
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterCampaign"
+  /newsletter/campaigns/{id}/schedule:
+    post:
+      tags: [newsletter]
+      operationId: scheduleNewsletterCampaign
+      summary: 排程活動
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterCampaignScheduleInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterCampaign"
+  /newsletter/campaigns/{id}/logs:
+    get:
+      tags: [newsletter]
+      operationId: listNewsletterCampaignLogs
+      summary: 活動發送記錄
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsletterSendLog"
+  /newsletter/sequences:
+    get:
+      tags: [newsletter]
+      operationId: listNewsletterSequences
+      summary: 自動序列列表
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsletterSequence"
+    post:
+      tags: [newsletter]
+      operationId: createNewsletterSequence
+      summary: 建立自動序列
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSequenceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSequence"
+  /newsletter/sequences/steps/{id}:
+    patch:
+      tags: [newsletter]
+      operationId: updateNewsletterSequenceStep
+      summary: 更新序列步驟
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSequenceStepUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSequenceStep"
+    delete:
+      tags: [newsletter]
+      operationId: deleteNewsletterSequenceStep
+      summary: 刪除序列步驟
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /newsletter/sequences/{id}:
+    get:
+      tags: [newsletter]
+      operationId: getNewsletterSequence
+      summary: 序列詳情（含步驟與入列統計）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSequenceDetail"
+    patch:
+      tags: [newsletter]
+      operationId: updateNewsletterSequence
+      summary: 更新序列（含 flowData 與啟用狀態）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSequenceUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSequence"
+    delete:
+      tags: [newsletter]
+      operationId: deleteNewsletterSequence
+      summary: 刪除序列
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /newsletter/sequences/{id}/steps:
+    get:
+      tags: [newsletter]
+      operationId: listNewsletterSequenceSteps
+      summary: 序列步驟列表
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsletterSequenceStep"
+    post:
+      tags: [newsletter]
+      operationId: createNewsletterSequenceStep
+      summary: 新增序列步驟
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSequenceStepInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterSequenceStep"
+  /newsletter/usage:
+    get:
+      tags: [newsletter]
+      operationId: getNewsletterUsage
+      summary: 郵件發送用量統計
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterUsage"
+  /newsletter/v1/subscribers:
+    post:
+      tags: [newsletter]
+      operationId: newsletterV1Subscribe
+      summary: "[公開 v1] 外部系統訂閱"
+      description: >-
+        供外部系統以 API 金鑰呼叫。驗證方式：Authorization: Bearer <key> 或
+        x-api-key: <key>。
+      security:
+        - NewsletterApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterV1SubscribeInput"
+      responses:
+        "200":
+          description: 已存在或重新訂閱
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterV1SubscriberResult"
+        "201":
+          description: 新增成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterV1SubscriberResult"
+        "401":
+          description: API 金鑰缺失或無效
+  /newsletter/v1/unsubscribe:
+    post:
+      tags: [newsletter]
+      operationId: newsletterV1Unsubscribe
+      summary: "[公開 v1] 外部系統退訂"
+      description: "驗證方式：Authorization: Bearer <key> 或 x-api-key: <key>。"
+      security:
+        - NewsletterApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterV1UnsubscribeInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterV1SubscriberResult"
+        "401":
+          description: API 金鑰缺失或無效
+        "404":
+          description: 找不到此訂閱者
+  /newsletter/v1/send:
+    post:
+      tags: [newsletter]
+      operationId: newsletterV1Send
+      summary: "[公開 v1] 外部系統發送單封郵件（需 full 權限金鑰）"
+      description: "驗證方式：Authorization: Bearer <key> 或 x-api-key: <key>。"
+      security:
+        - NewsletterApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterV1SendInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsletterV1SendResult"
+        "400":
+          description: 缺少必要欄位
+        "401":
+          description: API 金鑰缺失或無效
+        "403":
+          description: 此金鑰無發送權限
+        "502":
+          description: Resend 寄送失敗
+        "503":
+          description: 尚未設定 RESEND_API_KEY
 components:
+  securitySchemes:
+    NewsletterApiKeyAuth:
+      type: http
+      scheme: bearer
+      description: >-
+        電子報公開 v1 API 金鑰。亦接受以 x-api-key 標頭傳遞（本規格文件僅描述
+        Bearer 形式，兩者伺服器端皆會驗證）。
   schemas:
     SocialAccount:
       type: object
@@ -7486,3 +8100,282 @@ components:
     ErpFreeformReport:
       type: object
       additionalProperties: true
+    NewsletterDomain:
+      type: object
+      required: [id, domain, status]
+      properties:
+        id: { type: integer }
+        domain: { type: string }
+        resendDomainId: { type: string, nullable: true }
+        status: { type: string }
+        dnsRecords:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              record: { type: string }
+              name: { type: string }
+              type: { type: string }
+              value: { type: string }
+              status: { type: string }
+              ttl: { type: string }
+              priority: { type: integer }
+        createdAt: { type: string }
+    NewsletterDomainInput:
+      type: object
+      required: [domain]
+      properties:
+        domain: { type: string, minLength: 3 }
+    NewsletterApiKey:
+      type: object
+      required: [id, name, keyLastFour, permissions, isActive]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        keyLastFour: { type: string, description: "金鑰末 4 碼，僅供辨識" }
+        permissions: { type: string }
+        isActive: { type: boolean }
+        lastUsedAt: { type: string, nullable: true }
+        createdAt: { type: string }
+    NewsletterApiKeyCreated:
+      allOf:
+        - $ref: "#/components/schemas/NewsletterApiKey"
+        - type: object
+          required: [key]
+          properties:
+            key:
+              type: string
+              description: "完整金鑰，僅於建立當下回傳一次，請立即保存"
+    NewsletterV1SubscribeInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+    NewsletterV1UnsubscribeInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    NewsletterV1SubscriberResult:
+      type: object
+      required: [id, email, status]
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        status: { type: string }
+        existed: { type: boolean }
+        resubscribed: { type: boolean }
+    NewsletterV1SendInput:
+      type: object
+      required: [from, to, subject, html]
+      properties:
+        from: { type: string }
+        to: { type: string, format: email }
+        subject: { type: string }
+        html: { type: string }
+    NewsletterV1SendResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        id: { type: string, nullable: true }
+    NewsletterApiKeyInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        permissions:
+          type: string
+          enum: [full, subscribe_only]
+    NewsletterApiKeyUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        permissions:
+          type: string
+          enum: [full, subscribe_only]
+        isActive: { type: boolean }
+    NewsletterSubscriber:
+      type: object
+      required: [id, email, status, tags]
+      properties:
+        id: { type: integer }
+        email: { type: string }
+        name: { type: string, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+        status: { type: string }
+        source: { type: string }
+        createdAt: { type: string }
+    NewsletterSubscriberInput:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+    NewsletterSubscriberUpdate:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+        status:
+          type: string
+          enum: [subscribed, unsubscribed]
+    NewsletterSubscribersImportInput:
+      type: object
+      required: [csv]
+      properties:
+        csv: { type: string, minLength: 1 }
+        tags:
+          type: array
+          items: { type: string }
+    NewsletterImportResult:
+      type: object
+      required: [imported, skipped, errors]
+      properties:
+        imported: { type: integer }
+        skipped: { type: integer }
+        errors:
+          type: array
+          items: { type: string }
+    NewsletterCampaign:
+      type: object
+      required: [id, name, subject, fromEmail, status]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        subject: { type: string }
+        fromEmail: { type: string }
+        htmlContent: { type: string }
+        tagFilter: { type: string, nullable: true }
+        status: { type: string }
+        scheduledAt: { type: string, nullable: true }
+        sentAt: { type: string, nullable: true }
+        recipientCount: { type: integer }
+        sentCount: { type: integer }
+        failedCount: { type: integer }
+        createdAt: { type: string }
+    NewsletterCampaignInput:
+      type: object
+      required: [name, subject, fromEmail]
+      properties:
+        name: { type: string, minLength: 1 }
+        subject: { type: string, minLength: 1 }
+        fromEmail: { type: string, minLength: 3 }
+        htmlContent: { type: string }
+        tagFilter: { type: string, nullable: true }
+    NewsletterCampaignUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        subject: { type: string }
+        fromEmail: { type: string }
+        htmlContent: { type: string }
+        tagFilter: { type: string, nullable: true }
+    NewsletterCampaignScheduleInput:
+      type: object
+      required: [scheduledAt]
+      properties:
+        scheduledAt: { type: string }
+    NewsletterSendLog:
+      type: object
+      required: [id, email, status, sentAt]
+      properties:
+        id: { type: integer }
+        campaignId: { type: integer, nullable: true }
+        sequenceStepId: { type: integer, nullable: true }
+        subscriberId: { type: integer, nullable: true }
+        email: { type: string }
+        subject: { type: string, nullable: true }
+        status: { type: string }
+        error: { type: string, nullable: true }
+        sentAt: { type: string }
+    NewsletterSequence:
+      type: object
+      required: [id, name, isActive]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        fromEmail: { type: string, nullable: true }
+        isActive: { type: boolean }
+        flowData: { nullable: true }
+        stepCount: { type: integer }
+        activeEnrollments: { type: integer }
+        createdAt: { type: string }
+    NewsletterSequenceDetail:
+      allOf:
+        - $ref: "#/components/schemas/NewsletterSequence"
+        - type: object
+          properties:
+            steps:
+              type: array
+              items:
+                $ref: "#/components/schemas/NewsletterSequenceStep"
+            completedEnrollments: { type: integer }
+    NewsletterSequenceInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string, nullable: true }
+        fromEmail: { type: string, nullable: true }
+    NewsletterSequenceUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string, nullable: true }
+        fromEmail: { type: string, nullable: true }
+        isActive: { type: boolean }
+        flowData: { nullable: true }
+    NewsletterSequenceStep:
+      type: object
+      required: [id, sequenceId, stepOrder, delayDays, subject]
+      properties:
+        id: { type: integer }
+        sequenceId: { type: integer }
+        stepOrder: { type: integer }
+        delayDays: { type: integer }
+        subject: { type: string }
+        htmlContent: { type: string }
+    NewsletterSequenceStepInput:
+      type: object
+      required: [subject]
+      properties:
+        subject: { type: string, minLength: 1 }
+        htmlContent: { type: string }
+        delayDays: { type: integer, minimum: 0 }
+        stepOrder: { type: integer, minimum: 1 }
+    NewsletterSequenceStepUpdate:
+      type: object
+      properties:
+        subject: { type: string }
+        htmlContent: { type: string }
+        delayDays: { type: integer, minimum: 0 }
+        stepOrder: { type: integer, minimum: 1 }
+    NewsletterUsage:
+      type: object
+      required: [configured, allTime, thisMonth]
+      properties:
+        configured: { type: boolean }
+        allTime:
+          $ref: "#/components/schemas/NewsletterUsageBucket"
+        thisMonth:
+          $ref: "#/components/schemas/NewsletterUsageBucket"
+    NewsletterUsageBucket:
+      type: object
+      required: [total, sent, failed]
+      properties:
+        total: { type: integer }
+        sent: { type: integer }
+        failed: { type: integer }

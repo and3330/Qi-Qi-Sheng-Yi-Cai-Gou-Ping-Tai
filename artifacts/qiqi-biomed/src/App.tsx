@@ -55,6 +55,11 @@ import PortalCommissions from "./pages/portal/Commissions";
 import PortalReports from "./pages/portal/Reports";
 import AdminSocialAccountsPage from "./pages/admin/SocialAccounts";
 import AdminSocialPostsPage from "./pages/admin/SocialPosts";
+import AdminNewsletterDomainsPage from "./pages/admin/NewsletterDomains";
+import AdminNewsletterSubscribersPage from "./pages/admin/NewsletterSubscribers";
+import AdminNewsletterCampaignsPage from "./pages/admin/NewsletterCampaigns";
+import AdminNewsletterSequencesPage from "./pages/admin/NewsletterSequences";
+import AdminSequenceFlowEditorPage from "./pages/admin/SequenceFlowEditor";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -125,6 +130,11 @@ function AdminArea() {
           <Route path="/admin/institution-wallets" component={AdminInstitutionWalletsPage} />
           <Route path="/admin/wallets" component={AdminWalletsPage} />
           <Route path="/admin/linktree" component={AdminLinktreePage} />
+          <Route path="/admin/newsletter/domains" component={AdminNewsletterDomainsPage} />
+          <Route path="/admin/newsletter/subscribers" component={AdminNewsletterSubscribersPage} />
+          <Route path="/admin/newsletter/campaigns" component={AdminNewsletterCampaignsPage} />
+          <Route path="/admin/newsletter/sequences/:id" component={AdminSequenceFlowEditorPage} />
+          <Route path="/admin/newsletter/sequences" component={AdminNewsletterSequencesPage} />
           <Route>
             <Redirect to="/admin" />
           </Route>

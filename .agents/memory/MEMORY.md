@@ -10,3 +10,4 @@
 - [ERP 會計模組不變式](erp-accounting.md) — 發票金額只由核銷 recompute；自動立帳走名稱解析+來源冪等、fire-and-forget；關帳日只擋人工寫入；合約用 settlements/partyId。
 - [AI 大腦架構](ai-brain-architecture.md) — embeddings 不走平台代理（金鑰選配、關鍵字退回）；助理操作須伺服器端兩段式確認（prompt 不可信）；工具回傳不入歷史須注入 pending 提示。
 - [Social marketing integrations](social-marketing-integrations.md) — 各平台憑證可分階段設定；缺少單一平台憑證不可阻斷草稿、預覽與 AI 功能。
+- [Newsletter/drip-sequence patterns](newsletter-module-patterns.md) — unsubscribe needs a per-subscriber token + GET-no-mutate/POST-mutate split; retry sequence steps with backoff, never skip past a failed send; hash API keys; wire new tables into a start-script migration.

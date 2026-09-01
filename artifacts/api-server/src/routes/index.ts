@@ -32,8 +32,11 @@ import linktreeRouter from "./linktree";
 import erpAccountingRouter from "./erpAccounting";
 import erpReportsRouter from "./erpReports";
 import adminSocialRouter from "./adminSocial";
+import newsletterRouter from "./newsletter";
+import newsletterPublicRouter from "./newsletterPublic";
 
 const router: IRouter = Router();
+
 router.use(healthRouter);
 router.use(authRouter);
 router.use(membersRouter);
@@ -67,5 +70,7 @@ router.use(linktreeRouter);
 router.use(erpAccountingRouter);
 router.use(erpReportsRouter);
 router.use(adminSocialRouter);
+router.use(newsletterRouter);
+router.use(newsletterPublicRouter);
 
 export default router;

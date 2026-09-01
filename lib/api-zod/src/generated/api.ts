@@ -5865,3 +5865,694 @@ export const BatchCreateSocialPostsResponse = zod.object({
 })
 
 
+/**
+ * @summary 寄件域名列表
+ */
+export const ListNewsletterDomainsResponseItem = zod.object({
+  "id": zod.int(),
+  "domain": zod.string(),
+  "resendDomainId": zod.string().nullish(),
+  "status": zod.string(),
+  "dnsRecords": zod.array(zod.object({
+  "record": zod.string().optional(),
+  "name": zod.string().optional(),
+  "type": zod.string().optional(),
+  "value": zod.string().optional(),
+  "status": zod.string().optional(),
+  "ttl": zod.string().optional(),
+  "priority": zod.int().optional()
+})).nullish(),
+  "createdAt": zod.string().optional()
+})
+export const ListNewsletterDomainsResponse = zod.array(ListNewsletterDomainsResponseItem)
+
+
+/**
+ * @summary 新增寄件域名（Resend）
+ */
+export const createNewsletterDomainBodyDomainMin = 3;
+
+
+
+export const CreateNewsletterDomainBody = zod.object({
+  "domain": zod.string().min(createNewsletterDomainBodyDomainMin)
+})
+
+export const CreateNewsletterDomainResponse = zod.object({
+  "id": zod.int(),
+  "domain": zod.string(),
+  "resendDomainId": zod.string().nullish(),
+  "status": zod.string(),
+  "dnsRecords": zod.array(zod.object({
+  "record": zod.string().optional(),
+  "name": zod.string().optional(),
+  "type": zod.string().optional(),
+  "value": zod.string().optional(),
+  "status": zod.string().optional(),
+  "ttl": zod.string().optional(),
+  "priority": zod.int().optional()
+})).nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 驗證域名 DNS
+ */
+export const VerifyNewsletterDomainParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const VerifyNewsletterDomainResponse = zod.object({
+  "id": zod.int(),
+  "domain": zod.string(),
+  "resendDomainId": zod.string().nullish(),
+  "status": zod.string(),
+  "dnsRecords": zod.array(zod.object({
+  "record": zod.string().optional(),
+  "name": zod.string().optional(),
+  "type": zod.string().optional(),
+  "value": zod.string().optional(),
+  "status": zod.string().optional(),
+  "ttl": zod.string().optional(),
+  "priority": zod.int().optional()
+})).nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 刪除域名
+ */
+export const DeleteNewsletterDomainParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteNewsletterDomainResponse = zod.void()
+
+
+/**
+ * @summary API 金鑰列表
+ */
+export const ListNewsletterApiKeysResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "keyLastFour": zod.string().describe('金鑰末 4 碼，僅供辨識'),
+  "permissions": zod.string(),
+  "isActive": zod.boolean(),
+  "lastUsedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+export const ListNewsletterApiKeysResponse = zod.array(ListNewsletterApiKeysResponseItem)
+
+
+/**
+ * @summary 新增 API 金鑰
+ */
+
+
+
+export const CreateNewsletterApiKeyBody = zod.object({
+  "name": zod.string().min(1),
+  "permissions": zod.enum(['full', 'subscribe_only']).optional()
+})
+
+export const CreateNewsletterApiKeyResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "keyLastFour": zod.string().describe('金鑰末 4 碼，僅供辨識'),
+  "permissions": zod.string(),
+  "isActive": zod.boolean(),
+  "lastUsedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+}).and(zod.object({
+  "key": zod.string().describe('完整金鑰，僅於建立當下回傳一次，請立即保存')
+}))
+
+
+/**
+ * @summary 更新 API 金鑰
+ */
+export const UpdateNewsletterApiKeyParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateNewsletterApiKeyBody = zod.object({
+  "name": zod.string().optional(),
+  "permissions": zod.enum(['full', 'subscribe_only']).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateNewsletterApiKeyResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "keyLastFour": zod.string().describe('金鑰末 4 碼，僅供辨識'),
+  "permissions": zod.string(),
+  "isActive": zod.boolean(),
+  "lastUsedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 刪除 API 金鑰
+ */
+export const DeleteNewsletterApiKeyParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteNewsletterApiKeyResponse = zod.void()
+
+
+/**
+ * @summary 訂閱者列表
+ */
+export const ListNewsletterSubscribersQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "tag": zod.coerce.string().optional(),
+  "q": zod.coerce.string().optional()
+})
+
+export const ListNewsletterSubscribersResponseItem = zod.object({
+  "id": zod.int(),
+  "email": zod.string(),
+  "name": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "status": zod.string(),
+  "source": zod.string().optional(),
+  "createdAt": zod.string().optional()
+})
+export const ListNewsletterSubscribersResponse = zod.array(ListNewsletterSubscribersResponseItem)
+
+
+/**
+ * @summary 新增訂閱者
+ */
+export const CreateNewsletterSubscriberBody = zod.object({
+  "email": zod.email(),
+  "name": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+})
+
+export const CreateNewsletterSubscriberResponse = zod.object({
+  "id": zod.int(),
+  "email": zod.string(),
+  "name": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "status": zod.string(),
+  "source": zod.string().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary CSV 匯入訂閱者
+ */
+
+
+
+export const ImportNewsletterSubscribersBody = zod.object({
+  "csv": zod.string().min(1),
+  "tags": zod.array(zod.string()).optional()
+})
+
+export const ImportNewsletterSubscribersResponse = zod.object({
+  "imported": zod.int(),
+  "skipped": zod.int(),
+  "errors": zod.array(zod.string())
+})
+
+
+/**
+ * @summary 更新訂閱者
+ */
+export const UpdateNewsletterSubscriberParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateNewsletterSubscriberBody = zod.object({
+  "email": zod.email().optional(),
+  "name": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional(),
+  "status": zod.enum(['subscribed', 'unsubscribed']).optional()
+})
+
+export const UpdateNewsletterSubscriberResponse = zod.object({
+  "id": zod.int(),
+  "email": zod.string(),
+  "name": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "status": zod.string(),
+  "source": zod.string().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 刪除訂閱者
+ */
+export const DeleteNewsletterSubscriberParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteNewsletterSubscriberResponse = zod.void()
+
+
+/**
+ * @summary 郵件活動列表
+ */
+export const ListNewsletterCampaignsResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "fromEmail": zod.string(),
+  "htmlContent": zod.string().optional(),
+  "tagFilter": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "recipientCount": zod.int().optional(),
+  "sentCount": zod.int().optional(),
+  "failedCount": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+export const ListNewsletterCampaignsResponse = zod.array(ListNewsletterCampaignsResponseItem)
+
+
+/**
+ * @summary 建立郵件活動
+ */
+
+
+export const createNewsletterCampaignBodyFromEmailMin = 3;
+
+
+
+export const CreateNewsletterCampaignBody = zod.object({
+  "name": zod.string().min(1),
+  "subject": zod.string().min(1),
+  "fromEmail": zod.string().min(createNewsletterCampaignBodyFromEmailMin),
+  "htmlContent": zod.string().optional(),
+  "tagFilter": zod.string().nullish()
+})
+
+export const CreateNewsletterCampaignResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "fromEmail": zod.string(),
+  "htmlContent": zod.string().optional(),
+  "tagFilter": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "recipientCount": zod.int().optional(),
+  "sentCount": zod.int().optional(),
+  "failedCount": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 更新郵件活動
+ */
+export const UpdateNewsletterCampaignParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateNewsletterCampaignBody = zod.object({
+  "name": zod.string().optional(),
+  "subject": zod.string().optional(),
+  "fromEmail": zod.string().optional(),
+  "htmlContent": zod.string().optional(),
+  "tagFilter": zod.string().nullish()
+})
+
+export const UpdateNewsletterCampaignResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "fromEmail": zod.string(),
+  "htmlContent": zod.string().optional(),
+  "tagFilter": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "recipientCount": zod.int().optional(),
+  "sentCount": zod.int().optional(),
+  "failedCount": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 刪除郵件活動
+ */
+export const DeleteNewsletterCampaignParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteNewsletterCampaignResponse = zod.void()
+
+
+/**
+ * @summary 立即發送活動
+ */
+export const SendNewsletterCampaignParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const SendNewsletterCampaignResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "fromEmail": zod.string(),
+  "htmlContent": zod.string().optional(),
+  "tagFilter": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "recipientCount": zod.int().optional(),
+  "sentCount": zod.int().optional(),
+  "failedCount": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 排程活動
+ */
+export const ScheduleNewsletterCampaignParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ScheduleNewsletterCampaignBody = zod.object({
+  "scheduledAt": zod.string()
+})
+
+export const ScheduleNewsletterCampaignResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "subject": zod.string(),
+  "fromEmail": zod.string(),
+  "htmlContent": zod.string().optional(),
+  "tagFilter": zod.string().nullish(),
+  "status": zod.string(),
+  "scheduledAt": zod.string().nullish(),
+  "sentAt": zod.string().nullish(),
+  "recipientCount": zod.int().optional(),
+  "sentCount": zod.int().optional(),
+  "failedCount": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 活動發送記錄
+ */
+export const ListNewsletterCampaignLogsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListNewsletterCampaignLogsResponseItem = zod.object({
+  "id": zod.int(),
+  "campaignId": zod.int().nullish(),
+  "sequenceStepId": zod.int().nullish(),
+  "subscriberId": zod.int().nullish(),
+  "email": zod.string(),
+  "subject": zod.string().nullish(),
+  "status": zod.string(),
+  "error": zod.string().nullish(),
+  "sentAt": zod.string()
+})
+export const ListNewsletterCampaignLogsResponse = zod.array(ListNewsletterCampaignLogsResponseItem)
+
+
+/**
+ * @summary 自動序列列表
+ */
+export const ListNewsletterSequencesResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "fromEmail": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "flowData": zod.unknown().nullish(),
+  "stepCount": zod.int().optional(),
+  "activeEnrollments": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+export const ListNewsletterSequencesResponse = zod.array(ListNewsletterSequencesResponseItem)
+
+
+/**
+ * @summary 建立自動序列
+ */
+
+
+
+export const CreateNewsletterSequenceBody = zod.object({
+  "name": zod.string().min(1),
+  "description": zod.string().nullish(),
+  "fromEmail": zod.string().nullish()
+})
+
+export const CreateNewsletterSequenceResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "fromEmail": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "flowData": zod.unknown().nullish(),
+  "stepCount": zod.int().optional(),
+  "activeEnrollments": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 更新序列步驟
+ */
+export const UpdateNewsletterSequenceStepParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateNewsletterSequenceStepBodyDelayDaysMin = 0;
+
+
+
+
+export const UpdateNewsletterSequenceStepBody = zod.object({
+  "subject": zod.string().optional(),
+  "htmlContent": zod.string().optional(),
+  "delayDays": zod.int().min(updateNewsletterSequenceStepBodyDelayDaysMin).optional(),
+  "stepOrder": zod.int().min(1).optional()
+})
+
+export const UpdateNewsletterSequenceStepResponse = zod.object({
+  "id": zod.int(),
+  "sequenceId": zod.int(),
+  "stepOrder": zod.int(),
+  "delayDays": zod.int(),
+  "subject": zod.string(),
+  "htmlContent": zod.string().optional()
+})
+
+
+/**
+ * @summary 刪除序列步驟
+ */
+export const DeleteNewsletterSequenceStepParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteNewsletterSequenceStepResponse = zod.void()
+
+
+/**
+ * @summary 序列詳情（含步驟與入列統計）
+ */
+export const GetNewsletterSequenceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetNewsletterSequenceResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "fromEmail": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "flowData": zod.unknown().nullish(),
+  "stepCount": zod.int().optional(),
+  "activeEnrollments": zod.int().optional(),
+  "createdAt": zod.string().optional()
+}).and(zod.object({
+  "steps": zod.array(zod.object({
+  "id": zod.int(),
+  "sequenceId": zod.int(),
+  "stepOrder": zod.int(),
+  "delayDays": zod.int(),
+  "subject": zod.string(),
+  "htmlContent": zod.string().optional()
+})).optional(),
+  "completedEnrollments": zod.int().optional()
+}))
+
+
+/**
+ * @summary 更新序列（含 flowData 與啟用狀態）
+ */
+export const UpdateNewsletterSequenceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateNewsletterSequenceBody = zod.object({
+  "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "fromEmail": zod.string().nullish(),
+  "isActive": zod.boolean().optional(),
+  "flowData": zod.unknown().nullish()
+})
+
+export const UpdateNewsletterSequenceResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "fromEmail": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "flowData": zod.unknown().nullish(),
+  "stepCount": zod.int().optional(),
+  "activeEnrollments": zod.int().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 刪除序列
+ */
+export const DeleteNewsletterSequenceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteNewsletterSequenceResponse = zod.void()
+
+
+/**
+ * @summary 序列步驟列表
+ */
+export const ListNewsletterSequenceStepsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListNewsletterSequenceStepsResponseItem = zod.object({
+  "id": zod.int(),
+  "sequenceId": zod.int(),
+  "stepOrder": zod.int(),
+  "delayDays": zod.int(),
+  "subject": zod.string(),
+  "htmlContent": zod.string().optional()
+})
+export const ListNewsletterSequenceStepsResponse = zod.array(ListNewsletterSequenceStepsResponseItem)
+
+
+/**
+ * @summary 新增序列步驟
+ */
+export const CreateNewsletterSequenceStepParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+export const createNewsletterSequenceStepBodyDelayDaysMin = 0;
+
+
+
+
+export const CreateNewsletterSequenceStepBody = zod.object({
+  "subject": zod.string().min(1),
+  "htmlContent": zod.string().optional(),
+  "delayDays": zod.int().min(createNewsletterSequenceStepBodyDelayDaysMin).optional(),
+  "stepOrder": zod.int().min(1).optional()
+})
+
+export const CreateNewsletterSequenceStepResponse = zod.object({
+  "id": zod.int(),
+  "sequenceId": zod.int(),
+  "stepOrder": zod.int(),
+  "delayDays": zod.int(),
+  "subject": zod.string(),
+  "htmlContent": zod.string().optional()
+})
+
+
+/**
+ * @summary 郵件發送用量統計
+ */
+export const GetNewsletterUsageResponse = zod.object({
+  "configured": zod.boolean(),
+  "allTime": zod.object({
+  "total": zod.int(),
+  "sent": zod.int(),
+  "failed": zod.int()
+}),
+  "thisMonth": zod.object({
+  "total": zod.int(),
+  "sent": zod.int(),
+  "failed": zod.int()
+})
+})
+
+
+/**
+ * 供外部系統以 API 金鑰呼叫。驗證方式：Authorization: Bearer <key> 或 x-api-key: <key>。
+ * @summary [公開 v1] 外部系統訂閱
+ */
+export const NewsletterV1SubscribeBody = zod.object({
+  "email": zod.email(),
+  "name": zod.string().nullish(),
+  "tags": zod.array(zod.string()).optional()
+})
+
+export const NewsletterV1SubscribeResponse = zod.object({
+  "id": zod.int(),
+  "email": zod.string(),
+  "status": zod.string(),
+  "existed": zod.boolean().optional(),
+  "resubscribed": zod.boolean().optional()
+})
+
+
+/**
+ * 驗證方式：Authorization: Bearer <key> 或 x-api-key: <key>。
+ * @summary [公開 v1] 外部系統退訂
+ */
+export const NewsletterV1UnsubscribeBody = zod.object({
+  "email": zod.email()
+})
+
+export const NewsletterV1UnsubscribeResponse = zod.object({
+  "id": zod.int(),
+  "email": zod.string(),
+  "status": zod.string(),
+  "existed": zod.boolean().optional(),
+  "resubscribed": zod.boolean().optional()
+})
+
+
+/**
+ * 驗證方式：Authorization: Bearer <key> 或 x-api-key: <key>。
+ * @summary [公開 v1] 外部系統發送單封郵件（需 full 權限金鑰）
+ */
+export const NewsletterV1SendBody = zod.object({
+  "from": zod.string(),
+  "to": zod.email(),
+  "subject": zod.string(),
+  "html": zod.string()
+})
+
+export const NewsletterV1SendResponse = zod.object({
+  "ok": zod.boolean(),
+  "id": zod.string().nullish()
+})
+
+
