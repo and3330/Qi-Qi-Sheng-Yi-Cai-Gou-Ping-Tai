@@ -9,6 +9,18 @@ import type { AdminMemberUpdateRole } from './adminMemberUpdateRole';
 import type { AdminMemberUpdateTier } from './adminMemberUpdateTier';
 
 export interface AdminMemberUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 30
+     * @pattern ^[A-Za-z0-9_.-]+$
+     */
+  username?: string;
+  /**
+     * 留空或省略代表不變更；API 永不回傳密碼
+     * @minLength 8
+     * @maxLength 128
+     */
+  password?: string;
   /** @minLength 1 */
   name?: string;
   /** @nullable */

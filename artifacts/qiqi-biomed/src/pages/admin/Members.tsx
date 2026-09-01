@@ -4,12 +4,13 @@ import {
   useListAdminMembers,
   getListAdminMembersQueryKey,
   useUpdateAdminMember,
+  useCreateAdminMember,
   useGetMe,
   getGetMeQueryKey,
   type AdminMember,
   type ListAdminMembersParams,
 } from "@workspace/api-client-react";
-import { Search, ShieldCheck, Ban, CheckCircle2, Pencil } from "lucide-react";
+import { Search, ShieldCheck, Ban, CheckCircle2, Pencil, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,8 @@ const tierBadgeClass: Record<string, string> = {
 
 type EditState = {
   member: AdminMember;
+  username: string;
+  password: string;
   name: string;
   email: string;
   phone: string;
@@ -54,6 +57,26 @@ type EditState = {
   role: string;
   isActive: boolean;
   institutionVerified: boolean;
+};
+
+type CreateState = {
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+  phone: string;
+  tier: string;
+  role: string;
+};
+
+const emptyCreate: CreateState = {
+  username: "",
+  password: "",
+  name: "",
+  email: "",
+  phone: "",
+  tier: "consumer",
+  role: "member",
 };
 
 export default function AdminMembersPage() {
@@ -65,6 +88,7 @@ export default function AdminMembersPage() {
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("all");
   const [edit, setEdit] = useState<EditState | null>(null);
+  const [create, setCreate] = useState<CreateState | null>(null);
 
   const params = useMemo(() => {
     const p: ListAdminMembersParams = {};
@@ -99,6 +123,26 @@ export default function AdminMembersPage() {
     },
   });
 
+  const createMutation = useCreateAdminMember({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: getListAdminMembersQueryKey(),
+          exact: false,
+        });
+        toast({ title: "已建立會員帳號" });
+        setCreate(null);
+      },
+      onError: (err: any) => {
+        toast({
+          title: "建立失敗",
+          description: err?.data?.error ?? "請檢查帳號與密碼格式",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
   const quickUpdate = (member: AdminMember, data: Record<string, unknown>) => {
     updateMutation.mutate({ id: member.id, data });
   };
@@ -106,6 +150,8 @@ export default function AdminMembersPage() {
   const openEdit = (m: AdminMember) =>
     setEdit({
       member: m,
+      username: m.username,
+      password: "",
       name: m.name,
       email: m.email ?? "",
       phone: m.phone ?? "",
@@ -120,6 +166,8 @@ export default function AdminMembersPage() {
     updateMutation.mutate({
       id: edit.member.id,
       data: {
+        username: edit.username.trim(),
+        ...(edit.password ? { password: edit.password } : {}),
         name: edit.name.trim() || edit.member.name,
         email: edit.email.trim() || null,
         phone: edit.phone.trim() || null,
@@ -168,6 +216,11 @@ export default function AdminMembersPage() {
             <SelectItem value="consumer">C 消費者</SelectItem>
           </SelectContent>
         </Select>
+        {me?.role === "admin" && (
+          <Button onClick={() => setCreate({ ...emptyCreate })} data-testid="button-create-member">
+            <Plus size={16} className="mr-1" /> 新增會員
+          </Button>
+        )}
       </div>
 
       {isLoading ? (
@@ -210,6 +263,7 @@ export default function AdminMembersPage() {
                             <span className="ml-1 text-xs text-muted-foreground">（我）</span>
                           )}
                         </p>
+                        <p className="text-xs text-muted-foreground">@{m.username}</p>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         <p>{m.email || "—"}</p>
@@ -312,6 +366,26 @@ export default function AdminMembersPage() {
           </DialogHeader>
           {edit && (
             <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>登入帳號</Label>
+                <Input
+                  value={edit.username}
+                  onChange={(e) => setEdit({ ...edit, username: e.target.value })}
+                  data-testid="input-edit-username"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>設定新密碼</Label>
+                <Input
+                  type="password"
+                  value={edit.password}
+                  onChange={(e) => setEdit({ ...edit, password: e.target.value })}
+                  placeholder="留空代表不變更；至少 8 碼"
+                  autoComplete="new-password"
+                  data-testid="input-edit-password"
+                />
+                <p className="text-xs text-muted-foreground">系統不會顯示原密碼，只能設定新密碼。</p>
+              </div>
               <div className="space-y-1.5">
                 <Label>姓名</Label>
                 <Input
@@ -420,6 +494,90 @@ export default function AdminMembersPage() {
               data-testid="button-save-member"
             >
               {updateMutation.isPending ? "儲存中…" : "儲存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!create} onOpenChange={(open) => !open && setCreate(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>新增會員帳號</DialogTitle>
+          </DialogHeader>
+          {create && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>登入帳號</Label>
+                  <Input value={create.username} onChange={(e) => setCreate({ ...create, username: e.target.value })} placeholder="3–30 碼英數字" data-testid="input-create-username" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>初始密碼</Label>
+                  <Input type="password" value={create.password} onChange={(e) => setCreate({ ...create, password: e.target.value })} placeholder="至少 8 碼" autoComplete="new-password" data-testid="input-create-password" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>姓名</Label>
+                <Input value={create.name} onChange={(e) => setCreate({ ...create, name: e.target.value })} data-testid="input-create-name" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input type="email" value={create.email} onChange={(e) => setCreate({ ...create, email: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>電話</Label>
+                  <Input value={create.phone} onChange={(e) => setCreate({ ...create, phone: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>會員身分</Label>
+                  <Select value={create.tier} onValueChange={(tier) => setCreate({ ...create, tier })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hospital">A 醫院</SelectItem>
+                      <SelectItem value="clinic">B 診所/藥局</SelectItem>
+                      <SelectItem value="consumer">C 消費者</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>系統角色</Label>
+                  <Select value={create.role} onValueChange={(role) => setCreate({ ...create, role })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">系統管理員</SelectItem>
+                      <SelectItem value="ops">營運</SelectItem>
+                      <SelectItem value="support">客服</SelectItem>
+                      <SelectItem value="member">一般會員</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                A 醫院與 B 診所／藥局也可使用專屬註冊連結自行註冊；內部後台角色建議由管理員在此建立。
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreate(null)}>取消</Button>
+            <Button
+              disabled={createMutation.isPending || !create?.username.trim() || !create?.password || create.password.length < 8 || !create?.name.trim()}
+              onClick={() => create && createMutation.mutate({
+                data: {
+                  username: create.username.trim(),
+                  password: create.password,
+                  name: create.name.trim(),
+                  email: create.email.trim() || null,
+                  phone: create.phone.trim() || null,
+                  tier: create.tier as any,
+                  role: create.role as any,
+                },
+              })}
+              data-testid="button-submit-create-member"
+            >
+              {createMutation.isPending ? "建立中…" : "建立會員"}
             </Button>
           </DialogFooter>
         </DialogContent>

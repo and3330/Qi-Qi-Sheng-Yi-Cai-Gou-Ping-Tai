@@ -124,6 +124,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
   /admin/members:
+    post:
+      operationId: createAdminMember
+      tags:
+        - admin
+      summary: 後台建立會員（限系統管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMemberCreate'
+      responses:
+        '201':
+          description: Created member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMember'
+        '400':
+          description: Invalid input or duplicate username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
     get:
       operationId: listAdminMembers
       tags:
@@ -8601,6 +8625,16 @@ components:
     AdminMemberUpdate:
       type: object
       properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[A-Za-z0-9_.-]+$'
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          description: 留空或省略代表不變更；API 永不回傳密碼
         name:
           type: string
           minLength: 1
@@ -8634,6 +8668,51 @@ components:
           type:
             - string
             - 'null'
+    AdminMemberCreate:
+      type: object
+      required:
+        - username
+        - password
+        - name
+        - tier
+        - role
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: '^[A-Za-z0-9_.-]+$'
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        email:
+          type:
+            - string
+            - 'null'
+          format: email
+        phone:
+          type:
+            - string
+            - 'null'
+          maxLength: 30
+        tier:
+          type: string
+          enum:
+            - hospital
+            - clinic
+            - consumer
+        role:
+          type: string
+          enum:
+            - admin
+            - ops
+            - support
+            - member
     MemberUpdate:
       type: object
       description: 會員身份 (tier) 由平台審核後台調整，不開放自行修改

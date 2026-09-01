@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import bcrypt from "bcryptjs";
 import { and, count, desc, eq, ilike, lte, ne, or, sum , notInArray} from "drizzle-orm";
 import {
   db,
@@ -7,7 +8,7 @@ import {
   productsTable,
   type Member,
 } from "@workspace/db";
-import { UpdateAdminMemberBody } from "@workspace/api-zod";
+import { CreateAdminMemberBody, UpdateAdminMemberBody } from "@workspace/api-zod";
 import { requireAdmin, requireStaff } from "../middlewares/requireMember";
 import { reindex } from "../lib/aiIndex";
 
@@ -32,6 +33,11 @@ function serializeAdminMember(m: Member) {
     shippingAddress: m.shippingAddress,
     createdAt: m.createdAt.toISOString(),
   };
+}
+
+function isUniqueViolation(error: unknown) {
+  const err = error as { code?: string; cause?: { code?: string } };
+  return err.code === "23505" || err.cause?.code === "23505";
 }
 
 router.get("/admin/stats", requireStaff, async (_req, res) => {
@@ -91,6 +97,46 @@ router.get("/admin/members", requireStaff, async (req, res) => {
   res.json(rows.map(serializeAdminMember));
 });
 
+router.post("/admin/members", requireAdmin, async (req, res) => {
+  const parsed = CreateAdminMemberBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "資料格式不正確：帳號需 3–30 碼，密碼至少 8 碼" });
+    return;
+  }
+  const { password, ...input } = parsed.data;
+  const username = input.username.toLowerCase();
+  const [existing] = await db
+    .select({ id: membersTable.id })
+    .from(membersTable)
+    .where(eq(membersTable.username, username))
+    .limit(1);
+  if (existing) {
+    res.status(400).json({ error: "此帳號已被使用" });
+    return;
+  }
+  let created: Member;
+  try {
+    [created] = await db
+      .insert(membersTable)
+      .values({
+        ...input,
+        username,
+        passwordHash: await bcrypt.hash(password, 10),
+        email: input.email || null,
+        phone: input.phone || null,
+      })
+      .returning();
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(400).json({ error: "此帳號已被使用" });
+      return;
+    }
+    throw error;
+  }
+  reindex("member", created.id);
+  res.status(201).json(serializeAdminMember(created));
+});
+
 router.get("/admin/members/:id", requireStaff, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
@@ -121,20 +167,47 @@ router.patch("/admin/members/:id", requireAdmin, async (req, res) => {
     return;
   }
   const data = parsed.data;
+  const { password, username: requestedUsername, ...memberChanges } = data;
+  const username = requestedUsername?.toLowerCase();
 
   // Guard: an admin cannot demote or deactivate their own account
   if (id === req.member!.id) {
-    if (data.role === "member" || data.isActive === false) {
+    if (memberChanges.role === "member" || memberChanges.isActive === false) {
       res.status(400).json({ error: "無法停用或移除自己的管理員權限" });
       return;
     }
   }
 
-  const [updated] = await db
-    .update(membersTable)
-    .set(data)
-    .where(eq(membersTable.id, id))
-    .returning();
+  if (username) {
+    const [duplicate] = await db
+      .select({ id: membersTable.id })
+      .from(membersTable)
+      .where(and(eq(membersTable.username, username), ne(membersTable.id, id)))
+      .limit(1);
+    if (duplicate) {
+      res.status(400).json({ error: "此帳號已被使用" });
+      return;
+    }
+  }
+
+  let updated: Member | undefined;
+  try {
+    [updated] = await db
+      .update(membersTable)
+      .set({
+        ...memberChanges,
+        ...(username ? { username } : {}),
+        ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
+      })
+      .where(eq(membersTable.id, id))
+      .returning();
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(400).json({ error: "此帳號已被使用" });
+      return;
+    }
+    throw error;
+  }
   if (!updated) {
     res.status(404).json({ error: "找不到此會員" });
     return;

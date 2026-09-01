@@ -84,6 +84,51 @@ export const GetAdminStatsResponse = zod.object({
 
 
 /**
+ * @summary 後台建立會員（限系統管理員）
+ */
+export const createAdminMemberBodyUsernameMin = 3;
+export const createAdminMemberBodyUsernameMax = 30;
+
+
+export const createAdminMemberBodyUsernameRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const createAdminMemberBodyPasswordMin = 8;
+export const createAdminMemberBodyPasswordMax = 128;
+
+export const createAdminMemberBodyNameMax = 100;
+
+export const createAdminMemberBodyPhoneMax = 30;
+
+
+
+export const CreateAdminMemberBody = zod.object({
+  "username": zod.string().min(createAdminMemberBodyUsernameMin).max(createAdminMemberBodyUsernameMax).regex(createAdminMemberBodyUsernameRegExp),
+  "password": zod.string().min(createAdminMemberBodyPasswordMin).max(createAdminMemberBodyPasswordMax),
+  "name": zod.string().min(1).max(createAdminMemberBodyNameMax),
+  "email": zod.email().nullish(),
+  "phone": zod.string().max(createAdminMemberBodyPhoneMax).nullish(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "role": zod.enum(['admin', 'ops', 'support', 'member'])
+})
+
+export const CreateAdminMemberResponse = zod.object({
+  "id": zod.int(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "tier": zod.enum(['hospital', 'clinic', 'consumer']),
+  "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
+  "isActive": zod.boolean(),
+  "points": zod.int(),
+  "boundInstitutionId": zod.int().nullish(),
+  "institutionVerified": zod.boolean().optional().describe('綁定院所是否已審核（通過才能查看整個院所資料）'),
+  "boundDepartment": zod.string().nullish(),
+  "shippingAddress": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary 會員列表（限管理員）
  */
 export const ListAdminMembersQueryParams = zod.object({
@@ -142,10 +187,20 @@ export const UpdateAdminMemberParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const updateAdminMemberBodyUsernameMin = 3;
+export const updateAdminMemberBodyUsernameMax = 30;
+
+
+export const updateAdminMemberBodyUsernameRegExp = new RegExp('^[A-Za-z0-9_.-]+$');
+export const updateAdminMemberBodyPasswordMin = 8;
+export const updateAdminMemberBodyPasswordMax = 128;
+
 
 
 
 export const UpdateAdminMemberBody = zod.object({
+  "username": zod.string().min(updateAdminMemberBodyUsernameMin).max(updateAdminMemberBodyUsernameMax).regex(updateAdminMemberBodyUsernameRegExp).optional(),
+  "password": zod.string().min(updateAdminMemberBodyPasswordMin).max(updateAdminMemberBodyPasswordMax).optional().describe('留空或省略代表不變更；API 永不回傳密碼'),
   "name": zod.string().min(1).optional(),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),

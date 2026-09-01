@@ -29,6 +29,7 @@ import type {
   AdminInstitutionUpdate,
   AdminLinktreeMember,
   AdminMember,
+  AdminMemberCreate,
   AdminMemberUpdate,
   AdminMemberWallet,
   AdminOrder,
@@ -722,6 +723,77 @@ export function useGetAdminStats<TData = Awaited<ReturnType<typeof getAdminStats
 
 
 
+
+export const getCreateAdminMemberUrl = () => {
+
+
+
+
+  return `/api/admin/members`
+}
+
+/**
+ * @summary 後台建立會員（限系統管理員）
+ */
+export const createAdminMember = async (adminMemberCreate: AdminMemberCreate, options?: Parameters<typeof customFetch>[1]): Promise<AdminMember> => {
+
+  return customFetch<AdminMember>(getCreateAdminMemberUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminMemberCreate)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminMemberMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminMember>>, TError,{data: BodyType<AdminMemberCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminMember>>, TError,{data: BodyType<AdminMemberCreate>}, TContext> => {
+
+const mutationKey = ['createAdminMember'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminMember>>, {data: BodyType<AdminMemberCreate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminMember(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminMemberMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminMember>>>
+    export type CreateAdminMemberMutationBody = BodyType<AdminMemberCreate>
+    export type CreateAdminMemberMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 後台建立會員（限系統管理員）
+ */
+export const useCreateAdminMember = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminMember>>, TError,{data: BodyType<AdminMemberCreate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminMember>>,
+        TError,
+        {data: BodyType<AdminMemberCreate>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminMemberMutationOptions(options));
+    }
 
 export const getListAdminMembersUrl = (params?: ListAdminMembersParams,) => {
   const normalizedParams = new URLSearchParams();

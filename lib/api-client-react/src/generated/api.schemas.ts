@@ -559,6 +559,18 @@ export const AdminMemberUpdateRole = {
 } as const;
 
 export interface AdminMemberUpdate {
+  /**
+     * @minLength 3
+     * @maxLength 30
+     * @pattern ^[A-Za-z0-9_.-]+$
+     */
+  username?: string;
+  /**
+     * 留空或省略代表不變更；API 永不回傳密碼
+     * @minLength 8
+     * @maxLength 128
+     */
+  password?: string;
   /** @minLength 1 */
   name?: string;
   /** @nullable */
@@ -572,6 +584,53 @@ export interface AdminMemberUpdate {
   institutionVerified?: boolean;
   /** @nullable */
   shippingAddress?: string | null;
+}
+
+export type AdminMemberCreateTier = typeof AdminMemberCreateTier[keyof typeof AdminMemberCreateTier];
+
+
+export const AdminMemberCreateTier = {
+  hospital: 'hospital',
+  clinic: 'clinic',
+  consumer: 'consumer',
+} as const;
+
+export type AdminMemberCreateRole = typeof AdminMemberCreateRole[keyof typeof AdminMemberCreateRole];
+
+
+export const AdminMemberCreateRole = {
+  admin: 'admin',
+  ops: 'ops',
+  support: 'support',
+  member: 'member',
+} as const;
+
+export interface AdminMemberCreate {
+  /**
+     * @minLength 3
+     * @maxLength 30
+     * @pattern ^[A-Za-z0-9_.-]+$
+     */
+  username: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  password: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  phone?: string | null;
+  tier: AdminMemberCreateTier;
+  role: AdminMemberCreateRole;
 }
 
 /**

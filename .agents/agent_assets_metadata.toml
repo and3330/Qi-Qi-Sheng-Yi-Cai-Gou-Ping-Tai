@@ -42,3 +42,17 @@ mtime_ms = 1788256810854
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:4e42c516-c8d8-42d7-9918-721c7afd7f7e/22e17f05-8d3d-44ed-ab46-657d77f87a8f/58fb6fa9-7911-4551-9d7a-4653e9bcf726"
 storage_version_token = "1788256811705841"
 content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "OByV_eV1_PTTWIa54Y2Em"
+uri = "file://.local/outputs/---------ERP--------------.pptx"
+type = "slides"
+title = "七期生醫商城後台與 ERP 完整操作簡報（會員建帳更新版）"
+description = "82 頁可編輯 PPTX；會員管理頁已補上各身分註冊方式、後台建帳、帳號修改與密碼重設說明。功能頁截圖仍維持待置換標示。"
+logical_id = "4644fbe7-7c8a-4270-a193-2d5f8270b1b0"
+content_hash = "sha256:563626e49bfce0206a3a3db3c885a1caff0d70b5b77e5ea7d414db0248cfae90"
+size = 12555574
+mtime_ms = 1788258731762
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:4e42c516-c8d8-42d7-9918-721c7afd7f7e/4644fbe7-7c8a-4270-a193-2d5f8270b1b0/e0d102c6-7df6-4d51-b7e0-2d1452600e85"
+storage_version_token = "1788258733186756"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
