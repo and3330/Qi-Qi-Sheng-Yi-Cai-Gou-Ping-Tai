@@ -22,3 +22,4 @@ export * from "./erp";
 export * from "./erpInventory";
 export * from "./memberLinks";
 export * from "./erpAccounting";
+export * from "./socialMarketing";

@@ -23,29 +23,32 @@ tags:
   - name: erp
   - name: erp-accounting
   - name: erp-reports
+  - name: social
 paths:
   /portal/summary:
     get:
       operationId: getPortalSummary
-      tags: [portal]
+      tags:
+        - portal
       summary: 機構後台總覽（限醫院/診所會員）
       responses:
-        "200":
+        '200':
           description: Portal summary
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PortalSummary"
-        "403":
+                $ref: '#/components/schemas/PortalSummary'
+        '403':
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /portal/orders:
     get:
       operationId: listPortalOrders
-      tags: [portal]
+      tags:
+        - portal
       summary: 機構訂單總覽（已綁定院所者含同院所所有訂單）
       parameters:
         - name: status
@@ -53,1595 +56,1767 @@ paths:
           required: false
           schema:
             type: string
-            enum: [pending, paid, shipped, completed, cancelled, returned]
+            enum:
+              - pending
+              - paid
+              - shipped
+              - completed
+              - cancelled
+              - returned
       responses:
-        "200":
+        '200':
           description: Orders
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PortalOrder"
-        "403":
+                  $ref: '#/components/schemas/PortalOrder'
+        '403':
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /portal/reports:
     get:
       operationId: getPortalReports
-      tags: [portal]
+      tags:
+        - portal
       summary: 機構採購統計（近 6 個月金額與常購品項）
       responses:
-        "200":
+        '200':
           description: Purchase reports
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PortalReports"
-        "403":
+                $ref: '#/components/schemas/PortalReports'
+        '403':
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/stats:
     get:
       operationId: getAdminStats
-      tags: [admin]
+      tags:
+        - admin
       summary: 後台儀表板統計數字（限管理員）
       responses:
-        "200":
+        '200':
           description: Admin dashboard stats
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminStats"
-        "401":
+                $ref: '#/components/schemas/AdminStats'
+        '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "403":
+                $ref: '#/components/schemas/ErrorMessage'
+        '403':
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/members:
     get:
       operationId: listAdminMembers
-      tags: [admin]
+      tags:
+        - admin
       summary: 會員列表（限管理員）
       parameters:
         - name: search
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
           description: 搜尋帳號 / 姓名 / Email / 電話
         - name: tier
           in: query
           required: false
           schema:
             type: string
-            enum: [hospital, clinic, consumer]
+            enum:
+              - hospital
+              - clinic
+              - consumer
       responses:
-        "200":
+        '200':
           description: Members
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminMember"
-        "403":
+                  $ref: '#/components/schemas/AdminMember'
+        '403':
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/members/{id}:
     get:
       operationId: getAdminMember
-      tags: [admin]
+      tags:
+        - admin
       summary: 會員詳情（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Member
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminMember"
-        "404":
+                $ref: '#/components/schemas/AdminMember'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
     patch:
       operationId: updateAdminMember
-      tags: [admin]
+      tags:
+        - admin
       summary: 編輯會員資料 / 等級 / 角色 / 啟用狀態（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminMemberUpdate"
+              $ref: '#/components/schemas/AdminMemberUpdate'
       responses:
-        "200":
+        '200':
           description: Updated member
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminMember"
-        "400":
+                $ref: '#/components/schemas/AdminMember'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/products:
     get:
       operationId: listAdminProducts
-      tags: [admin]
+      tags:
+        - admin
       summary: 商品列表（限管理員，含下架與成本價）
       parameters:
         - name: search
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: category
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: status
           in: query
           schema:
             type: string
-            enum: [all, active, inactive]
+            enum:
+              - all
+              - active
+              - inactive
       responses:
-        "200":
+        '200':
           description: Products
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminProduct"
+                  $ref: '#/components/schemas/AdminProduct'
     post:
       operationId: createAdminProduct
-      tags: [admin]
+      tags:
+        - admin
       summary: 新增商品（限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminProductInput"
+              $ref: '#/components/schemas/AdminProductInput'
       responses:
-        "201":
+        '201':
           description: Created product
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminProduct"
-        "400":
+                $ref: '#/components/schemas/AdminProduct'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/products/{id}:
     patch:
       operationId: updateAdminProduct
-      tags: [admin]
+      tags:
+        - admin
       summary: 編輯商品 / 上下架（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminProductUpdate"
+              $ref: '#/components/schemas/AdminProductUpdate'
       responses:
-        "200":
+        '200':
           description: Updated product
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminProduct"
-        "400":
+                $ref: '#/components/schemas/AdminProduct'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/inventory/adjust:
     post:
       operationId: adjustAdminStock
-      tags: [admin]
+      tags:
+        - admin
       summary: 手動調整庫存（盤點 / 報廢等，限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/StockAdjustInput"
+              $ref: '#/components/schemas/StockAdjustInput'
       responses:
-        "201":
+        '201':
           description: Created stock movement
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminStockMovement"
-        "400":
+                $ref: '#/components/schemas/AdminStockMovement'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/stock-movements:
     get:
       operationId: listAdminStockMovements
-      tags: [admin]
+      tags:
+        - admin
       summary: 庫存異動紀錄（限管理員）
       parameters:
         - name: productId
           in: query
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: type
           in: query
           schema:
             type: string
-            enum: [purchase, sale, adjust]
+            enum:
+              - purchase
+              - sale
+              - adjust
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
       responses:
-        "200":
+        '200':
           description: Stock movements
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminStockMovement"
+                  $ref: '#/components/schemas/AdminStockMovement'
   /admin/suppliers:
     get:
       operationId: listAdminSuppliers
-      tags: [admin]
+      tags:
+        - admin
       summary: 供應商列表（限管理員）
       parameters:
         - name: search
           in: query
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: Suppliers
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Supplier"
+                  $ref: '#/components/schemas/Supplier'
     post:
       operationId: createAdminSupplier
-      tags: [admin]
+      tags:
+        - admin
       summary: 新增供應商（限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SupplierInput"
+              $ref: '#/components/schemas/SupplierInput'
       responses:
-        "201":
+        '201':
           description: Created supplier
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Supplier"
-        "400":
+                $ref: '#/components/schemas/Supplier'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/suppliers/{id}:
     patch:
       operationId: updateAdminSupplier
-      tags: [admin]
+      tags:
+        - admin
       summary: 編輯供應商（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SupplierUpdate"
+              $ref: '#/components/schemas/SupplierUpdate'
       responses:
-        "200":
+        '200':
           description: Updated supplier
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Supplier"
-        "404":
+                $ref: '#/components/schemas/Supplier'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/purchase-orders:
     get:
       operationId: listAdminPurchaseOrders
-      tags: [admin]
+      tags:
+        - admin
       summary: 採購單列表（限管理員）
       parameters:
         - name: status
           in: query
           schema:
             type: string
-            enum: [draft, ordered, received, cancelled]
+            enum:
+              - draft
+              - ordered
+              - received
+              - cancelled
       responses:
-        "200":
+        '200':
           description: Purchase orders
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminPurchaseOrder"
+                  $ref: '#/components/schemas/AdminPurchaseOrder'
     post:
       operationId: createAdminPurchaseOrder
-      tags: [admin]
+      tags:
+        - admin
       summary: 建立採購單（限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PurchaseOrderInput"
+              $ref: '#/components/schemas/PurchaseOrderInput'
       responses:
-        "201":
+        '201':
           description: Created purchase order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
-        "400":
+                $ref: '#/components/schemas/AdminPurchaseOrder'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/purchase-orders/{id}:
     get:
       operationId: getAdminPurchaseOrder
-      tags: [admin]
+      tags:
+        - admin
       summary: 採購單詳情（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Purchase order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
-        "404":
+                $ref: '#/components/schemas/AdminPurchaseOrder'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/purchase-orders/{id}/status:
     patch:
       operationId: updateAdminPurchaseOrderStatus
-      tags: [admin]
+      tags:
+        - admin
       summary: 採購單狀態流轉（草稿→已下單、取消，限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PurchaseOrderStatusUpdate"
+              $ref: '#/components/schemas/PurchaseOrderStatusUpdate'
       responses:
-        "200":
+        '200':
           description: Updated purchase order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
-        "400":
+                $ref: '#/components/schemas/AdminPurchaseOrder'
+        '400':
           description: Invalid transition
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/purchase-orders/{id}/receive:
     post:
       operationId: receiveAdminPurchaseOrder
-      tags: [admin]
+      tags:
+        - admin
       summary: 採購單收貨入庫（增加庫存、更新成本、寫入異動紀錄，限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Received purchase order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
-        "400":
+                $ref: '#/components/schemas/AdminPurchaseOrder'
+        '400':
           description: Invalid transition
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/orders:
     get:
       operationId: listAdminOrders
-      tags: [admin]
+      tags:
+        - admin
       summary: 全部訂單列表（限管理員）
       parameters:
         - name: status
           in: query
           schema:
             type: string
-            enum: [pending, paid, shipped, completed, cancelled, returned]
+            enum:
+              - pending
+              - paid
+              - shipped
+              - completed
+              - cancelled
+              - returned
         - name: search
           in: query
-          schema: { type: string }
+          schema:
+            type: string
           description: 搜尋訂單編號 / 會員姓名
       responses:
-        "200":
+        '200':
           description: Orders
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminOrder"
+                  $ref: '#/components/schemas/AdminOrder'
   /admin/orders/{id}:
     get:
       operationId: getAdminOrder
-      tags: [admin]
+      tags:
+        - admin
       summary: 訂單詳情（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminOrder"
-        "404":
+                $ref: '#/components/schemas/AdminOrder'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/orders/{id}/status:
     patch:
       operationId: updateAdminOrderStatus
-      tags: [admin]
+      tags:
+        - admin
       summary: 更新訂單狀態（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/OrderStatusUpdate"
+              $ref: '#/components/schemas/OrderStatusUpdate'
       responses:
-        "200":
+        '200':
           description: Updated order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminOrder"
-        "400":
+                $ref: '#/components/schemas/AdminOrder'
+        '400':
           description: Invalid transition
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/reports/inventory:
     get:
       operationId: getAdminInventoryReport
-      tags: [admin]
+      tags:
+        - admin
       summary: 期間進銷存彙總報表（限管理員）
       parameters:
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
       responses:
-        "200":
+        '200':
           description: Inventory report
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InventoryReport"
+                $ref: '#/components/schemas/InventoryReport'
   /healthz:
     get:
       operationId: healthCheck
-      tags: [health]
+      tags:
+        - health
       summary: Health check
       responses:
-        "200":
+        '200':
           description: Healthy
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                $ref: '#/components/schemas/HealthStatus'
   /auth/register:
     post:
       operationId: register
-      tags: [me]
+      tags:
+        - me
       summary: Register a new member account (starts session)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/RegisterInput"
+              $ref: '#/components/schemas/RegisterInput'
       responses:
-        "201":
+        '201':
           description: Registered member
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Member"
-        "400":
+                $ref: '#/components/schemas/Member'
+        '400':
           description: Invalid input or username taken
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /auth/login:
     post:
       operationId: login
-      tags: [me]
+      tags:
+        - me
       summary: Log in with username and password (starts session)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LoginInput"
+              $ref: '#/components/schemas/LoginInput'
       responses:
-        "200":
+        '200':
           description: Logged-in member
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Member"
-        "401":
+                $ref: '#/components/schemas/Member'
+        '401':
           description: Wrong username or password
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /auth/logout:
     post:
       operationId: logout
-      tags: [me]
+      tags:
+        - me
       summary: Log out (destroys session)
       responses:
-        "204":
+        '204':
           description: Logged out
   /me:
     get:
       operationId: getMe
-      tags: [me]
+      tags:
+        - me
       summary: Get current member profile
       responses:
-        "200":
+        '200':
           description: Member profile
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Member"
-        "401":
+                $ref: '#/components/schemas/Member'
+        '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
     patch:
       operationId: updateMe
-      tags: [me]
+      tags:
+        - me
       summary: Update current member profile
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/MemberUpdate"
+              $ref: '#/components/schemas/MemberUpdate'
       responses:
-        "200":
+        '200':
           description: Updated member
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Member"
+                $ref: '#/components/schemas/Member'
   /products:
     get:
       operationId: listProducts
-      tags: [products]
+      tags:
+        - products
       summary: List products
       parameters:
         - name: category
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: search
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: sort
           in: query
           schema:
             type: string
-            enum: [recommended, priceAsc, priceDesc, newest]
+            enum:
+              - recommended
+              - priceAsc
+              - priceDesc
+              - newest
       responses:
-        "200":
+        '200':
           description: Products
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Product"
+                  $ref: '#/components/schemas/Product'
   /products/{id}:
     get:
       operationId: getProduct
-      tags: [products]
+      tags:
+        - products
       summary: Get product detail
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Product
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Product"
-        "404":
+                $ref: '#/components/schemas/Product'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /cart:
     get:
       operationId: getCart
-      tags: [cart]
+      tags:
+        - cart
       summary: Get current member cart
       responses:
-        "200":
+        '200':
           description: Cart items
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/CartItem"
+                  $ref: '#/components/schemas/CartItem'
     post:
       operationId: addCartItem
-      tags: [cart]
+      tags:
+        - cart
       summary: Add item to cart (upserts quantity)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CartItemInput"
+              $ref: '#/components/schemas/CartItemInput'
       responses:
-        "200":
+        '200':
           description: Updated cart item
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CartItem"
+                $ref: '#/components/schemas/CartItem'
     delete:
       operationId: clearCart
-      tags: [cart]
+      tags:
+        - cart
       summary: Clear cart
       responses:
-        "204":
+        '204':
           description: Cleared
   /cart/{id}:
     patch:
       operationId: updateCartItem
-      tags: [cart]
+      tags:
+        - cart
       summary: Update cart item quantity
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CartItemUpdate"
+              $ref: '#/components/schemas/CartItemUpdate'
       responses:
-        "200":
+        '200':
           description: Updated cart item
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CartItem"
+                $ref: '#/components/schemas/CartItem'
     delete:
       operationId: removeCartItem
-      tags: [cart]
+      tags:
+        - cart
       summary: Remove cart item
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Removed
   /orders:
     get:
       operationId: listOrders
-      tags: [orders]
+      tags:
+        - orders
       summary: List current member orders
       responses:
-        "200":
+        '200':
           description: Orders
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Order"
+                  $ref: '#/components/schemas/Order'
     post:
       operationId: createOrder
-      tags: [orders]
+      tags:
+        - orders
       summary: Create order from explicit items (checkout)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/OrderInput"
+              $ref: '#/components/schemas/OrderInput'
       responses:
-        "201":
+        '201':
           description: Created order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Order"
-        "400":
+                $ref: '#/components/schemas/Order'
+        '400':
           description: Invalid order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /orders/{id}:
     get:
       operationId: getOrder
-      tags: [orders]
+      tags:
+        - orders
       summary: Get order detail
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Order
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Order"
-        "404":
+                $ref: '#/components/schemas/Order'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /institutions:
     get:
       operationId: listInstitutions
-      tags: [institutions]
+      tags:
+        - institutions
       summary: List partner institutions (hospitals / clinics / pharmacies)
       parameters:
         - name: type
           in: query
           schema:
             type: string
-            enum: [hospital, clinic, pharmacy]
+            enum:
+              - hospital
+              - clinic
+              - pharmacy
         - name: city
           in: query
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: Institutions
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Institution"
+                  $ref: '#/components/schemas/Institution'
   /articles:
     get:
       operationId: listArticles
-      tags: [knowledge]
+      tags:
+        - knowledge
       summary: List knowledge articles and FAQs
       parameters:
         - name: kind
           in: query
           schema:
             type: string
-            enum: [article, faq]
+            enum:
+              - article
+              - faq
         - name: category
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: search
           in: query
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: Articles
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Article"
+                  $ref: '#/components/schemas/Article'
   /articles/{id}:
     get:
       operationId: getArticle
-      tags: [knowledge]
+      tags:
+        - knowledge
       summary: Get article detail
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Article
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Article"
-        "404":
+                $ref: '#/components/schemas/Article'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /announcements:
     get:
       operationId: listAnnouncements
-      tags: [announcements]
+      tags:
+        - announcements
       summary: List platform announcements (最新消息)
       responses:
-        "200":
+        '200':
           description: Announcements
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Announcement"
+                  $ref: '#/components/schemas/Announcement'
   /favorites:
     get:
       operationId: listFavorites
-      tags: [favorites]
+      tags:
+        - favorites
       summary: List favorite products of current member
       responses:
-        "200":
+        '200':
           description: Favorite products
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Product"
+                  $ref: '#/components/schemas/Product'
     post:
       operationId: addFavorite
-      tags: [favorites]
+      tags:
+        - favorites
       summary: Add a product to favorites
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/FavoriteInput"
+              $ref: '#/components/schemas/FavoriteInput'
       responses:
-        "204":
+        '204':
           description: Added
   /favorites/{productId}:
     delete:
       operationId: removeFavorite
-      tags: [favorites]
+      tags:
+        - favorites
       summary: Remove a product from favorites
       parameters:
         - name: productId
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Removed
   /linktree/links:
     get:
       operationId: listMyLinktreeLinks
-      tags: [linktree]
+      tags:
+        - linktree
       summary: List my linktree links
       responses:
-        "200":
+        '200':
           description: My links
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/MemberLink"
+                  $ref: '#/components/schemas/MemberLink'
     post:
       operationId: createMyLinktreeLink
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Create a linktree link
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LinktreeLinkInput"
+              $ref: '#/components/schemas/LinktreeLinkInput'
       responses:
-        "200":
+        '200':
           description: Created link
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MemberLink"
+                $ref: '#/components/schemas/MemberLink'
   /linktree/links/{id}:
     patch:
       operationId: updateMyLinktreeLink
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Update my linktree link
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LinktreeLinkUpdate"
+              $ref: '#/components/schemas/LinktreeLinkUpdate'
       responses:
-        "200":
+        '200':
           description: Updated link
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MemberLink"
-        "404":
+                $ref: '#/components/schemas/MemberLink'
+        '404':
           description: Not found
     delete:
       operationId: deleteMyLinktreeLink
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Delete my linktree link
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Deleted
   /linktree/settings:
     get:
       operationId: getMyLinktreeSettings
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Get my linktree appearance settings
       responses:
-        "200":
+        '200':
           description: Settings (defaults when not yet saved)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LinktreeSettings"
+                $ref: '#/components/schemas/LinktreeSettings'
     put:
       operationId: updateMyLinktreeSettings
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Update my linktree appearance settings
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LinktreeSettingsInput"
+              $ref: '#/components/schemas/LinktreeSettingsInput'
       responses:
-        "200":
+        '200':
           description: Saved settings
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LinktreeSettings"
+                $ref: '#/components/schemas/LinktreeSettings'
   /linktree/public/{memberId}:
     get:
       operationId: getPublicLinktree
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Public linktree page data (no auth)
       parameters:
         - name: memberId
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Public page data
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PublicLinktree"
-        "404":
+                $ref: '#/components/schemas/PublicLinktree'
+        '404':
           description: Member not found or inactive
   /admin/linktree:
     get:
       operationId: listAdminLinktree
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Admin overview of member linktree pages
       parameters:
         - name: search
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: Overview rows
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminLinktreeMember"
+                  $ref: '#/components/schemas/AdminLinktreeMember'
   /admin/linktree/links/{id}:
     patch:
       operationId: moderateLinktreeLink
-      tags: [linktree]
+      tags:
+        - linktree
       summary: Enable/disable a member's link (moderation)
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LinktreeLinkModerationInput"
+              $ref: '#/components/schemas/LinktreeLinkModerationInput'
       responses:
-        "200":
+        '200':
           description: Updated link
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MemberLink"
-        "404":
+                $ref: '#/components/schemas/MemberLink'
+        '404':
           description: Not found
   /home/summary:
     get:
       operationId: getHomeSummary
-      tags: [home]
+      tags:
+        - home
       summary: Home page aggregate (hot products, announcements, latest articles)
       responses:
-        "200":
+        '200':
           description: Home summary
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/HomeSummary"
+                $ref: '#/components/schemas/HomeSummary'
   /wallet:
     get:
       operationId: getWallet
-      tags: [me]
+      tags:
+        - me
       summary: 會員錢包餘額與交易明細
       responses:
-        "200":
+        '200':
           description: Wallet
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Wallet"
-        "401":
+                $ref: '#/components/schemas/Wallet'
+        '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/wallets/stats:
     get:
       operationId: getAdminWalletStats
-      tags: [admin]
+      tags:
+        - admin
       summary: 會員錢包統計總覽（限管理員）
       parameters:
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
       responses:
-        "200":
+        '200':
           description: Wallet stats
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WalletStats"
+                $ref: '#/components/schemas/WalletStats'
   /admin/wallets/{memberId}:
     get:
       operationId: getAdminMemberWallet
-      tags: [admin]
+      tags:
+        - admin
       summary: 單一會員錢包明細（限管理員）
       parameters:
         - name: memberId
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Member wallet
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminMemberWallet"
-        "404":
+                $ref: '#/components/schemas/AdminMemberWallet'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/wallets/{memberId}/adjust:
     post:
       operationId: adjustAdminMemberWallet
-      tags: [admin]
+      tags:
+        - admin
       summary: 管理員儲值／調整會員錢包（限管理員）
       parameters:
         - name: memberId
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WalletAdjustInput"
+              $ref: '#/components/schemas/WalletAdjustInput'
       responses:
-        "200":
+        '200':
           description: Updated member wallet
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminMemberWallet"
-        "400":
+                $ref: '#/components/schemas/AdminMemberWallet'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /portal/wallet:
     get:
       operationId: getPortalWallet
-      tags: [portal]
+      tags:
+        - portal
       summary: 機構後台錢包（已審核者為機構共用錢包，否則為個人錢包）
       responses:
-        "200":
+        '200':
           description: Portal wallet
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PortalWallet"
-        "401":
+                $ref: '#/components/schemas/PortalWallet'
+        '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "403":
+                $ref: '#/components/schemas/ErrorMessage'
+        '403':
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /portal/commissions:
     get:
       operationId: getPortalCommissions
-      tags: [portal]
+      tags:
+        - portal
       summary: 機構佣金對帳明細（限已審核綁定之機構會員）
       responses:
-        "200":
+        '200':
           description: Portal commissions
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PortalCommissions"
-        "401":
+                $ref: '#/components/schemas/PortalCommissions'
+        '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "403":
+                $ref: '#/components/schemas/ErrorMessage'
+        '403':
           description: Forbidden
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/commission-report:
     get:
       operationId: getAdminCommissionReport
-      tags: [admin]
+      tags:
+        - admin
       summary: 佣金報表（縣市／醫院／科室彙總＋明細，限管理員）
       parameters:
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: institutionId
           in: query
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Commission report
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CommissionReport"
+                $ref: '#/components/schemas/CommissionReport'
   /admin/institution-wallets:
     get:
       operationId: listAdminInstitutionWallets
-      tags: [admin]
+      tags:
+        - admin
       summary: 機構錢包總覽（限管理員）
       responses:
-        "200":
+        '200':
           description: Institution wallets
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/InstitutionWalletRow"
+                  $ref: '#/components/schemas/InstitutionWalletRow'
   /admin/institution-wallets/{institutionId}:
     get:
       operationId: getAdminInstitutionWallet
-      tags: [admin]
+      tags:
+        - admin
       summary: 單一機構錢包明細（限管理員）
       parameters:
         - name: institutionId
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Institution wallet
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InstitutionWallet"
-        "404":
+                $ref: '#/components/schemas/InstitutionWallet'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/institution-wallets/{institutionId}/adjust:
     post:
       operationId: adjustInstitutionWallet
-      tags: [admin]
+      tags:
+        - admin
       summary: 管理員儲值／調整機構錢包（限管理員）
       parameters:
         - name: institutionId
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/WalletAdjustInput"
+              $ref: '#/components/schemas/WalletAdjustInput'
       responses:
-        "200":
+        '200':
           description: Updated institution wallet
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/InstitutionWallet"
-        "400":
+                $ref: '#/components/schemas/InstitutionWallet'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/articles:
     get:
       operationId: listAdminArticles
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：文章／FAQ 列表（限管理員）
       parameters:
         - name: status
           in: query
           schema:
             type: string
-            enum: [draft, review, published, archived]
+            enum:
+              - draft
+              - review
+              - published
+              - archived
       responses:
-        "200":
+        '200':
           description: Articles
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminArticle"
+                  $ref: '#/components/schemas/AdminArticle'
     post:
       operationId: createAdminArticle
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：建立文章／FAQ（限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminArticleInput"
+              $ref: '#/components/schemas/AdminArticleInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticle"
-        "400":
+                $ref: '#/components/schemas/AdminArticle'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/articles/{id}:
     patch:
       operationId: updateAdminArticle
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：編輯／審核／上下架文章（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminArticleUpdate"
+              $ref: '#/components/schemas/AdminArticleUpdate'
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminArticle"
-        "404":
+                $ref: '#/components/schemas/AdminArticle'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
     delete:
       operationId: deleteAdminArticle
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：刪除文章（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Deleted
-        "404":
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/announcements:
     get:
       operationId: listAdminAnnouncements
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：公告列表（限管理員）
       parameters:
         - name: status
           in: query
           schema:
             type: string
-            enum: [draft, review, published, archived]
+            enum:
+              - draft
+              - review
+              - published
+              - archived
       responses:
-        "200":
+        '200':
           description: Announcements
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminAnnouncement"
+                  $ref: '#/components/schemas/AdminAnnouncement'
     post:
       operationId: createAdminAnnouncement
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：建立公告（限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminAnnouncementInput"
+              $ref: '#/components/schemas/AdminAnnouncementInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminAnnouncement"
-        "400":
+                $ref: '#/components/schemas/AdminAnnouncement'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/announcements/{id}:
     patch:
       operationId: updateAdminAnnouncement
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：編輯／審核／上下架公告（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminAnnouncementUpdate"
+              $ref: '#/components/schemas/AdminAnnouncementUpdate'
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminAnnouncement"
-        "404":
+                $ref: '#/components/schemas/AdminAnnouncement'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
     delete:
       operationId: deleteAdminAnnouncement
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：刪除公告（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Deleted
-        "404":
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/content-revisions:
     get:
       operationId: listAdminContentRevisions
-      tags: [admin]
+      tags:
+        - admin
       summary: 內容管理：版本紀錄（限管理員）
       parameters:
         - name: entityKind
@@ -1649,23 +1824,27 @@ paths:
           required: true
           schema:
             type: string
-            enum: [article, announcement]
+            enum:
+              - article
+              - announcement
         - name: entityId
           in: query
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Revisions
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ContentRevision"
+                  $ref: '#/components/schemas/ContentRevision'
   /storage/uploads/request-url:
     post:
-      tags: [admin]
+      tags:
+        - admin
       operationId: requestUploadUrl
       summary: 取得檔案上傳網址（限營運人員）
       requestBody:
@@ -1673,29 +1852,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UploadUrlRequest"
+              $ref: '#/components/schemas/UploadUrlRequest'
       responses:
-        "200":
+        '200':
           description: Presigned upload URL generated.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UploadUrlResponse"
-        "400":
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
           description: Missing or invalid required fields.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "500":
+                $ref: '#/components/schemas/ErrorMessage'
+        '500':
           description: Failed to generate upload URL.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /storage/objects/{objectPath}:
     get:
-      tags: [catalog]
+      tags:
+        - catalog
       operationId: getStorageObject
       summary: 取得已上傳物件（出貨照片等）
       parameters:
@@ -1705,22 +1885,23 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: Object content streamed with correct Content-Type.
           content:
-            "*/*":
+            '*/*':
               schema:
                 type: string
                 format: binary
-        "404":
+        '404':
           description: Object not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /storage/public-objects/{filePath}:
     get:
-      tags: [catalog]
+      tags:
+        - catalog
       operationId: getPublicObject
       summary: 取得公開資產
       parameters:
@@ -1730,368 +1911,416 @@ paths:
           schema:
             type: string
       responses:
-        "200":
+        '200':
           description: Object content streamed with correct Content-Type.
           content:
-            "*/*":
+            '*/*':
               schema:
                 type: string
                 format: binary
-        "404":
+        '404':
           description: File not found.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/orders/{id}/shipment-photos:
     post:
       operationId: updateShipmentPhotos
-      tags: [admin]
+      tags:
+        - admin
       summary: 出貨照片存證（限營運人員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ShipmentPhotosInput"
+              $ref: '#/components/schemas/ShipmentPhotosInput'
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ShipmentPhotosResult"
-        "404":
+                $ref: '#/components/schemas/ShipmentPhotosResult'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/products/{id}/variants:
     get:
       operationId: listAdminProductVariants
-      tags: [admin]
+      tags:
+        - admin
       summary: 商品規格列表（後台人員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Variants
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminProductVariant"
+                  $ref: '#/components/schemas/AdminProductVariant'
     post:
       operationId: createAdminProductVariant
-      tags: [admin]
+      tags:
+        - admin
       summary: 新增商品規格（限營運人員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminProductVariantInput"
+              $ref: '#/components/schemas/AdminProductVariantInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminProductVariant"
-        "404":
+                $ref: '#/components/schemas/AdminProductVariant'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/variants/{id}:
     patch:
       operationId: updateAdminProductVariant
-      tags: [admin]
+      tags:
+        - admin
       summary: 編輯商品規格（限營運人員；庫存請走庫存調整）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminProductVariantUpdate"
+              $ref: '#/components/schemas/AdminProductVariantUpdate'
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminProductVariant"
-        "404":
+                $ref: '#/components/schemas/AdminProductVariant'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
     delete:
       operationId: deleteAdminProductVariant
-      tags: [admin]
+      tags:
+        - admin
       summary: 刪除商品規格（限營運人員；已有訂單紀錄者不可刪除）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Deleted
-        "400":
+        '400':
           description: In use
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
-        "404":
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/profit-rules:
     get:
       operationId: listAdminProfitRules
-      tags: [admin]
+      tags:
+        - admin
       summary: 分潤規則列表（限管理員）
       responses:
-        "200":
+        '200':
           description: Rules
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ProfitRule"
+                  $ref: '#/components/schemas/ProfitRule'
     post:
       operationId: createAdminProfitRule
-      tags: [admin]
+      tags:
+        - admin
       summary: 新增分潤規則（限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProfitRuleInput"
+              $ref: '#/components/schemas/ProfitRuleInput'
       responses:
-        "201":
+        '201':
           description: Created rule
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProfitRule"
-        "400":
+                $ref: '#/components/schemas/ProfitRule'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/profit-rules/{id}:
     patch:
       operationId: updateAdminProfitRule
-      tags: [admin]
+      tags:
+        - admin
       summary: 更新分潤規則（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ProfitRuleInput"
+              $ref: '#/components/schemas/ProfitRuleInput'
       responses:
-        "200":
+        '200':
           description: Updated rule
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProfitRule"
-        "404":
+                $ref: '#/components/schemas/ProfitRule'
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
     delete:
       operationId: deleteAdminProfitRule
-      tags: [admin]
+      tags:
+        - admin
       summary: 刪除分潤規則（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Deleted
-        "404":
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/profit-report:
     get:
       operationId: getAdminProfitReport
-      tags: [admin]
+      tags:
+        - admin
       summary: 利潤分享報表（期間／會員彙總，限管理員）
       parameters:
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: memberId
           in: query
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Profit report
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProfitReport"
+                $ref: '#/components/schemas/ProfitReport'
   /admin/expenses:
     get:
       operationId: listAdminExpenses
-      tags: [admin]
+      tags:
+        - admin
       summary: 支出紀錄列表（限管理員）
       parameters:
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: category
           in: query
           schema:
             type: string
-            enum: [purchase, operating, logistics, marketing, other]
+            enum:
+              - purchase
+              - operating
+              - logistics
+              - marketing
+              - other
       responses:
-        "200":
+        '200':
           description: Expenses
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Expense"
+                  $ref: '#/components/schemas/Expense'
     post:
       operationId: createAdminExpense
-      tags: [admin]
+      tags:
+        - admin
       summary: 登錄支出（限管理員）
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ExpenseInput"
+              $ref: '#/components/schemas/ExpenseInput'
       responses:
-        "201":
+        '201':
           description: Created expense
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Expense"
-        "400":
+                $ref: '#/components/schemas/Expense'
+        '400':
           description: Invalid input
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/expenses/{id}:
     delete:
       operationId: deleteAdminExpense
-      tags: [admin]
+      tags:
+        - admin
       summary: 刪除支出紀錄（限管理員）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: Deleted
-        "404":
+        '404':
           description: Not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorMessage"
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/finance/ledger:
     get:
       operationId: getAdminFinanceLedger
-      tags: [admin]
+      tags:
+        - admin
       summary: 收支流水（訂單收入自動納入，限管理員）
       parameters:
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: kind
           in: query
           schema:
             type: string
-            enum: [income, expense]
+            enum:
+              - income
+              - expense
       responses:
-        "200":
+        '200':
           description: Ledger
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Ledger"
+                $ref: '#/components/schemas/Ledger'
   /admin/finance/pnl:
     get:
       operationId: getAdminPnlReport
-      tags: [admin]
+      tags:
+        - admin
       summary: 期間損益報表（限管理員）
       parameters:
         - name: from
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
         - name: to
           in: query
-          schema: { type: string, format: date }
+          schema:
+            type: string
+            format: date
       responses:
-        "200":
+        '200':
           description: Profit and loss report
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PnlReport"
+                $ref: '#/components/schemas/PnlReport'
   /admin/assistant/conversations:
     post:
-      tags: [assistant]
+      tags:
+        - assistant
       operationId: createAssistantConversation
       summary: 建立 AI 行政助理對話
       requestBody:
@@ -2099,318 +2328,350 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateConversationInput"
+              $ref: '#/components/schemas/CreateConversationInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AssistantConversation"
+                $ref: '#/components/schemas/AssistantConversation'
     get:
-      tags: [assistant]
+      tags:
+        - assistant
       operationId: getAssistantConversations
       summary: AI 行政助理對話列表
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AssistantConversation"
+                  $ref: '#/components/schemas/AssistantConversation'
   /admin/assistant/conversations/{id}/messages:
     get:
-      tags: [assistant]
+      tags:
+        - assistant
       operationId: getAssistantMessages
       summary: 對話歷史訊息
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ChatMessage"
+                  $ref: '#/components/schemas/ChatMessage'
     post:
-      tags: [assistant]
+      tags:
+        - assistant
       operationId: sendAssistantMessage
       summary: 送出訊息給 AI 行政助理
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ChatMessageInput"
+              $ref: '#/components/schemas/ChatMessageInput'
       responses:
-        "200":
+        '200':
           description: AI 回覆
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ChatMessage"
+                $ref: '#/components/schemas/ChatMessage'
   /admin/assistant/conversations/{id}/actions/{actionId}/confirm:
     post:
-      tags: [assistant]
+      tags:
+        - assistant
       operationId: confirmAssistantAction
       summary: 管理者明確確認待執行的 AI 操作
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: actionId
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: Confirmed
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AssistantActionConfirmation"
-        "409":
+                $ref: '#/components/schemas/AssistantActionConfirmation'
+        '409':
           description: Pending action is invalid, already confirmed, or expired
   /admin/ai-index/rebuild:
     post:
-      tags: [assistant]
+      tags:
+        - assistant
       operationId: rebuildAiIndex
       summary: 全量重建 AI 知識庫索引（僅系統管理員）
       responses:
-        "200":
+        '200':
           description: 重建結果
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AiIndexRebuildResult"
+                $ref: '#/components/schemas/AiIndexRebuildResult'
   /support/conversations:
     post:
-      tags: [support]
+      tags:
+        - support
       operationId: createSupportConversation
       summary: 建立客服對話
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SupportConversation"
+                $ref: '#/components/schemas/SupportConversation'
     get:
-      tags: [support]
+      tags:
+        - support
       operationId: getSupportConversations
       summary: 我的客服對話列表
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/SupportConversation"
+                  $ref: '#/components/schemas/SupportConversation'
   /support/conversations/{id}/messages:
     get:
-      tags: [support]
+      tags:
+        - support
       operationId: getSupportMessages
       summary: 客服對話訊息
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SupportThread"
+                $ref: '#/components/schemas/SupportThread'
     post:
-      tags: [support]
+      tags:
+        - support
       operationId: sendSupportMessage
       summary: 送出客服訊息
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ChatMessageInput"
+              $ref: '#/components/schemas/ChatMessageInput'
       responses:
-        "200":
+        '200':
           description: AI 或系統回覆
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SupportReply"
+                $ref: '#/components/schemas/SupportReply'
   /admin/support/conversations:
     get:
-      tags: [support]
+      tags:
+        - support
       operationId: getAdminSupportConversations
       summary: 客服對話總覽（後台）
       parameters:
         - name: needsHuman
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminSupportConversation"
+                  $ref: '#/components/schemas/AdminSupportConversation'
   /admin/support/conversations/{id}/messages:
     get:
-      tags: [support]
+      tags:
+        - support
       operationId: getAdminSupportMessages
       summary: 檢視客服對話（後台）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SupportThread"
+                $ref: '#/components/schemas/SupportThread'
   /admin/support/conversations/{id}/reply:
     post:
-      tags: [support]
+      tags:
+        - support
       operationId: replySupportConversation
       summary: 真人客服回覆
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ChatMessageInput"
+              $ref: '#/components/schemas/ChatMessageInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ChatMessage"
+                $ref: '#/components/schemas/ChatMessage'
   /admin/support/conversations/{id}/close:
     post:
-      tags: [support]
+      tags:
+        - support
       operationId: closeSupportConversation
       summary: 結案客服對話
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                required: [ok]
+                  ok:
+                    type: boolean
+                required:
+                  - ok
   /member/points/transactions:
     get:
-      tags: [members]
+      tags:
+        - members
       operationId: getPointTransactions
       summary: 我的點數異動紀錄
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/PointTransaction"
+                  $ref: '#/components/schemas/PointTransaction'
   /admin/institutions:
     get:
-      tags: [admin]
+      tags:
+        - admin
       operationId: listAdminInstitutions
       summary: 機構主檔列表（後台）
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Institution"
+                  $ref: '#/components/schemas/Institution'
   /admin/institutions/{id}:
     patch:
-      tags: [admin]
+      tags:
+        - admin
       operationId: updateAdminInstitution
       summary: 更新機構分級
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AdminInstitutionUpdate"
+              $ref: '#/components/schemas/AdminInstitutionUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Institution"
+                $ref: '#/components/schemas/Institution'
   /admin/quotations:
     get:
-      tags: [quotations]
+      tags:
+        - quotations
       operationId: listAdminQuotations
       summary: 報價單列表
       parameters:
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Quotation"
+                  $ref: '#/components/schemas/Quotation'
     post:
-      tags: [quotations]
+      tags:
+        - quotations
       operationId: createAdminQuotation
       summary: 建立報價單
       requestBody:
@@ -2418,157 +2679,172 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/QuotationInput"
+              $ref: '#/components/schemas/QuotationInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /admin/quotations/{id}:
     get:
-      tags: [quotations]
+      tags:
+        - quotations
       operationId: getAdminQuotation
       summary: 報價單明細
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /admin/quotations/{id}/status:
     patch:
-      tags: [quotations]
+      tags:
+        - quotations
       operationId: updateAdminQuotationStatus
       summary: 變更報價單狀態（sent / accepted / cancelled）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/QuotationStatusUpdate"
+              $ref: '#/components/schemas/QuotationStatusUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /admin/quotations/{id}/convert:
     post:
-      tags: [quotations]
+      tags:
+        - quotations
       operationId: convertAdminQuotation
       summary: 報價單轉訂單（依報價價格建立訂單並扣庫存）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 轉出的訂單資訊
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /erp/me:
     get:
-      tags: [erp]
+      tags:
+        - erp
       operationId: getErpMe
       summary: 取得目前登入者的 ERP 身分（含有效 ERP 角色）
       responses:
-        "200":
+        '200':
           description: ERP 身分
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpMe"
+                $ref: '#/components/schemas/ErpMe'
   /erp/dashboard:
     get:
-      tags: [erp]
+      tags:
+        - erp
       operationId: getErpDashboard
       summary: ERP 儀表板摘要
       responses:
-        "200":
+        '200':
           description: 摘要
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpDashboard"
+                $ref: '#/components/schemas/ErpDashboard'
   /erp/users:
     get:
-      tags: [erp]
+      tags:
+        - erp
       operationId: listErpUsers
       summary: ERP 使用者清單（平台會員 + ERP 角色）
       parameters:
         - name: q
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: erpOnly
           in: query
           required: false
-          schema: { type: boolean }
+          schema:
+            type: boolean
       responses:
-        "200":
+        '200':
           description: 使用者清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpUser"
+                  $ref: '#/components/schemas/ErpUser'
   /erp/users/{id}:
     patch:
-      tags: [erp]
+      tags:
+        - erp
       operationId: updateErpUser
       summary: 設定會員的 ERP 角色 / 部門
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpUserUpdate"
+              $ref: '#/components/schemas/ErpUserUpdate'
       responses:
-        "200":
+        '200':
           description: 更新後的使用者
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpUser"
+                $ref: '#/components/schemas/ErpUser'
   /erp/departments:
     get:
-      tags: [erp]
+      tags:
+        - erp
       operationId: listErpDepartments
       summary: 部門清單
       responses:
-        "200":
+        '200':
           description: 部門清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpDepartment"
+                  $ref: '#/components/schemas/ErpDepartment'
     post:
-      tags: [erp]
+      tags:
+        - erp
       operationId: createErpDepartment
       summary: 新增部門
       requestBody:
@@ -2576,63 +2852,69 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpDepartmentInput"
+              $ref: '#/components/schemas/ErpDepartmentInput'
       responses:
-        "201":
+        '201':
           description: 新增的部門
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpDepartment"
+                $ref: '#/components/schemas/ErpDepartment'
   /erp/departments/{id}:
     patch:
-      tags: [erp]
+      tags:
+        - erp
       operationId: updateErpDepartment
       summary: 更新部門
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpDepartmentInput"
+              $ref: '#/components/schemas/ErpDepartmentInput'
       responses:
-        "200":
+        '200':
           description: 更新後的部門
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpDepartment"
+                $ref: '#/components/schemas/ErpDepartment'
     delete:
-      tags: [erp]
+      tags:
+        - erp
       operationId: deleteErpDepartment
       summary: 停用部門
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "204":
+        '204':
           description: 已停用
   /erp/menu-permissions:
     get:
-      tags: [erp]
+      tags:
+        - erp
       operationId: getErpMenuPermissions
       summary: 取得選單權限覆寫（path → 角色清單）
       responses:
-        "200":
+        '200':
           description: 覆寫表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpMenuPermissionMap"
+                $ref: '#/components/schemas/ErpMenuPermissionMap'
     put:
-      tags: [erp]
+      tags:
+        - erp
       operationId: putErpMenuPermissions
       summary: 儲存選單權限覆寫
       requestBody:
@@ -2640,95 +2922,115 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpMenuPermissionMap"
+              $ref: '#/components/schemas/ErpMenuPermissionMap'
       responses:
-        "200":
+        '200':
           description: 儲存後的覆寫表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpMenuPermissionMap"
+                $ref: '#/components/schemas/ErpMenuPermissionMap'
   /erp/audit-logs:
     get:
-      tags: [erp]
+      tags:
+        - erp
       operationId: listErpAuditLogs
       summary: 審計日誌
       parameters:
         - name: page
           in: query
           required: false
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: module
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: q
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 日誌分頁
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpAuditLogPage"
+                $ref: '#/components/schemas/ErpAuditLogPage'
   /erp/items:
     get:
-      tags: [erp-inventory]
+      tags:
+        - erp-inventory
       operationId: listErpItems
       summary: ERP 品項清單（含多規格與庫存）
       parameters:
         - name: search
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: includeInactive
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpItem"
+                  $ref: '#/components/schemas/ErpItem'
   /erp/items/{id}:
     patch:
-      tags: [erp-inventory]
+      tags:
+        - erp-inventory
       operationId: updateErpItem
       summary: 更新品項 ERP 欄位（虛擬品項、單位、條碼、安全庫存）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpItemUpdate"
+              $ref: '#/components/schemas/ErpItemUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: object
-                required: [id, isVirtual, safetyStock]
+                required:
+                  - id
+                  - isVirtual
+                  - safetyStock
                 properties:
-                  id: { type: integer }
-                  isVirtual: { type: boolean }
-                  unit: { type: string, nullable: true }
-                  barcode: { type: string, nullable: true }
-                  safetyStock: { type: integer }
+                  id:
+                    type: integer
+                  isVirtual:
+                    type: boolean
+                  unit:
+                    type: string
+                    nullable: true
+                  barcode:
+                    type: string
+                    nullable: true
+                  safetyStock:
+                    type: integer
   /erp/inventory/adjust:
     post:
-      tags: [erp-inventory]
+      tags:
+        - erp-inventory
       operationId: erpAdjustStock
       summary: ERP 庫存調整（盤點／報廢等；虛擬品項禁止）
       requestBody:
@@ -2736,55 +3038,61 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpStockAdjustInput"
+              $ref: '#/components/schemas/ErpStockAdjustInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpStockMovement"
+                $ref: '#/components/schemas/ErpStockMovement'
   /erp/stock-movements:
     get:
-      tags: [erp-inventory]
+      tags:
+        - erp-inventory
       operationId: listErpStockMovements
       summary: 庫存異動查詢
       parameters:
         - name: page
           in: query
           required: false
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: type
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: productId
           in: query
           required: false
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpStockMovementPage"
+                $ref: '#/components/schemas/ErpStockMovementPage'
   /erp/warehouses:
     get:
-      tags: [erp-inventory]
+      tags:
+        - erp-inventory
       operationId: listErpWarehouses
       summary: 倉庫清單
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpWarehouse"
+                  $ref: '#/components/schemas/ErpWarehouse'
     post:
-      tags: [erp-inventory]
+      tags:
+        - erp-inventory
       operationId: createErpWarehouse
       summary: 新增倉庫
       requestBody:
@@ -2792,58 +3100,63 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpWarehouseInput"
+              $ref: '#/components/schemas/ErpWarehouseInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpWarehouse"
+                $ref: '#/components/schemas/ErpWarehouse'
   /erp/warehouses/{id}:
     patch:
-      tags: [erp-inventory]
+      tags:
+        - erp-inventory
       operationId: updateErpWarehouse
       summary: 更新倉庫
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpWarehouseUpdate"
+              $ref: '#/components/schemas/ErpWarehouseUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpWarehouse"
+                $ref: '#/components/schemas/ErpWarehouse'
   /erp/customers:
     get:
-      tags: [erp-partners]
+      tags:
+        - erp-partners
       operationId: listErpCustomers
       summary: 客戶清單
       parameters:
         - name: search
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpCustomer"
+                  $ref: '#/components/schemas/ErpCustomer'
     post:
-      tags: [erp-partners]
+      tags:
+        - erp-partners
       operationId: createErpCustomer
       summary: 新增客戶
       requestBody:
@@ -2851,58 +3164,63 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpCustomerInput"
+              $ref: '#/components/schemas/ErpCustomerInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpCustomer"
+                $ref: '#/components/schemas/ErpCustomer'
   /erp/customers/{id}:
     patch:
-      tags: [erp-partners]
+      tags:
+        - erp-partners
       operationId: updateErpCustomer
       summary: 更新客戶
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpCustomerUpdate"
+              $ref: '#/components/schemas/ErpCustomerUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpCustomer"
+                $ref: '#/components/schemas/ErpCustomer'
   /erp/suppliers:
     get:
-      tags: [erp-partners]
+      tags:
+        - erp-partners
       operationId: listErpSuppliers
       summary: 供應商清單（ERP）
       parameters:
         - name: search
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Supplier"
+                  $ref: '#/components/schemas/Supplier'
     post:
-      tags: [erp-partners]
+      tags:
+        - erp-partners
       operationId: createErpSupplier
       summary: 新增供應商（ERP）
       requestBody:
@@ -2910,53 +3228,57 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SupplierInput"
+              $ref: '#/components/schemas/SupplierInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Supplier"
+                $ref: '#/components/schemas/Supplier'
   /erp/suppliers/{id}:
     patch:
-      tags: [erp-partners]
+      tags:
+        - erp-partners
       operationId: updateErpSupplier
       summary: 更新供應商（ERP）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SupplierUpdate"
+              $ref: '#/components/schemas/SupplierUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Supplier"
+                $ref: '#/components/schemas/Supplier'
   /erp/price-lists:
     get:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: listErpPriceLists
       summary: 價格表清單（含品項設價）
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpPriceList"
+                  $ref: '#/components/schemas/ErpPriceList'
     post:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: createErpPriceList
       summary: 新增價格表
       requestBody:
@@ -2964,81 +3286,88 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpPriceListInput"
+              $ref: '#/components/schemas/ErpPriceListInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpPriceList"
+                $ref: '#/components/schemas/ErpPriceList'
   /erp/price-lists/{id}:
     patch:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: updateErpPriceList
       summary: 更新價格表
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpPriceListUpdate"
+              $ref: '#/components/schemas/ErpPriceListUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpPriceList"
+                $ref: '#/components/schemas/ErpPriceList'
   /erp/price-lists/{id}/items:
     put:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: putErpPriceListItems
       summary: 整批更新價格表品項設價
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpPriceListItemsInput"
+              $ref: '#/components/schemas/ErpPriceListItemsInput'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpPriceList"
+                $ref: '#/components/schemas/ErpPriceList'
   /erp/quotations:
     get:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: listErpQuotations
       summary: 報價單列表（ERP）
       parameters:
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Quotation"
+                  $ref: '#/components/schemas/Quotation'
     post:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: createErpQuotation
       summary: 建立報價單（ERP）
       requestBody:
@@ -3046,98 +3375,109 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/QuotationInput"
+              $ref: '#/components/schemas/QuotationInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /erp/quotations/{id}:
     get:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: getErpQuotation
       summary: 報價單明細（ERP）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /erp/quotations/{id}/status:
     patch:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: updateErpQuotationStatus
       summary: 變更報價單狀態（ERP）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/QuotationStatusUpdate"
+              $ref: '#/components/schemas/QuotationStatusUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /erp/quotations/{id}/convert:
     post:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: convertErpQuotation
       summary: 報價單轉訂單（ERP）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Quotation"
+                $ref: '#/components/schemas/Quotation'
   /erp/sales-orders:
     get:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: listErpSalesOrders
       summary: 銷貨單列表
       parameters:
         - name: page
           in: query
           required: false
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: source
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpSalesOrderPage"
+                $ref: '#/components/schemas/ErpSalesOrderPage'
     post:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: createErpSalesOrder
       summary: ERP 開立銷貨單（草稿，確認時扣庫存）
       requestBody:
@@ -3145,75 +3485,82 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpSalesOrderInput"
+              $ref: '#/components/schemas/ErpSalesOrderInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpSalesOrder"
+                $ref: '#/components/schemas/ErpSalesOrder'
   /erp/sales-orders/{id}:
     get:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: getErpSalesOrder
       summary: 銷貨單明細
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpSalesOrder"
+                $ref: '#/components/schemas/ErpSalesOrder'
   /erp/sales-orders/{id}/status:
     patch:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: updateErpSalesOrderStatus
       summary: 銷貨單狀態流轉（商城單走商城狀態機連動）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpSalesOrderStatusUpdate"
+              $ref: '#/components/schemas/ErpSalesOrderStatusUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpSalesOrder"
+                $ref: '#/components/schemas/ErpSalesOrder'
   /erp/sales-returns:
     get:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: listErpSalesReturns
       summary: 銷退單列表
       parameters:
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpSalesReturn"
+                  $ref: '#/components/schemas/ErpSalesReturn'
     post:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: createErpSalesReturn
       summary: 建立銷退單（草稿；依銷貨單，防超退）
       requestBody:
@@ -3221,58 +3568,63 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpSalesReturnInput"
+              $ref: '#/components/schemas/ErpSalesReturnInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpSalesReturn"
+                $ref: '#/components/schemas/ErpSalesReturn'
   /erp/sales-returns/{id}/status:
     patch:
-      tags: [erp-sales]
+      tags:
+        - erp-sales
       operationId: updateErpSalesReturnStatus
       summary: 銷退單狀態（confirmed 回補庫存並同步商城訂單）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpReturnStatusUpdate"
+              $ref: '#/components/schemas/ErpReturnStatusUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpSalesReturn"
+                $ref: '#/components/schemas/ErpSalesReturn'
   /erp/purchase-orders:
     get:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: listErpPurchaseOrders
       summary: 採購單列表（ERP）
       parameters:
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/AdminPurchaseOrder"
+                  $ref: '#/components/schemas/AdminPurchaseOrder'
     post:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: createErpPurchaseOrder
       summary: 開立採購單（ERP）
       requestBody:
@@ -3280,92 +3632,101 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PurchaseOrderInput"
+              $ref: '#/components/schemas/PurchaseOrderInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
+                $ref: '#/components/schemas/AdminPurchaseOrder'
   /erp/purchase-orders/{id}:
     get:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: getErpPurchaseOrder
       summary: 採購單明細（ERP）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
+                $ref: '#/components/schemas/AdminPurchaseOrder'
   /erp/purchase-orders/{id}/status:
     patch:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: updateErpPurchaseOrderStatus
       summary: 採購單狀態（下單／取消）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PurchaseOrderStatusUpdate"
+              $ref: '#/components/schemas/PurchaseOrderStatusUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
+                $ref: '#/components/schemas/AdminPurchaseOrder'
   /erp/purchase-orders/{id}/receive:
     post:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: receiveErpPurchaseOrder
       summary: 採購收貨（列鎖防重複收貨；虛擬品項不入庫）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AdminPurchaseOrder"
+                $ref: '#/components/schemas/AdminPurchaseOrder'
   /erp/purchase-returns:
     get:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: listErpPurchaseReturns
       summary: 採退單列表
       parameters:
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpPurchaseReturn"
+                  $ref: '#/components/schemas/ErpPurchaseReturn'
     post:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: createErpPurchaseReturn
       summary: 建立採退單（草稿；依已收貨採購單，防超退）
       requestBody:
@@ -3373,54 +3734,57 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpPurchaseReturnInput"
+              $ref: '#/components/schemas/ErpPurchaseReturnInput'
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpPurchaseReturn"
+                $ref: '#/components/schemas/ErpPurchaseReturn'
   /erp/purchase-returns/{id}/status:
     patch:
-      tags: [erp-purchasing]
+      tags:
+        - erp-purchasing
       operationId: updateErpPurchaseReturnStatus
       summary: 採退單狀態（confirmed 出庫扣減，庫存不足擋下）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpReturnStatusUpdate"
+              $ref: '#/components/schemas/ErpReturnStatusUpdate'
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpPurchaseReturn"
-
+                $ref: '#/components/schemas/ErpPurchaseReturn'
   /erp/accounting/accounts:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpAccounts
       summary: 會計科目表
       responses:
-        "200":
+        '200':
           description: 科目清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpAccount"
+                  $ref: '#/components/schemas/ErpAccount'
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: createErpAccount
       summary: 新增會計科目
       requestBody:
@@ -3428,51 +3792,55 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpAccountInput"
+              $ref: '#/components/schemas/ErpAccountInput'
       responses:
-        "201":
+        '201':
           description: 新增的科目
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpAccount"
+                $ref: '#/components/schemas/ErpAccount'
   /erp/accounting/accounts/{id}:
     patch:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: updateErpAccount
       summary: 更新會計科目
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpAccountUpdate"
+              $ref: '#/components/schemas/ErpAccountUpdate'
       responses:
-        "200":
+        '200':
           description: 更新後的科目
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpAccount"
+                $ref: '#/components/schemas/ErpAccount'
   /erp/accounting/settings:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: getErpAccountingSettings
       summary: 會計設定（關帳日）
       responses:
-        "200":
+        '200':
           description: 設定
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpAccountingSettings"
+                $ref: '#/components/schemas/ErpAccountingSettings'
     put:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: updateErpAccountingSettings
       summary: 更新會計設定（關帳日）
       requestBody:
@@ -3480,49 +3848,56 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpAccountingSettings"
+              $ref: '#/components/schemas/ErpAccountingSettings'
       responses:
-        "200":
+        '200':
           description: 更新後的設定
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpAccountingSettings"
+                $ref: '#/components/schemas/ErpAccountingSettings'
   /erp/accounting/journal-entries:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpJournalEntries
       summary: 日記帳/傳票清單（分頁）
       parameters:
         - name: page
           in: query
           required: false
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: pageSize
           in: query
           required: false
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: startDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: q
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 傳票分頁
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpJournalEntryPage"
+                $ref: '#/components/schemas/ErpJournalEntryPage'
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: createErpJournalEntry
       summary: 新增傳票
       requestBody:
@@ -3530,52 +3905,57 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpJournalEntryInput"
+              $ref: '#/components/schemas/ErpJournalEntryInput'
       responses:
-        "201":
+        '201':
           description: 新增的傳票
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpJournalEntry"
+                $ref: '#/components/schemas/ErpJournalEntry'
   /erp/accounting/journal-entries/{id}:
     delete:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: deleteErpJournalEntry
       summary: 刪除傳票（自動傳票不可刪）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 刪除結果
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: '#/components/schemas/SuccessResult'
   /erp/accounting/vouchers:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpVouchers
       summary: 收付款/請款單清單
       parameters:
         - name: voucherType
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 單據清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpVoucher"
+                  $ref: '#/components/schemas/ErpVoucher'
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: createErpVoucher
       summary: 新增收付款/請款單（可核銷發票）
       requestBody:
@@ -3583,60 +3963,67 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpVoucherInput"
+              $ref: '#/components/schemas/ErpVoucherInput'
       responses:
-        "201":
+        '201':
           description: 新增的單據
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpVoucher"
+                $ref: '#/components/schemas/ErpVoucher'
   /erp/accounting/vouchers/{id}:
     delete:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: deleteErpVoucher
       summary: 刪除單據（連動刪除自動傳票與核銷）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 刪除結果
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: '#/components/schemas/SuccessResult'
   /erp/accounting/invoices:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpInvoices
       summary: 發票清單（AR/AP）
       parameters:
         - name: invoiceType
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: q
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 發票清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpInvoice"
+                  $ref: '#/components/schemas/ErpInvoice'
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: createErpInvoice
       summary: 開立發票
       requestBody:
@@ -3644,97 +4031,107 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpInvoiceInput"
+              $ref: '#/components/schemas/ErpInvoiceInput'
       responses:
-        "201":
+        '201':
           description: 開立的發票
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpInvoice"
+                $ref: '#/components/schemas/ErpInvoice'
   /erp/accounting/invoices/{id}:
     patch:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: updateErpInvoice
       summary: 更新發票（不可直接改已收付金額）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpInvoiceUpdate"
+              $ref: '#/components/schemas/ErpInvoiceUpdate'
       responses:
-        "200":
+        '200':
           description: 更新後的發票
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpInvoice"
+                $ref: '#/components/schemas/ErpInvoice'
     delete:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: deleteErpInvoice
       summary: 刪除發票（有核銷紀錄不可刪）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 刪除結果
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: '#/components/schemas/SuccessResult'
   /erp/accounting/invoices/{id}/settlements:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpInvoiceSettlements
       summary: 發票核銷紀錄
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 核銷紀錄
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpInvoiceSettlement"
+                  $ref: '#/components/schemas/ErpInvoiceSettlement'
   /erp/accounting/payment-requests:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpPaymentRequests
       summary: 付款申請清單
       parameters:
         - name: status
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: partyType
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 付款申請清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpPaymentRequest"
+                  $ref: '#/components/schemas/ErpPaymentRequest'
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: createErpPaymentRequest
       summary: 新增付款申請
       requestBody:
@@ -3742,69 +4139,75 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpPaymentRequestInput"
+              $ref: '#/components/schemas/ErpPaymentRequestInput'
       responses:
-        "201":
+        '201':
           description: 新增的付款申請
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpPaymentRequest"
+                $ref: '#/components/schemas/ErpPaymentRequest'
   /erp/accounting/payment-requests/{id}:
     patch:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: updateErpPaymentRequest
       summary: 更新付款申請（Paid 觸發核銷與自動傳票）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpPaymentRequestUpdate"
+              $ref: '#/components/schemas/ErpPaymentRequestUpdate'
       responses:
-        "200":
+        '200':
           description: 更新後的付款申請
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpPaymentRequest"
+                $ref: '#/components/schemas/ErpPaymentRequest'
     delete:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: deleteErpPaymentRequest
       summary: 刪除付款申請（僅草稿）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 刪除結果
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SuccessResult"
+                $ref: '#/components/schemas/SuccessResult'
   /erp/accounting/bank-statements:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpBankStatements
       summary: 銀行對帳單清單
       responses:
-        "200":
+        '200':
           description: 對帳單清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpBankStatement"
+                  $ref: '#/components/schemas/ErpBankStatement'
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: createErpBankStatement
       summary: 新增銀行對帳單
       requestBody:
@@ -3812,321 +4215,907 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpBankStatementInput"
+              $ref: '#/components/schemas/ErpBankStatementInput'
       responses:
-        "201":
+        '201':
           description: 新增的對帳單
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpBankStatement"
+                $ref: '#/components/schemas/ErpBankStatement'
   /erp/accounting/bank-statements/{id}:
     patch:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: updateErpBankStatementStatus
       summary: 更新對帳單狀態
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpBankStatementStatusUpdate"
+              $ref: '#/components/schemas/ErpBankStatementStatusUpdate'
       responses:
-        "200":
+        '200':
           description: 更新後的對帳單
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpBankStatement"
+                $ref: '#/components/schemas/ErpBankStatement'
   /erp/accounting/bank-statements/{id}/entries:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: listErpBankReconciliationEntries
       summary: 對帳明細
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 對帳明細清單
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ErpBankReconciliationEntry"
+                  $ref: '#/components/schemas/ErpBankReconciliationEntry'
   /erp/accounting/bank-statements/{id}/import:
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: importErpBankStatementCsv
       summary: 匯入對帳 CSV
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpBankStatementImport"
+              $ref: '#/components/schemas/ErpBankStatementImport'
       responses:
-        "201":
+        '201':
           description: 匯入結果
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpBankImportResult"
+                $ref: '#/components/schemas/ErpBankImportResult'
   /erp/accounting/bank-statements/{id}/auto-match:
     post:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: autoMatchErpBankStatement
       summary: 自動比對（金額唯一相符）
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       responses:
-        "200":
+        '200':
           description: 比對結果
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpBankAutoMatchResult"
+                $ref: '#/components/schemas/ErpBankAutoMatchResult'
   /erp/accounting/bank-reconciliation-entries/{id}:
     patch:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: matchErpBankReconciliationEntry
       summary: 手動比對/取消比對
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: integer }
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ErpBankEntryMatchUpdate"
+              $ref: '#/components/schemas/ErpBankEntryMatchUpdate'
       responses:
-        "200":
+        '200':
           description: 更新後的明細
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpBankReconciliationEntry"
+                $ref: '#/components/schemas/ErpBankReconciliationEntry'
   /erp/accounting/vat-report:
     get:
-      tags: [erp-accounting]
+      tags:
+        - erp-accounting
       operationId: getErpVatReport
       summary: 營業稅申報（401 彙總）
       parameters:
         - name: startDate
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 營業稅彙總
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpVatReport"
+                $ref: '#/components/schemas/ErpVatReport'
   /erp/reports/income-statement:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpIncomeStatement
       summary: 損益表
       parameters:
         - name: startDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 損益表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/balance-sheet:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpBalanceSheet
       summary: 資產負債表
       parameters:
         - name: endDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 資產負債表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/cash-flow:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpCashFlow
       summary: 現金流量表
       parameters:
         - name: startDate
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 現金流量表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/trial-balance:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpTrialBalance
       summary: 試算表
       parameters:
         - name: startDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 試算表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/general-ledger:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpGeneralLedger
       summary: 總帳（單科目明細）
       parameters:
         - name: accountId
           in: query
           required: false
-          schema: { type: integer }
+          schema:
+            type: integer
         - name: startDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 總帳明細
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/ar-aging:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpArAging
       summary: 應收帳齡分析
       responses:
-        "200":
+        '200':
           description: 帳齡分析
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/ap-aging:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpApAging
       summary: 應付帳齡分析
       responses:
-        "200":
+        '200':
           description: 帳齡分析
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/sales-analysis:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpSalesAnalysis
       summary: 銷售分析
       parameters:
         - name: startDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: groupBy
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 銷售分析
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
   /erp/reports/purchase-analysis:
     get:
-      tags: [erp-reports]
+      tags:
+        - erp-reports
       operationId: getErpPurchaseAnalysis
       summary: 採購分析
       parameters:
         - name: startDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: endDate
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
         - name: groupBy
           in: query
           required: false
-          schema: { type: string }
+          schema:
+            type: string
       responses:
-        "200":
+        '200':
           description: 採購分析
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErpFreeformReport"
+                $ref: '#/components/schemas/ErpFreeformReport'
+  /admin/social-accounts:
+    get:
+      operationId: listSocialAccounts
+      tags:
+        - social
+      summary: 社群帳號列表（含平台憑證設定狀態）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialAccountsResponse'
+  /admin/social-accounts/oauth-url/{platform}:
+    get:
+      operationId: getSocialOAuthUrl
+      tags:
+        - social
+      summary: 取得平台 OAuth 授權 URL
+      parameters:
+        - name: platform
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialOAuthUrl'
+        '400':
+          description: 憑證未設定或平台不支援
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-accounts/{id}:
+    delete:
+      operationId: deleteSocialAccount
+      tags:
+        - social
+      summary: 刪除社群帳號
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-accounts/{id}/toggle:
+    patch:
+      operationId: toggleSocialAccount
+      tags:
+        - social
+      summary: 啟用/停用社群帳號
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialAccount'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-posts:
+    get:
+      operationId: listSocialPosts
+      tags:
+        - social
+      summary: 社群貼文列表
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SocialPost'
+    post:
+      operationId: createSocialPost
+      tags:
+        - social
+      summary: 建立社群貼文（可排程）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSocialPostInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialPost'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-posts/{id}:
+    patch:
+      operationId: updateSocialPost
+      tags:
+        - social
+      summary: 編輯社群貼文
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSocialPostInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialPost'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      operationId: deleteSocialPost
+      tags:
+        - social
+      summary: 刪除社群貼文
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-posts/{id}/publish:
+    post:
+      operationId: publishSocialPost
+      tags:
+        - social
+      summary: 立即發布貼文到所選平台
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialPublishResult'
+        '400':
+          description: Invalid state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-posts/preview:
+    post:
+      operationId: previewSocialPost
+      tags:
+        - social
+      summary: 預覽各平台字數裁切結果
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialPreviewInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialPreviewResponse'
+  /admin/social-posts/generate-content:
+    post:
+      operationId: generateSocialContent
+      tags:
+        - social
+      summary: AI 產生多平台文案
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialGenerateContentInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialGeneratedContent'
+        '502':
+          description: AI 失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-posts/generate-image:
+    post:
+      operationId: generateSocialImage
+      tags:
+        - social
+      summary: AI 產生社群圖片（存入物件儲存並回傳公開 URL）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialGenerateImageInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialGeneratedImage'
+        '502':
+          description: AI 失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-posts/ai-planner:
+    post:
+      operationId: socialAiPlanner
+      tags:
+        - social
+      summary: AI 對話式內容排程規劃
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialPlannerInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialPlannerResponse'
+        '502':
+          description: AI 失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/social-posts/batch-create:
+    post:
+      operationId: batchCreateSocialPosts
+      tags:
+        - social
+      summary: 批次建立排程貼文（AI Planner 計畫）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialBatchCreateInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SocialBatchCreateResponse'
 components:
   schemas:
+    SocialAccount:
+      type: object
+      required: [id, platform, platformAccountId, accountName, accountType, isActive, createdAt]
+      properties:
+        id: { type: string }
+        platform: { type: string, description: "facebook | instagram | threads | twitter" }
+        platformAccountId: { type: string }
+        accountName: { type: string }
+        accountType: { type: string }
+        tokenExpiresAt: { type: ["string", "null"] }
+        profileImageUrl: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    SocialCredentialStatus:
+      type: object
+      required: [facebook, threads, twitter]
+      properties:
+        facebook: { type: boolean }
+        threads: { type: boolean }
+        twitter: { type: boolean }
+    SocialAccountsResponse:
+      type: object
+      required: [accounts, credentials]
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialAccount"
+        credentials:
+          $ref: "#/components/schemas/SocialCredentialStatus"
+    SocialOAuthUrl:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+    SocialPost:
+      type: object
+      required: [id, content, platforms, imageUrls, targetAccountIds, status, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        content: { type: string }
+        platforms:
+          type: array
+          items: { type: string }
+        hashtags: { type: ["string", "null"] }
+        imageUrls:
+          type: array
+          items: { type: string }
+        scheduledAt: { type: ["string", "null"] }
+        publishedAt: { type: ["string", "null"] }
+        status: { type: string, description: "draft | scheduled | publishing | published | failed" }
+        platformResults: { type: ["object", "null"], additionalProperties: true }
+        targetAccountIds:
+          type: object
+          additionalProperties: { type: string }
+          description: 各平台指定的社群帳號 UUID
+        errorMessage: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    CreateSocialPostInput:
+      type: object
+      required: [content, platforms]
+      properties:
+        content: { type: string, minLength: 1 }
+        platforms:
+          type: array
+          items: { type: string }
+          minItems: 1
+        hashtags: { type: ["string", "null"] }
+        imageUrls:
+          type: array
+          items: { type: string }
+        targetAccountIds:
+          type: object
+          additionalProperties: { type: string }
+        scheduledAt: { type: ["string", "null"], description: "ISO 時間，null 表示草稿" }
+    UpdateSocialPostInput:
+      type: object
+      properties:
+        content: { type: string, minLength: 1 }
+        platforms:
+          type: array
+          items: { type: string }
+          minItems: 1
+        hashtags: { type: ["string", "null"] }
+        imageUrls:
+          type: array
+          items: { type: string }
+        targetAccountIds:
+          type: object
+          additionalProperties: { type: string }
+        scheduledAt: { type: ["string", "null"] }
+    SocialPublishResult:
+      type: object
+      required: [post, results, errors]
+      properties:
+        post:
+          $ref: "#/components/schemas/SocialPost"
+        results: { type: object, additionalProperties: true }
+        errors:
+          type: array
+          items: { type: string }
+    SocialPreviewInput:
+      type: object
+      required: [content, platforms]
+      properties:
+        content: { type: string }
+        hashtags: { type: ["string", "null"] }
+        platforms:
+          type: array
+          items: { type: string }
+    SocialPreviewResponse:
+      type: object
+      required: [previews]
+      properties:
+        previews:
+          type: array
+          items:
+            type: object
+            required: [platform, charLimit, text]
+            properties:
+              platform: { type: string }
+              charLimit: { type: integer }
+              text: { type: string }
+    SocialGenerateContentInput:
+      type: object
+      required: [topic, platforms]
+      properties:
+        topic: { type: string, minLength: 1 }
+        platforms:
+          type: array
+          items: { type: string }
+        tone: { type: ["string", "null"] }
+    SocialGeneratedContent:
+      type: object
+      required: [content, hashtags]
+      properties:
+        content: { type: string }
+        hashtags: { type: string }
+    SocialGenerateImageInput:
+      type: object
+      required: [prompt]
+      properties:
+        prompt: { type: string, minLength: 1 }
+    SocialGeneratedImage:
+      type: object
+      required: [imageUrl, objectPath]
+      properties:
+        imageUrl: { type: string }
+        objectPath: { type: string }
+    SocialPlannerInput:
+      type: object
+      required: [messages]
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role: { type: string, enum: [user, assistant] }
+              content: { type: string }
+    SocialPlannerResponse:
+      type: object
+      required: [reply]
+      properties:
+        reply: { type: string }
+        plan:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/SocialPlannedPost"
+    SocialPlannedPost:
+      type: object
+      required: [content, hashtags, platforms, scheduledAt]
+      properties:
+        title: { type: ["string", "null"] }
+        content: { type: string }
+        hashtags: { type: string }
+        platforms:
+          type: array
+          items: { type: string }
+        scheduledAt: { type: string }
+    SocialBatchCreateInput:
+      type: object
+      required: [posts]
+      properties:
+        posts:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [content, platforms]
+            properties:
+              content: { type: string, minLength: 1 }
+              platforms:
+                type: array
+                items: { type: string }
+                minItems: 1
+              hashtags: { type: ["string", "null"] }
+              imageUrls:
+                type: array
+                items: { type: string }
+              targetAccountIds:
+                type: object
+                additionalProperties: { type: string }
+              scheduledAt: { type: ["string", "null"] }
+    SocialBatchCreateResponse:
+      type: object
+      required: [posts, skipped]
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: "#/components/schemas/SocialPost"
+        skipped:
+          type: array
+          items: { type: string }
     HealthStatus:
       type: object
       properties:

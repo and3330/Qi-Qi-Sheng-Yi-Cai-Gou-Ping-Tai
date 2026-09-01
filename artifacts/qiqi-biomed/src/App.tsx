@@ -53,6 +53,8 @@ import PortalOrders from "./pages/portal/Orders";
 import PortalWallet from "./pages/portal/Wallet";
 import PortalCommissions from "./pages/portal/Commissions";
 import PortalReports from "./pages/portal/Reports";
+import AdminSocialAccountsPage from "./pages/admin/SocialAccounts";
+import AdminSocialPostsPage from "./pages/admin/SocialPosts";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,6 +116,8 @@ function AdminArea() {
           <Route path="/admin/support" component={AdminSupportPage} />
           <Route path="/admin/ai-assistant" component={AdminAiAssistantPage} />
           <Route path="/admin/institutions" component={AdminInstitutionsPage} />
+          <Route path="/admin/social-accounts" component={AdminSocialAccountsPage} />
+          <Route path="/admin/social-posts" component={AdminSocialPostsPage} />
           <Route path="/admin/reports" component={AdminReportsPage} />
           <Route path="/admin/finance" component={AdminFinancePage} />
           <Route path="/admin/commissions" component={AdminCommissionsPage} />

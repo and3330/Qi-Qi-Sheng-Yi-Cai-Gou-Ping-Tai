@@ -23,6 +23,8 @@ import {
   ChevronDown,
   FileSpreadsheet,
   Link2,
+  Share2,
+  Megaphone,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -71,6 +73,13 @@ export const adminNavGroups: AdminNavGroup[] = [
       { name: "利潤分享", path: "/admin/profit-sharing", icon: HandCoins, roles: ["admin"] },
       { name: "機構錢包", path: "/admin/institution-wallets", icon: Building2, roles: ["admin"] },
       { name: "會員錢包", path: "/admin/wallets", icon: Wallet, roles: ["admin"] },
+    ],
+  },
+  {
+    title: "社群行銷",
+    items: [
+      { name: "社群帳號", path: "/admin/social-accounts", icon: Share2, roles: ["admin", "ops"] },
+      { name: "社群貼文", path: "/admin/social-posts", icon: Megaphone, roles: ["admin", "ops"] },
     ],
   },
   {
