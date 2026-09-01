@@ -25,6 +25,9 @@ import FavoritesPage from "./pages/Favorites";
 import MemberPage from "./pages/Member";
 import SupportPage from "./pages/Support";
 import SignInPage from "./pages/SignIn";
+import MemberLinktreePage from "./pages/MemberLinktree";
+import LinktreePage from "./pages/Linktree";
+import AdminLinktreePage from "./pages/admin/Linktree";
 import SignUpPage from "./pages/SignUp";
 import { AdminGuard } from "./pages/admin/AdminGuard";
 import AdminDashboardPage from "./pages/admin/Dashboard";
@@ -117,6 +120,7 @@ function AdminArea() {
           <Route path="/admin/profit-sharing" component={AdminProfitSharingPage} />
           <Route path="/admin/institution-wallets" component={AdminInstitutionWalletsPage} />
           <Route path="/admin/wallets" component={AdminWalletsPage} />
+          <Route path="/admin/linktree" component={AdminLinktreePage} />
           <Route>
             <Redirect to="/admin" />
           </Route>
@@ -129,6 +133,16 @@ function AdminArea() {
 function AppRoutes() {
   const [location] = useLocation();
   const isAdminArea = location.startsWith("/admin");
+  const isPublicLinktree = location.startsWith("/u/");
+
+  if (isPublicLinktree) {
+    // 公開連結頁：免登入、不套用商城版型
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Route path="/u/:memberId" component={LinktreePage} />
+      </QueryClientProvider>
+    );
+  }
 
   if (isAdminArea) {
     return (
@@ -168,6 +182,7 @@ function AppRoutes() {
               <ProtectedRoute path="/orders/:id" component={OrderDetailPage} />
               <ProtectedRoute path="/favorites" component={FavoritesPage} />
               <ProtectedRoute path="/member" component={MemberPage} />
+              <ProtectedRoute path="/member/linktree" component={MemberLinktreePage} />
               <ProtectedRoute path="/support" component={SupportPage} />
 
               <Route path="/sign-in/*?" component={SignInPage} />

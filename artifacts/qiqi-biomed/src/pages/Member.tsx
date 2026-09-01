@@ -1,7 +1,6 @@
 import CompanyFooter from '@/components/CompanyFooter';
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck, Building2 } from "lucide-react";
 import { useGetMe, useUpdateMe, useListInstitutions, useLogout, getGetMeQueryKey, useGetWallet } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getTierName } from "@/lib/utils";
@@ -18,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck, Building2, Link2 } from "lucide-react";
 
 const TX_TYPE_LABEL: Record<string, string> = {
   deposit: "儲值",
@@ -276,6 +276,13 @@ export default function MemberPage() {
               <Package size={16} />
             </div>
             <span className="font-bold text-gray-800 flex-1">訂單查詢</span>
+            <span className="text-gray-300">›</span>
+          </Link>
+          <Link href="/member/linktree" className="flex items-center p-4 hover:bg-slate-50 transition-colors" data-testid="link-member-linktree">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mr-3">
+              <Link2 size={16} />
+            </div>
+            <span className="font-bold text-gray-800 flex-1">我的連結頁</span>
             <span className="text-gray-300">›</span>
           </Link>
           <Link href="/favorites" className="flex items-center p-4 hover:bg-slate-50 transition-colors">

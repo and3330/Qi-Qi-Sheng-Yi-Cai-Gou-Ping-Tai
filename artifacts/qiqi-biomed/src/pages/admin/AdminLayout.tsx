@@ -22,6 +22,7 @@ import {
   Headphones,
   ChevronDown,
   FileSpreadsheet,
+  Link2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -78,6 +79,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { name: "內容管理", path: "/admin/content", icon: FileText, roles: ["admin", "ops"] },
       { name: "使用者管理", path: "/admin/members", icon: Users },
       { name: "機構主檔", path: "/admin/institutions", icon: Building2, roles: ["admin", "ops"] },
+      { name: "Linktree 管理", path: "/admin/linktree", icon: Link2 },
     ],
   },
 ];

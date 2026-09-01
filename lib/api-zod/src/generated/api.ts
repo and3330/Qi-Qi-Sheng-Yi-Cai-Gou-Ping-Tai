@@ -1402,6 +1402,243 @@ export const RemoveFavoriteResponse = zod.void()
 
 
 /**
+ * @summary List my linktree links
+ */
+export const ListMyLinktreeLinksResponseItem = zod.object({
+  "id": zod.int(),
+  "memberId": zod.int(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string(),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']),
+  "sortOrder": zod.int(),
+  "isActive": zod.boolean(),
+  "isBlocked": zod.boolean().describe('管理員停用（會員無法自行解除）'),
+  "createdAt": zod.coerce.date()
+})
+export const ListMyLinktreeLinksResponse = zod.array(ListMyLinktreeLinksResponseItem)
+
+
+/**
+ * @summary Create a linktree link
+ */
+
+
+
+
+export const CreateMyLinktreeLinkBody = zod.object({
+  "title": zod.string().min(1),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string().min(1),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']).optional(),
+  "sortOrder": zod.int().optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateMyLinktreeLinkResponse = zod.object({
+  "id": zod.int(),
+  "memberId": zod.int(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string(),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']),
+  "sortOrder": zod.int(),
+  "isActive": zod.boolean(),
+  "isBlocked": zod.boolean().describe('管理員停用（會員無法自行解除）'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update my linktree link
+ */
+export const UpdateMyLinktreeLinkParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+
+export const UpdateMyLinktreeLinkBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string().min(1).optional(),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']).optional(),
+  "sortOrder": zod.int().optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateMyLinktreeLinkResponse = zod.object({
+  "id": zod.int(),
+  "memberId": zod.int(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string(),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']),
+  "sortOrder": zod.int(),
+  "isActive": zod.boolean(),
+  "isBlocked": zod.boolean().describe('管理員停用（會員無法自行解除）'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete my linktree link
+ */
+export const DeleteMyLinktreeLinkParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteMyLinktreeLinkResponse = zod.void()
+
+
+/**
+ * @summary Get my linktree appearance settings
+ */
+export const GetMyLinktreeSettingsResponse = zod.object({
+  "bio": zod.string().nullish(),
+  "subtitle": zod.string().nullish(),
+  "theme": zod.enum(['default', 'dark', 'gradient', 'pastel']),
+  "backgroundColor": zod.string().nullish(),
+  "buttonColor": zod.string().nullish(),
+  "buttonTextColor": zod.string().nullish(),
+  "buttonStyle": zod.enum(['rounded', 'pill', 'square', 'outline']),
+  "showAvatar": zod.boolean(),
+  "customTitle": zod.string().nullish()
+})
+
+
+/**
+ * @summary Update my linktree appearance settings
+ */
+export const UpdateMyLinktreeSettingsBody = zod.object({
+  "bio": zod.string().nullish(),
+  "subtitle": zod.string().nullish(),
+  "theme": zod.enum(['default', 'dark', 'gradient', 'pastel']).optional(),
+  "backgroundColor": zod.string().nullish(),
+  "buttonColor": zod.string().nullish(),
+  "buttonTextColor": zod.string().nullish(),
+  "buttonStyle": zod.enum(['rounded', 'pill', 'square', 'outline']).optional(),
+  "showAvatar": zod.boolean().optional(),
+  "customTitle": zod.string().nullish()
+})
+
+export const UpdateMyLinktreeSettingsResponse = zod.object({
+  "bio": zod.string().nullish(),
+  "subtitle": zod.string().nullish(),
+  "theme": zod.enum(['default', 'dark', 'gradient', 'pastel']),
+  "backgroundColor": zod.string().nullish(),
+  "buttonColor": zod.string().nullish(),
+  "buttonTextColor": zod.string().nullish(),
+  "buttonStyle": zod.enum(['rounded', 'pill', 'square', 'outline']),
+  "showAvatar": zod.boolean(),
+  "customTitle": zod.string().nullish()
+})
+
+
+/**
+ * @summary Public linktree page data (no auth)
+ */
+export const GetPublicLinktreeParams = zod.object({
+  "memberId": zod.coerce.number().int()
+})
+
+export const GetPublicLinktreeResponse = zod.object({
+  "member": zod.object({
+  "id": zod.int(),
+  "displayName": zod.string()
+}),
+  "links": zod.array(zod.object({
+  "id": zod.int(),
+  "memberId": zod.int(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string(),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']),
+  "sortOrder": zod.int(),
+  "isActive": zod.boolean(),
+  "isBlocked": zod.boolean().describe('管理員停用（會員無法自行解除）'),
+  "createdAt": zod.coerce.date()
+})),
+  "settings": zod.object({
+  "bio": zod.string().nullish(),
+  "subtitle": zod.string().nullish(),
+  "theme": zod.enum(['default', 'dark', 'gradient', 'pastel']),
+  "backgroundColor": zod.string().nullish(),
+  "buttonColor": zod.string().nullish(),
+  "buttonTextColor": zod.string().nullish(),
+  "buttonStyle": zod.enum(['rounded', 'pill', 'square', 'outline']),
+  "showAvatar": zod.boolean(),
+  "customTitle": zod.string().nullish()
+})
+})
+
+
+/**
+ * @summary Admin overview of member linktree pages
+ */
+export const ListAdminLinktreeQueryParams = zod.object({
+  "search": zod.coerce.string().optional()
+})
+
+export const ListAdminLinktreeResponseItem = zod.object({
+  "memberId": zod.int(),
+  "memberName": zod.string(),
+  "username": zod.string(),
+  "isMemberActive": zod.boolean(),
+  "linkCount": zod.int(),
+  "activeLinkCount": zod.int(),
+  "links": zod.array(zod.object({
+  "id": zod.int(),
+  "memberId": zod.int(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string(),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']),
+  "sortOrder": zod.int(),
+  "isActive": zod.boolean(),
+  "isBlocked": zod.boolean().describe('管理員停用（會員無法自行解除）'),
+  "createdAt": zod.coerce.date()
+}))
+})
+export const ListAdminLinktreeResponse = zod.array(ListAdminLinktreeResponseItem)
+
+
+/**
+ * @summary Enable/disable a member's link (moderation)
+ */
+export const ModerateLinktreeLinkParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ModerateLinktreeLinkBody = zod.object({
+  "isActive": zod.boolean()
+})
+
+export const ModerateLinktreeLinkResponse = zod.object({
+  "id": zod.int(),
+  "memberId": zod.int(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "url": zod.string(),
+  "icon": zod.string().nullish(),
+  "linkType": zod.enum(['link', 'social', 'video', 'music']),
+  "sortOrder": zod.int(),
+  "isActive": zod.boolean(),
+  "isBlocked": zod.boolean().describe('管理員停用（會員無法自行解除）'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Home page aggregate (hot products, announcements, latest articles)
  */
 export const GetHomeSummaryResponse = zod.object({

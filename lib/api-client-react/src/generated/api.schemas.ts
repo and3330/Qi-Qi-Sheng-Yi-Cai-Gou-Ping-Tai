@@ -866,6 +866,182 @@ export interface FavoriteInput {
   productId: number;
 }
 
+export type MemberLinkLinkType = typeof MemberLinkLinkType[keyof typeof MemberLinkLinkType];
+
+
+export const MemberLinkLinkType = {
+  link: 'link',
+  social: 'social',
+  video: 'video',
+  music: 'music',
+} as const;
+
+export interface MemberLink {
+  id: number;
+  memberId: number;
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  url: string;
+  /** @nullable */
+  icon?: string | null;
+  linkType: MemberLinkLinkType;
+  sortOrder: number;
+  isActive: boolean;
+  /** 管理員停用（會員無法自行解除） */
+  isBlocked: boolean;
+  createdAt: string;
+}
+
+export type LinktreeLinkInputLinkType = typeof LinktreeLinkInputLinkType[keyof typeof LinktreeLinkInputLinkType];
+
+
+export const LinktreeLinkInputLinkType = {
+  link: 'link',
+  social: 'social',
+  video: 'video',
+  music: 'music',
+} as const;
+
+export interface LinktreeLinkInput {
+  /** @minLength 1 */
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  /** @minLength 1 */
+  url: string;
+  /** @nullable */
+  icon?: string | null;
+  linkType?: LinktreeLinkInputLinkType;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export type LinktreeLinkUpdateLinkType = typeof LinktreeLinkUpdateLinkType[keyof typeof LinktreeLinkUpdateLinkType];
+
+
+export const LinktreeLinkUpdateLinkType = {
+  link: 'link',
+  social: 'social',
+  video: 'video',
+  music: 'music',
+} as const;
+
+export interface LinktreeLinkUpdate {
+  /** @minLength 1 */
+  title?: string;
+  /** @nullable */
+  subtitle?: string | null;
+  /** @minLength 1 */
+  url?: string;
+  /** @nullable */
+  icon?: string | null;
+  linkType?: LinktreeLinkUpdateLinkType;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export type LinktreeSettingsTheme = typeof LinktreeSettingsTheme[keyof typeof LinktreeSettingsTheme];
+
+
+export const LinktreeSettingsTheme = {
+  default: 'default',
+  dark: 'dark',
+  gradient: 'gradient',
+  pastel: 'pastel',
+} as const;
+
+export type LinktreeSettingsButtonStyle = typeof LinktreeSettingsButtonStyle[keyof typeof LinktreeSettingsButtonStyle];
+
+
+export const LinktreeSettingsButtonStyle = {
+  rounded: 'rounded',
+  pill: 'pill',
+  square: 'square',
+  outline: 'outline',
+} as const;
+
+export interface LinktreeSettings {
+  /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  subtitle?: string | null;
+  theme: LinktreeSettingsTheme;
+  /** @nullable */
+  backgroundColor?: string | null;
+  /** @nullable */
+  buttonColor?: string | null;
+  /** @nullable */
+  buttonTextColor?: string | null;
+  buttonStyle: LinktreeSettingsButtonStyle;
+  showAvatar: boolean;
+  /** @nullable */
+  customTitle?: string | null;
+}
+
+export type LinktreeSettingsInputTheme = typeof LinktreeSettingsInputTheme[keyof typeof LinktreeSettingsInputTheme];
+
+
+export const LinktreeSettingsInputTheme = {
+  default: 'default',
+  dark: 'dark',
+  gradient: 'gradient',
+  pastel: 'pastel',
+} as const;
+
+export type LinktreeSettingsInputButtonStyle = typeof LinktreeSettingsInputButtonStyle[keyof typeof LinktreeSettingsInputButtonStyle];
+
+
+export const LinktreeSettingsInputButtonStyle = {
+  rounded: 'rounded',
+  pill: 'pill',
+  square: 'square',
+  outline: 'outline',
+} as const;
+
+export interface LinktreeSettingsInput {
+  /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  subtitle?: string | null;
+  theme?: LinktreeSettingsInputTheme;
+  /** @nullable */
+  backgroundColor?: string | null;
+  /** @nullable */
+  buttonColor?: string | null;
+  /** @nullable */
+  buttonTextColor?: string | null;
+  buttonStyle?: LinktreeSettingsInputButtonStyle;
+  showAvatar?: boolean;
+  /** @nullable */
+  customTitle?: string | null;
+}
+
+export type PublicLinktreeMember = {
+  id: number;
+  displayName: string;
+};
+
+export interface PublicLinktree {
+  member: PublicLinktreeMember;
+  links: MemberLink[];
+  settings: LinktreeSettings;
+}
+
+export interface AdminLinktreeMember {
+  memberId: number;
+  memberName: string;
+  username: string;
+  isMemberActive: boolean;
+  linkCount: number;
+  activeLinkCount: number;
+  links: MemberLink[];
+}
+
+export interface LinktreeLinkModerationInput {
+  isActive: boolean;
+}
+
 export interface AdminProduct {
   id: number;
   /**
@@ -2563,6 +2739,10 @@ export const ListArticlesKind = {
   article: 'article',
   faq: 'faq',
 } as const;
+
+export type ListAdminLinktreeParams = {
+search?: string;
+};
 
 export type GetAdminWalletStatsParams = {
 from?: string;

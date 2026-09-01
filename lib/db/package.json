@@ -13,6 +13,7 @@
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "migrate:finance-wallet": "node scripts/migrate-finance-wallet.mjs",
     "migrate:erp-inventory": "node scripts/migrate-erp-inventory.mjs",
+    "migrate:linktree": "node scripts/migrate-linktree.mjs",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
   },
   "dependencies": {

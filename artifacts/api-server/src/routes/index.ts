@@ -28,6 +28,7 @@ import erpRouter from "./erp";
 import erpInventoryRouter from "./erpInventory";
 import erpSalesRouter from "./erpSales";
 import erpPurchasingRouter from "./erpPurchasing";
+import linktreeRouter from "./linktree";
 
 const router: IRouter = Router();
 
@@ -60,5 +61,6 @@ router.use(erpRouter);
 router.use(erpInventoryRouter);
 router.use(erpSalesRouter);
 router.use(erpPurchasingRouter);
+router.use(linktreeRouter);
 
 export default router;

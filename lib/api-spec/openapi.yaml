@@ -1047,6 +1047,166 @@ paths:
       responses:
         "204":
           description: Removed
+  /linktree/links:
+    get:
+      operationId: listMyLinktreeLinks
+      tags: [linktree]
+      summary: List my linktree links
+      responses:
+        "200":
+          description: My links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemberLink"
+    post:
+      operationId: createMyLinktreeLink
+      tags: [linktree]
+      summary: Create a linktree link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinktreeLinkInput"
+      responses:
+        "200":
+          description: Created link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberLink"
+  /linktree/links/{id}:
+    patch:
+      operationId: updateMyLinktreeLink
+      tags: [linktree]
+      summary: Update my linktree link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinktreeLinkUpdate"
+      responses:
+        "200":
+          description: Updated link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberLink"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteMyLinktreeLink
+      tags: [linktree]
+      summary: Delete my linktree link
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /linktree/settings:
+    get:
+      operationId: getMyLinktreeSettings
+      tags: [linktree]
+      summary: Get my linktree appearance settings
+      responses:
+        "200":
+          description: Settings (defaults when not yet saved)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinktreeSettings"
+    put:
+      operationId: updateMyLinktreeSettings
+      tags: [linktree]
+      summary: Update my linktree appearance settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinktreeSettingsInput"
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinktreeSettings"
+  /linktree/public/{memberId}:
+    get:
+      operationId: getPublicLinktree
+      tags: [linktree]
+      summary: Public linktree page data (no auth)
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Public page data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicLinktree"
+        "404":
+          description: Member not found or inactive
+  /admin/linktree:
+    get:
+      operationId: listAdminLinktree
+      tags: [linktree]
+      summary: Admin overview of member linktree pages
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Overview rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminLinktreeMember"
+  /admin/linktree/links/{id}:
+    patch:
+      operationId: moderateLinktreeLink
+      tags: [linktree]
+      summary: Enable/disable a member's link (moderation)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinktreeLinkModerationInput"
+      responses:
+        "200":
+          description: Updated link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberLink"
+        "404":
+          description: Not found
   /home/summary:
     get:
       operationId: getHomeSummary
@@ -3763,6 +3923,102 @@ components:
       required: [productId]
       properties:
         productId: { type: integer }
+    MemberLink:
+      type: object
+      required: [id, memberId, title, url, linkType, sortOrder, isActive, isBlocked, createdAt]
+      properties:
+        id: { type: integer }
+        memberId: { type: integer }
+        title: { type: string }
+        subtitle: { type: ["string", "null"] }
+        url: { type: string }
+        icon: { type: ["string", "null"] }
+        linkType: { type: string, enum: [link, social, video, music] }
+        sortOrder: { type: integer }
+        isActive: { type: boolean }
+        isBlocked: { type: boolean, description: "管理員停用（會員無法自行解除）" }
+        createdAt: { type: string, format: date-time }
+    LinktreeLinkInput:
+      type: object
+      required: [title, url]
+      properties:
+        title: { type: string, minLength: 1 }
+        subtitle: { type: ["string", "null"] }
+        url: { type: string, minLength: 1 }
+        icon: { type: ["string", "null"] }
+        linkType: { type: string, enum: [link, social, video, music] }
+        sortOrder: { type: integer }
+        isActive: { type: boolean }
+    LinktreeLinkUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        subtitle: { type: ["string", "null"] }
+        url: { type: string, minLength: 1 }
+        icon: { type: ["string", "null"] }
+        linkType: { type: string, enum: [link, social, video, music] }
+        sortOrder: { type: integer }
+        isActive: { type: boolean }
+    LinktreeSettings:
+      type: object
+      required: [theme, buttonStyle, showAvatar]
+      properties:
+        bio: { type: ["string", "null"] }
+        subtitle: { type: ["string", "null"] }
+        theme: { type: string, enum: [default, dark, gradient, pastel] }
+        backgroundColor: { type: ["string", "null"] }
+        buttonColor: { type: ["string", "null"] }
+        buttonTextColor: { type: ["string", "null"] }
+        buttonStyle: { type: string, enum: [rounded, pill, square, outline] }
+        showAvatar: { type: boolean }
+        customTitle: { type: ["string", "null"] }
+    LinktreeSettingsInput:
+      type: object
+      properties:
+        bio: { type: ["string", "null"] }
+        subtitle: { type: ["string", "null"] }
+        theme: { type: string, enum: [default, dark, gradient, pastel] }
+        backgroundColor: { type: ["string", "null"] }
+        buttonColor: { type: ["string", "null"] }
+        buttonTextColor: { type: ["string", "null"] }
+        buttonStyle: { type: string, enum: [rounded, pill, square, outline] }
+        showAvatar: { type: boolean }
+        customTitle: { type: ["string", "null"] }
+    PublicLinktree:
+      type: object
+      required: [member, links, settings]
+      properties:
+        member:
+          type: object
+          required: [id, displayName]
+          properties:
+            id: { type: integer }
+            displayName: { type: string }
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberLink"
+        settings:
+          $ref: "#/components/schemas/LinktreeSettings"
+    AdminLinktreeMember:
+      type: object
+      required: [memberId, memberName, username, isMemberActive, linkCount, activeLinkCount, links]
+      properties:
+        memberId: { type: integer }
+        memberName: { type: string }
+        username: { type: string }
+        isMemberActive: { type: boolean }
+        linkCount: { type: integer }
+        activeLinkCount: { type: integer }
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberLink"
+    LinktreeLinkModerationInput:
+      type: object
+      required: [isActive]
+      properties:
+        isActive: { type: boolean }
     AdminProduct:
       type: object
       required: [id, code, name, category, priceHospital, priceClinic, priceConsumer, costPrice, stock, isHot, isNew, isActive, createdAt]

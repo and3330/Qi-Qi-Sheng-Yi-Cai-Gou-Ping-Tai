@@ -27,6 +27,7 @@ import type {
   AdminArticleInput,
   AdminArticleUpdate,
   AdminInstitutionUpdate,
+  AdminLinktreeMember,
   AdminMember,
   AdminMemberUpdate,
   AdminMemberWallet,
@@ -105,10 +106,16 @@ import type {
   InstitutionWalletRow,
   InventoryReport,
   Ledger,
+  LinktreeLinkInput,
+  LinktreeLinkModerationInput,
+  LinktreeLinkUpdate,
+  LinktreeSettings,
+  LinktreeSettingsInput,
   ListAdminAnnouncementsParams,
   ListAdminArticlesParams,
   ListAdminContentRevisionsParams,
   ListAdminExpensesParams,
+  ListAdminLinktreeParams,
   ListAdminMembersParams,
   ListAdminOrdersParams,
   ListAdminProductsParams,
@@ -133,6 +140,7 @@ import type {
   ListProductsParams,
   LoginInput,
   Member,
+  MemberLink,
   MemberUpdate,
   Order,
   OrderInput,
@@ -148,6 +156,7 @@ import type {
   ProfitReport,
   ProfitRule,
   ProfitRuleInput,
+  PublicLinktree,
   PurchaseOrderInput,
   PurchaseOrderStatusUpdate,
   Quotation,
@@ -3772,6 +3781,678 @@ export const useRemoveFavorite = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRemoveFavoriteMutationOptions(options));
+    }
+
+export const getListMyLinktreeLinksUrl = () => {
+
+
+
+
+  return `/api/linktree/links`
+}
+
+/**
+ * @summary List my linktree links
+ */
+export const listMyLinktreeLinks = async ( options?: Parameters<typeof customFetch>[1]): Promise<MemberLink[]> => {
+
+  return customFetch<MemberLink[]>(getListMyLinktreeLinksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMyLinktreeLinksQueryKey = () => {
+    return [
+    `/api/linktree/links`
+    ] as const;
+    }
+
+
+export const getListMyLinktreeLinksQueryOptions = <TData = Awaited<ReturnType<typeof listMyLinktreeLinks>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyLinktreeLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMyLinktreeLinksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyLinktreeLinks>>> = ({ signal }) => listMyLinktreeLinks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMyLinktreeLinks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMyLinktreeLinksQueryResult = NonNullable<Awaited<ReturnType<typeof listMyLinktreeLinks>>>
+export type ListMyLinktreeLinksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List my linktree links
+ */
+
+export function useListMyLinktreeLinks<TData = Awaited<ReturnType<typeof listMyLinktreeLinks>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMyLinktreeLinks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMyLinktreeLinksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMyLinktreeLinkUrl = () => {
+
+
+
+
+  return `/api/linktree/links`
+}
+
+/**
+ * @summary Create a linktree link
+ */
+export const createMyLinktreeLink = async (linktreeLinkInput: LinktreeLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<MemberLink> => {
+
+  return customFetch<MemberLink>(getCreateMyLinktreeLinkUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(linktreeLinkInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMyLinktreeLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMyLinktreeLink>>, TError,{data: BodyType<LinktreeLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMyLinktreeLink>>, TError,{data: BodyType<LinktreeLinkInput>}, TContext> => {
+
+const mutationKey = ['createMyLinktreeLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMyLinktreeLink>>, {data: BodyType<LinktreeLinkInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMyLinktreeLink(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMyLinktreeLinkMutationResult = NonNullable<Awaited<ReturnType<typeof createMyLinktreeLink>>>
+    export type CreateMyLinktreeLinkMutationBody = BodyType<LinktreeLinkInput>
+    export type CreateMyLinktreeLinkMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a linktree link
+ */
+export const useCreateMyLinktreeLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMyLinktreeLink>>, TError,{data: BodyType<LinktreeLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMyLinktreeLink>>,
+        TError,
+        {data: BodyType<LinktreeLinkInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMyLinktreeLinkMutationOptions(options));
+    }
+
+export const getUpdateMyLinktreeLinkUrl = (id: number,) => {
+
+
+
+
+  return `/api/linktree/links/${id}`
+}
+
+/**
+ * @summary Update my linktree link
+ */
+export const updateMyLinktreeLink = async (id: number,
+    linktreeLinkUpdate: LinktreeLinkUpdate, options?: Parameters<typeof customFetch>[1]): Promise<MemberLink> => {
+
+  return customFetch<MemberLink>(getUpdateMyLinktreeLinkUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(linktreeLinkUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyLinktreeLinkMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyLinktreeLink>>, TError,{id: number;data: BodyType<LinktreeLinkUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyLinktreeLink>>, TError,{id: number;data: BodyType<LinktreeLinkUpdate>}, TContext> => {
+
+const mutationKey = ['updateMyLinktreeLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyLinktreeLink>>, {id: number;data: BodyType<LinktreeLinkUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMyLinktreeLink(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyLinktreeLinkMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyLinktreeLink>>>
+    export type UpdateMyLinktreeLinkMutationBody = BodyType<LinktreeLinkUpdate>
+    export type UpdateMyLinktreeLinkMutationError = ErrorType<void>
+
+    /**
+ * @summary Update my linktree link
+ */
+export const useUpdateMyLinktreeLink = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyLinktreeLink>>, TError,{id: number;data: BodyType<LinktreeLinkUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyLinktreeLink>>,
+        TError,
+        {id: number;data: BodyType<LinktreeLinkUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMyLinktreeLinkMutationOptions(options));
+    }
+
+export const getDeleteMyLinktreeLinkUrl = (id: number,) => {
+
+
+
+
+  return `/api/linktree/links/${id}`
+}
+
+/**
+ * @summary Delete my linktree link
+ */
+export const deleteMyLinktreeLink = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteMyLinktreeLinkUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMyLinktreeLinkMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMyLinktreeLink>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMyLinktreeLink>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMyLinktreeLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMyLinktreeLink>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMyLinktreeLink(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMyLinktreeLinkMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMyLinktreeLink>>>
+
+    export type DeleteMyLinktreeLinkMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete my linktree link
+ */
+export const useDeleteMyLinktreeLink = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMyLinktreeLink>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMyLinktreeLink>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMyLinktreeLinkMutationOptions(options));
+    }
+
+export const getGetMyLinktreeSettingsUrl = () => {
+
+
+
+
+  return `/api/linktree/settings`
+}
+
+/**
+ * @summary Get my linktree appearance settings
+ */
+export const getMyLinktreeSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<LinktreeSettings> => {
+
+  return customFetch<LinktreeSettings>(getGetMyLinktreeSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyLinktreeSettingsQueryKey = () => {
+    return [
+    `/api/linktree/settings`
+    ] as const;
+    }
+
+
+export const getGetMyLinktreeSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getMyLinktreeSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyLinktreeSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyLinktreeSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyLinktreeSettings>>> = ({ signal }) => getMyLinktreeSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyLinktreeSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyLinktreeSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyLinktreeSettings>>>
+export type GetMyLinktreeSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get my linktree appearance settings
+ */
+
+export function useGetMyLinktreeSettings<TData = Awaited<ReturnType<typeof getMyLinktreeSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyLinktreeSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyLinktreeSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateMyLinktreeSettingsUrl = () => {
+
+
+
+
+  return `/api/linktree/settings`
+}
+
+/**
+ * @summary Update my linktree appearance settings
+ */
+export const updateMyLinktreeSettings = async (linktreeSettingsInput: LinktreeSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<LinktreeSettings> => {
+
+  return customFetch<LinktreeSettings>(getUpdateMyLinktreeSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(linktreeSettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyLinktreeSettingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyLinktreeSettings>>, TError,{data: BodyType<LinktreeSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyLinktreeSettings>>, TError,{data: BodyType<LinktreeSettingsInput>}, TContext> => {
+
+const mutationKey = ['updateMyLinktreeSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyLinktreeSettings>>, {data: BodyType<LinktreeSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateMyLinktreeSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyLinktreeSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyLinktreeSettings>>>
+    export type UpdateMyLinktreeSettingsMutationBody = BodyType<LinktreeSettingsInput>
+    export type UpdateMyLinktreeSettingsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update my linktree appearance settings
+ */
+export const useUpdateMyLinktreeSettings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyLinktreeSettings>>, TError,{data: BodyType<LinktreeSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyLinktreeSettings>>,
+        TError,
+        {data: BodyType<LinktreeSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateMyLinktreeSettingsMutationOptions(options));
+    }
+
+export const getGetPublicLinktreeUrl = (memberId: number,) => {
+
+
+
+
+  return `/api/linktree/public/${memberId}`
+}
+
+/**
+ * @summary Public linktree page data (no auth)
+ */
+export const getPublicLinktree = async (memberId: number, options?: Parameters<typeof customFetch>[1]): Promise<PublicLinktree> => {
+
+  return customFetch<PublicLinktree>(getGetPublicLinktreeUrl(memberId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicLinktreeQueryKey = (memberId: number,) => {
+    return [
+    `/api/linktree/public/${memberId}`
+    ] as const;
+    }
+
+
+export const getGetPublicLinktreeQueryOptions = <TData = Awaited<ReturnType<typeof getPublicLinktree>>, TError = ErrorType<void>>(memberId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicLinktree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicLinktreeQueryKey(memberId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicLinktree>>> = ({ signal }) => getPublicLinktree(memberId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: memberId !== null && memberId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicLinktree>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicLinktreeQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicLinktree>>>
+export type GetPublicLinktreeQueryError = ErrorType<void>
+
+
+/**
+ * @summary Public linktree page data (no auth)
+ */
+
+export function useGetPublicLinktree<TData = Awaited<ReturnType<typeof getPublicLinktree>>, TError = ErrorType<void>>(
+ memberId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicLinktree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicLinktreeQueryOptions(memberId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListAdminLinktreeUrl = (params?: ListAdminLinktreeParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/linktree?${stringifiedParams}` : `/api/admin/linktree`
+}
+
+/**
+ * @summary Admin overview of member linktree pages
+ */
+export const listAdminLinktree = async (params?: ListAdminLinktreeParams, options?: Parameters<typeof customFetch>[1]): Promise<AdminLinktreeMember[]> => {
+
+  return customFetch<AdminLinktreeMember[]>(getListAdminLinktreeUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminLinktreeQueryKey = (params?: ListAdminLinktreeParams,) => {
+    return [
+    `/api/admin/linktree`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminLinktreeQueryOptions = <TData = Awaited<ReturnType<typeof listAdminLinktree>>, TError = ErrorType<unknown>>(params?: ListAdminLinktreeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminLinktree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminLinktreeQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminLinktree>>> = ({ signal }) => listAdminLinktree(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminLinktree>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminLinktreeQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminLinktree>>>
+export type ListAdminLinktreeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Admin overview of member linktree pages
+ */
+
+export function useListAdminLinktree<TData = Awaited<ReturnType<typeof listAdminLinktree>>, TError = ErrorType<unknown>>(
+ params?: ListAdminLinktreeParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminLinktree>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminLinktreeQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getModerateLinktreeLinkUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/linktree/links/${id}`
+}
+
+/**
+ * @summary Enable/disable a member's link (moderation)
+ */
+export const moderateLinktreeLink = async (id: number,
+    linktreeLinkModerationInput: LinktreeLinkModerationInput, options?: Parameters<typeof customFetch>[1]): Promise<MemberLink> => {
+
+  return customFetch<MemberLink>(getModerateLinktreeLinkUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(linktreeLinkModerationInput)
+  }
+);}
+
+
+
+
+
+export const getModerateLinktreeLinkMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moderateLinktreeLink>>, TError,{id: number;data: BodyType<LinktreeLinkModerationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof moderateLinktreeLink>>, TError,{id: number;data: BodyType<LinktreeLinkModerationInput>}, TContext> => {
+
+const mutationKey = ['moderateLinktreeLink'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof moderateLinktreeLink>>, {id: number;data: BodyType<LinktreeLinkModerationInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  moderateLinktreeLink(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ModerateLinktreeLinkMutationResult = NonNullable<Awaited<ReturnType<typeof moderateLinktreeLink>>>
+    export type ModerateLinktreeLinkMutationBody = BodyType<LinktreeLinkModerationInput>
+    export type ModerateLinktreeLinkMutationError = ErrorType<void>
+
+    /**
+ * @summary Enable/disable a member's link (moderation)
+ */
+export const useModerateLinktreeLink = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moderateLinktreeLink>>, TError,{id: number;data: BodyType<LinktreeLinkModerationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof moderateLinktreeLink>>,
+        TError,
+        {id: number;data: BodyType<LinktreeLinkModerationInput>},
+        TContext
+      > => {
+      return useMutation(getModerateLinktreeLinkMutationOptions(options));
     }
 
 export const getGetHomeSummaryUrl = () => {
