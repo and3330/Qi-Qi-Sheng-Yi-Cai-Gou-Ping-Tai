@@ -100,6 +100,11 @@ export interface Member {
   points: number;
   /** @nullable */
   shippingAddress?: string | null;
+  /**
+     * ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）
+     * @nullable
+     */
+  erpRole?: string | null;
 }
 
 export type PortalSummaryTier = typeof PortalSummaryTier[keyof typeof PortalSummaryTier];
@@ -1914,6 +1919,18 @@ export interface QuotationStatusUpdate {
   status: QuotationStatusUpdateStatus;
 }
 
+export interface ErpMe {
+  id: number;
+  username: string;
+  name: string;
+  /** 平台角色 */
+  role: string;
+  /**
+     * 有效 ERP 角色（平台 admin 未設定時視同 super_admin；null 表示無 ERP 權限）
+     * @nullable
+     */
+  erpRole: string | null;
+}
 export type ListPortalOrdersParams = {
 status?: ListPortalOrdersStatus;
 };
@@ -2169,6 +2186,11 @@ export type ListAdminQuotationsParams = {
 status?: string;
 };
 
+export type ListErpUsersParams = {
+q?: string;
+erpOnly?: boolean;
+};
+
 
 export interface AssistantActionConfirmation {
   ok: boolean;
@@ -2176,4 +2198,129 @@ export interface AssistantActionConfirmation {
   action: string;
   result: unknown;
   message: ChatMessage;
+}
+
+export type ListErpAuditLogsParams = {
+page?: number;
+module?: string;
+q?: string;
+};
+
+export interface ErpUserUpdate {
+  /** @nullable */
+  erpRole?: ErpUserUpdateErpRole;
+  /** @nullable */
+  departmentId?: number | null;
+}
+
+export const ErpUserUpdateErpRole = {
+  super_admin: 'super_admin',
+  admin: 'admin',
+  manager: 'manager',
+  hr_admin: 'hr_admin',
+  finance_admin: 'finance_admin',
+  accountant: 'accountant',
+  viewer: 'viewer',
+} as const;
+
+export interface ErpDashboard {
+  /** 平台會員總數 */
+  userCount: number;
+  /** 具 ERP 權限的使用者數 */
+  erpUserCount: number;
+  departmentCount: number;
+  auditLogCount: number;
+  recentAuditLogs: ErpAuditLog[];
+}
+
+export interface ErpAuditLog {
+  id: number;
+  /** create/update/delete 等 */
+  action: string;
+  module: string;
+  /** @nullable */
+  documentType?: string | null;
+  /** @nullable */
+  documentId?: string | null;
+  userId: number;
+  userName: string;
+  /** @nullable */
+  description?: string | null;
+  oldValues?: unknown;
+  newValues?: unknown;
+  createdAt: string;
+}
+
+export interface ErpUser {
+  id: number;
+  username: string;
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** 平台角色 */
+  role: string;
+  /** @nullable */
+  erpRole: string | null;
+  /** @nullable */
+  departmentId: number | null;
+  /** @nullable */
+  departmentName?: string | null;
+  createdAt: string;
+}
+
+export interface ErpDepartmentInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  parentId?: number | null;
+  /**
+     * 主管（會員 id）
+     * @nullable
+     */
+  managerId?: number | null;
+  /** @nullable */
+  costCenter?: string | null;
+  isActive?: boolean;
+}
+
+export interface ErpDepartment {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  parentId?: number | null;
+  /** @nullable */
+  managerId?: number | null;
+  /** @nullable */
+  managerName?: string | null;
+  /** @nullable */
+  costCenter?: string | null;
+  isActive: boolean;
+  memberCount?: number;
+  createdAt: string;
+}
+
+/**
+ * 選單路徑 → 允許角色清單
+ */
+export type ErpMenuPermissionMapOverrides = {[key: string]: string[]};
+
+/**
+ * @nullable
+ */
+export type ErpUserUpdateErpRole = typeof ErpUserUpdateErpRole[keyof typeof ErpUserUpdateErpRole] | null;
+
+export interface ErpMenuPermissionMap {
+  /** 選單路徑 → 允許角色清單 */
+  overrides: ErpMenuPermissionMapOverrides;
+}
+
+export interface ErpAuditLogPage {
+  items: ErpAuditLog[];
+  total: number;
+  page: number;
+  pageSize: number;
 }

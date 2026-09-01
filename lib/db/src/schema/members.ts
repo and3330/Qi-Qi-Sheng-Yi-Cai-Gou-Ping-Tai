@@ -33,6 +33,11 @@ export const membersTable = pgTable("members", {
   // 錢包餘額 (NT$)
   walletBalance: integer("wallet_balance").notNull().default(0),
   shippingAddress: text("shipping_address"),
+  // ERP 角色：super_admin | admin | manager | hr_admin | finance_admin | accountant | viewer
+  // null = 無 ERP 權限（平台 admin 未設定時視同 super_admin）
+  erpRole: text("erp_role"),
+  // ERP 部門（erp_departments.id，弱關聯）
+  erpDepartmentId: integer("erp_department_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [index("idx_members_bound_institution").on(t.boundInstitutionId)]);
 

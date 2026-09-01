@@ -29,4 +29,9 @@ export interface Member {
   points: number;
   /** @nullable */
   shippingAddress?: string | null;
+  /**
+     * ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）
+     * @nullable
+     */
+  erpRole?: string | null;
 }

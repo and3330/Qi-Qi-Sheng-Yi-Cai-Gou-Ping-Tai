@@ -24,6 +24,7 @@ import supportChatRouter from "./supportChat";
 import pointsRouter from "./points";
 import adminInstitutionsRouter from "./adminInstitutions";
 import adminQuotationsRouter from "./adminQuotations";
+import erpRouter from "./erp";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(supportChatRouter);
 router.use(pointsRouter);
 router.use(adminInstitutionsRouter);
 router.use(adminQuotationsRouter);
+router.use(erpRouter);
 
 export default router;

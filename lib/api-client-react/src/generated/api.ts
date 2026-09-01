@@ -55,6 +55,14 @@ import type {
   CommissionReport,
   ContentRevision,
   CreateConversationInput,
+  ErpAuditLogPage,
+  ErpDashboard,
+  ErpDepartment,
+  ErpDepartmentInput,
+  ErpMe,
+  ErpMenuPermissionMap,
+  ErpUser,
+  ErpUserUpdate,
   ErrorMessage,
   Expense,
   ExpenseInput,
@@ -85,6 +93,8 @@ import type {
   ListAdminStockMovementsParams,
   ListAdminSuppliersParams,
   ListArticlesParams,
+  ListErpAuditLogsParams,
+  ListErpUsersParams,
   ListInstitutionsParams,
   ListPortalOrdersParams,
   ListProductsParams,
@@ -6904,6 +6914,12 @@ export const useConvertAdminQuotation = <TError = ErrorType<unknown>,
       return useMutation(getConvertAdminQuotationMutationOptions(options));
     }
 
+export const getGetErpMeUrl = () => {
+
+
+  return `/api/erp/me`
+}
+
 
 /**
  * @summary 管理者明確確認待執行的 AI 操作
@@ -6958,3 +6974,680 @@ export const useConfirmAssistantAction = <TError = ErrorType<void>,
     }
 
     export type ConfirmAssistantActionMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAssistantAction>>>
+
+    export type CreateErpDepartmentMutationError = ErrorType<unknown>
+
+export const getUpdateErpUserMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateErpUser>>, TError,{id: number;data: BodyType<ErpUserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateErpUser>>, TError,{id: number;data: BodyType<ErpUserUpdate>}, TContext> => {
+
+const mutationKey = ['updateErpUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateErpUser>>, {id: number;data: BodyType<ErpUserUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateErpUser(id,data,requestOptions)
+        }
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+export const getListErpDepartmentsQueryKey = () => {
+    return [
+    `/api/erp/departments`
+    ] as const;
+    }
+
+    /**
+ * @summary 新增部門
+ */
+export const useCreateErpDepartment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createErpDepartment>>, TError,{data: BodyType<ErpDepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createErpDepartment>>,
+        TError,
+        {data: BodyType<ErpDepartmentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateErpDepartmentMutationOptions(options));
+    }
+
+/**
+ * @summary ERP 儀表板摘要
+ */
+export const getErpDashboard = async ( options?: Parameters<typeof customFetch>[1]): Promise<ErpDashboard> => {
+
+  return customFetch<ErpDashboard>(getGetErpDashboardUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+/**
+ * @summary 審計日誌
+ */
+
+export function useListErpAuditLogs<TData = Awaited<ReturnType<typeof listErpAuditLogs>>, TError = ErrorType<unknown>>(
+ params?: ListErpAuditLogsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpAuditLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListErpAuditLogsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+    export type UpdateErpUserMutationError = ErrorType<unknown>
+
+    export type CreateErpDepartmentMutationBody = BodyType<ErpDepartmentInput>
+
+export const getGetErpMeQueryOptions = <TData = Awaited<ReturnType<typeof getErpMe>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getErpMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetErpMeQueryKey();
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getErpMe>>> = ({ signal }) => getErpMe({ signal, ...requestOptions });
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getErpMe>>, TError, TData> & { queryKey: QueryKey }
+}
+
+    /**
+ * @summary 更新部門
+ */
+export const useUpdateErpDepartment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateErpDepartment>>, TError,{id: number;data: BodyType<ErpDepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateErpDepartment>>,
+        TError,
+        {id: number;data: BodyType<ErpDepartmentInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateErpDepartmentMutationOptions(options));
+    }
+
+export type GetErpDashboardQueryError = ErrorType<unknown>
+
+export const getGetErpDashboardQueryKey = () => {
+    return [
+    `/api/erp/dashboard`
+    ] as const;
+    }
+
+export type GetErpMeQueryError = ErrorType<unknown>
+
+/**
+ * @summary 儲存選單權限覆寫
+ */
+export const putErpMenuPermissions = async (erpMenuPermissionMap: ErpMenuPermissionMap, options?: Parameters<typeof customFetch>[1]): Promise<ErpMenuPermissionMap> => {
+
+  return customFetch<ErpMenuPermissionMap>(getPutErpMenuPermissionsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(erpMenuPermissionMap)
+  }
+);}
+
+/**
+ * @summary 取得目前登入者的 ERP 身分（含有效 ERP 角色）
+ */
+
+export function useGetErpMe<TData = Awaited<ReturnType<typeof getErpMe>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getErpMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetErpMeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+    export type PutErpMenuPermissionsMutationBody = BodyType<ErpMenuPermissionMap>
+
+    export type CreateErpDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof createErpDepartment>>>
+
+/**
+ * @summary 停用部門
+ */
+export const deleteErpDepartment = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteErpDepartmentUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+    export type PutErpMenuPermissionsMutationError = ErrorType<unknown>
+
+export const getListErpAuditLogsQueryOptions = <TData = Awaited<ReturnType<typeof listErpAuditLogs>>, TError = ErrorType<unknown>>(params?: ListErpAuditLogsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpAuditLogs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListErpAuditLogsQueryKey(params);
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listErpAuditLogs>>> = ({ signal }) => listErpAuditLogs(params, { signal, ...requestOptions });
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listErpAuditLogs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export const getUpdateErpUserUrl = (id: number,) => {
+
+
+  return `/api/erp/users/${id}`
+}
+
+export const getCreateErpDepartmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createErpDepartment>>, TError,{data: BodyType<ErpDepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createErpDepartment>>, TError,{data: BodyType<ErpDepartmentInput>}, TContext> => {
+
+const mutationKey = ['createErpDepartment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createErpDepartment>>, {data: BodyType<ErpDepartmentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createErpDepartment(data,requestOptions)
+        }
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+export const getGetErpMenuPermissionsQueryKey = () => {
+    return [
+    `/api/erp/menu-permissions`
+    ] as const;
+    }
+
+/**
+ * @summary ERP 儀表板摘要
+ */
+
+export function useGetErpDashboard<TData = Awaited<ReturnType<typeof getErpDashboard>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getErpDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetErpDashboardQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getDeleteErpDepartmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteErpDepartment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteErpDepartment>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteErpDepartment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteErpDepartment>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteErpDepartment(id,requestOptions)
+        }
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+export type GetErpMenuPermissionsQueryResult = NonNullable<Awaited<ReturnType<typeof getErpMenuPermissions>>>
+
+export const getListErpAuditLogsUrl = (params?: ListErpAuditLogsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/erp/audit-logs?${stringifiedParams}` : `/api/erp/audit-logs`
+}
+
+/**
+ * @summary 新增部門
+ */
+export const createErpDepartment = async (erpDepartmentInput: ErpDepartmentInput, options?: Parameters<typeof customFetch>[1]): Promise<ErpDepartment> => {
+
+  return customFetch<ErpDepartment>(getCreateErpDepartmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(erpDepartmentInput)
+  }
+);}
+
+    export type UpdateErpDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateErpDepartment>>>
+
+export const getCreateErpDepartmentUrl = () => {
+
+
+  return `/api/erp/departments`
+}
+
+export const getGetErpMenuPermissionsUrl = () => {
+
+
+  return `/api/erp/menu-permissions`
+}
+
+export const getGetErpMenuPermissionsQueryOptions = <TData = Awaited<ReturnType<typeof getErpMenuPermissions>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getErpMenuPermissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetErpMenuPermissionsQueryKey();
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getErpMenuPermissions>>> = ({ signal }) => getErpMenuPermissions({ signal, ...requestOptions });
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getErpMenuPermissions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListErpUsersQueryError = ErrorType<unknown>
+
+export const getListErpDepartmentsQueryOptions = <TData = Awaited<ReturnType<typeof listErpDepartments>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpDepartments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListErpDepartmentsQueryKey();
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listErpDepartments>>> = ({ signal }) => listErpDepartments({ signal, ...requestOptions });
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listErpDepartments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export const getListErpAuditLogsQueryKey = (params?: ListErpAuditLogsParams,) => {
+    return [
+    `/api/erp/audit-logs`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export type ListErpAuditLogsQueryResult = NonNullable<Awaited<ReturnType<typeof listErpAuditLogs>>>
+
+export const getGetErpMeQueryKey = () => {
+    return [
+    `/api/erp/me`
+    ] as const;
+    }
+
+export const getListErpUsersQueryOptions = <TData = Awaited<ReturnType<typeof listErpUsers>>, TError = ErrorType<unknown>>(params?: ListErpUsersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListErpUsersQueryKey(params);
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listErpUsers>>> = ({ signal }) => listErpUsers(params, { signal, ...requestOptions });
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listErpUsers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export const getGetErpDashboardUrl = () => {
+
+
+  return `/api/erp/dashboard`
+}
+
+    export type UpdateErpDepartmentMutationBody = BodyType<ErpDepartmentInput>
+
+/**
+ * @summary 取得選單權限覆寫（path → 角色清單）
+ */
+export const getErpMenuPermissions = async ( options?: Parameters<typeof customFetch>[1]): Promise<ErpMenuPermissionMap> => {
+
+  return customFetch<ErpMenuPermissionMap>(getGetErpMenuPermissionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+/**
+ * @summary ERP 使用者清單（平台會員 + ERP 角色）
+ */
+
+export function useListErpUsers<TData = Awaited<ReturnType<typeof listErpUsers>>, TError = ErrorType<unknown>>(
+ params?: ListErpUsersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListErpUsersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+    /**
+ * @summary 停用部門
+ */
+export const useDeleteErpDepartment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteErpDepartment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteErpDepartment>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteErpDepartmentMutationOptions(options));
+    }
+
+export const getListErpDepartmentsUrl = () => {
+
+
+  return `/api/erp/departments`
+}
+
+    export type DeleteErpDepartmentMutationResult = NonNullable<Awaited<ReturnType<typeof deleteErpDepartment>>>
+
+export const getPutErpMenuPermissionsUrl = () => {
+
+
+  return `/api/erp/menu-permissions`
+}
+
+export type GetErpMenuPermissionsQueryError = ErrorType<unknown>
+
+export const getDeleteErpDepartmentUrl = (id: number,) => {
+
+
+  return `/api/erp/departments/${id}`
+}
+
+export type ListErpDepartmentsQueryError = ErrorType<unknown>
+
+    /**
+ * @summary 儲存選單權限覆寫
+ */
+export const usePutErpMenuPermissions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putErpMenuPermissions>>, TError,{data: BodyType<ErpMenuPermissionMap>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof putErpMenuPermissions>>,
+        TError,
+        {data: BodyType<ErpMenuPermissionMap>},
+        TContext
+      > => {
+      return useMutation(getPutErpMenuPermissionsMutationOptions(options));
+    }
+
+/**
+ * @summary 部門清單
+ */
+
+export function useListErpDepartments<TData = Awaited<ReturnType<typeof listErpDepartments>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listErpDepartments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListErpDepartmentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+/**
+ * @summary 審計日誌
+ */
+export const listErpAuditLogs = async (params?: ListErpAuditLogsParams, options?: Parameters<typeof customFetch>[1]): Promise<ErpAuditLogPage> => {
+
+  return customFetch<ErpAuditLogPage>(getListErpAuditLogsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+/**
+ * @summary 設定會員的 ERP 角色 / 部門
+ */
+export const updateErpUser = async (id: number,
+    erpUserUpdate: ErpUserUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ErpUser> => {
+
+  return customFetch<ErpUser>(getUpdateErpUserUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(erpUserUpdate)
+  }
+);}
+
+    export type UpdateErpUserMutationBody = BodyType<ErpUserUpdate>
+
+    /**
+ * @summary 設定會員的 ERP 角色 / 部門
+ */
+export const useUpdateErpUser = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateErpUser>>, TError,{id: number;data: BodyType<ErpUserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateErpUser>>,
+        TError,
+        {id: number;data: BodyType<ErpUserUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateErpUserMutationOptions(options));
+    }
+
+/**
+ * @summary 取得目前登入者的 ERP 身分（含有效 ERP 角色）
+ */
+export const getErpMe = async ( options?: Parameters<typeof customFetch>[1]): Promise<ErpMe> => {
+
+  return customFetch<ErpMe>(getGetErpMeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+export type GetErpDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getErpDashboard>>>
+
+export const getListErpUsersQueryKey = (params?: ListErpUsersParams,) => {
+    return [
+    `/api/erp/users`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+/**
+ * @summary 部門清單
+ */
+export const listErpDepartments = async ( options?: Parameters<typeof customFetch>[1]): Promise<ErpDepartment[]> => {
+
+  return customFetch<ErpDepartment[]>(getListErpDepartmentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+export type ListErpUsersQueryResult = NonNullable<Awaited<ReturnType<typeof listErpUsers>>>
+
+/**
+ * @summary ERP 使用者清單（平台會員 + ERP 角色）
+ */
+export const listErpUsers = async (params?: ListErpUsersParams, options?: Parameters<typeof customFetch>[1]): Promise<ErpUser[]> => {
+
+  return customFetch<ErpUser[]>(getListErpUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+export const getUpdateErpDepartmentUrl = (id: number,) => {
+
+
+  return `/api/erp/departments/${id}`
+}
+
+/**
+ * @summary 更新部門
+ */
+export const updateErpDepartment = async (id: number,
+    erpDepartmentInput: ErpDepartmentInput, options?: Parameters<typeof customFetch>[1]): Promise<ErpDepartment> => {
+
+  return customFetch<ErpDepartment>(getUpdateErpDepartmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(erpDepartmentInput)
+  }
+);}
+
+    export type DeleteErpDepartmentMutationError = ErrorType<unknown>
+
+/**
+ * @summary 取得選單權限覆寫（path → 角色清單）
+ */
+
+export function useGetErpMenuPermissions<TData = Awaited<ReturnType<typeof getErpMenuPermissions>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getErpMenuPermissions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetErpMenuPermissionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getPutErpMenuPermissionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putErpMenuPermissions>>, TError,{data: BodyType<ErpMenuPermissionMap>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putErpMenuPermissions>>, TError,{data: BodyType<ErpMenuPermissionMap>}, TContext> => {
+
+const mutationKey = ['putErpMenuPermissions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putErpMenuPermissions>>, {data: BodyType<ErpMenuPermissionMap>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  putErpMenuPermissions(data,requestOptions)
+        }
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+export type GetErpMeQueryResult = NonNullable<Awaited<ReturnType<typeof getErpMe>>>
+
+export type ListErpDepartmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listErpDepartments>>>
+
+export const getUpdateErpDepartmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateErpDepartment>>, TError,{id: number;data: BodyType<ErpDepartmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateErpDepartment>>, TError,{id: number;data: BodyType<ErpDepartmentInput>}, TContext> => {
+
+const mutationKey = ['updateErpDepartment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateErpDepartment>>, {id: number;data: BodyType<ErpDepartmentInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateErpDepartment(id,data,requestOptions)
+        }
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateErpUserMutationResult = NonNullable<Awaited<ReturnType<typeof updateErpUser>>>
+
+export const getListErpUsersUrl = (params?: ListErpUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/erp/users?${stringifiedParams}` : `/api/erp/users`
+}
+
+    export type UpdateErpDepartmentMutationError = ErrorType<unknown>
+
+export const getGetErpDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getErpDashboard>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getErpDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetErpDashboardQueryKey();
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getErpDashboard>>> = ({ signal }) => getErpDashboard({ signal, ...requestOptions });
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getErpDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+    export type PutErpMenuPermissionsMutationResult = NonNullable<Awaited<ReturnType<typeof putErpMenuPermissions>>>
+
+export type ListErpAuditLogsQueryError = ErrorType<unknown>

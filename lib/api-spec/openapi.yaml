@@ -20,6 +20,7 @@ tags:
   - name: home
   - name: admin
   - name: portal
+  - name: erp
 paths:
   /portal/summary:
     get:
@@ -2320,6 +2321,196 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Quotation"
+  /erp/me:
+    get:
+      tags: [erp]
+      operationId: getErpMe
+      summary: 取得目前登入者的 ERP 身分（含有效 ERP 角色）
+      responses:
+        "200":
+          description: ERP 身分
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpMe"
+  /erp/dashboard:
+    get:
+      tags: [erp]
+      operationId: getErpDashboard
+      summary: ERP 儀表板摘要
+      responses:
+        "200":
+          description: 摘要
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpDashboard"
+  /erp/users:
+    get:
+      tags: [erp]
+      operationId: listErpUsers
+      summary: ERP 使用者清單（平台會員 + ERP 角色）
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: erpOnly
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: 使用者清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpUser"
+  /erp/users/{id}:
+    patch:
+      tags: [erp]
+      operationId: updateErpUser
+      summary: 設定會員的 ERP 角色 / 部門
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpUserUpdate"
+      responses:
+        "200":
+          description: 更新後的使用者
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpUser"
+  /erp/departments:
+    get:
+      tags: [erp]
+      operationId: listErpDepartments
+      summary: 部門清單
+      responses:
+        "200":
+          description: 部門清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpDepartment"
+    post:
+      tags: [erp]
+      operationId: createErpDepartment
+      summary: 新增部門
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpDepartmentInput"
+      responses:
+        "201":
+          description: 新增的部門
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpDepartment"
+  /erp/departments/{id}:
+    patch:
+      tags: [erp]
+      operationId: updateErpDepartment
+      summary: 更新部門
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpDepartmentInput"
+      responses:
+        "200":
+          description: 更新後的部門
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpDepartment"
+    delete:
+      tags: [erp]
+      operationId: deleteErpDepartment
+      summary: 停用部門
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: 已停用
+  /erp/menu-permissions:
+    get:
+      tags: [erp]
+      operationId: getErpMenuPermissions
+      summary: 取得選單權限覆寫（path → 角色清單）
+      responses:
+        "200":
+          description: 覆寫表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpMenuPermissionMap"
+    put:
+      tags: [erp]
+      operationId: putErpMenuPermissions
+      summary: 儲存選單權限覆寫
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpMenuPermissionMap"
+      responses:
+        "200":
+          description: 儲存後的覆寫表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpMenuPermissionMap"
+  /erp/audit-logs:
+    get:
+      tags: [erp]
+      operationId: listErpAuditLogs
+      summary: 審計日誌
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: module
+          in: query
+          required: false
+          schema: { type: string }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 日誌分頁
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpAuditLogPage"
 components:
   schemas:
     HealthStatus:
@@ -2373,6 +2564,9 @@ components:
         boundDepartment: { type: ["string", "null"] }
         points: { type: integer }
         shippingAddress: { type: ["string", "null"] }
+        erpRole:
+          type: ["string", "null"]
+          description: ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）
     PortalSummary:
       type: object
       required: [tier, institutionScope, walletBalance, monthOrderCount, monthPurchaseTotal, pendingOrderCount, recentOrders]
@@ -3620,3 +3814,106 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [sent, accepted, cancelled] }
+    ErpMe:
+      type: object
+      required: [id, username, name, role, erpRole]
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        name: { type: string }
+        role: { type: string, description: 平台角色 }
+        erpRole:
+          type: ["string", "null"]
+          description: 有效 ERP 角色（平台 admin 未設定時視同 super_admin；null 表示無 ERP 權限）
+    ErpDashboard:
+      type: object
+      required: [userCount, erpUserCount, departmentCount, auditLogCount, recentAuditLogs]
+      properties:
+        userCount: { type: integer, description: 平台會員總數 }
+        erpUserCount: { type: integer, description: 具 ERP 權限的使用者數 }
+        departmentCount: { type: integer }
+        auditLogCount: { type: integer }
+        recentAuditLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpAuditLog"
+    ErpUser:
+      type: object
+      required: [id, username, name, role, erpRole, departmentId, createdAt]
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        name: { type: string }
+        email: { type: ["string", "null"] }
+        role: { type: string, description: 平台角色 }
+        erpRole: { type: ["string", "null"] }
+        departmentId: { type: ["integer", "null"] }
+        departmentName: { type: ["string", "null"] }
+        createdAt: { type: string }
+    ErpUserUpdate:
+      type: object
+      properties:
+        erpRole:
+          type: ["string", "null"]
+          enum: [super_admin, admin, manager, hr_admin, finance_admin, accountant, viewer, null]
+        departmentId: { type: ["integer", "null"] }
+    ErpDepartmentInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: ["string", "null"] }
+        parentId: { type: ["integer", "null"] }
+        managerId: { type: ["integer", "null"], description: 主管（會員 id） }
+        costCenter: { type: ["string", "null"] }
+        isActive: { type: boolean, default: true }
+    ErpDepartment:
+      type: object
+      required: [id, name, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        parentId: { type: ["integer", "null"] }
+        managerId: { type: ["integer", "null"] }
+        managerName: { type: ["string", "null"] }
+        costCenter: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        memberCount: { type: integer }
+        createdAt: { type: string }
+    ErpMenuPermissionMap:
+      type: object
+      required: [overrides]
+      properties:
+        overrides:
+          type: object
+          description: 選單路徑 → 允許角色清單
+          additionalProperties:
+            type: array
+            items: { type: string }
+    ErpAuditLog:
+      type: object
+      required: [id, action, module, userId, userName, createdAt]
+      properties:
+        id: { type: integer }
+        action: { type: string, description: create/update/delete 等 }
+        module: { type: string }
+        documentType: { type: ["string", "null"] }
+        documentId: { type: ["string", "null"] }
+        userId: { type: integer }
+        userName: { type: string }
+        description: { type: ["string", "null"] }
+        oldValues: {}
+        newValues: {}
+        createdAt: { type: string }
+    ErpAuditLogPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpAuditLog"
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }

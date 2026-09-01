@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   ArrowLeft,
+  Briefcase,
   ShieldCheck,
   FileText,
   Bot,
@@ -159,6 +160,22 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
+/** 具 ERP 權限（erpRole 有值，或平台 admin 視同 super_admin）才顯示「進入ERP」 */
+function ErpEntryLink() {
+  const { me } = useAuth();
+  const meAny = me as (typeof me & { erpRole?: string | null }) | undefined;
+  const canErp = !!meAny && (meAny.role === "admin" || !!meAny.erpRole);
+  if (!canErp) return null;
+  return (
+    <a
+      href="/erp/"
+      className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+      data-testid="link-admin-enter-erp"
+    >
+      <Briefcase size={16} /> 進入ERP
+    </a>
+  );
+}
 function SidebarHeader() {
   return (
     <div className="flex items-center gap-2 px-6 py-5">
@@ -198,6 +215,7 @@ export function AdminLayout({
           >
             <ArrowLeft size={16} /> 回前台商城
           </Link>
+          <ErpEntryLink />
         </div>
       </aside>
 
@@ -229,6 +247,7 @@ export function AdminLayout({
               >
                 <ArrowLeft size={16} /> 回前台商城
               </Link>
+              <ErpEntryLink />
             </div>
           </div>
         </div>

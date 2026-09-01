@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/erp/"
+title = "七期生醫 ERP"
+description = "獨立版面的企業內部 ERP 後台，與七期生醫採購平台共用同一組帳號與資料庫。此階段包含 ERP 殼層（側欄、儀表板）、角色群組權限體制、選單權限管理，以及使用者/部門/選單權限/審計日誌等系統管理基礎頁。"
+version = "1.0.0"
+id = "artifacts/erp"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/erp/" ]
+localPort = 18996
+
+[services.development]
+run = "pnpm --filter @workspace/erp run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/erp", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/erp/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18996"
+BASE_PATH = "/erp/"

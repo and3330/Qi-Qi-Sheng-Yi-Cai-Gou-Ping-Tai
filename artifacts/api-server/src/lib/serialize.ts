@@ -17,6 +17,7 @@ export function serializeMember(
     boundDepartment: m.boundDepartment,
     points: m.points,
     shippingAddress: m.shippingAddress,
+    erpRole: m.erpRole,
   };
 }
 

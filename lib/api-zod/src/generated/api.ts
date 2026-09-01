@@ -801,7 +801,8 @@ export const RegisterResponse = zod.object({
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
-  "shippingAddress": zod.string().nullish()
+  "shippingAddress": zod.string().nullish(),
+  "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
 
@@ -827,7 +828,8 @@ export const LoginResponse = zod.object({
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
-  "shippingAddress": zod.string().nullish()
+  "shippingAddress": zod.string().nullish(),
+  "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
 
@@ -852,7 +854,8 @@ export const GetMeResponse = zod.object({
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
-  "shippingAddress": zod.string().nullish()
+  "shippingAddress": zod.string().nullish(),
+  "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
 
@@ -881,7 +884,8 @@ export const UpdateMeResponse = zod.object({
   "boundInstitutionName": zod.string().nullish(),
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
-  "shippingAddress": zod.string().nullish()
+  "shippingAddress": zod.string().nullish(),
+  "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
 
@@ -2804,6 +2808,17 @@ export const ConvertAdminQuotationResponse = zod.object({
 }))
 })
 
+/**
+ * @summary 取得目前登入者的 ERP 身分（含有效 ERP 角色）
+ */
+export const GetErpMeResponse = zod.object({
+  "id": zod.int(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "role": zod.string().describe('平台角色'),
+  "erpRole": zod.string().nullable().describe('有效 ERP 角色（平台 admin 未設定時視同 super_admin；null 表示無 ERP 權限）')
+})
+
 
 export const ConfirmAssistantActionResponse = zod.object({
   "ok": zod.boolean(),
@@ -2817,4 +2832,205 @@ export const ConfirmAssistantActionResponse = zod.object({
   "metadata": zod.record(zod.string(), zod.unknown()).optional(),
   "createdAt": zod.string()
 })
+})
+
+/**
+ * @summary 設定會員的 ERP 角色 / 部門
+ */
+export const UpdateErpUserParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+/**
+ * @summary 取得選單權限覆寫（path → 角色清單）
+ */
+export const GetErpMenuPermissionsResponse = zod.object({
+  "overrides": zod.record(zod.string(), zod.array(zod.string())).describe('選單路徑 → 允許角色清單')
+})
+
+export const ListErpUsersResponseItem = zod.object({
+  "id": zod.int(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "role": zod.string().describe('平台角色'),
+  "erpRole": zod.string().nullable(),
+  "departmentId": zod.int().nullable(),
+  "departmentName": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+/**
+ * @summary 更新部門
+ */
+export const UpdateErpDepartmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpDepartmentResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "parentId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "managerName": zod.string().nullish(),
+  "costCenter": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "memberCount": zod.int().optional(),
+  "createdAt": zod.string()
+})
+
+export const ListErpUsersResponse = zod.array(ListErpUsersResponseItem)
+
+/**
+ * @summary 審計日誌
+ */
+export const ListErpAuditLogsQueryParams = zod.object({
+  "page": zod.coerce.number().int().optional(),
+  "module": zod.coerce.string().optional(),
+  "q": zod.coerce.string().optional()
+})
+
+/**
+ * @summary 儲存選單權限覆寫
+ */
+export const PutErpMenuPermissionsBody = zod.object({
+  "overrides": zod.record(zod.string(), zod.array(zod.string())).describe('選單路徑 → 允許角色清單')
+})
+
+export const DeleteErpDepartmentResponse = zod.void()
+
+export const CreateErpDepartmentBody = zod.object({
+  "name": zod.string().min(1),
+  "description": zod.string().nullish(),
+  "parentId": zod.int().nullish(),
+  "managerId": zod.int().nullish().describe('主管（會員 id）'),
+  "costCenter": zod.string().nullish(),
+  "isActive": zod.boolean().default(createErpDepartmentBodyIsActiveDefault)
+})
+
+export const UpdateErpDepartmentBody = zod.object({
+  "name": zod.string().min(1),
+  "description": zod.string().nullish(),
+  "parentId": zod.int().nullish(),
+  "managerId": zod.int().nullish().describe('主管（會員 id）'),
+  "costCenter": zod.string().nullish(),
+  "isActive": zod.boolean().default(updateErpDepartmentBodyIsActiveDefault)
+})
+
+export const ListErpAuditLogsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "action": zod.string().describe('create\/update\/delete 等'),
+  "module": zod.string(),
+  "documentType": zod.string().nullish(),
+  "documentId": zod.string().nullish(),
+  "userId": zod.int(),
+  "userName": zod.string(),
+  "description": zod.string().nullish(),
+  "oldValues": zod.unknown().optional(),
+  "newValues": zod.unknown().optional(),
+  "createdAt": zod.string()
+})),
+  "total": zod.int(),
+  "page": zod.int(),
+  "pageSize": zod.int()
+})
+
+export const PutErpMenuPermissionsResponse = zod.object({
+  "overrides": zod.record(zod.string(), zod.array(zod.string())).describe('選單路徑 → 允許角色清單')
+})
+
+/**
+ * @summary 新增部門
+ */
+
+export const createErpDepartmentBodyIsActiveDefault = true;
+
+/**
+ * @summary ERP 使用者清單（平台會員 + ERP 角色）
+ */
+export const ListErpUsersQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "erpOnly": zod.coerce.boolean().optional()
+})
+
+export const CreateErpDepartmentResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "parentId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "managerName": zod.string().nullish(),
+  "costCenter": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "memberCount": zod.int().optional(),
+  "createdAt": zod.string()
+})
+
+export const ListErpDepartmentsResponse = zod.array(ListErpDepartmentsResponseItem)
+
+export const UpdateErpUserResponse = zod.object({
+  "id": zod.int(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "role": zod.string().describe('平台角色'),
+  "erpRole": zod.string().nullable(),
+  "departmentId": zod.int().nullable(),
+  "departmentName": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+export const updateErpDepartmentBodyIsActiveDefault = true;
+
+/**
+ * @summary 停用部門
+ */
+export const DeleteErpDepartmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+/**
+ * @summary 部門清單
+ */
+export const ListErpDepartmentsResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "parentId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "managerName": zod.string().nullish(),
+  "costCenter": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "memberCount": zod.int().optional(),
+  "createdAt": zod.string()
+})
+
+/**
+ * @summary ERP 儀表板摘要
+ */
+export const GetErpDashboardResponse = zod.object({
+  "userCount": zod.int().describe('平台會員總數'),
+  "erpUserCount": zod.int().describe('具 ERP 權限的使用者數'),
+  "departmentCount": zod.int(),
+  "auditLogCount": zod.int(),
+  "recentAuditLogs": zod.array(zod.object({
+  "id": zod.int(),
+  "action": zod.string().describe('create\/update\/delete 等'),
+  "module": zod.string(),
+  "documentType": zod.string().nullish(),
+  "documentId": zod.string().nullish(),
+  "userId": zod.int(),
+  "userName": zod.string(),
+  "description": zod.string().nullish(),
+  "oldValues": zod.unknown().optional(),
+  "newValues": zod.unknown().optional(),
+  "createdAt": zod.string()
+}))
+})
+
+export const UpdateErpUserBody = zod.object({
+  "erpRole": zod.union([zod.literal('super_admin'),zod.literal('admin'),zod.literal('manager'),zod.literal('hr_admin'),zod.literal('finance_admin'),zod.literal('accountant'),zod.literal('viewer'),zod.literal(null)]).nullish(),
+  "departmentId": zod.int().nullish()
 })
