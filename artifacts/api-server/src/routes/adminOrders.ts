@@ -18,6 +18,8 @@ import {
   type Order,
   type OrderItem,
   productVariantsTable,
+  salesReturnItemsTable,
+  salesReturnsTable,
 } from "@workspace/db";
 import {
   UpdateAdminOrderStatusBody,
@@ -25,6 +27,11 @@ import {
 } from "@workspace/api-zod";
 import { requireStaff, requireOps } from "../middlewares/requireMember";
 import { reindex } from "../lib/aiIndex";
+import { syncSalesOrderStatusForOrder } from "../lib/erpSync";
+import {
+  salesOrdersTable,
+  salesOrderItemsTable,
+} from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -67,7 +74,7 @@ router.get("/admin/orders", requireStaff, async (req, res) => {
     typeof req.query.search === "string" ? req.query.search.trim() : "";
 
   const conditions: SQL[] = [];
-  if (["pending", "paid", "shipped", "completed", "cancelled"].includes(status))
+  if (["pending", "paid", "shipped", "completed", "cancelled", "returned"].includes(status))
     conditions.push(eq(ordersTable.status, status));
   if (search) {
     conditions.push(
@@ -146,22 +153,29 @@ router.get("/admin/orders/:id", requireStaff, async (req, res) => {
   res.json(order);
 });
 
-// Allowed forward transitions; cancelled restocks the items.
+// Allowed forward transitions; cancelled/returned restock the items.
 const ORDER_TRANSITIONS: Record<string, string[]> = {
   pending: ["paid", "cancelled"],
   paid: ["shipped", "cancelled"],
-  shipped: ["completed"],
-  completed: [],
+  shipped: ["completed", "returned"],
+  completed: ["returned"],
   cancelled: [],
+  returned: [],
 };
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
- * 訂單狀態轉換（含完成入佣金、取消退款與回補庫存）。
- * 供後台路由與 AI 行政助理共用。
+ * 訂單狀態轉換（含完成入佣金、取消/退貨退款與回補庫存、退貨收回點數與佣金）。
+ * 供後台路由、ERP 銷退與 AI 行政助理共用；可傳入外部交易以保持原子性。
  * 失敗時丟出 ORDER_NOT_FOUND 或 BAD_TRANSITION:<現況>。
  */
-export async function applyOrderStatusChange(id: number, target: string) {
-  await db.transaction(async (tx) => {
+export async function applyOrderStatusChange(
+  id: number,
+  target: string,
+  outerTx?: Tx,
+) {
+  const run = async (tx: Tx) => {
       const [order] = await tx
         .select()
         .from(ordersTable)
@@ -296,7 +310,90 @@ export async function applyOrderStatusChange(id: number, target: string) {
         }
       }
 
-      if (target === "cancelled") {
+      if (target === "returned") {
+        // 收回完成時發放的回饋點數
+        if ((order.pointsEarned ?? 0) > 0) {
+          const [m] = await tx
+            .update(membersTable)
+            .set({ points: sql`${membersTable.points} - ${order.pointsEarned}` })
+            .where(eq(membersTable.id, order.memberId))
+            .returning({ points: membersTable.points });
+          if (m) {
+            await tx.insert(pointTransactionsTable).values({
+              memberId: order.memberId,
+              type: "adjust",
+              delta: -(order.pointsEarned ?? 0),
+              balanceAfter: m.points,
+              orderId: order.id,
+              note: `訂單退貨收回回饋點數 ${order.orderNo}`,
+            });
+          }
+          await tx
+            .update(ordersTable)
+            .set({ pointsEarned: 0 })
+            .where(eq(ordersTable.id, order.id));
+        }
+        // 收回已入帳的佣金（依原入帳對象沖回）
+        const [psr] = await tx
+          .select()
+          .from(profitShareRecordsTable)
+          .where(eq(profitShareRecordsTable.orderId, id))
+          .limit(1);
+        if (psr) {
+          if (psr.institutionId != null) {
+            const [inst] = await tx
+              .select()
+              .from(institutionsTable)
+              .where(eq(institutionsTable.id, psr.institutionId))
+              .for("update")
+              .limit(1);
+            if (inst) {
+              const newBalance = inst.walletBalance - psr.amount;
+              await tx
+                .update(institutionsTable)
+                .set({ walletBalance: newBalance })
+                .where(eq(institutionsTable.id, inst.id));
+              await tx.insert(institutionWalletTransactionsTable).values({
+                institutionId: inst.id,
+                memberId: psr.memberId,
+                type: "adjust",
+                amount: -psr.amount,
+                balanceAfter: newBalance,
+                reason: "訂單退貨收回佣金",
+                refNo: order.orderNo,
+              });
+            }
+          } else {
+            const [member] = await tx
+              .select()
+              .from(membersTable)
+              .where(eq(membersTable.id, psr.memberId))
+              .for("update")
+              .limit(1);
+            if (member) {
+              const newBalance = member.walletBalance - psr.amount;
+              await tx
+                .update(membersTable)
+                .set({ walletBalance: newBalance })
+                .where(eq(membersTable.id, member.id));
+              await tx.insert(walletTransactionsTable).values({
+                memberId: member.id,
+                type: "adjust",
+                amount: -psr.amount,
+                balanceAfter: newBalance,
+                reason: "訂單退貨收回佣金",
+                refNo: order.orderNo,
+              });
+            }
+          }
+          await tx
+            .delete(profitShareRecordsTable)
+            .where(eq(profitShareRecordsTable.id, psr.id));
+        }
+      }
+
+      if (target === "cancelled" || target === "returned") {
+        const actionLabel = target === "returned" ? "退貨" : "取消";
         // 點數折抵退回：取消時將折抵的點數還給會員
         if ((order.pointsUsed ?? 0) > 0) {
           const [m] = await tx
@@ -311,7 +408,7 @@ export async function applyOrderStatusChange(id: number, target: string) {
               delta: order.pointsUsed,
               balanceAfter: m.points,
               orderId: order.id,
-              note: `訂單取消退回折抵點數 ${order.orderNo}`,
+              note: `訂單${actionLabel}退回折抵點數 ${order.orderNo}`,
             });
           }
         }
@@ -348,7 +445,7 @@ export async function applyOrderStatusChange(id: number, target: string) {
                   type: "refund",
                   amount: order.totalAmount,
                   balanceAfter: newBalance,
-                  reason: "訂單取消退款",
+                  reason: `訂單${actionLabel}退款`,
                   refNo: order.orderNo,
                 });
               }
@@ -371,7 +468,7 @@ export async function applyOrderStatusChange(id: number, target: string) {
                 type: "refund",
                 amount: order.totalAmount,
                 balanceAfter: newBalance,
-                reason: "訂單取消退款",
+                reason: `訂單${actionLabel}退款`,
                 refNo: order.orderNo,
               });
             }
@@ -382,13 +479,77 @@ export async function applyOrderStatusChange(id: number, target: string) {
           .select()
           .from(orderItemsTable)
           .where(eq(orderItemsTable.orderId, id));
+        // 虛擬品項不動庫存：以 ERP 銷貨單逐行快照為準（無快照則回看商品目前設定）
+        const soRows = await tx
+          .select({
+            productId: salesOrderItemsTable.productId,
+            variantId: salesOrderItemsTable.variantId,
+            isVirtual: salesOrderItemsTable.isVirtual,
+          })
+          .from(salesOrderItemsTable)
+          .innerJoin(
+            salesOrdersTable,
+            eq(salesOrderItemsTable.salesOrderId, salesOrdersTable.id),
+          )
+          .where(eq(salesOrdersTable.orderId, id));
+        const virtualByKey = new Map(
+          soRows.map((r) => [`${r.productId}:${r.variantId ?? ""}`, r.isVirtual]),
+        );
+        // 退貨時扣除先前「已確認銷退」已回補過的數量，避免重複入庫
+        const alreadyRestocked = new Map<string, number>();
+        if (target === "returned") {
+          const restockedRows = await tx
+            .select({
+              productId: salesReturnItemsTable.productId,
+              variantId: salesReturnItemsTable.variantId,
+              quantity: salesReturnItemsTable.quantity,
+            })
+            .from(salesReturnItemsTable)
+            .innerJoin(
+              salesReturnsTable,
+              eq(salesReturnItemsTable.salesReturnId, salesReturnsTable.id),
+            )
+            .innerJoin(
+              salesOrdersTable,
+              eq(salesReturnsTable.salesOrderId, salesOrdersTable.id),
+            )
+            .where(
+              and(
+                eq(salesOrdersTable.orderId, id),
+                eq(salesReturnsTable.status, "confirmed"),
+              ),
+            );
+          for (const r of restockedRows) {
+            const k = `${r.productId}:${r.variantId ?? ""}`;
+            alreadyRestocked.set(k, (alreadyRestocked.get(k) ?? 0) + r.quantity);
+          }
+        }
         for (const item of items) {
+          const key = `${item.productId}:${item.variantId ?? ""}`;
+          const restocked = alreadyRestocked.get(key) ?? 0;
+          const restockQty = Math.min(item.quantity, Math.max(item.quantity - restocked, 0));
+          if (restocked > 0) {
+            alreadyRestocked.set(key, Math.max(restocked - item.quantity, 0));
+          }
+          if (restockQty === 0) continue;
+          const snap = virtualByKey.get(
+            `${item.productId}:${item.variantId ?? ""}`,
+          );
+          if (snap === true) continue;
+          if (snap === undefined) {
+            const [p] = await tx
+              .select({ isVirtual: productsTable.isVirtual })
+              .from(productsTable)
+              .where(eq(productsTable.id, item.productId))
+              .limit(1);
+            if (p?.isVirtual) continue;
+          }
           let stockAfter: number | null = null;
           if (item.variantId != null) {
             const [updated] = await tx
               .update(productVariantsTable)
               .set({
-                stock: sql`${productVariantsTable.stock} + ${item.quantity}`,
+                stock: sql`${productVariantsTable.stock} + ${restockQty}`,
               })
               .where(eq(productVariantsTable.id, item.variantId))
               .returning();
@@ -396,7 +557,7 @@ export async function applyOrderStatusChange(id: number, target: string) {
           } else {
             const [updated] = await tx
               .update(productsTable)
-              .set({ stock: sql`${productsTable.stock} + ${item.quantity}` })
+              .set({ stock: sql`${productsTable.stock} + ${restockQty}` })
               .where(eq(productsTable.id, item.productId))
               .returning();
             if (updated) stockAfter = updated.stock;
@@ -405,12 +566,12 @@ export async function applyOrderStatusChange(id: number, target: string) {
           await tx.insert(stockMovementsTable).values({
             productId: item.productId,
             variantId: item.variantId,
-            type: "sale",
-            quantity: item.quantity,
+            type: target === "returned" ? "sale_return" : "sale",
+            quantity: restockQty,
             stockAfter,
             reason: item.variantName
-              ? `訂單取消回補（${item.variantName}）`
-              : "訂單取消回補",
+              ? `訂單${actionLabel}回補（${item.variantName}）`
+              : `訂單${actionLabel}回補`,
             refNo: order.orderNo,
           });
         }
@@ -420,7 +581,15 @@ export async function applyOrderStatusChange(id: number, target: string) {
         .update(ordersTable)
         .set({ status: target })
         .where(eq(ordersTable.id, id));
-    });
+
+      // 同步 ERP 銷貨單狀態（商城訂單 ↔ 銷貨單一對一）
+      await syncSalesOrderStatusForOrder(tx, id, target);
+  };
+  if (outerTx) {
+    await run(outerTx);
+  } else {
+    await db.transaction(run);
+  }
 }
 
 router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
@@ -491,7 +660,7 @@ router.get("/admin/reports/inventory", requireStaff, async (req, res) => {
 
   // Sale amounts from order items within the period (based on order creation)
   const orderConditions: SQL[] = [
-    sql`${ordersTable.status} <> 'cancelled'`,
+    sql`${ordersTable.status} NOT IN ('cancelled', 'returned')`,
   ];
   if (from) orderConditions.push(gte(ordersTable.createdAt, new Date(from)));
   if (to) {

@@ -14,8 +14,9 @@ export const stockMovementsTable = pgTable("stock_movements", {
     .references(() => productsTable.id),
   // 多規格：異動的規格（無規格商品為 null）
   variantId: integer("variant_id"),
-  // purchase | sale | adjust
+  // purchase | sale | adjust | sale_return | purchase_return
   type: text("type").notNull(),
+  warehouseId: integer("warehouse_id"),
   // signed quantity: positive = stock in, negative = stock out
   quantity: integer("quantity").notNull(),
   stockAfter: integer("stock_after").notNull(),

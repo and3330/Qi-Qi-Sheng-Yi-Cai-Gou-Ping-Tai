@@ -51,7 +51,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [pending, paid, shipped, completed, cancelled]
+            enum: [pending, paid, shipped, completed, cancelled, returned]
       responses:
         "200":
           description: Orders
@@ -545,7 +545,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [pending, paid, shipped, completed, cancelled]
+            enum: [pending, paid, shipped, completed, cancelled, returned]
         - name: search
           in: query
           schema: { type: string }
@@ -2511,6 +2511,738 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErpAuditLogPage"
+  /erp/items:
+    get:
+      tags: [erp-inventory]
+      operationId: listErpItems
+      summary: ERP 品項清單（含多規格與庫存）
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: includeInactive
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpItem"
+  /erp/items/{id}:
+    patch:
+      tags: [erp-inventory]
+      operationId: updateErpItem
+      summary: 更新品項 ERP 欄位（虛擬品項、單位、條碼、安全庫存）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpItemUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, isVirtual, safetyStock]
+                properties:
+                  id: { type: integer }
+                  isVirtual: { type: boolean }
+                  unit: { type: string, nullable: true }
+                  barcode: { type: string, nullable: true }
+                  safetyStock: { type: integer }
+  /erp/inventory/adjust:
+    post:
+      tags: [erp-inventory]
+      operationId: erpAdjustStock
+      summary: ERP 庫存調整（盤點／報廢等；虛擬品項禁止）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpStockAdjustInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpStockMovement"
+  /erp/stock-movements:
+    get:
+      tags: [erp-inventory]
+      operationId: listErpStockMovements
+      summary: 庫存異動查詢
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: type
+          in: query
+          required: false
+          schema: { type: string }
+        - name: productId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpStockMovementPage"
+  /erp/warehouses:
+    get:
+      tags: [erp-inventory]
+      operationId: listErpWarehouses
+      summary: 倉庫清單
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpWarehouse"
+    post:
+      tags: [erp-inventory]
+      operationId: createErpWarehouse
+      summary: 新增倉庫
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpWarehouseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpWarehouse"
+  /erp/warehouses/{id}:
+    patch:
+      tags: [erp-inventory]
+      operationId: updateErpWarehouse
+      summary: 更新倉庫
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpWarehouseUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpWarehouse"
+  /erp/customers:
+    get:
+      tags: [erp-partners]
+      operationId: listErpCustomers
+      summary: 客戶清單
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpCustomer"
+    post:
+      tags: [erp-partners]
+      operationId: createErpCustomer
+      summary: 新增客戶
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpCustomerInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpCustomer"
+  /erp/customers/{id}:
+    patch:
+      tags: [erp-partners]
+      operationId: updateErpCustomer
+      summary: 更新客戶
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpCustomerUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpCustomer"
+  /erp/suppliers:
+    get:
+      tags: [erp-partners]
+      operationId: listErpSuppliers
+      summary: 供應商清單（ERP）
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+    post:
+      tags: [erp-partners]
+      operationId: createErpSupplier
+      summary: 新增供應商（ERP）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+  /erp/suppliers/{id}:
+    patch:
+      tags: [erp-partners]
+      operationId: updateErpSupplier
+      summary: 更新供應商（ERP）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+  /erp/price-lists:
+    get:
+      tags: [erp-sales]
+      operationId: listErpPriceLists
+      summary: 價格表清單（含品項設價）
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpPriceList"
+    post:
+      tags: [erp-sales]
+      operationId: createErpPriceList
+      summary: 新增價格表
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpPriceListInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpPriceList"
+  /erp/price-lists/{id}:
+    patch:
+      tags: [erp-sales]
+      operationId: updateErpPriceList
+      summary: 更新價格表
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpPriceListUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpPriceList"
+  /erp/price-lists/{id}/items:
+    put:
+      tags: [erp-sales]
+      operationId: putErpPriceListItems
+      summary: 整批更新價格表品項設價
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpPriceListItemsInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpPriceList"
+  /erp/quotations:
+    get:
+      tags: [erp-sales]
+      operationId: listErpQuotations
+      summary: 報價單列表（ERP）
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quotation"
+    post:
+      tags: [erp-sales]
+      operationId: createErpQuotation
+      summary: 建立報價單（ERP）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /erp/quotations/{id}:
+    get:
+      tags: [erp-sales]
+      operationId: getErpQuotation
+      summary: 報價單明細（ERP）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /erp/quotations/{id}/status:
+    patch:
+      tags: [erp-sales]
+      operationId: updateErpQuotationStatus
+      summary: 變更報價單狀態（ERP）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotationStatusUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /erp/quotations/{id}/convert:
+    post:
+      tags: [erp-sales]
+      operationId: convertErpQuotation
+      summary: 報價單轉訂單（ERP）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /erp/sales-orders:
+    get:
+      tags: [erp-sales]
+      operationId: listErpSalesOrders
+      summary: 銷貨單列表
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: source
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpSalesOrderPage"
+    post:
+      tags: [erp-sales]
+      operationId: createErpSalesOrder
+      summary: ERP 開立銷貨單（草稿，確認時扣庫存）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpSalesOrderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpSalesOrder"
+  /erp/sales-orders/{id}:
+    get:
+      tags: [erp-sales]
+      operationId: getErpSalesOrder
+      summary: 銷貨單明細
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpSalesOrder"
+  /erp/sales-orders/{id}/status:
+    patch:
+      tags: [erp-sales]
+      operationId: updateErpSalesOrderStatus
+      summary: 銷貨單狀態流轉（商城單走商城狀態機連動）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpSalesOrderStatusUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpSalesOrder"
+  /erp/sales-returns:
+    get:
+      tags: [erp-sales]
+      operationId: listErpSalesReturns
+      summary: 銷退單列表
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpSalesReturn"
+    post:
+      tags: [erp-sales]
+      operationId: createErpSalesReturn
+      summary: 建立銷退單（草稿；依銷貨單，防超退）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpSalesReturnInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpSalesReturn"
+  /erp/sales-returns/{id}/status:
+    patch:
+      tags: [erp-sales]
+      operationId: updateErpSalesReturnStatus
+      summary: 銷退單狀態（confirmed 回補庫存並同步商城訂單）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpReturnStatusUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpSalesReturn"
+  /erp/purchase-orders:
+    get:
+      tags: [erp-purchasing]
+      operationId: listErpPurchaseOrders
+      summary: 採購單列表（ERP）
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminPurchaseOrder"
+    post:
+      tags: [erp-purchasing]
+      operationId: createErpPurchaseOrder
+      summary: 開立採購單（ERP）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+  /erp/purchase-orders/{id}:
+    get:
+      tags: [erp-purchasing]
+      operationId: getErpPurchaseOrder
+      summary: 採購單明細（ERP）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+  /erp/purchase-orders/{id}/status:
+    patch:
+      tags: [erp-purchasing]
+      operationId: updateErpPurchaseOrderStatus
+      summary: 採購單狀態（下單／取消）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOrderStatusUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+  /erp/purchase-orders/{id}/receive:
+    post:
+      tags: [erp-purchasing]
+      operationId: receiveErpPurchaseOrder
+      summary: 採購收貨（列鎖防重複收貨；虛擬品項不入庫）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPurchaseOrder"
+  /erp/purchase-returns:
+    get:
+      tags: [erp-purchasing]
+      operationId: listErpPurchaseReturns
+      summary: 採退單列表
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpPurchaseReturn"
+    post:
+      tags: [erp-purchasing]
+      operationId: createErpPurchaseReturn
+      summary: 建立採退單（草稿；依已收貨採購單，防超退）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpPurchaseReturnInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpPurchaseReturn"
+  /erp/purchase-returns/{id}/status:
+    patch:
+      tags: [erp-purchasing]
+      operationId: updateErpPurchaseReturnStatus
+      summary: 採退單狀態（confirmed 出庫扣減，庫存不足擋下）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpReturnStatusUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpPurchaseReturn"
+
 components:
   schemas:
     HealthStatus:
@@ -2592,7 +3324,7 @@ components:
         orderNo: { type: string }
         status:
           type: string
-          enum: [pending, paid, shipped, completed, cancelled]
+          enum: [pending, paid, shipped, completed, cancelled, returned]
         paymentMethod:
           type: string
           enum: [bank_transfer, cod, wallet]
@@ -2801,7 +3533,7 @@ components:
         orderNo: { type: string }
         status:
           type: string
-          enum: [pending, paid, shipped, completed, cancelled]
+          enum: [pending, paid, shipped, completed, cancelled, returned]
         paymentMethod:
           type: string
           enum: [bank_transfer, cod, wallet]
@@ -3231,7 +3963,7 @@ components:
           enum: [hospital, clinic, consumer]
         status:
           type: string
-          enum: [pending, paid, shipped, completed, cancelled]
+          enum: [pending, paid, shipped, completed, cancelled, returned]
         paymentMethod:
           type: string
           enum: [bank_transfer, cod, wallet]
@@ -3255,7 +3987,7 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, paid, shipped, completed, cancelled]
+          enum: [pending, paid, shipped, completed, cancelled, returned]
     InventoryReportRow:
       type: object
       required: [productId, productName, productCode, purchasedQty, purchasedAmount, soldQty, soldAmount, adjustedQty, currentStock]
@@ -3917,3 +4649,381 @@ components:
         total: { type: integer }
         page: { type: integer }
         pageSize: { type: integer }
+
+    ErpItemVariant:
+      type: object
+      required: [id, name, stock, costPrice, priceHospital, priceClinic, priceConsumer, isActive]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        stock: { type: integer }
+        costPrice: { type: integer }
+        priceHospital: { type: integer }
+        priceClinic: { type: integer }
+        priceConsumer: { type: integer }
+        isActive: { type: boolean }
+    ErpItem:
+      type: object
+      required: [id, code, name, category, stock, safetyStock, costPrice, priceHospital, priceClinic, priceConsumer, isActive, isVirtual, createdAt, variants]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        category: { type: string }
+        spec: { type: string, nullable: true }
+        unit: { type: string, nullable: true }
+        barcode: { type: string, nullable: true }
+        stock: { type: integer }
+        safetyStock: { type: integer }
+        costPrice: { type: integer }
+        priceHospital: { type: integer }
+        priceClinic: { type: integer }
+        priceConsumer: { type: integer }
+        isActive: { type: boolean }
+        isVirtual: { type: boolean }
+        createdAt: { type: string }
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpItemVariant"
+    ErpStockMovement:
+      type: object
+      required: [id, productId, quantity, stockAfter, createdAt]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        productCode: { type: string }
+        variantId: { type: integer, nullable: true }
+        type: { type: string }
+        quantity: { type: integer }
+        stockAfter: { type: integer }
+        warehouseId: { type: integer, nullable: true }
+        reason: { type: string, nullable: true }
+        refNo: { type: string, nullable: true }
+        createdAt: { type: string }
+    ErpStockMovementPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpStockMovement"
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    ErpWarehouse:
+      type: object
+      required: [id, code, name, isDefault, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        address: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        isDefault: { type: boolean }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    ErpCustomer:
+      type: object
+      required: [id, code, name, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        memberId: { type: integer, nullable: true }
+        memberUsername: { type: string, nullable: true }
+        institutionId: { type: integer, nullable: true }
+        contactPerson: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        taxId: { type: string, nullable: true }
+        paymentTerms: { type: string, nullable: true }
+        priceListId: { type: integer, nullable: true }
+        note: { type: string, nullable: true }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    ErpCustomerInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        contactPerson: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        taxId: { type: string, nullable: true }
+        paymentTerms: { type: string, nullable: true }
+        priceListId: { type: integer, nullable: true }
+        note: { type: string, nullable: true }
+    ErpCustomerUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        contactPerson: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        taxId: { type: string, nullable: true }
+        paymentTerms: { type: string, nullable: true }
+        priceListId: { type: integer, nullable: true }
+        note: { type: string, nullable: true }
+        isActive: { type: boolean }
+    ErpPriceListItem:
+      type: object
+      required: [id, productId, price]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        variantId: { type: integer, nullable: true }
+        price: { type: integer }
+    ErpPriceList:
+      type: object
+      required: [id, name, isActive, createdAt, items]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpPriceListItem"
+    ErpSalesOrderItem:
+      type: object
+      required: [id, productId, productName, productCode, unitPrice, quantity, unitCost, isVirtual]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        variantId: { type: integer, nullable: true }
+        variantName: { type: string, nullable: true }
+        productName: { type: string }
+        productCode: { type: string }
+        unitPrice: { type: integer }
+        quantity: { type: integer }
+        unitCost: { type: integer }
+        isVirtual: { type: boolean }
+    ErpSalesOrder:
+      type: object
+      required: [id, soNo, source, customerName, status, totalAmount, createdAt, items]
+      properties:
+        id: { type: integer }
+        soNo: { type: string }
+        source: { type: string }
+        customerId: { type: integer, nullable: true }
+        customerName: { type: string }
+        orderId: { type: integer, nullable: true }
+        orderNo: { type: string, nullable: true }
+        status: { type: string }
+        totalAmount: { type: integer }
+        note: { type: string, nullable: true }
+        createdAt: { type: string }
+        confirmedAt: { type: string, nullable: true }
+        shippedAt: { type: string, nullable: true }
+        completedAt: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpSalesOrderItem"
+    ErpSalesOrderPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpSalesOrder"
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    ErpSalesReturnItem:
+      type: object
+      required: [id, productId, productName, productCode, unitPrice, quantity, isVirtual]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        variantId: { type: integer, nullable: true }
+        variantName: { type: string, nullable: true }
+        productName: { type: string }
+        productCode: { type: string }
+        unitPrice: { type: integer }
+        quantity: { type: integer }
+        isVirtual: { type: boolean }
+    ErpSalesReturn:
+      type: object
+      required: [id, srNo, customerName, status, totalAmount, createdAt, items]
+      properties:
+        id: { type: integer }
+        srNo: { type: string }
+        salesOrderId: { type: integer, nullable: true }
+        salesOrderNo: { type: string, nullable: true }
+        customerId: { type: integer, nullable: true }
+        customerName: { type: string }
+        status: { type: string }
+        totalAmount: { type: integer }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        createdAt: { type: string }
+        confirmedAt: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpSalesReturnItem"
+    ErpPurchaseReturnItem:
+      type: object
+      required: [id, productId, productName, productCode, unitCost, quantity, isVirtual]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        variantId: { type: integer, nullable: true }
+        variantName: { type: string, nullable: true }
+        productName: { type: string }
+        productCode: { type: string }
+        unitCost: { type: integer }
+        quantity: { type: integer }
+        isVirtual: { type: boolean }
+    ErpPurchaseReturn:
+      type: object
+      required: [id, prNo, supplierId, supplierName, status, totalAmount, createdAt, items]
+      properties:
+        id: { type: integer }
+        prNo: { type: string }
+        supplierId: { type: integer }
+        supplierName: { type: string }
+        purchaseOrderId: { type: integer, nullable: true }
+        purchaseOrderNo: { type: string, nullable: true }
+        status: { type: string }
+        totalAmount: { type: integer }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        createdAt: { type: string }
+        confirmedAt: { type: string, nullable: true }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpPurchaseReturnItem"
+
+    ErpItemUpdate:
+      type: object
+      properties:
+        isVirtual: { type: boolean }
+        unit: { type: string, nullable: true }
+        barcode: { type: string, nullable: true }
+        safetyStock: { type: integer }
+    ErpStockAdjustInput:
+      type: object
+      required: [productId, quantity, reason]
+      properties:
+        productId: { type: integer }
+        variantId: { type: integer, nullable: true }
+        warehouseId: { type: integer, nullable: true }
+        quantity: { type: integer }
+        reason: { type: string, minLength: 1 }
+        note: { type: string, nullable: true }
+    ErpWarehouseInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        address: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+    ErpWarehouseUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        address: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        isActive: { type: boolean }
+    ErpPriceListInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string, nullable: true }
+    ErpPriceListUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string, nullable: true }
+        isActive: { type: boolean }
+    ErpPriceListItemsInput:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [productId, price]
+            properties:
+              productId: { type: integer }
+              variantId: { type: integer, nullable: true }
+              price: { type: integer }
+    ErpSalesOrderInput:
+      type: object
+      required: [customerId, items]
+      properties:
+        customerId: { type: integer }
+        note: { type: string, nullable: true }
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId: { type: integer }
+              variantId: { type: integer, nullable: true }
+              quantity: { type: integer, minimum: 1 }
+              unitPrice: { type: integer, nullable: true }
+    ErpSalesOrderStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [confirmed, shipped, completed, cancelled]
+    ErpSalesReturnInput:
+      type: object
+      required: [salesOrderId, items]
+      properties:
+        salesOrderId: { type: integer }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [salesOrderItemId, quantity]
+            properties:
+              salesOrderItemId: { type: integer }
+              quantity: { type: integer, minimum: 1 }
+    ErpPurchaseReturnInput:
+      type: object
+      required: [purchaseOrderId, items]
+      properties:
+        purchaseOrderId: { type: integer }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [purchaseOrderItemId, quantity]
+            properties:
+              purchaseOrderItemId: { type: integer }
+              quantity: { type: integer, minimum: 1 }
+    ErpReturnStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [confirmed, cancelled]

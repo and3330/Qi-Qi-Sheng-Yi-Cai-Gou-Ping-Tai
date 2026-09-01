@@ -25,6 +25,9 @@ import pointsRouter from "./points";
 import adminInstitutionsRouter from "./adminInstitutions";
 import adminQuotationsRouter from "./adminQuotations";
 import erpRouter from "./erp";
+import erpInventoryRouter from "./erpInventory";
+import erpSalesRouter from "./erpSales";
+import erpPurchasingRouter from "./erpPurchasing";
 
 const router: IRouter = Router();
 
@@ -54,5 +57,8 @@ router.use(pointsRouter);
 router.use(adminInstitutionsRouter);
 router.use(adminQuotationsRouter);
 router.use(erpRouter);
+router.use(erpInventoryRouter);
+router.use(erpSalesRouter);
+router.use(erpPurchasingRouter);
 
 export default router;

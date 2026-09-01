@@ -124,6 +124,7 @@ export const PortalOrderStatus = {
   shipped: 'shipped',
   completed: 'completed',
   cancelled: 'cancelled',
+  returned: 'returned',
 } as const;
 
 export type PortalOrderPaymentMethod = typeof PortalOrderPaymentMethod[keyof typeof PortalOrderPaymentMethod];
@@ -443,6 +444,7 @@ export const OrderStatus = {
   shipped: 'shipped',
   completed: 'completed',
   cancelled: 'cancelled',
+  returned: 'returned',
 } as const;
 
 /**
@@ -1179,6 +1181,7 @@ export const AdminOrderStatus = {
   shipped: 'shipped',
   completed: 'completed',
   cancelled: 'cancelled',
+  returned: 'returned',
 } as const;
 
 export type AdminOrderPaymentMethod = typeof AdminOrderPaymentMethod[keyof typeof AdminOrderPaymentMethod];
@@ -1222,6 +1225,7 @@ export const OrderStatusUpdateStatus = {
   shipped: 'shipped',
   completed: 'completed',
   cancelled: 'cancelled',
+  returned: 'returned',
 } as const;
 
 export interface OrderStatusUpdate {
@@ -1753,6 +1757,15 @@ export interface ChatMessage {
   metadata?: ChatMessageMetadata;
   createdAt: string;
 }
+
+export interface AssistantActionConfirmation {
+  ok: boolean;
+  confirmationId: number;
+  action: string;
+  result: unknown;
+  message: ChatMessage;
+}
+
 export type AiIndexRebuildResultCounts = {[key: string]: number};
 
 export interface AiIndexRebuildResult {
@@ -1931,6 +1944,475 @@ export interface ErpMe {
      */
   erpRole: string | null;
 }
+
+export interface ErpAuditLog {
+  id: number;
+  /** create/update/delete 等 */
+  action: string;
+  module: string;
+  /** @nullable */
+  documentType?: string | null;
+  /** @nullable */
+  documentId?: string | null;
+  userId: number;
+  userName: string;
+  /** @nullable */
+  description?: string | null;
+  oldValues?: unknown;
+  newValues?: unknown;
+  createdAt: string;
+}
+
+export interface ErpDashboard {
+  /** 平台會員總數 */
+  userCount: number;
+  /** 具 ERP 權限的使用者數 */
+  erpUserCount: number;
+  departmentCount: number;
+  auditLogCount: number;
+  recentAuditLogs: ErpAuditLog[];
+}
+
+export interface ErpUser {
+  id: number;
+  username: string;
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** 平台角色 */
+  role: string;
+  /** @nullable */
+  erpRole: string | null;
+  /** @nullable */
+  departmentId: number | null;
+  /** @nullable */
+  departmentName?: string | null;
+  createdAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type ErpUserUpdateErpRole = typeof ErpUserUpdateErpRole[keyof typeof ErpUserUpdateErpRole] | null;
+
+
+export const ErpUserUpdateErpRole = {
+  super_admin: 'super_admin',
+  admin: 'admin',
+  manager: 'manager',
+  hr_admin: 'hr_admin',
+  finance_admin: 'finance_admin',
+  accountant: 'accountant',
+  viewer: 'viewer',
+} as const;
+
+export interface ErpUserUpdate {
+  /** @nullable */
+  erpRole?: ErpUserUpdateErpRole;
+  /** @nullable */
+  departmentId?: number | null;
+}
+
+export interface ErpDepartmentInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  parentId?: number | null;
+  /**
+     * 主管（會員 id）
+     * @nullable
+     */
+  managerId?: number | null;
+  /** @nullable */
+  costCenter?: string | null;
+  isActive?: boolean;
+}
+
+export interface ErpDepartment {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  parentId?: number | null;
+  /** @nullable */
+  managerId?: number | null;
+  /** @nullable */
+  managerName?: string | null;
+  /** @nullable */
+  costCenter?: string | null;
+  isActive: boolean;
+  memberCount?: number;
+  createdAt: string;
+}
+
+/**
+ * 選單路徑 → 允許角色清單
+ */
+export type ErpMenuPermissionMapOverrides = {[key: string]: string[]};
+
+export interface ErpMenuPermissionMap {
+  /** 選單路徑 → 允許角色清單 */
+  overrides: ErpMenuPermissionMapOverrides;
+}
+
+export interface ErpAuditLogPage {
+  items: ErpAuditLog[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ErpItemVariant {
+  id: number;
+  name: string;
+  stock: number;
+  costPrice: number;
+  priceHospital: number;
+  priceClinic: number;
+  priceConsumer: number;
+  isActive: boolean;
+}
+
+export interface ErpItem {
+  id: number;
+  code: string;
+  name: string;
+  category: string;
+  spec?: string | null;
+  unit?: string | null;
+  barcode?: string | null;
+  stock: number;
+  safetyStock: number;
+  costPrice: number;
+  priceHospital: number;
+  priceClinic: number;
+  priceConsumer: number;
+  isActive: boolean;
+  isVirtual: boolean;
+  createdAt: string;
+  variants: ErpItemVariant[];
+}
+
+export interface ErpStockMovement {
+  id: number;
+  productId: number;
+  productName?: string;
+  productCode?: string;
+  variantId?: number | null;
+  type?: string;
+  quantity: number;
+  stockAfter: number;
+  warehouseId?: number | null;
+  reason?: string | null;
+  refNo?: string | null;
+  createdAt: string;
+}
+
+export interface ErpStockMovementPage {
+  items: ErpStockMovement[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ErpWarehouse {
+  id: number;
+  code: string;
+  name: string;
+  address?: string | null;
+  note?: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ErpCustomer {
+  id: number;
+  code: string;
+  name: string;
+  memberId?: number | null;
+  memberUsername?: string | null;
+  institutionId?: number | null;
+  contactPerson?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  taxId?: string | null;
+  paymentTerms?: string | null;
+  priceListId?: number | null;
+  note?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ErpCustomerInput {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  name: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  taxId?: string | null;
+  paymentTerms?: string | null;
+  priceListId?: number | null;
+  note?: string | null;
+}
+
+export interface ErpCustomerUpdate {
+  /** @minLength 1 */
+  name?: string;
+  contactPerson?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  taxId?: string | null;
+  paymentTerms?: string | null;
+  priceListId?: number | null;
+  note?: string | null;
+  isActive?: boolean;
+}
+
+export interface ErpPriceListItem {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  price: number;
+}
+
+export interface ErpPriceList {
+  id: number;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  items: ErpPriceListItem[];
+}
+
+export interface ErpSalesOrderItem {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  variantName?: string | null;
+  productName: string;
+  productCode: string;
+  unitPrice: number;
+  quantity: number;
+  unitCost: number;
+  isVirtual: boolean;
+}
+
+export interface ErpSalesOrder {
+  id: number;
+  soNo: string;
+  source: string;
+  customerId?: number | null;
+  customerName: string;
+  orderId?: number | null;
+  orderNo?: string | null;
+  status: string;
+  totalAmount: number;
+  note?: string | null;
+  createdAt: string;
+  confirmedAt?: string | null;
+  shippedAt?: string | null;
+  completedAt?: string | null;
+  items: ErpSalesOrderItem[];
+}
+
+export interface ErpSalesOrderPage {
+  items: ErpSalesOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ErpSalesReturnItem {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  variantName?: string | null;
+  productName: string;
+  productCode: string;
+  unitPrice: number;
+  quantity: number;
+  isVirtual: boolean;
+}
+
+export interface ErpSalesReturn {
+  id: number;
+  srNo: string;
+  salesOrderId?: number | null;
+  salesOrderNo?: string | null;
+  customerId?: number | null;
+  customerName: string;
+  status: string;
+  totalAmount: number;
+  reason?: string | null;
+  note?: string | null;
+  createdAt: string;
+  confirmedAt?: string | null;
+  items: ErpSalesReturnItem[];
+}
+
+export interface ErpPurchaseReturnItem {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  variantName?: string | null;
+  productName: string;
+  productCode: string;
+  unitCost: number;
+  quantity: number;
+  isVirtual: boolean;
+}
+
+export interface ErpPurchaseReturn {
+  id: number;
+  prNo: string;
+  supplierId: number;
+  supplierName: string;
+  purchaseOrderId?: number | null;
+  purchaseOrderNo?: string | null;
+  status: string;
+  totalAmount: number;
+  reason?: string | null;
+  note?: string | null;
+  createdAt: string;
+  confirmedAt?: string | null;
+  items: ErpPurchaseReturnItem[];
+}
+
+export interface ErpItemUpdate {
+  isVirtual?: boolean;
+  unit?: string | null;
+  barcode?: string | null;
+  safetyStock?: number;
+}
+
+export interface ErpStockAdjustInput {
+  productId: number;
+  variantId?: number | null;
+  warehouseId?: number | null;
+  quantity: number;
+  /** @minLength 1 */
+  reason: string;
+  note?: string | null;
+}
+
+export interface ErpWarehouseInput {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  name: string;
+  address?: string | null;
+  note?: string | null;
+}
+
+export interface ErpWarehouseUpdate {
+  /** @minLength 1 */
+  name?: string;
+  address?: string | null;
+  note?: string | null;
+  isActive?: boolean;
+}
+
+export interface ErpPriceListInput {
+  /** @minLength 1 */
+  name: string;
+  description?: string | null;
+}
+
+export interface ErpPriceListUpdate {
+  /** @minLength 1 */
+  name?: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export type ErpPriceListItemsInputItemsItem = {
+  productId: number;
+  variantId?: number | null;
+  price: number;
+};
+
+export interface ErpPriceListItemsInput {
+  items: ErpPriceListItemsInputItemsItem[];
+}
+
+export type ErpSalesOrderInputItemsItem = {
+  productId: number;
+  variantId?: number | null;
+  /** @minimum 1 */
+  quantity: number;
+  unitPrice?: number | null;
+};
+
+export interface ErpSalesOrderInput {
+  customerId: number;
+  note?: string | null;
+  /** @minItems 1 */
+  items: ErpSalesOrderInputItemsItem[];
+}
+
+export type ErpSalesOrderStatusUpdateStatus = typeof ErpSalesOrderStatusUpdateStatus[keyof typeof ErpSalesOrderStatusUpdateStatus];
+
+
+export const ErpSalesOrderStatusUpdateStatus = {
+  confirmed: 'confirmed',
+  shipped: 'shipped',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ErpSalesOrderStatusUpdate {
+  status: ErpSalesOrderStatusUpdateStatus;
+}
+
+export type ErpSalesReturnInputItemsItem = {
+  salesOrderItemId: number;
+  /** @minimum 1 */
+  quantity: number;
+};
+
+export interface ErpSalesReturnInput {
+  salesOrderId: number;
+  reason?: string | null;
+  note?: string | null;
+  /** @minItems 1 */
+  items: ErpSalesReturnInputItemsItem[];
+}
+
+export type ErpPurchaseReturnInputItemsItem = {
+  purchaseOrderItemId: number;
+  /** @minimum 1 */
+  quantity: number;
+};
+
+export interface ErpPurchaseReturnInput {
+  purchaseOrderId: number;
+  reason?: string | null;
+  note?: string | null;
+  /** @minItems 1 */
+  items: ErpPurchaseReturnInputItemsItem[];
+}
+
+export type ErpReturnStatusUpdateStatus = typeof ErpReturnStatusUpdateStatus[keyof typeof ErpReturnStatusUpdateStatus];
+
+
+export const ErpReturnStatusUpdateStatus = {
+  confirmed: 'confirmed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ErpReturnStatusUpdate {
+  status: ErpReturnStatusUpdateStatus;
+}
+
 export type ListPortalOrdersParams = {
 status?: ListPortalOrdersStatus;
 };
@@ -1944,6 +2426,7 @@ export const ListPortalOrdersStatus = {
   shipped: 'shipped',
   completed: 'completed',
   cancelled: 'cancelled',
+  returned: 'returned',
 } as const;
 
 export type ListAdminMembersParams = {
@@ -2029,6 +2512,7 @@ export const ListAdminOrdersStatus = {
   shipped: 'shipped',
   completed: 'completed',
   cancelled: 'cancelled',
+  returned: 'returned',
 } as const;
 
 export type GetAdminInventoryReportParams = {
@@ -2191,136 +2675,58 @@ q?: string;
 erpOnly?: boolean;
 };
 
-
-export interface AssistantActionConfirmation {
-  ok: boolean;
-  confirmationId: number;
-  action: string;
-  result: unknown;
-  message: ChatMessage;
-}
-
 export type ListErpAuditLogsParams = {
 page?: number;
 module?: string;
 q?: string;
 };
 
-export interface ErpUserUpdate {
-  /** @nullable */
-  erpRole?: ErpUserUpdateErpRole;
-  /** @nullable */
-  departmentId?: number | null;
-}
+export type ListErpItemsParams = {
+search?: string;
+includeInactive?: string;
+};
 
-export const ErpUserUpdateErpRole = {
-  super_admin: 'super_admin',
-  admin: 'admin',
-  manager: 'manager',
-  hr_admin: 'hr_admin',
-  finance_admin: 'finance_admin',
-  accountant: 'accountant',
-  viewer: 'viewer',
-} as const;
-
-export interface ErpDashboard {
-  /** 平台會員總數 */
-  userCount: number;
-  /** 具 ERP 權限的使用者數 */
-  erpUserCount: number;
-  departmentCount: number;
-  auditLogCount: number;
-  recentAuditLogs: ErpAuditLog[];
-}
-
-export interface ErpAuditLog {
+export type UpdateErpItem200 = {
   id: number;
-  /** create/update/delete 等 */
-  action: string;
-  module: string;
-  /** @nullable */
-  documentType?: string | null;
-  /** @nullable */
-  documentId?: string | null;
-  userId: number;
-  userName: string;
-  /** @nullable */
-  description?: string | null;
-  oldValues?: unknown;
-  newValues?: unknown;
-  createdAt: string;
-}
+  isVirtual: boolean;
+  unit?: string | null;
+  barcode?: string | null;
+  safetyStock: number;
+};
 
-export interface ErpUser {
-  id: number;
-  username: string;
-  name: string;
-  /** @nullable */
-  email?: string | null;
-  /** 平台角色 */
-  role: string;
-  /** @nullable */
-  erpRole: string | null;
-  /** @nullable */
-  departmentId: number | null;
-  /** @nullable */
-  departmentName?: string | null;
-  createdAt: string;
-}
+export type ListErpStockMovementsParams = {
+page?: number;
+type?: string;
+productId?: number;
+};
 
-export interface ErpDepartmentInput {
-  /** @minLength 1 */
-  name: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  parentId?: number | null;
-  /**
-     * 主管（會員 id）
-     * @nullable
-     */
-  managerId?: number | null;
-  /** @nullable */
-  costCenter?: string | null;
-  isActive?: boolean;
-}
+export type ListErpCustomersParams = {
+search?: string;
+};
 
-export interface ErpDepartment {
-  id: number;
-  name: string;
-  /** @nullable */
-  description?: string | null;
-  /** @nullable */
-  parentId?: number | null;
-  /** @nullable */
-  managerId?: number | null;
-  /** @nullable */
-  managerName?: string | null;
-  /** @nullable */
-  costCenter?: string | null;
-  isActive: boolean;
-  memberCount?: number;
-  createdAt: string;
-}
+export type ListErpSuppliersParams = {
+search?: string;
+};
 
-/**
- * 選單路徑 → 允許角色清單
- */
-export type ErpMenuPermissionMapOverrides = {[key: string]: string[]};
+export type ListErpQuotationsParams = {
+status?: string;
+};
 
-/**
- * @nullable
- */
-export type ErpUserUpdateErpRole = typeof ErpUserUpdateErpRole[keyof typeof ErpUserUpdateErpRole] | null;
+export type ListErpSalesOrdersParams = {
+page?: number;
+status?: string;
+source?: string;
+};
 
-export interface ErpMenuPermissionMap {
-  /** 選單路徑 → 允許角色清單 */
-  overrides: ErpMenuPermissionMapOverrides;
-}
+export type ListErpSalesReturnsParams = {
+status?: string;
+};
 
-export interface ErpAuditLogPage {
-  items: ErpAuditLog[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
+export type ListErpPurchaseOrdersParams = {
+status?: string;
+};
+
+export type ListErpPurchaseReturnsParams = {
+status?: string;
+};
+

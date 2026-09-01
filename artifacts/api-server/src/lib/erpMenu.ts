@@ -10,6 +10,18 @@ const HR_ROLES = ["super_admin", "admin", "hr_admin", "manager"];
 
 export const ERP_MENU_DEFAULTS: Record<string, string[]> = {
   "/": [],
+  "/inventory/items": [],
+  "/inventory/warehouses": [],
+  "/inventory/movements": [],
+  "/sales/quotations": [],
+  "/sales/orders": [],
+  "/sales/returns": [],
+  "/sales/price-lists": [],
+  "/purchasing/orders": [],
+  "/purchasing/receiving": [],
+  "/purchasing/returns": [],
+  "/partners/customers": [],
+  "/partners/suppliers": [],
   "/system/users": SYSTEM_ADMIN_ROLES,
   "/system/departments": Array.from(
     new Set([...HR_ROLES, ...SYSTEM_ADMIN_ROLES]),

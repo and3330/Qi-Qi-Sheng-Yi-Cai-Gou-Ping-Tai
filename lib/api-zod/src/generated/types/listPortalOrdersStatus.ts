@@ -15,4 +15,5 @@ export const ListPortalOrdersStatus = {
   shipped: 'shipped',
   completed: 'completed',
   cancelled: 'cancelled',
+  returned: 'returned',
 } as const;

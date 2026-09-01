@@ -2,7 +2,8 @@
 - [Dev DB schema sync pitfalls](dev-db-schema-sync.md) — drizzle push hangs on TTY prompts (use pg DDL script); dev DB may lag schema files; declare all deps in package.json.
 - [DB constraint error handling](db-constraint-error-handling.md) — enforce race-sensitive invariants with partial unique indexes; drizzle wraps pg errors, check err.cause for code 23505.
 - [Object storage private reads](object-storage-auth.md) — /storage/objects must be auth-gated; member reads allowed only via jsonb containment check on owning order's shipmentPhotos; staff bypass.
-- [Product variants invariants](product-variants.md) — products with active variants must reject variant-less cart/order/stock-adjust; PO receiving not yet variant-aware.
+- [Product variants invariants](product-variants.md) — products with active variants must reject variant-less cart/order/stock-adjust; ERP 單據路徑亦同（PO/SO/調整都檢查）。
+- [ERP 進銷存單據規則](erp-inventory-docs.md) — 連動商城的銷貨單不自行動庫存（委派商城狀態機）；ERP 原生單據才扣/補；openapi body 必用 $ref；410 收斂勿用 early-return。
 - [分級/點數/報價單規則](grades-points-quotations.md) — 所有下單路徑都須套 gradeAllowed 分級檢查；點數/佣金以折抵後淨額計；報價單僅 accepted+未過期可轉單，狀態變更用條件式 UPDATE。
 - [ERP access model](erp-access-model.md) — /erp shares shop session; erp_role null + platform admin ⇒ super_admin; requireErp middleware + erp_menu_permissions overrides; audit via erp_audit_logs.
 - [AI 大腦架構](ai-brain-architecture.md) — embeddings 不走平台代理（金鑰選配、關鍵字退回）；助理操作須伺服器端兩段式確認（prompt 不可信）；工具回傳不入歷史須注入 pending 提示。

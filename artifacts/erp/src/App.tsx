@@ -9,6 +9,18 @@ import { AppShell, RoleGate } from '@/components/layout';
 import LoginRequired from '@/pages/login-required';
 import DashboardPage from '@/pages/dashboard';
 import UsersPage from '@/pages/system/users';
+import ItemsPage from '@/pages/inventory/items';
+import WarehousesPage from '@/pages/inventory/warehouses';
+import MovementsPage from '@/pages/inventory/movements';
+import QuotationsPage from '@/pages/sales/quotations';
+import SalesOrdersPage from '@/pages/sales/orders';
+import SalesReturnsPage from '@/pages/sales/returns';
+import PriceListsPage from '@/pages/sales/price-lists';
+import PurchaseOrdersPage from '@/pages/purchasing/orders';
+import ReceivingPage from '@/pages/purchasing/receiving';
+import PurchaseReturnsPage from '@/pages/purchasing/returns';
+import CustomersPage from '@/pages/partners/customers';
+import SuppliersPage from '@/pages/partners/suppliers';
 import DepartmentsPage from '@/pages/system/departments';
 import MenuPermissionsPage from '@/pages/system/menu-permissions';
 import AuditLogsPage from '@/pages/system/audit-logs';
@@ -50,6 +62,18 @@ function RouterContent() {
             <RoleGate>
               <Switch>
                 <Route path="/" component={DashboardPage} />
+                <Route path="/inventory/items" component={ItemsPage} />
+                <Route path="/inventory/warehouses" component={WarehousesPage} />
+                <Route path="/inventory/movements" component={MovementsPage} />
+                <Route path="/sales/quotations" component={QuotationsPage} />
+                <Route path="/sales/orders" component={SalesOrdersPage} />
+                <Route path="/sales/returns" component={SalesReturnsPage} />
+                <Route path="/sales/price-lists" component={PriceListsPage} />
+                <Route path="/purchasing/orders" component={PurchaseOrdersPage} />
+                <Route path="/purchasing/receiving" component={ReceivingPage} />
+                <Route path="/purchasing/returns" component={PurchaseReturnsPage} />
+                <Route path="/partners/customers" component={CustomersPage} />
+                <Route path="/partners/suppliers" component={SuppliersPage} />
                 <Route path="/system/users" component={UsersPage} />
                 <Route path="/system/departments" component={DepartmentsPage} />
                 <Route path="/system/menu-permissions" component={MenuPermissionsPage} />

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import type { Request, Response, NextFunction } from "express";
-import { and, count, desc, eq, gte, inArray, ne, sql, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, ne, sql, sum , notInArray} from "drizzle-orm";
 import {
   db,
   membersTable,
@@ -98,7 +98,7 @@ router.get("/portal/summary", requirePortal, async (req, res) => {
           and(
             inArray(ordersTable.memberId, memberIds),
             gte(ordersTable.createdAt, monthStart),
-            ne(ordersTable.status, "cancelled"),
+            notInArray(ordersTable.status, ["cancelled", "returned"]),
           ),
         ),
       db
@@ -149,7 +149,7 @@ router.get("/portal/orders", requirePortal, async (req, res) => {
   const conditions = [inArray(ordersTable.memberId, memberIds)];
   if (
     status &&
-    ["pending", "paid", "shipped", "completed", "cancelled"].includes(status)
+    ["pending", "paid", "shipped", "completed", "cancelled", "returned"].includes(status)
   ) {
     conditions.push(eq(ordersTable.status, status));
   }
@@ -193,7 +193,7 @@ router.get("/portal/reports", requirePortal, async (req, res) => {
         and(
           inArray(ordersTable.memberId, memberIds),
           gte(ordersTable.createdAt, sixMonthsAgo),
-          ne(ordersTable.status, "cancelled"),
+          notInArray(ordersTable.status, ["cancelled", "returned"]),
         ),
       )
       .groupBy(sql`to_char(${ordersTable.createdAt}, 'YYYY-MM')`),
@@ -212,7 +212,7 @@ router.get("/portal/reports", requirePortal, async (req, res) => {
         and(
           inArray(ordersTable.memberId, memberIds),
           gte(ordersTable.createdAt, sixMonthsAgo),
-          ne(ordersTable.status, "cancelled"),
+          notInArray(ordersTable.status, ["cancelled", "returned"]),
         ),
       )
       .groupBy(orderItemsTable.productName, orderItemsTable.productCode)

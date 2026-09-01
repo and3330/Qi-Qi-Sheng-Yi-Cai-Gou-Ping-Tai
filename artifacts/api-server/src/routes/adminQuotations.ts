@@ -21,8 +21,20 @@ import {
 import { requireOps } from "../middlewares/requireMember";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import { reindex } from "../lib/aiIndex";
+import {
+  ensureErpCustomerForMember,
+  createSalesOrderForShopOrder,
+} from "../lib/erpSync";
 
-const router: IRouter = Router();
+/**
+ * 報價單路由可同時掛在 /admin/quotations（商城後台）與 /erp/quotations（ERP），
+ * 共用同一套單據規則（狀態機、轉單列鎖、分級檢查）。
+ */
+export function registerQuotationRoutes(
+  router: IRouter,
+  base: string,
+  guard: import("express").RequestHandler,
+) {
 
 class ConvertError extends Error {}
 
@@ -102,7 +114,7 @@ async function loadQuotation(id: number) {
   });
 }
 
-router.get("/admin/quotations", requireOps, async (req, res) => {
+router.get(base, guard, async (req, res) => {
   const status = typeof req.query.status === "string" ? req.query.status : "";
   const conditions: SQL[] = [];
   if (["draft", "sent", "accepted", "converted", "cancelled"].includes(status))
@@ -161,7 +173,7 @@ router.get("/admin/quotations", requireOps, async (req, res) => {
   );
 });
 
-router.post("/admin/quotations", requireOps, async (req, res) => {
+router.post(base, guard, async (req, res) => {
   const parsed = CreateAdminQuotationBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "報價單資料不完整" });
@@ -292,7 +304,7 @@ router.post("/admin/quotations", requireOps, async (req, res) => {
   res.status(201).json(serializeQuotation(result.q, result.items));
 });
 
-router.get("/admin/quotations/:id", requireOps, async (req, res) => {
+router.get(`${base}/:id`, guard, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -306,7 +318,7 @@ router.get("/admin/quotations/:id", requireOps, async (req, res) => {
   res.json(q);
 });
 
-router.patch("/admin/quotations/:id/status", requireOps, async (req, res) => {
+router.patch(`${base}/:id/status`, guard, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -349,7 +361,7 @@ router.patch("/admin/quotations/:id/status", requireOps, async (req, res) => {
 });
 
 /** 報價單轉訂單：依報價價格建立訂單（匯款、待付款）並扣庫存 */
-router.post("/admin/quotations/:id/convert", requireOps, async (req, res) => {
+router.post(`${base}/:id/convert`, guard, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -421,9 +433,10 @@ router.post("/admin/quotations/:id/convert", requireOps, async (req, res) => {
 
       const orderNo = `QB${Date.now()}${String(member.id).padStart(3, "0")}`;
 
-      // 扣庫存（多規格扣規格、無規格扣主商品）
+      // 扣庫存（多規格扣規格、無規格扣主商品；虛擬品項不動庫存）
       const stockAfterByItem = new Map<number, number>();
       for (const item of items) {
+        if (prodById.get(item.productId)?.isVirtual) continue;
         if (item.variantId != null) {
           const dec = await tx
             .update(productVariantsTable)
@@ -506,8 +519,12 @@ router.post("/admin/quotations/:id/convert", requireOps, async (req, res) => {
         })),
       );
 
+      const stockItems = items.filter(
+        (i) => !prodById.get(i.productId)?.isVirtual,
+      );
+      if (stockItems.length > 0)
       await tx.insert(stockMovementsTable).values(
-        items.map((i) => ({
+        stockItems.map((i) => ({
           productId: i.productId,
           variantId: i.variantId,
           type: "sale",
@@ -518,6 +535,30 @@ router.post("/admin/quotations/:id/convert", requireOps, async (req, res) => {
             : "報價單轉訂單",
           refNo: orderNo,
         })),
+      );
+
+      // 轉單訂單同步產生 ERP 銷貨單
+      const customerId = await ensureErpCustomerForMember(tx, member);
+      await createSalesOrderForShopOrder(
+        tx,
+        order,
+        customerId,
+        member.name || member.username,
+        items.map((i) => ({
+          productId: i.productId,
+          variantId: i.variantId,
+          variantName: i.variantName,
+          productName: i.productName,
+          productCode: i.productCode,
+          unitPrice: i.unitPrice,
+          quantity: i.quantity,
+          unitCost:
+            i.variantId != null
+              ? costByVariant.get(i.variantId) ?? 0
+              : costByProduct.get(i.productId) ?? 0,
+          isVirtual: prodById.get(i.productId)?.isVirtual ?? false,
+        })),
+        "quotation",
       );
 
       await tx
@@ -541,4 +582,8 @@ router.post("/admin/quotations/:id/convert", requireOps, async (req, res) => {
   res.json(await loadQuotation(id));
 });
 
+}
+
+const router: IRouter = Router();
+registerQuotationRoutes(router, "/admin/quotations", requireOps);
 export default router;

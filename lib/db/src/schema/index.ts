@@ -19,3 +19,4 @@ export * from "./aiDocuments";
 export * from "./points";
 export * from "./quotations";
 export * from "./erp";
+export * from "./erpInventory";

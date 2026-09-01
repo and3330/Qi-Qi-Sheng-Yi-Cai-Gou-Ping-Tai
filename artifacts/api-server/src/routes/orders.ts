@@ -29,6 +29,10 @@ import {
 } from "@workspace/db";
 import { CreateOrderBody, GetOrderParams } from "@workspace/api-zod";
 import { reindex } from "../lib/aiIndex";
+import {
+  ensureErpCustomerForMember,
+  createSalesOrderForShopOrder,
+} from "../lib/erpSync";
 import { requireMember } from "../middlewares/requireMember";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 
@@ -188,6 +192,7 @@ router.post("/orders", async (req, res) => {
       unitPrice: v ? tierPrice(tier, v) : tierPrice(tier, p),
       quantity: line.quantity,
       unitCost: v ? v.costPrice : p.costPrice,
+      isVirtual: p.isVirtual,
     };
   });
   const grossAmount = lines.reduce(
@@ -219,6 +224,8 @@ router.post("/orders", async (req, res) => {
       // 多規格商品扣規格庫存，無規格商品扣商品庫存。
       const stockAfterByKey = new Map<string, number>();
       for (const line of input.items) {
+        // 虛擬品項不動庫存
+        if (byId.get(line.productId)!.isVirtual) continue;
         if (line.variantId != null) {
           const decremented = await tx
             .update(productVariantsTable)
@@ -370,9 +377,11 @@ router.post("/orders", async (req, res) => {
           );
       }
 
-      // Record sale stock movements
+      // Record sale stock movements（虛擬品項不動庫存）
+      const stockLines = lines.filter((l) => !l.isVirtual);
+      if (stockLines.length > 0)
       await tx.insert(stockMovementsTable).values(
-        lines.map((l) => ({
+        stockLines.map((l) => ({
           productId: l.productId,
           variantId: l.variantId,
           type: "sale",
@@ -382,6 +391,17 @@ router.post("/orders", async (req, res) => {
           reason: l.variantName ? `銷售出貨（${l.variantName}）` : "銷售出貨",
           refNo: orderNo,
         })),
+      );
+
+      // 商城訂單自動產生 ERP 銷貨單（同一交易；order_id 部分唯一索引防重複單據）
+      const customerId = await ensureErpCustomerForMember(tx, req.member!);
+      await createSalesOrderForShopOrder(
+        tx,
+        order,
+        customerId,
+        req.member!.name || req.member!.username,
+        lines,
+        "shop",
       );
 
       if (input.clearCart) {

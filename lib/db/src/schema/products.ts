@@ -26,6 +26,11 @@ export const productsTable = pgTable("products", {
   isHot: boolean("is_hot").notNull().default(false),
   isNew: boolean("is_new").notNull().default(false),
   spec: text("spec"),
+  // ERP 品項欄位：虛擬品項不動庫存；單位／條碼／安全庫存
+  isVirtual: boolean("is_virtual").notNull().default(false),
+  unit: text("unit"),
+  barcode: text("barcode"),
+  safetyStock: integer("safety_stock").notNull().default(0),
   // 授權可銷售機構分級（["A","B"] 等）；null 或空陣列 = 不限（所有人可購）
   allowedGrades: jsonb("allowed_grades").$type<string[] | null>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),

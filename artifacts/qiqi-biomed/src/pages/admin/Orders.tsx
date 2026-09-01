@@ -39,6 +39,7 @@ const statusLabel: Record<string, string> = {
   paid: "已付款",
   shipped: "已出貨",
   completed: "已完成",
+  returned: "已退貨",
   cancelled: "已取消",
 };
 
@@ -47,6 +48,7 @@ const statusClass: Record<string, string> = {
   paid: "border-blue-200 bg-blue-50 text-blue-700",
   shipped: "border-indigo-200 bg-indigo-50 text-indigo-700",
   completed: "border-green-200 bg-green-50 text-green-700",
+  returned: "border-gray-300 bg-gray-100 text-gray-700",
   cancelled: "border-red-200 bg-red-50 text-red-700",
 };
 

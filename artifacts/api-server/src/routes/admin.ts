@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, count, desc, eq, ilike, lte, ne, or, sum } from "drizzle-orm";
+import { and, count, desc, eq, ilike, lte, ne, or, sum , notInArray} from "drizzle-orm";
 import {
   db,
   membersTable,
@@ -41,7 +41,7 @@ router.get("/admin/stats", requireStaff, async (_req, res) => {
       db
         .select({ value: sum(ordersTable.totalAmount) })
         .from(ordersTable)
-        .where(ne(ordersTable.status, "cancelled")),
+        .where(notInArray(ordersTable.status, ["cancelled", "returned"])),
       db.select({ value: count() }).from(membersTable),
       db
         .select({ value: count() })

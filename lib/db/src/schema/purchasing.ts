@@ -17,6 +17,8 @@ export const purchaseOrdersTable = pgTable("purchase_orders", {
   status: text("status").notNull().default("draft"),
   totalAmount: integer("total_amount").notNull().default(0),
   note: text("note"),
+  warehouseId: integer("warehouse_id"),
+  createdBy: integer("created_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   orderedAt: timestamp("ordered_at"),
   receivedAt: timestamp("received_at"),

@@ -11,6 +11,7 @@ const STATUS_MAP: Record<string, ListPortalOrdersStatus | undefined> = {
   "已付款": "paid",
   "已出貨": "shipped",
   "已完成": "completed",
+  "已退貨": "returned" as ListPortalOrdersStatus,
   "已取消": "cancelled"
 };
 const STATUSES = Object.keys(STATUS_MAP);
@@ -77,7 +78,7 @@ export default function PortalOrders() {
                 <span className={classNames(
                   "text-[10px] font-bold px-2 py-1 rounded-sm",
                   order.status === "completed" ? "bg-emerald-50 text-emerald-600" :
-                  order.status === "cancelled" ? "bg-gray-100 text-gray-500" :
+                  order.status === "cancelled" || (order.status as string) === "returned" ? "bg-gray-100 text-gray-500" :
                   order.status === "paid" || order.status === "shipped" ? "bg-blue-50 text-blue-600" :
                   "bg-orange-50 text-orange-600"
                 )}>
