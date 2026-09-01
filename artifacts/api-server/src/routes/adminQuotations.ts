@@ -21,7 +21,7 @@ import {
 import { requireOps } from "../middlewares/requireMember";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import { reindex } from "../lib/aiIndex";
-import { WarehouseStockError, allocateSellableStock } from "../lib/warehouseStock";
+import { WarehouseStockError, allocateSellableStock, syncMirrorStock } from "../lib/warehouseStock";
 import {
   ensureErpCustomerForMember,
   createSalesOrderForShopOrder,
@@ -454,37 +454,11 @@ router.post(`${base}/:id/convert`, guard, async (req, res) => {
             );
           throw err;
         }
-        if (item.variantId != null) {
-          const dec = await tx
-            .update(productVariantsTable)
-            .set({ stock: sql`${productVariantsTable.stock} - ${item.quantity}` })
-            .where(
-              and(
-                eq(productVariantsTable.id, item.variantId),
-                gte(productVariantsTable.stock, item.quantity),
-              ),
-            )
-            .returning({ stock: productVariantsTable.stock });
-          if (dec.length === 0)
-            throw new ConvertError(
-              `庫存不足：${item.productName}（${item.variantName ?? ""}）`,
-            );
-          stockAfterByItem.set(item.id, dec[0].stock);
-        } else {
-          const dec = await tx
-            .update(productsTable)
-            .set({ stock: sql`${productsTable.stock} - ${item.quantity}` })
-            .where(
-              and(
-                eq(productsTable.id, item.productId),
-                gte(productsTable.stock, item.quantity),
-              ),
-            )
-            .returning({ stock: productsTable.stock });
-          if (dec.length === 0)
-            throw new ConvertError(`庫存不足：${item.productName}`);
-          stockAfterByItem.set(item.id, dec[0].stock);
-        }
+        const mirrorTotal = await syncMirrorStock(tx, {
+          productId: item.productId,
+          variantId: item.variantId,
+        });
+        stockAfterByItem.set(item.id, mirrorTotal);
       }
 
       // 成本快照

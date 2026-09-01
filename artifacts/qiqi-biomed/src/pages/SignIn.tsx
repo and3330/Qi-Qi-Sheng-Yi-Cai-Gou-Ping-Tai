@@ -44,8 +44,8 @@ export default function SignInPage() {
             <ArrowLeft size={20} />
           </Link>
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-              <img src="/logo.svg" alt="Logo" className="w-8 h-8 object-contain" />
+            <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center overflow-hidden shadow-sm mb-3">
+              <img src="/images/brand/logo-mark.png" alt="七期生醫" className="w-full h-full object-cover" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">歡迎回來</h1>
             <p className="text-sm text-gray-500 mt-1">登入以繼續使用七期生醫採購平台</p>

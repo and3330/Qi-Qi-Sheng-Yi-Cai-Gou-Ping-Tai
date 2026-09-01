@@ -20,13 +20,16 @@ import {
   productVariantsTable,
   salesReturnItemsTable,
   salesReturnsTable,
+  quotationsTable,
 } from "@workspace/db";
 import {
   UpdateAdminOrderStatusBody,
   UpdateShipmentPhotosBody,
+  BulkUpdateAdminOrderStatusBody,
+  BulkDeleteAdminOrdersBody,
 } from "@workspace/api-zod";
 import { requireStaff, requireOps } from "../middlewares/requireMember";
-import { reindex } from "../lib/aiIndex";
+import { reindex, removeFromIndex } from "../lib/aiIndex";
 import {
   autoPost,
   postShopOrderPaid,
@@ -34,7 +37,7 @@ import {
   postProfitShare,
 } from "../lib/erpAutoPost";
 import { syncSalesOrderStatusForOrder } from "../lib/erpSync";
-import { getDefaultWarehouseId, increaseWarehouseStock } from "../lib/warehouseStock";
+import { getDefaultWarehouseId, increaseWarehouseStock, syncMirrorStock } from "../lib/warehouseStock";
 import {
   salesOrdersTable,
   salesOrderItemsTable,
@@ -566,25 +569,6 @@ export async function applyOrderStatusChange(
               .limit(1);
             if (p?.isVirtual) continue;
           }
-          let stockAfter: number | null = null;
-          if (item.variantId != null) {
-            const [updated] = await tx
-              .update(productVariantsTable)
-              .set({
-                stock: sql`${productVariantsTable.stock} + ${restockQty}`,
-              })
-              .where(eq(productVariantsTable.id, item.variantId))
-              .returning();
-            if (updated) stockAfter = updated.stock;
-          } else {
-            const [updated] = await tx
-              .update(productsTable)
-              .set({ stock: sql`${productsTable.stock} + ${restockQty}` })
-              .where(eq(productsTable.id, item.productId))
-              .returning();
-            if (updated) stockAfter = updated.stock;
-          }
-          if (stockAfter == null) continue;
           // 分倉：依原銷售的分倉扣帳紀錄回補（多倉分配各自歸還；查無紀錄時回補預設倉）
           const restockRefs = [order.orderNo, ...confirmedSrNos];
           const saleAllocResult = await tx.execute(sql`
@@ -626,12 +610,19 @@ export async function applyOrderStatusChange(
               variantId: item.variantId,
               quantity: t.quantity,
             });
+          }
+          // 舊制總量欄位改為唯讀鏡像：所有分倉回補完成後，同步一次總量供列表顯示
+          const mirrorTotal = await syncMirrorStock(tx, {
+            productId: item.productId,
+            variantId: item.variantId,
+          });
+          for (const t of restockTargets) {
             await tx.insert(stockMovementsTable).values({
               productId: item.productId,
               variantId: item.variantId,
               type: target === "returned" ? "sale_return" : "sale",
               quantity: t.quantity,
-              stockAfter,
+              stockAfter: mirrorTotal,
               warehouseId: t.warehouseId,
               reason: item.variantName
                 ? `訂單${actionLabel}回補（${item.variantName}）`
@@ -706,6 +697,173 @@ router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
 
   reindex("order", id);
   res.json(await loadAdminOrder(id));
+});
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "待付款",
+  paid: "已付款",
+  shipped: "已出貨",
+  completed: "已完成",
+  cancelled: "已取消",
+  returned: "已退貨",
+};
+
+// 批量更新訂單狀態：逐筆套用同一套狀態機（含退款/回補庫存/佣金點數沖回），
+// 每筆各自為一個交易——某一筆失敗不影響其他筆，並回報跳過原因。
+router.post("/admin/orders/bulk-status", requireOps, async (req, res) => {
+  const parsed = BulkUpdateAdminOrderStatusBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "批量狀態資料不正確" });
+    return;
+  }
+  const { status: target } = parsed.data;
+  const ids = [...new Set(parsed.data.ids)];
+
+  const orderNoById = new Map<number, string>(
+    (
+      await db
+        .select({ id: ordersTable.id, orderNo: ordersTable.orderNo })
+        .from(ordersTable)
+        .where(inArray(ordersTable.id, ids))
+    ).map((r) => [r.id, r.orderNo]),
+  );
+
+  const updated: NonNullable<Awaited<ReturnType<typeof loadAdminOrder>>>[] = [];
+  const skipped: { id: number; orderNo: string | null; reason: string }[] = [];
+
+  for (const id of ids) {
+    try {
+      await applyOrderStatusChange(id, target);
+      reindex("order", id);
+      const order = await loadAdminOrder(id);
+      if (order) updated.push(order);
+    } catch (err) {
+      const orderNo = orderNoById.get(id) ?? null;
+      if (err instanceof Error && err.message === "ORDER_NOT_FOUND") {
+        skipped.push({ id, orderNo, reason: "找不到此訂單" });
+      } else if (
+        err instanceof Error &&
+        err.message.startsWith("BAD_TRANSITION:")
+      ) {
+        const current = err.message.split(":")[1];
+        skipped.push({
+          id,
+          orderNo,
+          reason: `狀態為「${STATUS_LABELS[current] ?? current}」，無法變更為「${STATUS_LABELS[target] ?? target}」`,
+        });
+      } else {
+        console.error(`[bulk-status] order #${id} failed:`, err);
+        skipped.push({ id, orderNo, reason: "處理失敗，請稍後再試" });
+      }
+    }
+  }
+
+  res.json({ updated, skipped });
+});
+
+// 批量刪除訂單：僅「已取消/已退貨」可刪（財務與庫存已沖回）；
+// 已有銷退單紀錄者保留帳務不可刪。連動的 ERP 銷貨單一併刪除。
+router.post("/admin/orders/bulk-delete", requireOps, async (req, res) => {
+  const parsed = BulkDeleteAdminOrdersBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "批量刪除資料不正確" });
+    return;
+  }
+  const ids = [...new Set(parsed.data.ids)];
+
+  const deletedIds: number[] = [];
+  const skipped: { id: number; orderNo: string | null; reason: string }[] = [];
+
+  for (const id of ids) {
+    try {
+      const outcome = await db.transaction(async (tx) => {
+        const [order] = await tx
+          .select()
+          .from(ordersTable)
+          .where(eq(ordersTable.id, id))
+          .for("update")
+          .limit(1);
+        if (!order) return { ok: false as const, orderNo: null, reason: "找不到此訂單" };
+        if (order.status !== "cancelled" && order.status !== "returned") {
+          return {
+            ok: false as const,
+            orderNo: order.orderNo,
+            reason: "僅「已取消」或「已退貨」的訂單可刪除，請先取消訂單",
+          };
+        }
+        // 由報價單轉入的訂單：報價單狀態已鎖定為 converted，刪單會留下懸空關聯，不可刪
+        const [linkedQuote] = await tx
+          .select({ id: quotationsTable.id, quoteNo: quotationsTable.quoteNo })
+          .from(quotationsTable)
+          .where(eq(quotationsTable.convertedOrderId, id))
+          .limit(1);
+        if (linkedQuote) {
+          return {
+            ok: false as const,
+            orderNo: order.orderNo,
+            reason: `此訂單由報價單 ${linkedQuote.quoteNo} 轉入，為保留關聯不可刪除`,
+          };
+        }
+        // 已有會計自動立帳傳票（付款/退款/佣金）：刪單會讓帳務失去來源稽核軌跡，不可刪
+        const journalResult = await tx.execute(sql`
+          SELECT id FROM erp_journal_entries
+          WHERE source_type IN ('shop_order_paid', 'shop_order_refund')
+            AND source_id = ${String(id)}
+          LIMIT 1
+        `);
+        if (journalResult.rows.length > 0) {
+          return {
+            ok: false as const,
+            orderNo: order.orderNo,
+            reason: "此訂單已有會計傳票紀錄，為保留帳務稽核軌跡不可刪除",
+          };
+        }
+        // 連動 ERP 銷貨單：若已有銷退單，保留完整帳務紀錄，不可刪
+        const linkedSOs = await tx
+          .select({ id: salesOrdersTable.id })
+          .from(salesOrdersTable)
+          .where(eq(salesOrdersTable.orderId, id));
+        if (linkedSOs.length) {
+          const soIds = linkedSOs.map((s) => s.id);
+          const [sr] = await tx
+            .select({ id: salesReturnsTable.id })
+            .from(salesReturnsTable)
+            .where(inArray(salesReturnsTable.salesOrderId, soIds))
+            .limit(1);
+          if (sr) {
+            return {
+              ok: false as const,
+              orderNo: order.orderNo,
+              reason: "此訂單已有銷退單帳務紀錄，為保留稽核軌跡不可刪除",
+            };
+          }
+          await tx
+            .delete(salesOrderItemsTable)
+            .where(inArray(salesOrderItemsTable.salesOrderId, soIds));
+          await tx
+            .delete(salesOrdersTable)
+            .where(inArray(salesOrdersTable.id, soIds));
+        }
+        await tx
+          .delete(profitShareRecordsTable)
+          .where(eq(profitShareRecordsTable.orderId, id));
+        await tx.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+        await tx.delete(ordersTable).where(eq(ordersTable.id, id));
+        return { ok: true as const, orderNo: order.orderNo, reason: "" };
+      });
+      if (outcome.ok) {
+        deletedIds.push(id);
+        removeFromIndex("order", id);
+      } else {
+        skipped.push({ id, orderNo: outcome.orderNo, reason: outcome.reason });
+      }
+    } catch (err) {
+      console.error(`[bulk-delete] order #${id} failed:`, err);
+      skipped.push({ id, orderNo: null, reason: "刪除失敗，請稍後再試" });
+    }
+  }
+
+  res.json({ deletedIds, skipped });
 });
 
 router.get("/admin/reports/inventory", requireStaff, async (req, res) => {

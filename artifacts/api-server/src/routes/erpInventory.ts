@@ -26,6 +26,7 @@ import {
   adjustWarehouseStock,
   decreaseWarehouseStock,
   increaseWarehouseStock,
+  syncMirrorStock,
 } from "../lib/warehouseStock";
 import {
   ErpAdjustStockBody,
@@ -228,20 +229,18 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
       let stockAfter: number;
       let variantName: string | null = null;
       if (variantId != null) {
-        const [updatedVariant] = await tx
-          .update(productVariantsTable)
-          .set({ stock: sql`${productVariantsTable.stock} + ${quantity}` })
+        const [variant] = await tx
+          .select({ name: productVariantsTable.name })
+          .from(productVariantsTable)
           .where(
             and(
               eq(productVariantsTable.id, variantId),
               eq(productVariantsTable.productId, productId),
-              gte(productVariantsTable.stock, Math.max(0, -quantity)),
             ),
           )
-          .returning();
-        if (!updatedVariant) throw new Error("ADJUST_FAILED");
-        stockAfter = updatedVariant.stock;
-        variantName = updatedVariant.name;
+          .limit(1);
+        if (!variant) throw new Error("ADJUST_FAILED");
+        variantName = variant.name;
       } else {
         // 有啟用規格的商品，無規格的異動一律拒絕
         const [hasVariant] = await tx
@@ -255,18 +254,6 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
           )
           .limit(1);
         if (hasVariant) throw new Error("VARIANT_REQUIRED");
-        const [updatedProduct] = await tx
-          .update(productsTable)
-          .set({ stock: sql`${productsTable.stock} + ${quantity}` })
-          .where(
-            and(
-              eq(productsTable.id, productId),
-              gte(productsTable.stock, Math.max(0, -quantity)),
-            ),
-          )
-          .returning();
-        if (!updatedProduct) throw new Error("ADJUST_FAILED");
-        stockAfter = updatedProduct.stock;
       }
       // 分倉庫存同步調整（出庫時該倉不足會擲錯回滾）
       await adjustWarehouseStock(tx, {
@@ -276,6 +263,7 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
         quantity,
         label: variantName ? `${product.name}（${variantName}）` : product.name,
       });
+      stockAfter = await syncMirrorStock(tx, { productId, variantId });
       const baseReason = note ? `${reason}：${note}` : reason;
       const [movement] = await tx
         .insert(stockMovementsTable)
@@ -812,17 +800,11 @@ router.patch("/erp/stock-transfers/:id/status", requireErpMenu("/inventory/trans
             variantId: item.variantId,
             quantity: item.quantity,
           });
-          // 調撥不影響總量：stockAfter 記錄目前總量
-          const stockAfter =
-            item.variantId != null
-              ? (
-                  await tx
-                    .select({ stock: productVariantsTable.stock })
-                    .from(productVariantsTable)
-                    .where(eq(productVariantsTable.id, item.variantId))
-                    .limit(1)
-                )[0]?.stock ?? 0
-              : p.stock;
+          // 調撥不影響總量；仍同步鏡像並以其總量記錄 movement。
+          const stockAfter = await syncMirrorStock(tx, {
+            productId: item.productId,
+            variantId: item.variantId,
+          });
           await tx.insert(stockMovementsTable).values([
             {
               productId: item.productId,

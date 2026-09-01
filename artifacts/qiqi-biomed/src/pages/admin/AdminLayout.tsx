@@ -2,12 +2,8 @@ import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
-  Boxes,
-  PackagePlus,
   Package,
   ClipboardList,
-  BarChart3,
-  Landmark,
   HandCoins,
   Wallet,
   Building2,
@@ -21,7 +17,6 @@ import {
   Bot,
   Headphones,
   ChevronDown,
-  FileSpreadsheet,
   Link2,
   Share2,
   Megaphone,
@@ -53,26 +48,19 @@ export const adminNavGroups: AdminNavGroup[] = [
     ],
   },
   {
-    title: "商品與庫存",
-    items: [
-      { name: "商品管理", path: "/admin/products", icon: Package, roles: ["admin", "ops"] },
-      { name: "進銷存", path: "/admin/inventory", icon: Boxes, roles: ["admin", "ops"] },
-      { name: "採購進貨", path: "/admin/purchasing", icon: PackagePlus, roles: ["admin", "ops"] },
-      { name: "進銷存報表", path: "/admin/reports", icon: BarChart3, roles: ["admin"] },
-    ],
+    title: "商品管理",
+    items: [{ name: "商品管理", path: "/admin/products", icon: Package, roles: ["admin", "ops"] }],
   },
   {
     title: "訂單與客服",
     items: [
       { name: "訂單管理", path: "/admin/orders", icon: ClipboardList },
-      { name: "報價單", path: "/admin/quotations", icon: FileSpreadsheet, roles: ["admin", "ops"] },
       { name: "客服對話", path: "/admin/support", icon: Headphones },
     ],
   },
   {
     title: "財務與分潤",
     items: [
-      { name: "財務管理", path: "/admin/finance", icon: Landmark, roles: ["admin"] },
       { name: "佣金報表", path: "/admin/commissions", icon: HandCoins, roles: ["admin"] },
       { name: "利潤分享", path: "/admin/profit-sharing", icon: HandCoins, roles: ["admin"] },
       { name: "機構錢包", path: "/admin/institution-wallets", icon: Building2, roles: ["admin"] },
@@ -203,9 +191,11 @@ function ErpEntryLink() {
 function SidebarHeader() {
   return (
     <div className="flex items-center gap-2 px-6 py-5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-        <ShieldCheck size={20} />
-      </div>
+      <img
+        src="/images/brand/logo-mark.png"
+        alt="七期生醫"
+        className="h-9 w-9 rounded-xl object-cover shadow-sm"
+      />
       <div>
         <p className="text-sm font-bold leading-tight">七期生醫</p>
         <p className="text-xs text-muted-foreground">後台管理系統</p>

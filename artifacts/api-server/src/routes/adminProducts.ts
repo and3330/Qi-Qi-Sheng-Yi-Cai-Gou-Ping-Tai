@@ -19,7 +19,7 @@ import {
 } from "@workspace/api-zod";
 import { requireStaff, requireOps } from "../middlewares/requireMember";
 import { reindex } from "../lib/aiIndex";
-import { getDefaultWarehouseId, increaseWarehouseStock } from "../lib/warehouseStock";
+import { getDefaultWarehouseId, increaseWarehouseStock, syncMirrorStock } from "../lib/warehouseStock";
 
 const router: IRouter = Router();
 
@@ -123,7 +123,7 @@ router.post("/admin/products", requireOps, async (req, res) => {
         priceClinic: data.priceClinic,
         priceConsumer: data.priceConsumer,
         costPrice: data.costPrice ?? 0,
-        stock: initialStock,
+        stock: 0,
         isHot: data.isHot ?? false,
         isNew: data.isNew ?? true,
         isActive: data.isActive ?? true,
@@ -131,6 +131,7 @@ router.post("/admin/products", requireOps, async (req, res) => {
         allowedGrades: data.allowedGrades ?? null,
       })
       .returning();
+    let mirrorTotal = 0;
     if (initialStock > 0) {
       const warehouseId = await getDefaultWarehouseId(tx);
       await increaseWarehouseStock(tx, {
@@ -139,16 +140,17 @@ router.post("/admin/products", requireOps, async (req, res) => {
         variantId: null,
         quantity: initialStock,
       });
+      mirrorTotal = await syncMirrorStock(tx, { productId: product.id, variantId: null });
       await tx.insert(stockMovementsTable).values({
         productId: product.id,
         type: "adjust",
         quantity: initialStock,
-        stockAfter: initialStock,
+        stockAfter: mirrorTotal,
         warehouseId,
         reason: "期初庫存",
       });
     }
-    return product;
+    return { ...product, stock: mirrorTotal };
   });
   reindex("product", created.id);
   res.status(201).json(serializeAdminProduct(created));
@@ -263,10 +265,11 @@ router.post(
           priceClinic: data.priceClinic,
           priceConsumer: data.priceConsumer,
           costPrice: data.costPrice ?? 0,
-          stock: data.stock ?? 0,
+          stock: 0,
           isActive: data.isActive ?? true,
         })
         .returning();
+      let mirrorTotal = 0;
       if ((data.stock ?? 0) > 0) {
         const warehouseId = await getDefaultWarehouseId(tx);
         await increaseWarehouseStock(tx, {
@@ -275,17 +278,18 @@ router.post(
           variantId: variant.id,
           quantity: data.stock ?? 0,
         });
+        mirrorTotal = await syncMirrorStock(tx, { productId, variantId: variant.id });
         await tx.insert(stockMovementsTable).values({
           productId,
           variantId: variant.id,
           type: "adjust",
           quantity: data.stock ?? 0,
-          stockAfter: data.stock ?? 0,
+          stockAfter: mirrorTotal,
           warehouseId,
           reason: `期初庫存（${variant.name}）`,
         });
       }
-      return variant;
+      return { ...variant, stock: mirrorTotal };
     });
     reindex("product", created.productId);
     res.status(201).json(serializeAdminVariant(created));

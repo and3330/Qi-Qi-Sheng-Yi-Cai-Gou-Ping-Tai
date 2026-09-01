@@ -21,6 +21,7 @@ import {
   getDefaultWarehouseId,
   adjustWarehouseStock,
   allocateSellableStock,
+  syncMirrorStock,
 } from "./warehouseStock";
 
 /**
@@ -322,20 +323,18 @@ async function adjustStock(args: { productId: number; variantId?: number; quanti
     let stockAfter: number;
     let variantName: string | null = null;
     if (variantId != null) {
-      const [updated] = await tx
-        .update(productVariantsTable)
-        .set({ stock: sql`${productVariantsTable.stock} + ${args.quantity}` })
+      const [variant] = await tx
+        .select({ name: productVariantsTable.name })
+        .from(productVariantsTable)
         .where(
           and(
             eq(productVariantsTable.id, variantId),
             eq(productVariantsTable.productId, args.productId),
-            gte(productVariantsTable.stock, Math.max(0, -args.quantity)),
           ),
         )
-        .returning();
-      if (!updated) throw new ToolError("規格不存在或庫存不足以扣減");
-      stockAfter = updated.stock;
-      variantName = updated.name;
+        .limit(1);
+      if (!variant) throw new ToolError("規格不存在或庫存不足以扣減");
+      variantName = variant.name;
     } else {
       const [hasVariant] = await tx
         .select({ id: productVariantsTable.id })
@@ -343,13 +342,6 @@ async function adjustStock(args: { productId: number; variantId?: number; quanti
         .where(and(eq(productVariantsTable.productId, args.productId), eq(productVariantsTable.isActive, true)))
         .limit(1);
       if (hasVariant) throw new ToolError("此商品有多種規格，請指定 variantId");
-      const [updated] = await tx
-        .update(productsTable)
-        .set({ stock: sql`${productsTable.stock} + ${args.quantity}` })
-        .where(and(eq(productsTable.id, args.productId), gte(productsTable.stock, Math.max(0, -args.quantity))))
-        .returning();
-      if (!updated) throw new ToolError("商品不存在或庫存不足以扣減");
-      stockAfter = updated.stock;
     }
     try {
       await adjustWarehouseStock(tx, {
@@ -362,6 +354,10 @@ async function adjustStock(args: { productId: number; variantId?: number; quanti
       if (err instanceof WarehouseStockError) throw new ToolError(err.message);
       throw err;
     }
+    stockAfter = await syncMirrorStock(tx, {
+      productId: args.productId,
+      variantId,
+    });
     await tx.insert(stockMovementsTable).values({
       productId: args.productId,
       variantId,
@@ -526,39 +522,11 @@ async function createOrder(args: {
         }
         throw err;
       }
-      if (line.variantId != null) {
-        const dec = await tx
-          .update(productVariantsTable)
-          .set({ stock: sql`${productVariantsTable.stock} - ${line.quantity}` })
-          .where(
-            and(
-              eq(productVariantsTable.id, line.variantId),
-              eq(productVariantsTable.isActive, true),
-              gte(productVariantsTable.stock, line.quantity),
-            ),
-          )
-          .returning({ stock: productVariantsTable.stock });
-        if (!dec.length) {
-          const p = byId.get(line.productId)!;
-          const v = variantById.get(line.variantId)!;
-          throw new ToolError(`庫存不足：${p.name}（${v.name}）`);
-        }
-        stockAfterByKey.set(`${line.productId}:${line.variantId}`, dec[0].stock);
-      } else {
-        const dec = await tx
-          .update(productsTable)
-          .set({ stock: sql`${productsTable.stock} - ${line.quantity}` })
-          .where(
-            and(
-              eq(productsTable.id, line.productId),
-              eq(productsTable.isActive, true),
-              gte(productsTable.stock, line.quantity),
-            ),
-          )
-          .returning({ stock: productsTable.stock });
-        if (!dec.length) throw new ToolError(`庫存不足：${byId.get(line.productId)!.name}`);
-        stockAfterByKey.set(`${line.productId}:`, dec[0].stock);
-      }
+      const mirrorTotal = await syncMirrorStock(tx, {
+        productId: line.productId,
+        variantId: line.variantId,
+      });
+      stockAfterByKey.set(`${line.productId}:${line.variantId ?? ""}`, mirrorTotal);
     }
     const [order] = await tx
       .insert(ordersTable)

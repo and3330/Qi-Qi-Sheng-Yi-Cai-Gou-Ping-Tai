@@ -7,7 +7,6 @@ import {
   Clock,
   DollarSign,
   Users,
-  AlertTriangle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AdminLayout } from "./AdminLayout";
@@ -46,13 +45,6 @@ export default function AdminDashboardPage() {
       icon: Users,
       color: "bg-indigo-50 text-indigo-600",
     },
-    {
-      key: "low-stock",
-      label: "低庫存品項",
-      value: stats?.lowStockCount,
-      icon: AlertTriangle,
-      color: "bg-red-50 text-red-600",
-    },
   ];
 
   return (
@@ -86,9 +78,6 @@ export default function AdminDashboardPage() {
           );
         })}
       </div>
-      <p className="mt-6 text-sm text-muted-foreground">
-        更多營運報表將於進銷存與財務模組上線後提供。
-      </p>
     </AdminLayout>
   );
 }

@@ -751,6 +751,74 @@ export const UpdateAdminOrderStatusResponse = zod.object({
 
 
 /**
+ * @summary 批量更新訂單狀態（限管理員；逐筆套用狀態機，不符合的跳過並回報原因）
+ */
+export const bulkUpdateAdminOrderStatusBodyIdsMax = 100;
+
+
+
+export const BulkUpdateAdminOrderStatusBody = zod.object({
+  "ids": zod.array(zod.int()).min(1).max(bulkUpdateAdminOrderStatusBodyIdsMax),
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled', 'returned'])
+})
+
+export const BulkUpdateAdminOrderStatusResponse = zod.object({
+  "updated": zod.array(zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "memberId": zod.int(),
+  "memberName": zod.string(),
+  "memberTier": zod.enum(['hospital', 'clinic', 'consumer']).optional(),
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled', 'returned']),
+  "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']),
+  "totalAmount": zod.int(),
+  "shippingAddress": zod.string().nullish(),
+  "receiverName": zod.string().nullish(),
+  "receiverPhone": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "quantity": zod.int()
+}))
+})),
+  "skipped": zod.array(zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string().nullish(),
+  "reason": zod.string()
+}))
+})
+
+
+/**
+ * @summary 批量刪除訂單（限管理員；僅已取消/已退貨可刪，已有銷退紀錄者保留）
+ */
+export const bulkDeleteAdminOrdersBodyIdsMax = 100;
+
+
+
+export const BulkDeleteAdminOrdersBody = zod.object({
+  "ids": zod.array(zod.int()).min(1).max(bulkDeleteAdminOrdersBodyIdsMax)
+})
+
+export const BulkDeleteAdminOrdersResponse = zod.object({
+  "deletedIds": zod.array(zod.int()),
+  "skipped": zod.array(zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string().nullish(),
+  "reason": zod.string()
+}))
+})
+
+
+/**
  * @summary 期間進銷存彙總報表（限管理員）
  */
 export const GetAdminInventoryReportQueryParams = zod.object({

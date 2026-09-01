@@ -3,7 +3,7 @@
 - [DB constraint error handling](db-constraint-error-handling.md) — enforce race-sensitive invariants with partial unique indexes; drizzle wraps pg errors, check err.cause for code 23505.
 - [Object storage private reads](object-storage-auth.md) — /storage/objects must be auth-gated; member reads allowed only via jsonb containment check on owning order's shipmentPhotos; staff bypass.
 - [Product variants invariants](product-variants.md) — products with active variants must reject variant-less cart/order/stock-adjust; ERP 單據路徑亦同（PO/SO/調整都檢查）。
-- [ERP 進銷存單據規則](erp-inventory-docs.md) — 連動商城的銷貨單不自行動庫存（委派商城狀態機）；ERP 原生單據才扣/補；openapi body 必用 $ref；410 收斂勿用 early-return。
+- [ERP 進銷存單據規則](erp-inventory-docs.md) — warehouse_stock 才是唯一真實庫存，products.stock 只是唯讀鏡像；連動商城銷貨單不自行動庫存；openapi body 必用 $ref。
 - [分級/點數/報價單規則](grades-points-quotations.md) — 所有下單路徑都須套 gradeAllowed 分級檢查；點數/佣金以折抵後淨額計；報價單僅 accepted+未過期可轉單，狀態變更用條件式 UPDATE。
 - [ERP access model](erp-access-model.md) — /erp shares shop session; erp_role null + platform admin ⇒ super_admin; requireErp middleware + erp_menu_permissions overrides; audit via erp_audit_logs.
 - [使用者提供之 URL 規則](user-supplied-urls.md) — 任何會員可存的外連 URL 必須後端 allowlist 協定（http/https/mailto/tel），防 javascript:/data: 儲存型 XSS；PUT 設定端點只寫入請求提供的欄位。

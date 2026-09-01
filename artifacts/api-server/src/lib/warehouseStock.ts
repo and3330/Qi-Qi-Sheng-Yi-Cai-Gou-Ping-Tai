@@ -264,6 +264,35 @@ export async function getSellableStockMap(
   return map;
 }
 
+/**
+ * 將商品/規格的舊制總量欄位（products.stock / product_variants.stock）同步為「各倉庫存總和」。
+ * 這個欄位現在只是分倉庫存（唯一真實數字）的唯讀鏡像，僅供列表顯示/搜尋等既有讀取路徑使用，
+ * 所有「是否有庫存可扣」的判斷一律以 warehouse_stock（透過 allocateSellableStock / adjustWarehouseStock 等）為準。
+ * 回傳同步後的總量。
+ */
+export async function syncMirrorStock(
+  tx: DbOrTx,
+  args: { productId: number; variantId: number | null },
+): Promise<number> {
+  const result = await tx.execute(sql`
+    SELECT COALESCE(SUM(quantity), 0) AS total
+    FROM warehouse_stock
+    WHERE product_id = ${args.productId}
+      AND variant_id IS NOT DISTINCT FROM ${args.variantId}
+  `);
+  const rows = result.rows as Array<{ total: number | string }>;
+  const total = Number(rows[0]?.total ?? 0);
+  if (args.variantId == null) {
+    await tx.update(productsTable).set({ stock: total }).where(eq(productsTable.id, args.productId));
+  } else {
+    await tx
+      .update(productVariantsTable)
+      .set({ stock: total })
+      .where(eq(productVariantsTable.id, args.variantId));
+  }
+  return total;
+}
+
 /** 商城可售量（單一品項/規格）。無分倉紀錄時回傳 0。 */
 export async function getSellableStock(
   productId: number,

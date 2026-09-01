@@ -56,8 +56,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-background text-foreground font-sans">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col shrink-0">
-        <div className="h-16 flex items-center px-6 border-b border-sidebar-border font-bold text-lg tracking-wider">
-          七期生醫 ERP
+        <div className="h-16 flex items-center gap-2.5 px-6 border-b border-sidebar-border">
+          <img
+            src="/images/brand/logo-mark.png"
+            alt="七期生醫"
+            className="h-8 w-8 rounded-lg object-cover shrink-0"
+          />
+          <span className="font-bold text-lg tracking-wider">七期生醫 ERP</span>
         </div>
 
         <nav className="flex-1 py-6 px-4 space-y-8 overflow-y-auto">

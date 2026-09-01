@@ -33,11 +33,7 @@ import { AdminGuard } from "./pages/admin/AdminGuard";
 import AdminDashboardPage from "./pages/admin/Dashboard";
 import AdminMembersPage from "./pages/admin/Members";
 import AdminProductsPage from "./pages/admin/Products";
-import AdminInventoryPage from "./pages/admin/Inventory";
-import AdminPurchasingPage from "./pages/admin/Purchasing";
 import AdminOrdersPage from "./pages/admin/Orders";
-import AdminReportsPage from "./pages/admin/Reports";
-import AdminFinancePage from "./pages/admin/Finance";
 import AdminProfitSharingPage from "./pages/admin/ProfitSharing";
 import AdminWalletsPage from "./pages/admin/Wallets";
 import AdminInstitutionWalletsPage from "./pages/admin/InstitutionWallets";
@@ -46,7 +42,6 @@ import AdminContentPage from "./pages/admin/Content";
 import AdminSupportPage from "./pages/admin/Support";
 import AdminAiAssistantPage from "./pages/admin/AiAssistant";
 import AdminInstitutionsPage from "./pages/admin/Institutions";
-import AdminQuotationsPage from "./pages/admin/Quotations";
 import { PortalGuard } from "./pages/portal/PortalGuard";
 import PortalDashboard from "./pages/portal/Dashboard";
 import PortalOrders from "./pages/portal/Orders";
@@ -113,18 +108,13 @@ function AdminArea() {
           <Route path="/admin" component={AdminDashboardPage} />
           <Route path="/admin/members" component={AdminMembersPage} />
           <Route path="/admin/products" component={AdminProductsPage} />
-          <Route path="/admin/inventory" component={AdminInventoryPage} />
-          <Route path="/admin/purchasing" component={AdminPurchasingPage} />
           <Route path="/admin/orders" component={AdminOrdersPage} />
-          <Route path="/admin/quotations" component={AdminQuotationsPage} />
           <Route path="/admin/content" component={AdminContentPage} />
           <Route path="/admin/support" component={AdminSupportPage} />
           <Route path="/admin/ai-assistant" component={AdminAiAssistantPage} />
           <Route path="/admin/institutions" component={AdminInstitutionsPage} />
           <Route path="/admin/social-accounts" component={AdminSocialAccountsPage} />
           <Route path="/admin/social-posts" component={AdminSocialPostsPage} />
-          <Route path="/admin/reports" component={AdminReportsPage} />
-          <Route path="/admin/finance" component={AdminFinancePage} />
           <Route path="/admin/commissions" component={AdminCommissionsPage} />
           <Route path="/admin/profit-sharing" component={AdminProfitSharingPage} />
           <Route path="/admin/institution-wallets" component={AdminInstitutionWalletsPage} />

@@ -1,9 +1,11 @@
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListAdminOrders,
   getListAdminOrdersQueryKey,
   useUpdateAdminOrderStatus,
+  useBulkUpdateAdminOrderStatus,
+  useBulkDeleteAdminOrders,
   useUpdateShipmentPhotos,
   getGetAdminStatsQueryKey,
   getListAdminProductsQueryKey,
@@ -12,7 +14,18 @@ import {
   type ListAdminOrdersParams,
 } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
-import { Search, Eye, X, UploadCloud } from "lucide-react";
+import { Search, Eye, X, UploadCloud, Trash2, CheckSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -185,6 +198,10 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [detail, setDetail] = useState<AdminOrder | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [confirmAction, setConfirmAction] = useState<
+    { type: "status"; status: string; label: string } | { type: "delete" } | null
+  >(null);
 
   const params = useMemo(() => {
     const p: ListAdminOrdersParams = {};
@@ -194,9 +211,128 @@ export default function AdminOrdersPage() {
     return p;
   }, [search, statusFilter]);
 
+  // 搜尋/篩選條件改變時清空選取，避免對「已看不到的訂單」執行批量操作
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [search, statusFilter]);
+
   const { data: orders, isLoading } = useListAdminOrders(params, {
     query: { queryKey: getListAdminOrdersQueryKey(params) },
   });
+
+  const invalidateOrderQueries = () => {
+    queryClient.invalidateQueries({
+      queryKey: getListAdminOrdersQueryKey(),
+      exact: false,
+    });
+    queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+    queryClient.invalidateQueries({
+      queryKey: getListAdminProductsQueryKey(),
+      exact: false,
+    });
+    queryClient.invalidateQueries({
+      queryKey: getListAdminStockMovementsQueryKey(),
+      exact: false,
+    });
+  };
+
+  const bulkStatus = useBulkUpdateAdminOrderStatus({
+    mutation: {
+      onSuccess: (result) => {
+        invalidateOrderQueries();
+        setSelectedIds(new Set(result.skipped.map((s) => s.id)));
+        const desc = result.skipped.length
+          ? result.skipped
+              .slice(0, 5)
+              .map((s) => `${s.orderNo ?? `#${s.id}`}：${s.reason}`)
+              .join("\n") + (result.skipped.length > 5 ? `\n…共 ${result.skipped.length} 筆未處理` : "")
+          : undefined;
+        toast({
+          title: `已更新 ${result.updated.length} 筆訂單${result.skipped.length ? `，${result.skipped.length} 筆未處理` : ""}`,
+          description: desc,
+          variant: result.updated.length === 0 && result.skipped.length ? "destructive" : undefined,
+        });
+      },
+      onError: (err: any) =>
+        toast({
+          title: "批量更新失敗",
+          description: err?.data?.error ?? "請稍後再試",
+          variant: "destructive",
+        }),
+    },
+  });
+
+  const bulkDelete = useBulkDeleteAdminOrders({
+    mutation: {
+      onSuccess: (result) => {
+        invalidateOrderQueries();
+        setSelectedIds(new Set(result.skipped.map((s) => s.id)));
+        const desc = result.skipped.length
+          ? result.skipped
+              .slice(0, 5)
+              .map((s) => `${s.orderNo ?? `#${s.id}`}：${s.reason}`)
+              .join("\n") + (result.skipped.length > 5 ? `\n…共 ${result.skipped.length} 筆未刪除` : "")
+          : undefined;
+        toast({
+          title: `已刪除 ${result.deletedIds.length} 筆訂單${result.skipped.length ? `，${result.skipped.length} 筆未刪除` : ""}`,
+          description: desc,
+          variant: result.deletedIds.length === 0 && result.skipped.length ? "destructive" : undefined,
+        });
+      },
+      onError: (err: any) =>
+        toast({
+          title: "批量刪除失敗",
+          description: err?.data?.error ?? "請稍後再試",
+          variant: "destructive",
+        }),
+    },
+  });
+
+  const bulkPending = bulkStatus.isPending || bulkDelete.isPending;
+
+  const allSelected =
+    !!orders?.length && orders.every((o) => selectedIds.has(o.id));
+  const toggleAll = () => {
+    if (!orders?.length) return;
+    setSelectedIds((prev) => {
+      if (orders.every((o) => prev.has(o.id))) return new Set();
+      return new Set(orders.map((o) => o.id));
+    });
+  };
+  const toggleOne = (id: number) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // 批量狀態選項：依所選訂單的目前狀態，列出至少對一筆有效的動作
+  const bulkActions = useMemo(() => {
+    if (!orders) return [];
+    const selected = orders.filter((o) => selectedIds.has(o.id));
+    const possible = new Map<string, string>();
+    for (const o of selected) {
+      for (const a of NEXT_ACTIONS[o.status] ?? []) {
+        if (!possible.has(a.status)) possible.set(a.status, a.label);
+      }
+      if (o.status === "shipped" || o.status === "completed") {
+        possible.set("returned", "標記退貨");
+      }
+    }
+    return [...possible.entries()].map(([status, label]) => ({ status, label }));
+  }, [orders, selectedIds]);
+
+  const runConfirmedAction = () => {
+    const ids = [...selectedIds];
+    if (!ids.length || !confirmAction) return;
+    if (confirmAction.type === "delete") {
+      bulkDelete.mutate({ data: { ids } });
+    } else {
+      bulkStatus.mutate({ data: { ids, status: confirmAction.status as any } });
+    }
+    setConfirmAction(null);
+  };
 
   const updateStatus = useUpdateAdminOrderStatus({
     mutation: {
@@ -263,6 +399,57 @@ export default function AdminOrdersPage() {
         </Select>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <span className="flex items-center gap-1.5 text-sm font-medium">
+            <CheckSquare size={16} className="text-primary" />
+            已選 {selectedIds.size} 筆
+          </span>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {bulkActions.map((a) => (
+              <Button
+                key={a.status}
+                size="sm"
+                variant={a.status === "cancelled" || a.status === "returned" ? "outline" : "default"}
+                className={a.status === "cancelled" || a.status === "returned" ? "text-destructive" : ""}
+                disabled={bulkPending}
+                onClick={() => {
+                  if (a.status === "cancelled" || a.status === "returned") {
+                    setConfirmAction({ type: "status", status: a.status, label: a.label });
+                  } else {
+                    bulkStatus.mutate({
+                      data: { ids: [...selectedIds], status: a.status as any },
+                    });
+                  }
+                }}
+                data-testid={`button-bulk-${a.status}`}
+              >
+                {a.label}
+              </Button>
+            ))}
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-destructive"
+              disabled={bulkPending}
+              onClick={() => setConfirmAction({ type: "delete" })}
+              data-testid="button-bulk-delete"
+            >
+              <Trash2 size={14} className="mr-1" /> 刪除
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={bulkPending}
+              onClick={() => setSelectedIds(new Set())}
+              data-testid="button-bulk-clear"
+            >
+              取消選取
+            </Button>
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -279,6 +466,14 @@ export default function AdminOrdersPage() {
             <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+                  <th className="w-10 px-4 py-3">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleAll}
+                      aria-label="全選"
+                      data-testid="checkbox-select-all"
+                    />
+                  </th>
                   <th className="px-4 py-3 font-medium">訂單編號</th>
                   <th className="px-4 py-3 font-medium">會員</th>
                   <th className="px-4 py-3 font-medium">付款方式</th>
@@ -292,9 +487,17 @@ export default function AdminOrdersPage() {
                 {orders.map((o) => (
                   <tr
                     key={o.id}
-                    className="border-b last:border-0 hover:bg-muted/30"
+                    className={`border-b last:border-0 hover:bg-muted/30 ${selectedIds.has(o.id) ? "bg-primary/5" : ""}`}
                     data-testid={`row-order-${o.id}`}
                   >
+                    <td className="px-4 py-3">
+                      <Checkbox
+                        checked={selectedIds.has(o.id)}
+                        onCheckedChange={() => toggleOne(o.id)}
+                        aria-label={`選取訂單 ${o.orderNo}`}
+                        data-testid={`checkbox-order-${o.id}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs">{o.orderNo}</td>
                     <td className="px-4 py-3">
                       <p className="font-medium">{o.memberName}</p>
@@ -333,6 +536,37 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Bulk action confirm dialog */}
+      <AlertDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.type === "delete"
+                ? `確定刪除選取的 ${selectedIds.size} 筆訂單？`
+                : `確定將選取的 ${selectedIds.size} 筆訂單${confirmAction?.type === "status" ? confirmAction.label : ""}？`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.type === "delete"
+                ? "只有「已取消」或「已退貨」的訂單會被刪除（財務與庫存已沖回），其他狀態的訂單會自動跳過並回報。刪除後無法復原。"
+                : "系統會逐筆檢查訂單狀態，不符合流程的訂單會自動跳過並回報原因；取消／退貨會自動退款並回補庫存。"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>返回</AlertDialogCancel>
+            <AlertDialogAction
+              className={confirmAction?.type === "delete" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              onClick={runConfirmedAction}
+              data-testid="button-bulk-confirm"
+            >
+              確定執行
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Order detail dialog */}
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>

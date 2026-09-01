@@ -688,6 +688,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+  /admin/orders/bulk-status:
+    post:
+      operationId: bulkUpdateAdminOrderStatus
+      tags:
+        - admin
+      summary: 批量更新訂單狀態（限管理員；逐筆套用狀態機，不符合的跳過並回報原因）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkOrderStatusUpdate'
+      responses:
+        '200':
+          description: Bulk status result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOrderStatusResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/orders/bulk-delete:
+    post:
+      operationId: bulkDeleteAdminOrders
+      tags:
+        - admin
+      summary: 批量刪除訂單（限管理員；僅已取消/已退貨可刪，已有銷退紀錄者保留）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkOrderIds'
+      responses:
+        '200':
+          description: Bulk delete result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkOrderDeleteResult'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/reports/inventory:
     get:
       operationId: getAdminInventoryReport
@@ -6653,6 +6703,57 @@ components:
         status:
           type: string
           enum: [pending, paid, shipped, completed, cancelled, returned]
+    BulkOrderStatusUpdate:
+      type: object
+      required: [ids, status]
+      properties:
+        ids:
+          type: array
+          items: { type: integer }
+          minItems: 1
+          maxItems: 100
+        status:
+          type: string
+          enum: [pending, paid, shipped, completed, cancelled, returned]
+    BulkOrderIds:
+      type: object
+      required: [ids]
+      properties:
+        ids:
+          type: array
+          items: { type: integer }
+          minItems: 1
+          maxItems: 100
+    BulkOrderSkipped:
+      type: object
+      required: [id, reason]
+      properties:
+        id: { type: integer }
+        orderNo: { type: ["string", "null"] }
+        reason: { type: string }
+    BulkOrderStatusResult:
+      type: object
+      required: [updated, skipped]
+      properties:
+        updated:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOrder'
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkOrderSkipped'
+    BulkOrderDeleteResult:
+      type: object
+      required: [deletedIds, skipped]
+      properties:
+        deletedIds:
+          type: array
+          items: { type: integer }
+        skipped:
+          type: array
+          items:
+            $ref: '#/components/schemas/BulkOrderSkipped'
     InventoryReportRow:
       type: object
       required: [productId, productName, productCode, purchasedQty, purchasedAmount, soldQty, soldAmount, adjustedQty, currentStock]

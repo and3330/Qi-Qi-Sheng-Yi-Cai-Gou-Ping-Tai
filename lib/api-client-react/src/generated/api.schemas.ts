@@ -1613,6 +1613,52 @@ export interface OrderStatusUpdate {
   status: OrderStatusUpdateStatus;
 }
 
+export type BulkOrderStatusUpdateStatus = typeof BulkOrderStatusUpdateStatus[keyof typeof BulkOrderStatusUpdateStatus];
+
+
+export const BulkOrderStatusUpdateStatus = {
+  pending: 'pending',
+  paid: 'paid',
+  shipped: 'shipped',
+  completed: 'completed',
+  cancelled: 'cancelled',
+  returned: 'returned',
+} as const;
+
+export interface BulkOrderStatusUpdate {
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  ids: number[];
+  status: BulkOrderStatusUpdateStatus;
+}
+
+export interface BulkOrderIds {
+  /**
+     * @minItems 1
+     * @maxItems 100
+     */
+  ids: number[];
+}
+
+export interface BulkOrderSkipped {
+  id: number;
+  /** @nullable */
+  orderNo?: string | null;
+  reason: string;
+}
+
+export interface BulkOrderStatusResult {
+  updated: AdminOrder[];
+  skipped: BulkOrderSkipped[];
+}
+
+export interface BulkOrderDeleteResult {
+  deletedIds: number[];
+  skipped: BulkOrderSkipped[];
+}
+
 export interface InventoryReportRow {
   productId: number;
   productName: string;

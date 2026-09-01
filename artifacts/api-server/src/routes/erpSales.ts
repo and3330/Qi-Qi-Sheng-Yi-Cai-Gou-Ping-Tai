@@ -34,6 +34,7 @@ import {
   resolveWarehouseId,
   increaseWarehouseStock,
   decreaseWarehouseStock,
+  syncMirrorStock,
 } from "../lib/warehouseStock";
 
 const router: IRouter = Router();
@@ -425,52 +426,20 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
             quantity: item.quantity,
             label,
           });
-          if (item.variantId != null) {
-            const dec = await tx
-              .update(productVariantsTable)
-              .set({ stock: sql`${productVariantsTable.stock} - ${item.quantity}` })
-              .where(
-                and(
-                  eq(productVariantsTable.id, item.variantId),
-                  gte(productVariantsTable.stock, item.quantity),
-                ),
-              )
-              .returning({ stock: productVariantsTable.stock });
-            if (dec.length === 0)
-              throw new DocError(`庫存不足：${item.productName}（${item.variantName ?? ""}）`);
-            await tx.insert(stockMovementsTable).values({
-              productId: item.productId,
-              variantId: item.variantId,
-              type: "sale",
-              quantity: -item.quantity,
-              stockAfter: dec[0].stock,
-              warehouseId: soWarehouseId,
-              reason: `銷貨出貨（${item.variantName}）`,
-              refNo: locked.soNo,
-            });
-          } else {
-            const dec = await tx
-              .update(productsTable)
-              .set({ stock: sql`${productsTable.stock} - ${item.quantity}` })
-              .where(
-                and(
-                  eq(productsTable.id, item.productId),
-                  gte(productsTable.stock, item.quantity),
-                ),
-              )
-              .returning({ stock: productsTable.stock });
-            if (dec.length === 0) throw new DocError(`庫存不足：${item.productName}`);
-            await tx.insert(stockMovementsTable).values({
-              productId: item.productId,
-              variantId: null,
-              type: "sale",
-              quantity: -item.quantity,
-              stockAfter: dec[0].stock,
-              warehouseId: soWarehouseId,
-              reason: "銷貨出貨",
-              refNo: locked.soNo,
-            });
-          }
+          const stockAfter = await syncMirrorStock(tx, {
+            productId: item.productId,
+            variantId: item.variantId,
+          });
+          await tx.insert(stockMovementsTable).values({
+            productId: item.productId,
+            variantId: item.variantId,
+            type: "sale",
+            quantity: -item.quantity,
+            stockAfter,
+            warehouseId: soWarehouseId,
+            reason: item.variantName ? `銷貨出貨（${item.variantName}）` : "銷貨出貨",
+            refNo: locked.soNo,
+          });
         }
       }
 
@@ -484,41 +453,20 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
             variantId: item.variantId,
             quantity: item.quantity,
           });
-          if (item.variantId != null) {
-            const [u] = await tx
-              .update(productVariantsTable)
-              .set({ stock: sql`${productVariantsTable.stock} + ${item.quantity}` })
-              .where(eq(productVariantsTable.id, item.variantId))
-              .returning({ stock: productVariantsTable.stock });
-            if (u)
-              await tx.insert(stockMovementsTable).values({
-                productId: item.productId,
-                variantId: item.variantId,
-                type: "sale",
-                quantity: item.quantity,
-                stockAfter: u.stock,
-                warehouseId: soWarehouseId,
-                reason: `銷貨取消回補（${item.variantName}）`,
-                refNo: locked.soNo,
-              });
-          } else {
-            const [u] = await tx
-              .update(productsTable)
-              .set({ stock: sql`${productsTable.stock} + ${item.quantity}` })
-              .where(eq(productsTable.id, item.productId))
-              .returning({ stock: productsTable.stock });
-            if (u)
-              await tx.insert(stockMovementsTable).values({
-                productId: item.productId,
-                variantId: null,
-                type: "sale",
-                quantity: item.quantity,
-                stockAfter: u.stock,
-                warehouseId: soWarehouseId,
-                reason: "銷貨取消回補",
-                refNo: locked.soNo,
-              });
-          }
+          const stockAfter = await syncMirrorStock(tx, {
+            productId: item.productId,
+            variantId: item.variantId,
+          });
+          await tx.insert(stockMovementsTable).values({
+            productId: item.productId,
+            variantId: item.variantId,
+            type: "sale",
+            quantity: item.quantity,
+            stockAfter,
+            warehouseId: soWarehouseId,
+            reason: item.variantName ? `銷貨取消回補（${item.variantName}）` : "銷貨取消回補",
+            refNo: locked.soNo,
+          });
         }
       }
 
@@ -944,24 +892,6 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
             if (existing) existing.quantity += remaining;
             else targets.push({ warehouseId: fallbackWarehouseId, quantity: remaining });
           }
-          let stockAfter: number;
-          if (item.variantId != null) {
-            const [u] = await tx
-              .update(productVariantsTable)
-              .set({ stock: sql`${productVariantsTable.stock} + ${item.quantity}` })
-              .where(eq(productVariantsTable.id, item.variantId))
-              .returning({ stock: productVariantsTable.stock });
-            if (!u) throw new DocError(`「${item.productName}」規格不存在，無法入庫`);
-            stockAfter = u.stock;
-          } else {
-            const [u] = await tx
-              .update(productsTable)
-              .set({ stock: sql`${productsTable.stock} + ${item.quantity}` })
-              .where(eq(productsTable.id, item.productId))
-              .returning({ stock: productsTable.stock });
-            if (!u) throw new DocError(`「${item.productName}」品項不存在，無法入庫`);
-            stockAfter = u.stock;
-          }
           for (const t of targets) {
             await increaseWarehouseStock(tx, {
               warehouseId: t.warehouseId,
@@ -969,6 +899,12 @@ router.patch("/erp/sales-returns/:id/status", requireErpMenu("/sales/returns"), 
               variantId: item.variantId,
               quantity: t.quantity,
             });
+          }
+          const stockAfter = await syncMirrorStock(tx, {
+            productId: item.productId,
+            variantId: item.variantId,
+          });
+          for (const t of targets) {
             await tx.insert(stockMovementsTable).values({
               productId: item.productId,
               variantId: item.variantId,

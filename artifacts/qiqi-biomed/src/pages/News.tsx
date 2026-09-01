@@ -43,7 +43,7 @@ export default function NewsPage() {
         </Link>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-1 shadow-sm">
-            <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+            <img src="/images/brand/logo-mark.png" alt="七期生醫" className="w-full h-full object-cover" />
           </div>
           <span className="text-white font-bold text-lg tracking-wide">最新消息</span>
         </div>

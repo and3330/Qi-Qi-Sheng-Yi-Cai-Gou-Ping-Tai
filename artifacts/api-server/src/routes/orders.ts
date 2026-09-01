@@ -34,7 +34,7 @@ import {
   createSalesOrderForShopOrder,
 } from "../lib/erpSync";
 import { requireMember } from "../middlewares/requireMember";
-import { WarehouseStockError, allocateSellableStock } from "../lib/warehouseStock";
+import { WarehouseStockError, allocateSellableStock, syncMirrorStock } from "../lib/warehouseStock";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 
 class InsufficientPointsError extends Error {}
@@ -260,42 +260,13 @@ router.post("/orders", async (req, res) => {
             throw err;
           }
         }
-        if (line.variantId != null) {
-          const decremented = await tx
-            .update(productVariantsTable)
-            .set({ stock: sql`${productVariantsTable.stock} - ${line.quantity}` })
-            .where(
-              and(
-                eq(productVariantsTable.id, line.variantId),
-                eq(productVariantsTable.isActive, true),
-                gte(productVariantsTable.stock, line.quantity),
-              ),
-            )
-            .returning({ stock: productVariantsTable.stock });
-          if (decremented.length === 0) {
-            const p = byId.get(line.productId)!;
-            const v = variantById.get(line.variantId)!;
-            throw new InsufficientStockError(`${p.name}（${v.name}）`);
-          }
-          stockAfterByKey.set(`${line.productId}:${line.variantId}`, decremented[0].stock);
-        } else {
-          const decremented = await tx
-            .update(productsTable)
-            .set({ stock: sql`${productsTable.stock} - ${line.quantity}` })
-            .where(
-              and(
-                eq(productsTable.id, line.productId),
-                eq(productsTable.isActive, true),
-                gte(productsTable.stock, line.quantity),
-              ),
-            )
-            .returning({ id: productsTable.id, stock: productsTable.stock });
-          if (decremented.length === 0) {
-            const p = byId.get(line.productId)!;
-            throw new InsufficientStockError(p.name);
-          }
-          stockAfterByKey.set(`${line.productId}:`, decremented[0].stock);
-        }
+        // 舊制總量欄位（products.stock / product_variants.stock）已改為唯讀鏡像，
+        // 是否能扣庫存一律以上面 allocateSellableStock（各倉庫存）為準；這裡只同步鏡像數字。
+        const mirrorTotal = await syncMirrorStock(tx, {
+          productId: line.productId,
+          variantId: line.variantId,
+        });
+        stockAfterByKey.set(`${line.productId}:${line.variantId ?? ""}`, mirrorTotal);
       }
 
       // 點數折抵：原子扣點（餘額不足則失敗），並寫入點數異動紀錄

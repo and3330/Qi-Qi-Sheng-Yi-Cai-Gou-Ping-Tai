@@ -47,6 +47,10 @@ import type {
   Article,
   AssistantActionConfirmation,
   AssistantConversation,
+  BulkOrderDeleteResult,
+  BulkOrderIds,
+  BulkOrderStatusResult,
+  BulkOrderStatusUpdate,
   CartItem,
   CartItemInput,
   CartItemUpdate,
@@ -2063,6 +2067,148 @@ export const useUpdateAdminOrderStatus = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getUpdateAdminOrderStatusMutationOptions(options));
+    }
+
+export const getBulkUpdateAdminOrderStatusUrl = () => {
+
+
+
+
+  return `/api/admin/orders/bulk-status`
+}
+
+/**
+ * @summary 批量更新訂單狀態（限管理員；逐筆套用狀態機，不符合的跳過並回報原因）
+ */
+export const bulkUpdateAdminOrderStatus = async (bulkOrderStatusUpdate: BulkOrderStatusUpdate, options?: Parameters<typeof customFetch>[1]): Promise<BulkOrderStatusResult> => {
+
+  return customFetch<BulkOrderStatusResult>(getBulkUpdateAdminOrderStatusUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bulkOrderStatusUpdate)
+  }
+);}
+
+
+
+
+
+export const getBulkUpdateAdminOrderStatusMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkUpdateAdminOrderStatus>>, TError,{data: BodyType<BulkOrderStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkUpdateAdminOrderStatus>>, TError,{data: BodyType<BulkOrderStatusUpdate>}, TContext> => {
+
+const mutationKey = ['bulkUpdateAdminOrderStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkUpdateAdminOrderStatus>>, {data: BodyType<BulkOrderStatusUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkUpdateAdminOrderStatus(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkUpdateAdminOrderStatusMutationResult = NonNullable<Awaited<ReturnType<typeof bulkUpdateAdminOrderStatus>>>
+    export type BulkUpdateAdminOrderStatusMutationBody = BodyType<BulkOrderStatusUpdate>
+    export type BulkUpdateAdminOrderStatusMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 批量更新訂單狀態（限管理員；逐筆套用狀態機，不符合的跳過並回報原因）
+ */
+export const useBulkUpdateAdminOrderStatus = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkUpdateAdminOrderStatus>>, TError,{data: BodyType<BulkOrderStatusUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkUpdateAdminOrderStatus>>,
+        TError,
+        {data: BodyType<BulkOrderStatusUpdate>},
+        TContext
+      > => {
+      return useMutation(getBulkUpdateAdminOrderStatusMutationOptions(options));
+    }
+
+export const getBulkDeleteAdminOrdersUrl = () => {
+
+
+
+
+  return `/api/admin/orders/bulk-delete`
+}
+
+/**
+ * @summary 批量刪除訂單（限管理員；僅已取消/已退貨可刪，已有銷退紀錄者保留）
+ */
+export const bulkDeleteAdminOrders = async (bulkOrderIds: BulkOrderIds, options?: Parameters<typeof customFetch>[1]): Promise<BulkOrderDeleteResult> => {
+
+  return customFetch<BulkOrderDeleteResult>(getBulkDeleteAdminOrdersUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bulkOrderIds)
+  }
+);}
+
+
+
+
+
+export const getBulkDeleteAdminOrdersMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteAdminOrders>>, TError,{data: BodyType<BulkOrderIds>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteAdminOrders>>, TError,{data: BodyType<BulkOrderIds>}, TContext> => {
+
+const mutationKey = ['bulkDeleteAdminOrders'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkDeleteAdminOrders>>, {data: BodyType<BulkOrderIds>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  bulkDeleteAdminOrders(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkDeleteAdminOrdersMutationResult = NonNullable<Awaited<ReturnType<typeof bulkDeleteAdminOrders>>>
+    export type BulkDeleteAdminOrdersMutationBody = BodyType<BulkOrderIds>
+    export type BulkDeleteAdminOrdersMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 批量刪除訂單（限管理員；僅已取消/已退貨可刪，已有銷退紀錄者保留）
+ */
+export const useBulkDeleteAdminOrders = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteAdminOrders>>, TError,{data: BodyType<BulkOrderIds>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bulkDeleteAdminOrders>>,
+        TError,
+        {data: BodyType<BulkOrderIds>},
+        TContext
+      > => {
+      return useMutation(getBulkDeleteAdminOrdersMutationOptions(options));
     }
 
 export const getGetAdminInventoryReportUrl = (params?: GetAdminInventoryReportParams,) => {

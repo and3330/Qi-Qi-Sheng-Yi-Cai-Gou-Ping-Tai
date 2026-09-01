@@ -97,11 +97,10 @@ function VariantsManager({ productId }: { productId: number }) {
     priceClinic: "",
     priceConsumer: "",
     costPrice: "",
-    initialStock: "0"
   });
 
   const resetForm = () => {
-    setVForm({ name: "", priceHospital: "", priceClinic: "", priceConsumer: "", costPrice: "", initialStock: "0" });
+    setVForm({ name: "", priceHospital: "", priceClinic: "", priceConsumer: "", costPrice: "" });
     setAdding(false);
     setEditingId(null);
   };
@@ -113,7 +112,6 @@ function VariantsManager({ productId }: { productId: number }) {
       priceClinic: String(v.priceClinic),
       priceConsumer: String(v.priceConsumer),
       costPrice: String(v.costPrice),
-      initialStock: "0" // not editable
     });
     setEditingId(v.id);
     setAdding(false);
@@ -125,7 +123,6 @@ function VariantsManager({ productId }: { productId: number }) {
       priceClinic: Number(vForm.priceClinic),
       priceConsumer: Number(vForm.priceConsumer),
       costPrice: Number(vForm.costPrice),
-      initialStock: Number(vForm.initialStock)
     };
     if (!vForm.name.trim() || Object.values(nums).some(n => !Number.isInteger(n) || n < 0)) {
       toast({ title: "請確認欄位", description: "名稱與售價為必填，且金額需為非負整數", variant: "destructive" });
@@ -158,7 +155,7 @@ function VariantsManager({ productId }: { productId: number }) {
           priceClinic: nums.priceClinic,
           priceConsumer: nums.priceConsumer,
           costPrice: nums.costPrice,
-          stock: nums.initialStock
+          stock: 0
         }
       }, {
         onSuccess: () => {
@@ -223,10 +220,9 @@ function VariantsManager({ productId }: { productId: number }) {
               <Input className="h-8" type="number" value={vForm.costPrice} onChange={e => setVForm({...vForm, costPrice: e.target.value})} />
             </div>
             {adding && (
-              <div className="space-y-1 col-span-2">
-                <Label className="text-xs">期初庫存</Label>
-                <Input className="h-8" type="number" value={vForm.initialStock} onChange={e => setVForm({...vForm, initialStock: e.target.value})} />
-              </div>
+              <p className="col-span-2 text-xs text-muted-foreground">
+                庫存由 ERP 倉庫管理；新增規格的初始庫存為 0，請至 ERP 系統調整。
+              </p>
             )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -251,7 +247,7 @@ function VariantsManager({ productId }: { productId: number }) {
                   <span>C: ${v.priceConsumer}</span>
                   <span>Cl: ${v.priceClinic}</span>
                   <span>H: ${v.priceHospital}</span>
-                  <span className="font-medium text-foreground ml-2 border-l pl-3">庫存: {v.stock}</span>
+                  <span className="font-medium text-foreground ml-2 border-l pl-3">ERP 庫存: {v.stock}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
@@ -397,9 +393,8 @@ export default function AdminProductsPage() {
       allowedGrades: form.allowedGrades.length > 0 ? (form.allowedGrades as any[]) : null,
     };
     if (form.id === null) {
-      const stock = Number(form.stock || 0);
       createMutation.mutate({
-        data: { ...common, stock: Number.isInteger(stock) && stock > 0 ? stock : 0 },
+        data: { ...common, stock: 0 },
       });
     } else {
       updateMutation.mutate({ id: form.id, data: common });
@@ -468,7 +463,7 @@ export default function AdminProductsPage() {
             <AlertTriangle size={18} className="mt-0.5 shrink-0" />
             <p>
               有 <span className="font-semibold">{zeroCostCount}</span>{" "}
-              項商品的成本價為 0，將導致損益報表的毛利數字失真。請補齊成本價（編輯商品，或透過採購收貨自動更新）。
+              項商品的成本價為 0，將導致損益報表的毛利數字失真。請補齊成本價（編輯商品，或由 ERP 採購收貨同步更新）。
             </p>
           </div>
           <Button
@@ -718,24 +713,16 @@ export default function AdminProductsPage() {
                   data-testid="text-cost-zero-hint"
                 >
                   <AlertTriangle size={13} className="shrink-0" />
-                  成本價為 0 會使損益報表的毛利失真，建議填寫實際進貨成本（採購收貨時也會自動更新）
+                  成本價為 0 會使損益報表的毛利失真，建議填寫實際進貨成本（ERP 採購收貨也會同步更新）
                 </p>
               )}
-              {form.id === null && (
-                <div className="space-y-1.5">
-                  <Label>期初庫存</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.stock}
-                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                    data-testid="input-product-stock"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    建立後庫存請透過「進銷存」的採購進貨或手動調整變更
-                  </p>
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <Label>目前庫存</Label>
+                <Input value={form.stock} readOnly disabled data-testid="input-product-stock" />
+                <p className="text-xs text-muted-foreground">
+                  庫存由 ERP 倉庫管理，請至 ERP 系統調整。
+                </p>
+              </div>
               <div className="space-y-2">
                 <Label>授權可銷售機構分級 (留空代表不限)</Label>
                 <div className="flex flex-wrap gap-2">

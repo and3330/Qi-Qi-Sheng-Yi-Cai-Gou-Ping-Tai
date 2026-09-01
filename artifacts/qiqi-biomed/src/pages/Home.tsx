@@ -63,8 +63,8 @@ export default function HomePage() {
           <Menu size={24} />
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-1 shadow-sm">
-            <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
+          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden shadow-sm">
+            <img src="/images/brand/logo-mark.png" alt="七期生醫" className="w-full h-full object-cover" />
           </div>
           <span className="text-white font-bold text-lg tracking-wide">七期生醫採購平台</span>
         </div>
