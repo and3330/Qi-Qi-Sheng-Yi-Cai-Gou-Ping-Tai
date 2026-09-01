@@ -1,4 +1,4 @@
-import { SYSTEM_ADMIN_ROLES, HR_ROLES } from './roles';
+import { SYSTEM_ADMIN_ROLES, HR_ROLES, FINANCE_ROLES } from './roles';
 
 export interface NavItem {
   path: string;
@@ -21,6 +21,16 @@ export const NAV_CONFIG: NavItem[] = [
   { path: '/purchasing/returns', label: '採購退回', defaultRoles: [], group: '採購' },
   { path: '/partners/customers', label: '客戶', defaultRoles: [], group: '往來對象' },
   { path: '/partners/suppliers', label: '供應商', defaultRoles: [], group: '往來對象' },
+  { path: '/accounting/accounts', label: '會計科目', defaultRoles: FINANCE_ROLES, group: '會計' },
+  { path: '/accounting/journal', label: '傳票/日記帳', defaultRoles: FINANCE_ROLES, group: '會計' },
+  { path: '/accounting/invoices', label: '發票管理', defaultRoles: FINANCE_ROLES, group: '會計' },
+  { path: '/accounting/vouchers', label: '收付款單', defaultRoles: FINANCE_ROLES, group: '會計' },
+  { path: '/accounting/payment-requests', label: '付款申請', defaultRoles: FINANCE_ROLES, group: '會計' },
+  { path: '/accounting/bank-reconciliation', label: '銀行對帳', defaultRoles: FINANCE_ROLES, group: '會計' },
+  { path: '/accounting/vat-report', label: '營業稅申報', defaultRoles: FINANCE_ROLES, group: '會計' },
+  { path: '/reports/financial', label: '財務報表', defaultRoles: FINANCE_ROLES, group: '報表' },
+  { path: '/reports/aging', label: '帳齡分析', defaultRoles: FINANCE_ROLES, group: '報表' },
+  { path: '/reports/analysis', label: '銷售/採購分析', defaultRoles: [], group: '報表' },
   { path: '/system/users', label: '使用者與角色', defaultRoles: SYSTEM_ADMIN_ROLES, group: '系統管理' },
   { path: '/system/departments', label: '部門管理', defaultRoles: Array.from(new Set([...HR_ROLES, ...SYSTEM_ADMIN_ROLES])), group: '系統管理' },
   { path: '/system/menu-permissions', label: '選單權限', defaultRoles: SYSTEM_ADMIN_ROLES, group: '系統管理' },

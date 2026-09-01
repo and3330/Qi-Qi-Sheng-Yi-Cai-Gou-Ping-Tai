@@ -7,4 +7,5 @@
 - [分級/點數/報價單規則](grades-points-quotations.md) — 所有下單路徑都須套 gradeAllowed 分級檢查；點數/佣金以折抵後淨額計；報價單僅 accepted+未過期可轉單，狀態變更用條件式 UPDATE。
 - [ERP access model](erp-access-model.md) — /erp shares shop session; erp_role null + platform admin ⇒ super_admin; requireErp middleware + erp_menu_permissions overrides; audit via erp_audit_logs.
 - [使用者提供之 URL 規則](user-supplied-urls.md) — 任何會員可存的外連 URL 必須後端 allowlist 協定（http/https/mailto/tel），防 javascript:/data: 儲存型 XSS；PUT 設定端點只寫入請求提供的欄位。
+- [ERP 會計模組不變式](erp-accounting.md) — 發票金額只由核銷 recompute；自動立帳走名稱解析+來源冪等、fire-and-forget；關帳日只擋人工寫入；合約用 settlements/partyId。
 - [AI 大腦架構](ai-brain-architecture.md) — embeddings 不走平台代理（金鑰選配、關鍵字退回）；助理操作須伺服器端兩段式確認（prompt 不可信）；工具回傳不入歷史須注入 pending 提示。

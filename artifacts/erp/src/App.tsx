@@ -24,6 +24,16 @@ import SuppliersPage from '@/pages/partners/suppliers';
 import DepartmentsPage from '@/pages/system/departments';
 import MenuPermissionsPage from '@/pages/system/menu-permissions';
 import AuditLogsPage from '@/pages/system/audit-logs';
+import AccountsPage from '@/pages/accounting/accounts';
+import JournalPage from '@/pages/accounting/journal';
+import InvoicesPage from '@/pages/accounting/invoices';
+import VouchersPage from '@/pages/accounting/vouchers';
+import PaymentRequestsPage from '@/pages/accounting/payment-requests';
+import BankReconciliationPage from '@/pages/accounting/bank-reconciliation';
+import VatReportPage from '@/pages/accounting/vat-report';
+import FinancialReportsPage from '@/pages/reports/financial';
+import AgingReportPage from '@/pages/reports/aging';
+import AnalysisReportPage from '@/pages/reports/analysis';
 import { useErpAuth } from '@/hooks/use-erp-auth';
 import { Loader2 } from 'lucide-react';
 
@@ -74,6 +84,16 @@ function RouterContent() {
                 <Route path="/purchasing/returns" component={PurchaseReturnsPage} />
                 <Route path="/partners/customers" component={CustomersPage} />
                 <Route path="/partners/suppliers" component={SuppliersPage} />
+                <Route path="/accounting/accounts" component={AccountsPage} />
+                <Route path="/accounting/journal" component={JournalPage} />
+                <Route path="/accounting/invoices" component={InvoicesPage} />
+                <Route path="/accounting/vouchers" component={VouchersPage} />
+                <Route path="/accounting/payment-requests" component={PaymentRequestsPage} />
+                <Route path="/accounting/bank-reconciliation" component={BankReconciliationPage} />
+                <Route path="/accounting/vat-report" component={VatReportPage} />
+                <Route path="/reports/financial" component={FinancialReportsPage} />
+                <Route path="/reports/aging" component={AgingReportPage} />
+                <Route path="/reports/analysis" component={AnalysisReportPage} />
                 <Route path="/system/users" component={UsersPage} />
                 <Route path="/system/departments" component={DepartmentsPage} />
                 <Route path="/system/menu-permissions" component={MenuPermissionsPage} />

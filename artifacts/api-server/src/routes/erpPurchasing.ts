@@ -25,6 +25,8 @@ import {
 import { requireErpMenu } from "../middlewares/requireErp";
 import { reindex } from "../lib/aiIndex";
 
+import { autoPost, postPurchaseOrderInvoice } from "../lib/erpAutoPost";
+
 const router: IRouter = Router();
 
 class DocError extends Error {}
@@ -388,6 +390,8 @@ router.post("/erp/purchase-orders/:id/receive", requireErpMenu("/purchasing/rece
         .set({ status: "received", receivedAt: new Date() })
         .where(eq(purchaseOrdersTable.id, id));
     });
+    // 採購收貨 → 自動開立 AP 發票 + 傳票（冪等、失敗不阻斷）
+    autoPost(`erp_po_invoice:${id}`, () => postPurchaseOrderInvoice(id));
   } catch (err) {
     if (err instanceof DocError) {
       res.status(err.message === "找不到此採購單" ? 404 : 400).json({ error: err.message });

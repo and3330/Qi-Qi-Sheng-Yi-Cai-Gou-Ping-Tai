@@ -143,8 +143,6 @@ export const UpdateAdminMemberParams = zod.object({
 })
 
 
-
-
 export const UpdateAdminMemberBody = zod.object({
   "name": zod.string().min(1).optional(),
   "email": zod.string().nullish(),
@@ -210,7 +208,6 @@ export const ListAdminProductsResponse = zod.array(ListAdminProductsResponseItem
  */
 
 
-
 export const createAdminProductBodyPriceHospitalMin = 0;
 
 export const createAdminProductBodyPriceClinicMin = 0;
@@ -220,7 +217,6 @@ export const createAdminProductBodyPriceConsumerMin = 0;
 export const createAdminProductBodyCostPriceMin = 0;
 
 export const createAdminProductBodyStockMin = 0;
-
 
 
 export const CreateAdminProductBody = zod.object({
@@ -270,8 +266,6 @@ export const UpdateAdminProductParams = zod.object({
 })
 
 
-
-
 export const updateAdminProductBodyPriceHospitalMin = 0;
 
 export const updateAdminProductBodyPriceClinicMin = 0;
@@ -279,7 +273,6 @@ export const updateAdminProductBodyPriceClinicMin = 0;
 export const updateAdminProductBodyPriceConsumerMin = 0;
 
 export const updateAdminProductBodyCostPriceMin = 0;
-
 
 
 export const UpdateAdminProductBody = zod.object({
@@ -323,7 +316,6 @@ export const UpdateAdminProductResponse = zod.object({
 /**
  * @summary 手動調整庫存（盤點 / 報廢等，限管理員）
  */
-
 
 
 export const AdjustAdminStockBody = zod.object({
@@ -400,7 +392,6 @@ export const ListAdminSuppliersResponse = zod.array(ListAdminSuppliersResponseIt
  */
 
 
-
 export const CreateAdminSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -431,8 +422,6 @@ export const CreateAdminSupplierResponse = zod.object({
 export const UpdateAdminSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateAdminSupplierBody = zod.object({
@@ -496,9 +485,6 @@ export const ListAdminPurchaseOrdersResponse = zod.array(ListAdminPurchaseOrders
  * @summary 建立採購單（限管理員）
  */
 export const createAdminPurchaseOrderBodyItemsItemUnitCostMin = 0;
-
-
-
 
 
 export const CreateAdminPurchaseOrderBody = zod.object({
@@ -794,8 +780,6 @@ export const registerBodyPasswordMin = 8;
 export const registerBodyPasswordMax = 72;
 
 
-
-
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax).regex(registerBodyUsernameRegExp),
   "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
@@ -825,8 +809,6 @@ export const RegisterResponse = zod.object({
 /**
  * @summary Log in with username and password (starts session)
  */
-
-
 
 
 export const LoginBody = zod.object({
@@ -880,7 +862,6 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Update current member profile
  */
-
 
 
 export const UpdateMeBody = zod.object({
@@ -1031,7 +1012,6 @@ export const GetCartResponse = zod.array(GetCartResponseItem)
  */
 
 
-
 export const AddCartItemBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -1093,8 +1073,6 @@ export const ClearCartResponse = zod.void()
 export const UpdateCartItemParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateCartItemBody = zod.object({
@@ -1190,11 +1168,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  */
 
 
-
 export const createOrderBodyPointsToUseMin = 0;
-
-
-
 
 
 export const CreateOrderBody = zod.object({
@@ -1425,8 +1399,6 @@ export const ListMyLinktreeLinksResponse = zod.array(ListMyLinktreeLinksResponse
  */
 
 
-
-
 export const CreateMyLinktreeLinkBody = zod.object({
   "title": zod.string().min(1),
   "subtitle": zod.string().nullish(),
@@ -1458,9 +1430,6 @@ export const CreateMyLinktreeLinkResponse = zod.object({
 export const UpdateMyLinktreeLinkParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
-
 
 
 export const UpdateMyLinktreeLinkBody = zod.object({
@@ -1769,7 +1738,6 @@ export const AdjustAdminMemberWalletParams = zod.object({
 export const adjustAdminMemberWalletBodyReasonMax = 200;
 
 
-
 export const AdjustAdminMemberWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -1927,7 +1895,6 @@ export const AdjustInstitutionWalletParams = zod.object({
 export const adjustInstitutionWalletBodyReasonMax = 200;
 
 
-
 export const AdjustInstitutionWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -1989,7 +1956,6 @@ export const createAdminArticleBodySummaryMax = 500;
 export const createAdminArticleBodyImageUrlMax = 500;
 
 
-
 export const CreateAdminArticleBody = zod.object({
   "kind": zod.enum(['article', 'faq']),
   "title": zod.string().min(1).max(createAdminArticleBodyTitleMax),
@@ -2028,7 +1994,6 @@ export const updateAdminArticleBodyCategoryMax = 50;
 export const updateAdminArticleBodySummaryMax = 500;
 
 export const updateAdminArticleBodyImageUrlMax = 500;
-
 
 
 export const UpdateAdminArticleBody = zod.object({
@@ -2095,7 +2060,6 @@ export const createAdminAnnouncementBodyCategoryMax = 50;
 export const createAdminAnnouncementBodyImageUrlMax = 500;
 
 
-
 export const CreateAdminAnnouncementBody = zod.object({
   "title": zod.string().min(1).max(createAdminAnnouncementBodyTitleMax),
   "category": zod.string().min(1).max(createAdminAnnouncementBodyCategoryMax),
@@ -2128,7 +2092,6 @@ export const updateAdminAnnouncementBodyTitleMax = 200;
 export const updateAdminAnnouncementBodyCategoryMax = 50;
 
 export const updateAdminAnnouncementBodyImageUrlMax = 500;
-
 
 
 export const UpdateAdminAnnouncementBody = zod.object({
@@ -2190,18 +2153,11 @@ export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevis
  */
 
 
-
-
-
 export const RequestUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.int().min(1),
   "contentType": zod.string().min(1)
 })
-
-
-
-
 
 
 export const RequestUploadUrlResponse = zod.object({
@@ -2245,7 +2201,6 @@ export const UpdateShipmentPhotosParams = zod.object({
 export const updateShipmentPhotosBodyPhotosItemMax = 500;
 
 export const updateShipmentPhotosBodyPhotosMax = 10;
-
 
 
 export const UpdateShipmentPhotosBody = zod.object({
@@ -2299,7 +2254,6 @@ export const createAdminProductVariantBodyCostPriceMin = 0;
 export const createAdminProductVariantBodyStockMin = 0;
 
 
-
 export const CreateAdminProductVariantBody = zod.object({
   "name": zod.string().min(1).max(createAdminProductVariantBodyNameMax),
   "priceHospital": zod.int().min(createAdminProductVariantBodyPriceHospitalMin),
@@ -2340,7 +2294,6 @@ export const updateAdminProductVariantBodyPriceClinicMin = 0;
 export const updateAdminProductVariantBodyPriceConsumerMin = 0;
 
 export const updateAdminProductVariantBodyCostPriceMin = 0;
-
 
 
 export const UpdateAdminProductVariantBody = zod.object({
@@ -2399,7 +2352,6 @@ export const createAdminProfitRuleBodyPercentBpsMin = 0;
 export const createAdminProfitRuleBodyPercentBpsMax = 10000;
 
 
-
 export const CreateAdminProfitRuleBody = zod.object({
   "name": zod.string().min(1).max(createAdminProfitRuleBodyNameMax),
   "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
@@ -2428,7 +2380,6 @@ export const updateAdminProfitRuleBodyNameMax = 100;
 
 export const updateAdminProfitRuleBodyPercentBpsMin = 0;
 export const updateAdminProfitRuleBodyPercentBpsMax = 10000;
-
 
 
 export const UpdateAdminProfitRuleBody = zod.object({
@@ -2523,7 +2474,6 @@ export const createAdminExpenseBodyTitleMax = 200;
 
 
 export const createAdminExpenseBodyNoteMax = 500;
-
 
 
 export const CreateAdminExpenseBody = zod.object({
@@ -2662,7 +2612,6 @@ export const SendAssistantMessageParams = zod.object({
 export const sendAssistantMessageBodyContentMax = 4000;
 
 
-
 export const SendAssistantMessageBody = zod.object({
   "content": zod.string().min(1).max(sendAssistantMessageBodyContentMax)
 })
@@ -2767,7 +2716,6 @@ export const SendSupportMessageParams = zod.object({
 export const sendSupportMessageBodyContentMax = 4000;
 
 
-
 export const SendSupportMessageBody = zod.object({
   "content": zod.string().min(1).max(sendSupportMessageBodyContentMax)
 })
@@ -2833,7 +2781,6 @@ export const ReplySupportConversationParams = zod.object({
 })
 
 export const replySupportConversationBodyContentMax = 4000;
-
 
 
 export const ReplySupportConversationBody = zod.object({
@@ -2958,9 +2905,6 @@ export const ListAdminQuotationsResponse = zod.array(ListAdminQuotationsResponse
  */
 
 export const createAdminQuotationBodyItemsItemUnitPriceMin = 0;
-
-
-
 
 
 export const CreateAdminQuotationBody = zod.object({
@@ -3403,7 +3347,6 @@ export const UpdateErpItemResponse = zod.object({
  */
 
 
-
 export const ErpAdjustStockBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -3480,8 +3423,6 @@ export const ListErpWarehousesResponse = zod.array(ListErpWarehousesResponseItem
  */
 
 
-
-
 export const CreateErpWarehouseBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -3507,8 +3448,6 @@ export const CreateErpWarehouseResponse = zod.object({
 export const UpdateErpWarehouseParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpWarehouseBody = zod.object({
@@ -3563,8 +3502,6 @@ export const ListErpCustomersResponse = zod.array(ListErpCustomersResponseItem)
  */
 
 
-
-
 export const CreateErpCustomerBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -3604,8 +3541,6 @@ export const CreateErpCustomerResponse = zod.object({
 export const UpdateErpCustomerParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpCustomerBody = zod.object({
@@ -3668,7 +3603,6 @@ export const ListErpSuppliersResponse = zod.array(ListErpSuppliersResponseItem)
  */
 
 
-
 export const CreateErpSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -3699,8 +3633,6 @@ export const CreateErpSupplierResponse = zod.object({
 export const UpdateErpSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpSupplierBody = zod.object({
@@ -3752,7 +3684,6 @@ export const ListErpPriceListsResponse = zod.array(ListErpPriceListsResponseItem
  */
 
 
-
 export const CreateErpPriceListBody = zod.object({
   "name": zod.string().min(1),
   "description": zod.string().nullish()
@@ -3779,8 +3710,6 @@ export const CreateErpPriceListResponse = zod.object({
 export const UpdateErpPriceListParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpPriceListBody = zod.object({
@@ -3875,9 +3804,6 @@ export const ListErpQuotationsResponse = zod.array(ListErpQuotationsResponseItem
  */
 
 export const createErpQuotationBodyItemsItemUnitPriceMin = 0;
-
-
-
 
 
 export const CreateErpQuotationBody = zod.object({
@@ -4080,8 +4006,6 @@ export const ListErpSalesOrdersResponse = zod.object({
  */
 
 
-
-
 export const CreateErpSalesOrderBody = zod.object({
   "customerId": zod.int(),
   "note": zod.string().nullish(),
@@ -4241,8 +4165,6 @@ export const ListErpSalesReturnsResponse = zod.array(ListErpSalesReturnsResponse
  */
 
 
-
-
 export const CreateErpSalesReturnBody = zod.object({
   "salesOrderId": zod.int(),
   "reason": zod.string().nullish(),
@@ -4354,9 +4276,6 @@ export const ListErpPurchaseOrdersResponse = zod.array(ListErpPurchaseOrdersResp
  * @summary 開立採購單（ERP）
  */
 export const createErpPurchaseOrderBodyItemsItemUnitCostMin = 0;
-
-
-
 
 
 export const CreateErpPurchaseOrderBody = zod.object({
@@ -4531,8 +4450,6 @@ export const ListErpPurchaseReturnsResponse = zod.array(ListErpPurchaseReturnsRe
  */
 
 
-
-
 export const CreateErpPurchaseReturnBody = zod.object({
   "purchaseOrderId": zod.int(),
   "reason": zod.string().nullish(),
@@ -4607,4 +4524,736 @@ export const UpdateErpPurchaseReturnStatusResponse = zod.object({
 }))
 })
 
+/**
+ * @summary 會計科目表
+ */
+export const ListErpAccountsResponseItem = zod.object({
+  "id": zod.int(),
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "accountType": zod.string(),
+  "parentAccountId": zod.int().nullish(),
+  "cashFlowCategory": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "hasChildren": zod.boolean().optional()
+})
 
+
+export const GetErpCashFlowResponse = zod.record(zod.string(), zod.unknown())
+
+export const createErpJournalEntryBodyLinesMin = 2;
+
+/**
+ * @summary 營業稅申報（401 彙總）
+ */
+export const GetErpVatReportQueryParams = zod.object({
+  "startDate": zod.coerce.string(),
+  "endDate": zod.coerce.string()
+})
+
+/**
+ * @summary 付款申請清單
+ */
+export const ListErpPaymentRequestsQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "partyType": zod.coerce.string().optional()
+})
+
+/**
+ * @summary 刪除付款申請（僅草稿）
+ */
+export const DeleteErpPaymentRequestParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+/**
+ * @summary 手動比對/取消比對
+ */
+export const MatchErpBankReconciliationEntryParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+/**
+ * @summary 更新會計設定（關帳日）
+ */
+export const UpdateErpAccountingSettingsBody = zod.object({
+  "lockDate": zod.string().nullish()
+})
+
+export const createErpJournalEntryBodyLinesItemCreditMin = 0;
+
+export const CreateErpAccountResponse = zod.object({
+  "id": zod.int(),
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "accountType": zod.string(),
+  "parentAccountId": zod.int().nullish(),
+  "cashFlowCategory": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "hasChildren": zod.boolean().optional()
+})
+
+export const CreateErpJournalEntryResponse = zod.object({
+  "id": zod.int(),
+  "entryNumber": zod.string(),
+  "entryDate": zod.string(),
+  "description": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.int().nullish(),
+  "accountName": zod.string(),
+  "debit": zod.int(),
+  "credit": zod.int(),
+  "description": zod.string().nullish()
+})),
+  "sourceType": zod.string().nullish(),
+  "sourceId": zod.string().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 資產負債表
+ */
+export const GetErpBalanceSheetQueryParams = zod.object({
+  "endDate": zod.coerce.string().optional()
+})
+
+export const ListErpJournalEntriesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "entryNumber": zod.string(),
+  "entryDate": zod.string(),
+  "description": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.int().nullish(),
+  "accountName": zod.string(),
+  "debit": zod.int(),
+  "credit": zod.int(),
+  "description": zod.string().nullish()
+})),
+  "sourceType": zod.string().nullish(),
+  "sourceId": zod.string().nullish(),
+  "createdAt": zod.string().nullish()
+})),
+  "total": zod.int(),
+  "page": zod.int(),
+  "pageSize": zod.int()
+})
+
+export const CreateErpVoucherResponse = zod.object({
+  "id": zod.int(),
+  "voucherNumber": zod.string(),
+  "voucherType": zod.string(),
+  "voucherDate": zod.string(),
+  "partyType": zod.string().nullish(),
+  "partyId": zod.int().nullish(),
+  "partyName": zod.string().nullish(),
+  "totalAmount": zod.int(),
+  "paymentAccountId": zod.int().nullish(),
+  "journalEntryId": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 發票核銷紀錄
+ */
+export const ListErpInvoiceSettlementsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+/**
+ * @summary 新增傳票
+ */
+export const createErpJournalEntryBodyLinesItemDebitMin = 0;
+
+export const GetErpTrialBalanceResponse = zod.record(zod.string(), zod.unknown())
+
+/**
+ * @summary 採購分析
+ */
+export const GetErpPurchaseAnalysisQueryParams = zod.object({
+  "startDate": zod.coerce.string().optional(),
+  "endDate": zod.coerce.string().optional(),
+  "groupBy": zod.coerce.string().optional()
+})
+
+export const CreateErpVoucherBody = zod.object({
+  "voucherType": zod.enum(['Receipt', 'Payment', 'Journal']),
+  "voucherDate": zod.string(),
+  "partyType": zod.string().nullish(),
+  "partyId": zod.int().nullish(),
+  "partyName": zod.string().nullish(),
+  "totalAmount": zod.int().min(1),
+  "paymentAccountId": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "settlements": zod.array(zod.object({
+  "invoiceId": zod.int(),
+  "amount": zod.int().min(1)
+})).optional()
+})
+
+/**
+ * @summary 更新付款申請（Paid 觸發核銷與自動傳票）
+ */
+export const UpdateErpPaymentRequestParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListErpInvoiceSettlementsResponse = zod.array(ListErpInvoiceSettlementsResponseItem)
+
+/**
+ * @summary 新增銀行對帳單
+ */
+export const CreateErpBankStatementBody = zod.object({
+  "bankAccountId": zod.int().nullish(),
+  "statementDate": zod.string(),
+  "openingBalance": zod.int().nullish(),
+  "closingBalance": zod.int().nullish()
+})
+
+export const MatchErpBankReconciliationEntryBody = zod.object({
+  "journalEntryId": zod.int().nullish(),
+  "status": zod.enum(['unmatched', 'matched', 'ignored']).optional()
+})
+
+export const DeleteErpInvoiceResponse = zod.object({
+  "success": zod.boolean()
+})
+
+export const UpdateErpBankStatementStatusBody = zod.object({
+  "status": zod.enum(['draft', 'reconciling', 'completed'])
+})
+
+export const ImportErpBankStatementCsvBody = zod.object({
+  "csv": zod.string()
+})
+
+export const ListErpPaymentRequestsResponse = zod.array(ListErpPaymentRequestsResponseItem)
+
+export const GetErpPurchaseAnalysisResponse = zod.record(zod.string(), zod.unknown())
+
+/**
+ * @summary 刪除發票（有核銷紀錄不可刪）
+ */
+export const DeleteErpInvoiceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListErpBankStatementsResponse = zod.array(ListErpBankStatementsResponseItem)
+
+export const ListErpVouchersResponse = zod.array(ListErpVouchersResponseItem)
+
+export const ListErpBankReconciliationEntriesResponseItem = zod.object({
+  "id": zod.int(),
+  "statementId": zod.int(),
+  "transactionDate": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.int(),
+  "status": zod.string(),
+  "journalEntryId": zod.int().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 更新會計科目
+ */
+export const UpdateErpAccountParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpAccountBody = zod.object({
+  "accountName": zod.string().optional(),
+  "cashFlowCategory": zod.string().nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateErpInvoiceBody = zod.object({
+  "invoiceType": zod.enum(['Sales', 'Purchase']),
+  "customerId": zod.int().nullish(),
+  "supplierId": zod.int().nullish(),
+  "invoiceDate": zod.string(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.int().min(1),
+  "taxType": zod.enum(['taxable', 'zero_rated', 'exempt', 'unclassified']).nullish(),
+  "items": zod.array(zod.object({
+  "productId": zod.int().nullish(),
+  "productName": zod.string().optional(),
+  "quantity": zod.int().optional(),
+  "unitPrice": zod.int().nullish(),
+  "unitCost": zod.int().nullish(),
+  "amount": zod.int().optional()
+})).nullish(),
+  "remarks": zod.string().nullish()
+})
+
+export const ImportErpBankStatementCsvResponse = zod.object({
+  "imported": zod.int(),
+  "skipped": zod.int().optional()
+})
+
+/**
+ * @summary 會計設定（關帳日）
+ */
+export const GetErpAccountingSettingsResponse = zod.object({
+  "lockDate": zod.string().nullish()
+})
+
+/**
+ * @summary 匯入對帳 CSV
+ */
+export const ImportErpBankStatementCsvParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const MatchErpBankReconciliationEntryResponse = zod.object({
+  "id": zod.int(),
+  "statementId": zod.int(),
+  "transactionDate": zod.string(),
+  "description": zod.string().nullish(),
+  "amount": zod.int(),
+  "status": zod.string(),
+  "journalEntryId": zod.int().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 損益表
+ */
+export const GetErpIncomeStatementQueryParams = zod.object({
+  "startDate": zod.coerce.string().optional(),
+  "endDate": zod.coerce.string().optional()
+})
+
+export const AutoMatchErpBankStatementResponse = zod.object({
+  "matched": zod.int(),
+  "total": zod.int()
+})
+
+export const GetErpSalesAnalysisResponse = zod.record(zod.string(), zod.unknown())
+
+export const ListErpPaymentRequestsResponseItem = zod.object({
+  "id": zod.int(),
+  "requestNumber": zod.string(),
+  "partyType": zod.string().nullish(),
+  "partyId": zod.int().nullish(),
+  "partyName": zod.string().nullish(),
+  "invoiceId": zod.int().nullish(),
+  "amount": zod.int(),
+  "requestDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "paymentAccountId": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "journalEntryId": zod.int().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+export const DeleteErpJournalEntryResponse = zod.object({
+  "success": zod.boolean()
+})
+
+export const UpdateErpInvoiceResponse = zod.object({
+  "id": zod.int(),
+  "invoiceNumber": zod.string(),
+  "invoiceType": zod.string(),
+  "customerId": zod.int().nullish(),
+  "customerName": zod.string().nullish(),
+  "supplierId": zod.int().nullish(),
+  "supplierName": zod.string().nullish(),
+  "salesOrderId": zod.int().nullish(),
+  "purchaseOrderId": zod.int().nullish(),
+  "invoiceDate": zod.string(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.int(),
+  "paidAmount": zod.int().optional(),
+  "outstandingAmount": zod.int().optional(),
+  "taxType": zod.string().nullish(),
+  "taxRate": zod.int().nullish(),
+  "netAmount": zod.int().nullish(),
+  "taxAmount": zod.int().nullish(),
+  "status": zod.string(),
+  "journalEntryId": zod.int().nullish(),
+  "items": zod.array(zod.object({
+  "productId": zod.int().nullish(),
+  "productName": zod.string().optional(),
+  "quantity": zod.int().optional(),
+  "unitPrice": zod.int().nullish(),
+  "unitCost": zod.int().nullish(),
+  "amount": zod.int().optional()
+})).nullish(),
+  "remarks": zod.string().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+export const CreateErpBankStatementResponse = zod.object({
+  "id": zod.int(),
+  "bankAccountId": zod.int().nullish(),
+  "bankAccountName": zod.string().nullish(),
+  "statementDate": zod.string(),
+  "openingBalance": zod.int().nullish(),
+  "closingBalance": zod.int().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 新增會計科目
+ */
+export const CreateErpAccountBody = zod.object({
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "accountType": zod.enum(['Asset', 'Liability', 'Equity', 'Income', 'Expense']),
+  "parentAccountId": zod.int().nullish(),
+  "cashFlowCategory": zod.string().nullish()
+})
+
+/**
+ * @summary 總帳（單科目明細）
+ */
+export const GetErpGeneralLedgerQueryParams = zod.object({
+  "accountId": zod.coerce.number().int().optional(),
+  "startDate": zod.coerce.string().optional(),
+  "endDate": zod.coerce.string().optional()
+})
+
+/**
+ * @summary 銷售分析
+ */
+export const GetErpSalesAnalysisQueryParams = zod.object({
+  "startDate": zod.coerce.string().optional(),
+  "endDate": zod.coerce.string().optional(),
+  "groupBy": zod.coerce.string().optional()
+})
+
+export const ListErpInvoicesResponseItem = zod.object({
+  "id": zod.int(),
+  "invoiceNumber": zod.string(),
+  "invoiceType": zod.string(),
+  "customerId": zod.int().nullish(),
+  "customerName": zod.string().nullish(),
+  "supplierId": zod.int().nullish(),
+  "supplierName": zod.string().nullish(),
+  "salesOrderId": zod.int().nullish(),
+  "purchaseOrderId": zod.int().nullish(),
+  "invoiceDate": zod.string(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.int(),
+  "paidAmount": zod.int().optional(),
+  "outstandingAmount": zod.int().optional(),
+  "taxType": zod.string().nullish(),
+  "taxRate": zod.int().nullish(),
+  "netAmount": zod.int().nullish(),
+  "taxAmount": zod.int().nullish(),
+  "status": zod.string(),
+  "journalEntryId": zod.int().nullish(),
+  "items": zod.array(zod.object({
+  "productId": zod.int().nullish(),
+  "productName": zod.string().optional(),
+  "quantity": zod.int().optional(),
+  "unitPrice": zod.int().nullish(),
+  "unitCost": zod.int().nullish(),
+  "amount": zod.int().optional()
+})).nullish(),
+  "remarks": zod.string().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 發票清單（AR/AP）
+ */
+export const ListErpInvoicesQueryParams = zod.object({
+  "invoiceType": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional(),
+  "q": zod.coerce.string().optional()
+})
+
+/**
+ * @summary 更新發票（不可直接改已收付金額）
+ */
+export const UpdateErpInvoiceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListErpBankReconciliationEntriesResponse = zod.array(ListErpBankReconciliationEntriesResponseItem)
+
+export const ListErpAccountsResponse = zod.array(ListErpAccountsResponseItem)
+
+/**
+ * @summary 自動比對（金額唯一相符）
+ */
+export const AutoMatchErpBankStatementParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpVoucherResponse = zod.object({
+  "success": zod.boolean()
+})
+
+export const CreateErpInvoiceResponse = zod.object({
+  "id": zod.int(),
+  "invoiceNumber": zod.string(),
+  "invoiceType": zod.string(),
+  "customerId": zod.int().nullish(),
+  "customerName": zod.string().nullish(),
+  "supplierId": zod.int().nullish(),
+  "supplierName": zod.string().nullish(),
+  "salesOrderId": zod.int().nullish(),
+  "purchaseOrderId": zod.int().nullish(),
+  "invoiceDate": zod.string(),
+  "dueDate": zod.string().nullish(),
+  "totalAmount": zod.int(),
+  "paidAmount": zod.int().optional(),
+  "outstandingAmount": zod.int().optional(),
+  "taxType": zod.string().nullish(),
+  "taxRate": zod.int().nullish(),
+  "netAmount": zod.int().nullish(),
+  "taxAmount": zod.int().nullish(),
+  "status": zod.string(),
+  "journalEntryId": zod.int().nullish(),
+  "items": zod.array(zod.object({
+  "productId": zod.int().nullish(),
+  "productName": zod.string().optional(),
+  "quantity": zod.int().optional(),
+  "unitPrice": zod.int().nullish(),
+  "unitCost": zod.int().nullish(),
+  "amount": zod.int().optional()
+})).nullish(),
+  "remarks": zod.string().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+export const GetErpBalanceSheetResponse = zod.record(zod.string(), zod.unknown())
+
+export const DeleteErpPaymentRequestResponse = zod.object({
+  "success": zod.boolean()
+})
+
+/**
+ * @summary 試算表
+ */
+export const GetErpTrialBalanceQueryParams = zod.object({
+  "startDate": zod.coerce.string().optional(),
+  "endDate": zod.coerce.string().optional()
+})
+
+export const UpdateErpBankStatementStatusResponse = zod.object({
+  "id": zod.int(),
+  "bankAccountId": zod.int().nullish(),
+  "bankAccountName": zod.string().nullish(),
+  "statementDate": zod.string(),
+  "openingBalance": zod.int().nullish(),
+  "closingBalance": zod.int().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.string().nullish()
+})
+
+export const GetErpGeneralLedgerResponse = zod.record(zod.string(), zod.unknown())
+
+/**
+ * @summary 應付帳齡分析
+ */
+export const GetErpApAgingResponse = zod.record(zod.string(), zod.unknown())
+
+export const UpdateErpPaymentRequestBody = zod.object({
+  "status": zod.enum(['Draft', 'Pending', 'Approved', 'Paid', 'Rejected']).optional(),
+  "paymentAccountId": zod.int().nullish(),
+  "dueDate": zod.string().nullish(),
+  "description": zod.string().nullish()
+})
+
+export const GetErpVatReportResponse = zod.object({
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "outputNet": zod.int(),
+  "outputTax": zod.int(),
+  "zeroRatedSales": zod.int().optional(),
+  "exemptSales": zod.int().optional(),
+  "inputNet": zod.int(),
+  "inputTax": zod.int(),
+  "payableTax": zod.int(),
+  "unclassifiedCount": zod.int().optional()
+})
+
+/**
+ * @summary 銀行對帳單清單
+ */
+export const ListErpBankStatementsResponseItem = zod.object({
+  "id": zod.int(),
+  "bankAccountId": zod.int().nullish(),
+  "bankAccountName": zod.string().nullish(),
+  "statementDate": zod.string(),
+  "openingBalance": zod.int().nullish(),
+  "closingBalance": zod.int().nullish(),
+  "status": zod.string(),
+  "createdAt": zod.string().nullish()
+})
+
+export const CreateErpJournalEntryBody = zod.object({
+  "entryDate": zod.string(),
+  "description": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "lines": zod.array(zod.object({
+  "accountId": zod.int(),
+  "debit": zod.int().min(createErpJournalEntryBodyLinesItemDebitMin),
+  "credit": zod.int().min(createErpJournalEntryBodyLinesItemCreditMin),
+  "description": zod.string().nullish()
+})).min(createErpJournalEntryBodyLinesMin)
+})
+
+/**
+ * @summary 刪除傳票（自動傳票不可刪）
+ */
+export const DeleteErpJournalEntryParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListErpVouchersResponseItem = zod.object({
+  "id": zod.int(),
+  "voucherNumber": zod.string(),
+  "voucherType": zod.string(),
+  "voucherDate": zod.string(),
+  "partyType": zod.string().nullish(),
+  "partyId": zod.int().nullish(),
+  "partyName": zod.string().nullish(),
+  "totalAmount": zod.int(),
+  "paymentAccountId": zod.int().nullish(),
+  "journalEntryId": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+export const ListErpInvoicesResponse = zod.array(ListErpInvoicesResponseItem)
+
+export const ListErpInvoiceSettlementsResponseItem = zod.object({
+  "id": zod.int(),
+  "invoiceId": zod.int(),
+  "voucherId": zod.int().nullish(),
+  "paymentRequestId": zod.int().nullish(),
+  "amount": zod.int(),
+  "settlementDate": zod.string(),
+  "createdAt": zod.string().nullish()
+})
+
+export const CreateErpPaymentRequestBody = zod.object({
+  "partyType": zod.string().nullish(),
+  "partyId": zod.int().nullish(),
+  "partyName": zod.string().nullish(),
+  "invoiceId": zod.int().nullish(),
+  "amount": zod.int().min(1),
+  "requestDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "description": zod.string().nullish()
+})
+
+export const UpdateErpAccountingSettingsResponse = zod.object({
+  "lockDate": zod.string().nullish()
+})
+
+export const UpdateErpAccountResponse = zod.object({
+  "id": zod.int(),
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "accountType": zod.string(),
+  "parentAccountId": zod.int().nullish(),
+  "cashFlowCategory": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "hasChildren": zod.boolean().optional()
+})
+
+export const CreateErpPaymentRequestResponse = zod.object({
+  "id": zod.int(),
+  "requestNumber": zod.string(),
+  "partyType": zod.string().nullish(),
+  "partyId": zod.int().nullish(),
+  "partyName": zod.string().nullish(),
+  "invoiceId": zod.int().nullish(),
+  "amount": zod.int(),
+  "requestDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "paymentAccountId": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "journalEntryId": zod.int().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 更新對帳單狀態
+ */
+export const UpdateErpBankStatementStatusParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+/**
+ * @summary 收付款/請款單清單
+ */
+export const ListErpVouchersQueryParams = zod.object({
+  "voucherType": zod.coerce.string().optional()
+})
+
+/**
+ * @summary 日記帳/傳票清單（分頁）
+ */
+export const ListErpJournalEntriesQueryParams = zod.object({
+  "page": zod.coerce.number().int().optional(),
+  "pageSize": zod.coerce.number().int().optional(),
+  "startDate": zod.coerce.string().optional(),
+  "endDate": zod.coerce.string().optional(),
+  "q": zod.coerce.string().optional()
+})
+
+export const UpdateErpInvoiceBody = zod.object({
+  "invoiceDate": zod.string().optional(),
+  "dueDate": zod.string().nullish(),
+  "taxType": zod.enum(['taxable', 'zero_rated', 'exempt', 'unclassified']).optional(),
+  "status": zod.string().optional(),
+  "remarks": zod.string().nullish()
+})
+
+export const UpdateErpPaymentRequestResponse = zod.object({
+  "id": zod.int(),
+  "requestNumber": zod.string(),
+  "partyType": zod.string().nullish(),
+  "partyId": zod.int().nullish(),
+  "partyName": zod.string().nullish(),
+  "invoiceId": zod.int().nullish(),
+  "amount": zod.int(),
+  "requestDate": zod.string().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "paymentAccountId": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "journalEntryId": zod.int().nullish(),
+  "createdAt": zod.string().nullish()
+})
+
+/**
+ * @summary 對帳明細
+ */
+export const ListErpBankReconciliationEntriesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+/**
+ * @summary 刪除單據（連動刪除自動傳票與核銷）
+ */
+export const DeleteErpVoucherParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetErpIncomeStatementResponse = zod.record(zod.string(), zod.unknown())
+
+/**
+ * @summary 現金流量表
+ */
+export const GetErpCashFlowQueryParams = zod.object({
+  "startDate": zod.coerce.string(),
+  "endDate": zod.coerce.string()
+})
+
+/**
+ * @summary 應收帳齡分析
+ */
+export const GetErpArAgingResponse = zod.record(zod.string(), zod.unknown())

@@ -28,6 +28,7 @@ import { requireErpMenu } from "../middlewares/requireErp";
 import { registerQuotationRoutes } from "./adminQuotations";
 import { applyOrderStatusChange } from "./adminOrders";
 import { reindex } from "../lib/aiIndex";
+import { autoPost, postErpSalesOrderInvoice } from "../lib/erpAutoPost";
 
 const router: IRouter = Router();
 
@@ -484,6 +485,10 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
       if (target === "completed") sets.completedAt = new Date();
       await tx.update(salesOrdersTable).set(sets).where(eq(salesOrdersTable.id, id));
     });
+    // ERP 原生銷貨單確認 → 自動開立 AR 發票 + 傳票（冪等、失敗不阻斷）
+    if (target === "confirmed") {
+      autoPost(`erp_so_invoice:${id}`, () => postErpSalesOrderInvoice(id));
+    }
   } catch (err) {
     if (err instanceof DocError) {
       res.status(400).json({ error: err.message });

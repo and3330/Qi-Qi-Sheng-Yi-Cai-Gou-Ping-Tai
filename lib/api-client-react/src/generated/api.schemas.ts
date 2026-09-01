@@ -2589,6 +2589,9 @@ export interface ErpReturnStatusUpdate {
   status: ErpReturnStatusUpdateStatus;
 }
 
+export interface SuccessResult {
+  success: boolean;
+}
 export type ListPortalOrdersParams = {
 status?: ListPortalOrdersStatus;
 };
@@ -2910,3 +2913,413 @@ export type ListErpPurchaseReturnsParams = {
 status?: string;
 };
 
+export type ListErpJournalEntriesParams = {
+page?: number;
+pageSize?: number;
+startDate?: string;
+endDate?: string;
+q?: string;
+};
+
+
+export interface ErpJournalEntryPage {
+  items: ErpJournalEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ErpBankAutoMatchResult {
+  matched: number;
+  total: number;
+}
+
+export type ErpAccountInputAccountType = typeof ErpAccountInputAccountType[keyof typeof ErpAccountInputAccountType];
+
+export interface ErpBankStatementImport {
+  csv: string;
+}
+
+export const ErpVoucherInputVoucherType = {
+  Receipt: 'Receipt',
+  Payment: 'Payment',
+  Journal: 'Journal',
+} as const;
+
+export interface ErpFreeformReport { [key: string]: unknown }
+
+export type ListErpPaymentRequestsParams = {
+status?: string;
+partyType?: string;
+};
+
+export interface ErpPaymentRequestInput {
+  partyType?: string | null;
+  partyId?: number | null;
+  partyName?: string | null;
+  invoiceId?: number | null;
+  /** @minimum 1 */
+  amount: number;
+  requestDate?: string | null;
+  dueDate?: string | null;
+  description?: string | null;
+}
+
+export interface ErpVatReport {
+  startDate: string;
+  endDate: string;
+  outputNet: number;
+  outputTax: number;
+  zeroRatedSales?: number;
+  exemptSales?: number;
+  inputNet: number;
+  inputTax: number;
+  payableTax: number;
+  unclassifiedCount?: number;
+}
+
+export const ErpPaymentRequestUpdateStatus = {
+  Draft: 'Draft',
+  Pending: 'Pending',
+  Approved: 'Approved',
+  Paid: 'Paid',
+  Rejected: 'Rejected',
+} as const;
+
+export const ErpInvoiceInputInvoiceType = {
+  Sales: 'Sales',
+  Purchase: 'Purchase',
+} as const;
+
+export type GetErpCashFlowParams = {
+startDate: string;
+endDate: string;
+};
+
+export type ErpVoucherInputVoucherType = typeof ErpVoucherInputVoucherType[keyof typeof ErpVoucherInputVoucherType];
+
+export interface ErpBankStatementInput {
+  bankAccountId?: number | null;
+  statementDate: string;
+  openingBalance?: number | null;
+  closingBalance?: number | null;
+}
+
+export const ErpInvoiceUpdateTaxType = {
+  taxable: 'taxable',
+  zero_rated: 'zero_rated',
+  exempt: 'exempt',
+  unclassified: 'unclassified',
+} as const;
+
+export type ErpJournalEntryInputLinesItem = {
+  accountId: number;
+  /** @minimum 0 */
+  debit: number;
+  /** @minimum 0 */
+  credit: number;
+  description?: string | null;
+};
+
+export type GetErpTrialBalanceParams = {
+startDate?: string;
+endDate?: string;
+};
+
+export type ErpInvoiceUpdateTaxType = typeof ErpInvoiceUpdateTaxType[keyof typeof ErpInvoiceUpdateTaxType];
+
+export interface ErpInvoiceInput {
+  invoiceType: ErpInvoiceInputInvoiceType;
+  customerId?: number | null;
+  supplierId?: number | null;
+  invoiceDate: string;
+  dueDate?: string | null;
+  /** @minimum 1 */
+  totalAmount: number;
+  taxType?: ErpInvoiceInputTaxType;
+  items?: ErpInvoiceItem[] | null;
+  remarks?: string | null;
+}
+
+export interface ErpBankImportResult {
+  imported: number;
+  skipped?: number;
+}
+
+export const ErpBankEntryMatchUpdateStatus = {
+  unmatched: 'unmatched',
+  matched: 'matched',
+  ignored: 'ignored',
+} as const;
+
+export interface ErpBankEntryMatchUpdate {
+  journalEntryId?: number | null;
+  status?: ErpBankEntryMatchUpdateStatus;
+}
+
+export type ErpInvoiceInputInvoiceType = typeof ErpInvoiceInputInvoiceType[keyof typeof ErpInvoiceInputInvoiceType];
+
+export interface ErpPaymentRequestUpdate {
+  status?: ErpPaymentRequestUpdateStatus;
+  paymentAccountId?: number | null;
+  dueDate?: string | null;
+  description?: string | null;
+}
+
+export interface ErpAccountingSettings {
+  lockDate?: string | null;
+}
+
+export type GetErpPurchaseAnalysisParams = {
+startDate?: string;
+endDate?: string;
+groupBy?: string;
+};
+
+export interface ErpInvoiceSettlement {
+  id: number;
+  invoiceId: number;
+  voucherId?: number | null;
+  paymentRequestId?: number | null;
+  amount: number;
+  settlementDate: string;
+  createdAt?: string | null;
+}
+
+export type GetErpVatReportParams = {
+startDate: string;
+endDate: string;
+};
+
+export interface ErpInvoiceItem {
+  productId?: number | null;
+  productName?: string;
+  quantity?: number;
+  unitPrice?: number | null;
+  unitCost?: number | null;
+  amount?: number;
+}
+
+export interface ErpInvoice {
+  id: number;
+  invoiceNumber: string;
+  invoiceType: string;
+  customerId?: number | null;
+  customerName?: string | null;
+  supplierId?: number | null;
+  supplierName?: string | null;
+  salesOrderId?: number | null;
+  purchaseOrderId?: number | null;
+  invoiceDate: string;
+  dueDate?: string | null;
+  totalAmount: number;
+  paidAmount?: number;
+  outstandingAmount?: number;
+  taxType?: string | null;
+  taxRate?: number | null;
+  netAmount?: number | null;
+  taxAmount?: number | null;
+  status: string;
+  journalEntryId?: number | null;
+  items?: ErpInvoiceItem[] | null;
+  remarks?: string | null;
+  createdAt?: string | null;
+}
+
+export interface ErpBankReconciliationEntry {
+  id: number;
+  statementId: number;
+  transactionDate: string;
+  description?: string | null;
+  amount: number;
+  status: string;
+  journalEntryId?: number | null;
+  createdAt?: string | null;
+}
+
+export type ListErpVouchersParams = {
+voucherType?: string;
+};
+
+export type GetErpIncomeStatementParams = {
+startDate?: string;
+endDate?: string;
+};
+
+export type ErpPaymentRequestUpdateStatus = typeof ErpPaymentRequestUpdateStatus[keyof typeof ErpPaymentRequestUpdateStatus];
+
+export interface ErpAccountUpdate {
+  accountName?: string;
+  cashFlowCategory?: string | null;
+  isActive?: boolean;
+}
+
+export interface ErpBankStatementStatusUpdate {
+  status: ErpBankStatementStatusUpdateStatus;
+}
+
+export interface ErpJournalLine {
+  accountId?: number | null;
+  accountName: string;
+  debit: number;
+  credit: number;
+  description?: string | null;
+}
+
+export type GetErpBalanceSheetParams = {
+endDate?: string;
+};
+
+export type ListErpInvoicesParams = {
+invoiceType?: string;
+status?: string;
+q?: string;
+};
+
+export interface ErpAccountInput {
+  accountNumber: string;
+  accountName: string;
+  accountType: ErpAccountInputAccountType;
+  parentAccountId?: number | null;
+  cashFlowCategory?: string | null;
+}
+
+export type ErpBankEntryMatchUpdateStatus = typeof ErpBankEntryMatchUpdateStatus[keyof typeof ErpBankEntryMatchUpdateStatus];
+
+export interface ErpAccount {
+  id: number;
+  accountNumber: string;
+  accountName: string;
+  accountType: string;
+  parentAccountId?: number | null;
+  cashFlowCategory?: string | null;
+  isActive: boolean;
+  hasChildren?: boolean;
+}
+
+export type ErpVoucherInputSettlementsItem = {
+  invoiceId: number;
+  /** @minimum 1 */
+  amount: number;
+};
+
+export const ErpAccountInputAccountType = {
+  Asset: 'Asset',
+  Liability: 'Liability',
+  Equity: 'Equity',
+  Income: 'Income',
+  Expense: 'Expense',
+} as const;
+
+export type GetErpSalesAnalysisParams = {
+startDate?: string;
+endDate?: string;
+groupBy?: string;
+};
+
+export interface ErpInvoiceUpdate {
+  invoiceDate?: string;
+  dueDate?: string | null;
+  taxType?: ErpInvoiceUpdateTaxType;
+  status?: string;
+  remarks?: string | null;
+}
+
+export interface ErpJournalEntryInput {
+  entryDate: string;
+  description?: string | null;
+  reference?: string | null;
+  /** @minItems 2 */
+  lines: ErpJournalEntryInputLinesItem[];
+}
+
+export interface ErpJournalEntry {
+  id: number;
+  entryNumber: string;
+  entryDate: string;
+  description?: string | null;
+  reference?: string | null;
+  lines: ErpJournalLine[];
+  sourceType?: string | null;
+  sourceId?: string | null;
+  createdAt?: string | null;
+}
+
+export interface ErpVoucher {
+  id: number;
+  voucherNumber: string;
+  voucherType: string;
+  voucherDate: string;
+  partyType?: string | null;
+  partyId?: number | null;
+  partyName?: string | null;
+  totalAmount: number;
+  paymentAccountId?: number | null;
+  journalEntryId?: number | null;
+  description?: string | null;
+  createdAt?: string | null;
+}
+
+export interface ErpPaymentRequest {
+  id: number;
+  requestNumber: string;
+  partyType?: string | null;
+  partyId?: number | null;
+  partyName?: string | null;
+  invoiceId?: number | null;
+  amount: number;
+  requestDate?: string | null;
+  dueDate?: string | null;
+  status: string;
+  paymentAccountId?: number | null;
+  description?: string | null;
+  journalEntryId?: number | null;
+  createdAt?: string | null;
+}
+
+export type ErpInvoiceInputTaxType = typeof ErpInvoiceInputTaxType[keyof typeof ErpInvoiceInputTaxType] | null;
+
+export const ErpInvoiceInputTaxType = {
+  taxable: 'taxable',
+  zero_rated: 'zero_rated',
+  exempt: 'exempt',
+  unclassified: 'unclassified',
+} as const;
+
+export interface ErpBankStatement {
+  id: number;
+  bankAccountId?: number | null;
+  bankAccountName?: string | null;
+  statementDate: string;
+  openingBalance?: number | null;
+  closingBalance?: number | null;
+  status: string;
+  createdAt?: string | null;
+}
+
+export type ErpBankStatementStatusUpdateStatus = typeof ErpBankStatementStatusUpdateStatus[keyof typeof ErpBankStatementStatusUpdateStatus];
+
+export const ErpBankStatementStatusUpdateStatus = {
+  draft: 'draft',
+  reconciling: 'reconciling',
+  completed: 'completed',
+} as const;
+
+export interface ErpVoucherInput {
+  voucherType: ErpVoucherInputVoucherType;
+  voucherDate: string;
+  partyType?: string | null;
+  partyId?: number | null;
+  partyName?: string | null;
+  /** @minimum 1 */
+  totalAmount: number;
+  paymentAccountId?: number | null;
+  description?: string | null;
+  settlements?: ErpVoucherInputSettlementsItem[];
+}
+
+export type GetErpGeneralLedgerParams = {
+accountId?: number;
+startDate?: string;
+endDate?: string;
+};

@@ -7,6 +7,7 @@ import { db, erpMenuPermissionsTable } from "@workspace/db";
  */
 const SYSTEM_ADMIN_ROLES = ["super_admin", "admin"];
 const HR_ROLES = ["super_admin", "admin", "hr_admin", "manager"];
+const FINANCE_ROLES = ["super_admin", "admin", "finance_admin", "accountant"];
 
 export const ERP_MENU_DEFAULTS: Record<string, string[]> = {
   "/": [],
@@ -22,6 +23,16 @@ export const ERP_MENU_DEFAULTS: Record<string, string[]> = {
   "/purchasing/returns": [],
   "/partners/customers": [],
   "/partners/suppliers": [],
+  "/accounting/accounts": FINANCE_ROLES,
+  "/accounting/journal": FINANCE_ROLES,
+  "/accounting/invoices": FINANCE_ROLES,
+  "/accounting/vouchers": FINANCE_ROLES,
+  "/accounting/payment-requests": FINANCE_ROLES,
+  "/accounting/bank-reconciliation": FINANCE_ROLES,
+  "/accounting/vat-report": FINANCE_ROLES,
+  "/reports/financial": FINANCE_ROLES,
+  "/reports/aging": FINANCE_ROLES,
+  "/reports/analysis": [],
   "/system/users": SYSTEM_ADMIN_ROLES,
   "/system/departments": Array.from(
     new Set([...HR_ROLES, ...SYSTEM_ADMIN_ROLES]),

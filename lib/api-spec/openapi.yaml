@@ -21,6 +21,8 @@ tags:
   - name: admin
   - name: portal
   - name: erp
+  - name: erp-accounting
+  - name: erp-reports
 paths:
   /portal/summary:
     get:
@@ -3403,6 +3405,726 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErpPurchaseReturn"
 
+  /erp/accounting/accounts:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpAccounts
+      summary: 會計科目表
+      responses:
+        "200":
+          description: 科目清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpAccount"
+    post:
+      tags: [erp-accounting]
+      operationId: createErpAccount
+      summary: 新增會計科目
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpAccountInput"
+      responses:
+        "201":
+          description: 新增的科目
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpAccount"
+  /erp/accounting/accounts/{id}:
+    patch:
+      tags: [erp-accounting]
+      operationId: updateErpAccount
+      summary: 更新會計科目
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpAccountUpdate"
+      responses:
+        "200":
+          description: 更新後的科目
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpAccount"
+  /erp/accounting/settings:
+    get:
+      tags: [erp-accounting]
+      operationId: getErpAccountingSettings
+      summary: 會計設定（關帳日）
+      responses:
+        "200":
+          description: 設定
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpAccountingSettings"
+    put:
+      tags: [erp-accounting]
+      operationId: updateErpAccountingSettings
+      summary: 更新會計設定（關帳日）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpAccountingSettings"
+      responses:
+        "200":
+          description: 更新後的設定
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpAccountingSettings"
+  /erp/accounting/journal-entries:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpJournalEntries
+      summary: 日記帳/傳票清單（分頁）
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: pageSize
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 傳票分頁
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpJournalEntryPage"
+    post:
+      tags: [erp-accounting]
+      operationId: createErpJournalEntry
+      summary: 新增傳票
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpJournalEntryInput"
+      responses:
+        "201":
+          description: 新增的傳票
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpJournalEntry"
+  /erp/accounting/journal-entries/{id}:
+    delete:
+      tags: [erp-accounting]
+      operationId: deleteErpJournalEntry
+      summary: 刪除傳票（自動傳票不可刪）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+  /erp/accounting/vouchers:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpVouchers
+      summary: 收付款/請款單清單
+      parameters:
+        - name: voucherType
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 單據清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpVoucher"
+    post:
+      tags: [erp-accounting]
+      operationId: createErpVoucher
+      summary: 新增收付款/請款單（可核銷發票）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpVoucherInput"
+      responses:
+        "201":
+          description: 新增的單據
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpVoucher"
+  /erp/accounting/vouchers/{id}:
+    delete:
+      tags: [erp-accounting]
+      operationId: deleteErpVoucher
+      summary: 刪除單據（連動刪除自動傳票與核銷）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+  /erp/accounting/invoices:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpInvoices
+      summary: 發票清單（AR/AP）
+      parameters:
+        - name: invoiceType
+          in: query
+          required: false
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 發票清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpInvoice"
+    post:
+      tags: [erp-accounting]
+      operationId: createErpInvoice
+      summary: 開立發票
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpInvoiceInput"
+      responses:
+        "201":
+          description: 開立的發票
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpInvoice"
+  /erp/accounting/invoices/{id}:
+    patch:
+      tags: [erp-accounting]
+      operationId: updateErpInvoice
+      summary: 更新發票（不可直接改已收付金額）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpInvoiceUpdate"
+      responses:
+        "200":
+          description: 更新後的發票
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpInvoice"
+    delete:
+      tags: [erp-accounting]
+      operationId: deleteErpInvoice
+      summary: 刪除發票（有核銷紀錄不可刪）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+  /erp/accounting/invoices/{id}/settlements:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpInvoiceSettlements
+      summary: 發票核銷紀錄
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 核銷紀錄
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpInvoiceSettlement"
+  /erp/accounting/payment-requests:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpPaymentRequests
+      summary: 付款申請清單
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+        - name: partyType
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 付款申請清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpPaymentRequest"
+    post:
+      tags: [erp-accounting]
+      operationId: createErpPaymentRequest
+      summary: 新增付款申請
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpPaymentRequestInput"
+      responses:
+        "201":
+          description: 新增的付款申請
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpPaymentRequest"
+  /erp/accounting/payment-requests/{id}:
+    patch:
+      tags: [erp-accounting]
+      operationId: updateErpPaymentRequest
+      summary: 更新付款申請（Paid 觸發核銷與自動傳票）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpPaymentRequestUpdate"
+      responses:
+        "200":
+          description: 更新後的付款申請
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpPaymentRequest"
+    delete:
+      tags: [erp-accounting]
+      operationId: deleteErpPaymentRequest
+      summary: 刪除付款申請（僅草稿）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResult"
+  /erp/accounting/bank-statements:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpBankStatements
+      summary: 銀行對帳單清單
+      responses:
+        "200":
+          description: 對帳單清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpBankStatement"
+    post:
+      tags: [erp-accounting]
+      operationId: createErpBankStatement
+      summary: 新增銀行對帳單
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpBankStatementInput"
+      responses:
+        "201":
+          description: 新增的對帳單
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpBankStatement"
+  /erp/accounting/bank-statements/{id}:
+    patch:
+      tags: [erp-accounting]
+      operationId: updateErpBankStatementStatus
+      summary: 更新對帳單狀態
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpBankStatementStatusUpdate"
+      responses:
+        "200":
+          description: 更新後的對帳單
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpBankStatement"
+  /erp/accounting/bank-statements/{id}/entries:
+    get:
+      tags: [erp-accounting]
+      operationId: listErpBankReconciliationEntries
+      summary: 對帳明細
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 對帳明細清單
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ErpBankReconciliationEntry"
+  /erp/accounting/bank-statements/{id}/import:
+    post:
+      tags: [erp-accounting]
+      operationId: importErpBankStatementCsv
+      summary: 匯入對帳 CSV
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpBankStatementImport"
+      responses:
+        "201":
+          description: 匯入結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpBankImportResult"
+  /erp/accounting/bank-statements/{id}/auto-match:
+    post:
+      tags: [erp-accounting]
+      operationId: autoMatchErpBankStatement
+      summary: 自動比對（金額唯一相符）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 比對結果
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpBankAutoMatchResult"
+  /erp/accounting/bank-reconciliation-entries/{id}:
+    patch:
+      tags: [erp-accounting]
+      operationId: matchErpBankReconciliationEntry
+      summary: 手動比對/取消比對
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErpBankEntryMatchUpdate"
+      responses:
+        "200":
+          description: 更新後的明細
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpBankReconciliationEntry"
+  /erp/accounting/vat-report:
+    get:
+      tags: [erp-accounting]
+      operationId: getErpVatReport
+      summary: 營業稅申報（401 彙總）
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 營業稅彙總
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpVatReport"
+  /erp/reports/income-statement:
+    get:
+      tags: [erp-reports]
+      operationId: getErpIncomeStatement
+      summary: 損益表
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 損益表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/balance-sheet:
+    get:
+      tags: [erp-reports]
+      operationId: getErpBalanceSheet
+      summary: 資產負債表
+      parameters:
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 資產負債表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/cash-flow:
+    get:
+      tags: [erp-reports]
+      operationId: getErpCashFlow
+      summary: 現金流量表
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: 現金流量表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/trial-balance:
+    get:
+      tags: [erp-reports]
+      operationId: getErpTrialBalance
+      summary: 試算表
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 試算表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/general-ledger:
+    get:
+      tags: [erp-reports]
+      operationId: getErpGeneralLedger
+      summary: 總帳（單科目明細）
+      parameters:
+        - name: accountId
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 總帳明細
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/ar-aging:
+    get:
+      tags: [erp-reports]
+      operationId: getErpArAging
+      summary: 應收帳齡分析
+      responses:
+        "200":
+          description: 帳齡分析
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/ap-aging:
+    get:
+      tags: [erp-reports]
+      operationId: getErpApAging
+      summary: 應付帳齡分析
+      responses:
+        "200":
+          description: 帳齡分析
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/sales-analysis:
+    get:
+      tags: [erp-reports]
+      operationId: getErpSalesAnalysis
+      summary: 銷售分析
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: groupBy
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 銷售分析
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
+  /erp/reports/purchase-analysis:
+    get:
+      tags: [erp-reports]
+      operationId: getErpPurchaseAnalysis
+      summary: 採購分析
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: endDate
+          in: query
+          required: false
+          schema: { type: string }
+        - name: groupBy
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: 採購分析
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErpFreeformReport"
 components:
   schemas:
     HealthStatus:
@@ -5283,3 +6005,335 @@ components:
         status:
           type: string
           enum: [confirmed, cancelled]
+    SuccessResult:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean }
+    ErpAccount:
+      type: object
+      required: [id, accountNumber, accountName, accountType, isActive]
+      properties:
+        id: { type: integer }
+        accountNumber: { type: string }
+        accountName: { type: string }
+        accountType: { type: string }
+        parentAccountId: { type: integer, nullable: true }
+        cashFlowCategory: { type: string, nullable: true }
+        isActive: { type: boolean }
+        hasChildren: { type: boolean }
+    ErpAccountInput:
+      type: object
+      required: [accountNumber, accountName, accountType]
+      properties:
+        accountNumber: { type: string }
+        accountName: { type: string }
+        accountType:
+          type: string
+          enum: [Asset, Liability, Equity, Income, Expense]
+        parentAccountId: { type: integer, nullable: true }
+        cashFlowCategory: { type: string, nullable: true }
+    ErpAccountUpdate:
+      type: object
+      properties:
+        accountName: { type: string }
+        cashFlowCategory: { type: string, nullable: true }
+        isActive: { type: boolean }
+    ErpAccountingSettings:
+      type: object
+      properties:
+        lockDate: { type: string, nullable: true }
+    ErpJournalLine:
+      type: object
+      required: [accountName, debit, credit]
+      properties:
+        accountId: { type: integer, nullable: true }
+        accountName: { type: string }
+        debit: { type: integer }
+        credit: { type: integer }
+        description: { type: string, nullable: true }
+    ErpJournalEntry:
+      type: object
+      required: [id, entryNumber, entryDate, lines]
+      properties:
+        id: { type: integer }
+        entryNumber: { type: string }
+        entryDate: { type: string }
+        description: { type: string, nullable: true }
+        reference: { type: string, nullable: true }
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpJournalLine"
+        sourceType: { type: string, nullable: true }
+        sourceId: { type: string, nullable: true }
+        createdAt: { type: string, nullable: true }
+    ErpJournalEntryPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErpJournalEntry"
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    ErpJournalEntryInput:
+      type: object
+      required: [entryDate, lines]
+      properties:
+        entryDate: { type: string }
+        description: { type: string, nullable: true }
+        reference: { type: string, nullable: true }
+        lines:
+          type: array
+          minItems: 2
+          items:
+            type: object
+            required: [accountId, debit, credit]
+            properties:
+              accountId: { type: integer }
+              debit: { type: integer, minimum: 0 }
+              credit: { type: integer, minimum: 0 }
+              description: { type: string, nullable: true }
+    ErpVoucher:
+      type: object
+      required: [id, voucherNumber, voucherType, voucherDate, totalAmount]
+      properties:
+        id: { type: integer }
+        voucherNumber: { type: string }
+        voucherType: { type: string }
+        voucherDate: { type: string }
+        partyType: { type: string, nullable: true }
+        partyId: { type: integer, nullable: true }
+        partyName: { type: string, nullable: true }
+        totalAmount: { type: integer }
+        paymentAccountId: { type: integer, nullable: true }
+        journalEntryId: { type: integer, nullable: true }
+        description: { type: string, nullable: true }
+        createdAt: { type: string, nullable: true }
+    ErpVoucherInput:
+      type: object
+      required: [voucherType, voucherDate, totalAmount]
+      properties:
+        voucherType:
+          type: string
+          enum: [Receipt, Payment, Journal]
+        voucherDate: { type: string }
+        partyType: { type: string, nullable: true }
+        partyId: { type: integer, nullable: true }
+        partyName: { type: string, nullable: true }
+        totalAmount: { type: integer, minimum: 1 }
+        paymentAccountId: { type: integer, nullable: true }
+        description: { type: string, nullable: true }
+        settlements:
+          type: array
+          items:
+            type: object
+            required: [invoiceId, amount]
+            properties:
+              invoiceId: { type: integer }
+              amount: { type: integer, minimum: 1 }
+    ErpInvoiceItem:
+      type: object
+      properties:
+        productId: { type: integer, nullable: true }
+        productName: { type: string }
+        quantity: { type: integer }
+        unitPrice: { type: integer, nullable: true }
+        unitCost: { type: integer, nullable: true }
+        amount: { type: integer }
+    ErpInvoice:
+      type: object
+      required: [id, invoiceNumber, invoiceType, invoiceDate, totalAmount, status]
+      properties:
+        id: { type: integer }
+        invoiceNumber: { type: string }
+        invoiceType: { type: string }
+        customerId: { type: integer, nullable: true }
+        customerName: { type: string, nullable: true }
+        supplierId: { type: integer, nullable: true }
+        supplierName: { type: string, nullable: true }
+        salesOrderId: { type: integer, nullable: true }
+        purchaseOrderId: { type: integer, nullable: true }
+        invoiceDate: { type: string }
+        dueDate: { type: string, nullable: true }
+        totalAmount: { type: integer }
+        paidAmount: { type: integer }
+        outstandingAmount: { type: integer }
+        taxType: { type: string, nullable: true }
+        taxRate: { type: integer, nullable: true }
+        netAmount: { type: integer, nullable: true }
+        taxAmount: { type: integer, nullable: true }
+        status: { type: string }
+        journalEntryId: { type: integer, nullable: true }
+        items:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ErpInvoiceItem"
+        remarks: { type: string, nullable: true }
+        createdAt: { type: string, nullable: true }
+    ErpInvoiceInput:
+      type: object
+      required: [invoiceType, invoiceDate, totalAmount]
+      properties:
+        invoiceType:
+          type: string
+          enum: [Sales, Purchase]
+        customerId: { type: integer, nullable: true }
+        supplierId: { type: integer, nullable: true }
+        invoiceDate: { type: string }
+        dueDate: { type: string, nullable: true }
+        totalAmount: { type: integer, minimum: 1 }
+        taxType:
+          type: string
+          nullable: true
+          enum: [taxable, zero_rated, exempt, unclassified]
+        items:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ErpInvoiceItem"
+        remarks: { type: string, nullable: true }
+    ErpInvoiceUpdate:
+      type: object
+      properties:
+        invoiceDate: { type: string }
+        dueDate: { type: string, nullable: true }
+        taxType:
+          type: string
+          enum: [taxable, zero_rated, exempt, unclassified]
+        status: { type: string }
+        remarks: { type: string, nullable: true }
+    ErpInvoiceSettlement:
+      type: object
+      required: [id, invoiceId, amount, settlementDate]
+      properties:
+        id: { type: integer }
+        invoiceId: { type: integer }
+        voucherId: { type: integer, nullable: true }
+        paymentRequestId: { type: integer, nullable: true }
+        amount: { type: integer }
+        settlementDate: { type: string }
+        createdAt: { type: string, nullable: true }
+    ErpPaymentRequest:
+      type: object
+      required: [id, requestNumber, amount, status]
+      properties:
+        id: { type: integer }
+        requestNumber: { type: string }
+        partyType: { type: string, nullable: true }
+        partyId: { type: integer, nullable: true }
+        partyName: { type: string, nullable: true }
+        invoiceId: { type: integer, nullable: true }
+        amount: { type: integer }
+        requestDate: { type: string, nullable: true }
+        dueDate: { type: string, nullable: true }
+        status: { type: string }
+        paymentAccountId: { type: integer, nullable: true }
+        description: { type: string, nullable: true }
+        journalEntryId: { type: integer, nullable: true }
+        createdAt: { type: string, nullable: true }
+    ErpPaymentRequestInput:
+      type: object
+      required: [amount]
+      properties:
+        partyType: { type: string, nullable: true }
+        partyId: { type: integer, nullable: true }
+        partyName: { type: string, nullable: true }
+        invoiceId: { type: integer, nullable: true }
+        amount: { type: integer, minimum: 1 }
+        requestDate: { type: string, nullable: true }
+        dueDate: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+    ErpPaymentRequestUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Draft, Pending, Approved, Paid, Rejected]
+        paymentAccountId: { type: integer, nullable: true }
+        dueDate: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+    ErpBankStatement:
+      type: object
+      required: [id, statementDate, status]
+      properties:
+        id: { type: integer }
+        bankAccountId: { type: integer, nullable: true }
+        bankAccountName: { type: string, nullable: true }
+        statementDate: { type: string }
+        openingBalance: { type: integer, nullable: true }
+        closingBalance: { type: integer, nullable: true }
+        status: { type: string }
+        createdAt: { type: string, nullable: true }
+    ErpBankStatementInput:
+      type: object
+      required: [statementDate]
+      properties:
+        bankAccountId: { type: integer, nullable: true }
+        statementDate: { type: string }
+        openingBalance: { type: integer, nullable: true }
+        closingBalance: { type: integer, nullable: true }
+    ErpBankStatementStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [draft, reconciling, completed]
+    ErpBankStatementImport:
+      type: object
+      required: [csv]
+      properties:
+        csv: { type: string }
+    ErpBankImportResult:
+      type: object
+      required: [imported]
+      properties:
+        imported: { type: integer }
+        skipped: { type: integer }
+    ErpBankAutoMatchResult:
+      type: object
+      required: [matched, total]
+      properties:
+        matched: { type: integer }
+        total: { type: integer }
+    ErpBankReconciliationEntry:
+      type: object
+      required: [id, statementId, transactionDate, amount, status]
+      properties:
+        id: { type: integer }
+        statementId: { type: integer }
+        transactionDate: { type: string }
+        description: { type: string, nullable: true }
+        amount: { type: integer }
+        status: { type: string }
+        journalEntryId: { type: integer, nullable: true }
+        createdAt: { type: string, nullable: true }
+    ErpBankEntryMatchUpdate:
+      type: object
+      properties:
+        journalEntryId: { type: integer, nullable: true }
+        status:
+          type: string
+          enum: [unmatched, matched, ignored]
+    ErpVatReport:
+      type: object
+      required: [startDate, endDate, outputNet, outputTax, inputNet, inputTax, payableTax]
+      properties:
+        startDate: { type: string }
+        endDate: { type: string }
+        outputNet: { type: integer }
+        outputTax: { type: integer }
+        zeroRatedSales: { type: integer }
+        exemptSales: { type: integer }
+        inputNet: { type: integer }
+        inputTax: { type: integer }
+        payableTax: { type: integer }
+        unclassifiedCount: { type: integer }
+    ErpFreeformReport:
+      type: object
+      additionalProperties: true
