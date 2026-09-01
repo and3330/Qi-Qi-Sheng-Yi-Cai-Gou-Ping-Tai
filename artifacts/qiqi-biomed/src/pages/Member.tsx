@@ -1,3 +1,4 @@
+import CompanyFooter from '@/components/CompanyFooter';
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { User, Package, Heart, CreditCard, HelpCircle, LogOut, Edit3, ShieldCheck, Building2 } from "lucide-react";
@@ -308,6 +309,8 @@ export default function MemberPage() {
           <LogOut size={18} className="mr-2" /> 登出帳號
         </Button>
       </div>
+
+      <CompanyFooter />
     </div>
   );
 }

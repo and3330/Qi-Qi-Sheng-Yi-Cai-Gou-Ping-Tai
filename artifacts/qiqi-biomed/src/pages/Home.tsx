@@ -1,3 +1,4 @@
+import CompanyFooter from '@/components/CompanyFooter';
 import { Link } from "wouter";
 import { 
   ShoppingBag, Building2, BookOpen, Bell, Search, 
@@ -322,6 +323,8 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      <CompanyFooter />
     </div>
   );
 }
