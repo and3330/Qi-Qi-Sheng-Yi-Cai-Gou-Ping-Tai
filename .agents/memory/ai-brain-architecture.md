@@ -16,3 +16,7 @@ Prompt 裡的「先確認再執行」不可信（架構師審查判定為重大�
 
 ## 索引同步
 mutation 路由以 fire-and-forget reindex(kind,id) 同步；刪除用 removeFromIndex。新增資料寫入路由時記得掛 hook。
+
+## AI CMO 模組
+- SSE 串流不走 orval（不支援），前端以 fetch+ReadableStream 解析；對話無伺服器狀態，context 由伺服器注入，AI 僅建議不執行操作。
+- 「每日」自動報告必須基於已完整結束的日期（前一日）生成，避免半日數據誤導；排程冪等靠 DB 部分唯一約束，勿只靠記憶體旗標。

@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
-    "start": "pnpm --filter @workspace/db run migrate:social-marketing && pnpm --filter @workspace/db run migrate:newsletter && node --enable-source-maps ./dist/index.mjs",
+    "start": "pnpm --filter @workspace/db run migrate:social-marketing && pnpm --filter @workspace/db run migrate:newsletter && pnpm --filter @workspace/db run migrate:cmo && node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:assistant-auth": "tsx --test src/lib/assistantTools.integration.test.ts"
+    "test:assistant-auth": "tsx --test src/lib/assistantTools.integration.test.ts",
+    "test:cmo": "tsx --test src/lib/cmoScheduler.test.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^8.0.1",

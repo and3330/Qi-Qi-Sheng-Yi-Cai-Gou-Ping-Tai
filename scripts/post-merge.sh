@@ -8,3 +8,5 @@ pnpm --filter @workspace/db run push-force
 pnpm --filter @workspace/db run migrate:finance-wallet
 # ERP 進銷存 + 分倉庫存的冪等遷移（建表、欄位、預設倉、分倉數量回填校正）
 pnpm --filter @workspace/db run migrate:erp-inventory
+
+pnpm --filter @workspace/db run migrate:cmo

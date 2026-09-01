@@ -24,3 +24,4 @@ export * from "./memberLinks";
 export * from "./erpAccounting";
 export * from "./socialMarketing";
 export * from "./newsletter";
+export * from "./cmo";

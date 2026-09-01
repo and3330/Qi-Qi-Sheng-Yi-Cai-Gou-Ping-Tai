@@ -5635,6 +5635,155 @@ paths:
           description: Resend 寄送失敗
         "503":
           description: 尚未設定 RESEND_API_KEY
+  /admin/cmo/goals:
+    get:
+      operationId: listCmoGoals
+      tags: [admin]
+      summary: KPI 目標列表（僅系統管理員）
+      responses:
+        '200':
+          description: KPI goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CmoGoal'
+    post:
+      operationId: createCmoGoal
+      tags: [admin]
+      summary: 建立 KPI 目標
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCmoGoalInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CmoGoal'
+  /admin/cmo/goals/{id}:
+    put:
+      operationId: updateCmoGoal
+      tags: [admin]
+      summary: 更新 KPI 目標
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCmoGoalInput'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CmoGoal'
+    delete:
+      operationId: deleteCmoGoal
+      tags: [admin]
+      summary: 刪除 KPI 目標
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+  /admin/cmo/goals/refresh:
+    post:
+      operationId: refreshCmoGoals
+      tags: [admin]
+      summary: 立即重算所有 KPI 進度
+      responses:
+        '200':
+          description: Refreshed goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CmoGoal'
+  /admin/cmo/snapshots:
+    get:
+      operationId: listCmoSnapshots
+      tags: [admin]
+      summary: 近日數據快照
+      parameters:
+        - name: days
+          in: query
+          required: false
+          schema: { type: integer, description: "1-31，預設 7（伺服器端夾限）" }
+      responses:
+        '200':
+          description: Snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CmoSnapshot'
+  /admin/cmo/reports:
+    get:
+      operationId: listCmoReports
+      tags: [admin]
+      summary: 營運報告列表
+      responses:
+        '200':
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CmoReport'
+  /admin/cmo/reports/{id}:
+    get:
+      operationId: getCmoReport
+      tags: [admin]
+      summary: 營運報告詳情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Report detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CmoReport'
+  /admin/cmo/reports/generate:
+    post:
+      operationId: generateCmoReport
+      tags: [admin]
+      summary: 手動觸發生成今日營運報告
+      responses:
+        '201':
+          description: Generated report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CmoReport'
 components:
   securitySchemes:
     NewsletterApiKeyAuth:
@@ -5644,6 +5793,69 @@ components:
         電子報公開 v1 API 金鑰。亦接受以 x-api-key 標頭傳遞（本規格文件僅描述
         Bearer 形式，兩者伺服器端皆會驗證）。
   schemas:
+    CmoGoal:
+      type: object
+      required: [id, metric, label, targetValue, currentValue, unit, period, priority, status, startDate, endDate, isActive, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        metric: { type: string, description: "daily_revenue | paid_revenue | orders_count | new_members | published_posts | points_issued | new_articles" }
+        label: { type: string }
+        targetValue: { type: string }
+        currentValue: { type: string }
+        unit: { type: string }
+        period: { type: string, description: "daily | weekly | monthly | quarterly" }
+        priority: { type: string, description: "high | medium | low" }
+        status: { type: string, description: "active | on_track | at_risk | behind | achieved" }
+        startDate: { type: string }
+        endDate: { type: string }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    CreateCmoGoalInput:
+      type: object
+      required: [metric, label, targetValue, startDate, endDate]
+      properties:
+        metric: { type: string }
+        label: { type: string, minLength: 1 }
+        targetValue: { type: number }
+        unit: { type: string }
+        period: { type: string }
+        priority: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }
+    UpdateCmoGoalInput:
+      type: object
+      properties:
+        metric: { type: string }
+        label: { type: string, minLength: 1 }
+        targetValue: { type: number }
+        unit: { type: string }
+        period: { type: string }
+        priority: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }
+        isActive: { type: boolean }
+    CmoSnapshot:
+      type: object
+      required: [date, data]
+      properties:
+        date: { type: string }
+        data: { type: object, additionalProperties: true }
+    CmoReport:
+      type: object
+      required: [id, reportDate, reportType, summary, createdAt]
+      properties:
+        id: { type: string }
+        reportDate: { type: string }
+        reportType: { type: string, description: "daily | manual" }
+        summary: { type: string }
+        recommendations: { type: ["string", "null"] }
+        goalProgress:
+          type: ["array", "null"]
+          items: { type: object, additionalProperties: true }
+        kpiSnapshot: { type: ["object", "null"], additionalProperties: true }
+        rawData: { type: ["object", "null"], additionalProperties: true }
+        createdAt: { type: string }
     SocialAccount:
       type: object
       required: [id, platform, platformAccountId, accountName, accountType, isActive, createdAt]

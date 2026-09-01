@@ -34,9 +34,9 @@ import erpReportsRouter from "./erpReports";
 import adminSocialRouter from "./adminSocial";
 import newsletterRouter from "./newsletter";
 import newsletterPublicRouter from "./newsletterPublic";
+import adminCmoRouter from "./adminCmo";
 
 const router: IRouter = Router();
-
 router.use(healthRouter);
 router.use(authRouter);
 router.use(membersRouter);
@@ -72,5 +72,6 @@ router.use(erpReportsRouter);
 router.use(adminSocialRouter);
 router.use(newsletterRouter);
 router.use(newsletterPublicRouter);
+router.use(adminCmoRouter);
 
 export default router;

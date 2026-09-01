@@ -24,6 +24,7 @@ import {
   Mail,
   Workflow,
   Globe,
+  BrainCircuit,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -45,6 +46,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     items: [
       { name: "儀表板", path: "/admin", icon: LayoutDashboard },
       { name: "AI 助理", path: "/admin/ai-assistant", icon: Bot, roles: ["admin", "ops"] },
+      { name: "AI CMO", path: "/admin/ai-cmo", icon: BrainCircuit, roles: ["admin"] },
     ],
   },
   {

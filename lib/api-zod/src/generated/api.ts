@@ -143,8 +143,6 @@ export const UpdateAdminMemberParams = zod.object({
 })
 
 
-
-
 export const UpdateAdminMemberBody = zod.object({
   "name": zod.string().min(1).optional(),
   "email": zod.string().nullish(),
@@ -210,7 +208,6 @@ export const ListAdminProductsResponse = zod.array(ListAdminProductsResponseItem
  */
 
 
-
 export const createAdminProductBodyPriceHospitalMin = 0;
 
 export const createAdminProductBodyPriceClinicMin = 0;
@@ -220,7 +217,6 @@ export const createAdminProductBodyPriceConsumerMin = 0;
 export const createAdminProductBodyCostPriceMin = 0;
 
 export const createAdminProductBodyStockMin = 0;
-
 
 
 export const CreateAdminProductBody = zod.object({
@@ -270,8 +266,6 @@ export const UpdateAdminProductParams = zod.object({
 })
 
 
-
-
 export const updateAdminProductBodyPriceHospitalMin = 0;
 
 export const updateAdminProductBodyPriceClinicMin = 0;
@@ -279,7 +273,6 @@ export const updateAdminProductBodyPriceClinicMin = 0;
 export const updateAdminProductBodyPriceConsumerMin = 0;
 
 export const updateAdminProductBodyCostPriceMin = 0;
-
 
 
 export const UpdateAdminProductBody = zod.object({
@@ -323,7 +316,6 @@ export const UpdateAdminProductResponse = zod.object({
 /**
  * @summary 手動調整庫存（盤點 / 報廢等，限管理員）
  */
-
 
 
 export const AdjustAdminStockBody = zod.object({
@@ -400,7 +392,6 @@ export const ListAdminSuppliersResponse = zod.array(ListAdminSuppliersResponseIt
  */
 
 
-
 export const CreateAdminSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -431,8 +422,6 @@ export const CreateAdminSupplierResponse = zod.object({
 export const UpdateAdminSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateAdminSupplierBody = zod.object({
@@ -497,9 +486,6 @@ export const ListAdminPurchaseOrdersResponse = zod.array(ListAdminPurchaseOrders
  * @summary 建立採購單（限管理員）
  */
 export const createAdminPurchaseOrderBodyItemsItemUnitCostMin = 0;
-
-
-
 
 
 export const CreateAdminPurchaseOrderBody = zod.object({
@@ -868,8 +854,6 @@ export const registerBodyPasswordMin = 8;
 export const registerBodyPasswordMax = 72;
 
 
-
-
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax).regex(registerBodyUsernameRegExp),
   "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
@@ -899,8 +883,6 @@ export const RegisterResponse = zod.object({
 /**
  * @summary Log in with username and password (starts session)
  */
-
-
 
 
 export const LoginBody = zod.object({
@@ -954,7 +936,6 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Update current member profile
  */
-
 
 
 export const UpdateMeBody = zod.object({
@@ -1105,7 +1086,6 @@ export const GetCartResponse = zod.array(GetCartResponseItem)
  */
 
 
-
 export const AddCartItemBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -1167,8 +1147,6 @@ export const ClearCartResponse = zod.void()
 export const UpdateCartItemParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateCartItemBody = zod.object({
@@ -1264,11 +1242,7 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  */
 
 
-
 export const createOrderBodyPointsToUseMin = 0;
-
-
-
 
 
 export const CreateOrderBody = zod.object({
@@ -1499,8 +1473,6 @@ export const ListMyLinktreeLinksResponse = zod.array(ListMyLinktreeLinksResponse
  */
 
 
-
-
 export const CreateMyLinktreeLinkBody = zod.object({
   "title": zod.string().min(1),
   "subtitle": zod.string().nullish(),
@@ -1532,9 +1504,6 @@ export const CreateMyLinktreeLinkResponse = zod.object({
 export const UpdateMyLinktreeLinkParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
-
 
 
 export const UpdateMyLinktreeLinkBody = zod.object({
@@ -1843,7 +1812,6 @@ export const AdjustAdminMemberWalletParams = zod.object({
 export const adjustAdminMemberWalletBodyReasonMax = 200;
 
 
-
 export const AdjustAdminMemberWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -2001,7 +1969,6 @@ export const AdjustInstitutionWalletParams = zod.object({
 export const adjustInstitutionWalletBodyReasonMax = 200;
 
 
-
 export const AdjustInstitutionWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -2063,7 +2030,6 @@ export const createAdminArticleBodySummaryMax = 500;
 export const createAdminArticleBodyImageUrlMax = 500;
 
 
-
 export const CreateAdminArticleBody = zod.object({
   "kind": zod.enum(['article', 'faq']),
   "title": zod.string().min(1).max(createAdminArticleBodyTitleMax),
@@ -2102,7 +2068,6 @@ export const updateAdminArticleBodyCategoryMax = 50;
 export const updateAdminArticleBodySummaryMax = 500;
 
 export const updateAdminArticleBodyImageUrlMax = 500;
-
 
 
 export const UpdateAdminArticleBody = zod.object({
@@ -2169,7 +2134,6 @@ export const createAdminAnnouncementBodyCategoryMax = 50;
 export const createAdminAnnouncementBodyImageUrlMax = 500;
 
 
-
 export const CreateAdminAnnouncementBody = zod.object({
   "title": zod.string().min(1).max(createAdminAnnouncementBodyTitleMax),
   "category": zod.string().min(1).max(createAdminAnnouncementBodyCategoryMax),
@@ -2202,7 +2166,6 @@ export const updateAdminAnnouncementBodyTitleMax = 200;
 export const updateAdminAnnouncementBodyCategoryMax = 50;
 
 export const updateAdminAnnouncementBodyImageUrlMax = 500;
-
 
 
 export const UpdateAdminAnnouncementBody = zod.object({
@@ -2264,18 +2227,11 @@ export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevis
  */
 
 
-
-
-
 export const RequestUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.int().min(1),
   "contentType": zod.string().min(1)
 })
-
-
-
-
 
 
 export const RequestUploadUrlResponse = zod.object({
@@ -2319,7 +2275,6 @@ export const UpdateShipmentPhotosParams = zod.object({
 export const updateShipmentPhotosBodyPhotosItemMax = 500;
 
 export const updateShipmentPhotosBodyPhotosMax = 10;
-
 
 
 export const UpdateShipmentPhotosBody = zod.object({
@@ -2373,7 +2328,6 @@ export const createAdminProductVariantBodyCostPriceMin = 0;
 export const createAdminProductVariantBodyStockMin = 0;
 
 
-
 export const CreateAdminProductVariantBody = zod.object({
   "name": zod.string().min(1).max(createAdminProductVariantBodyNameMax),
   "priceHospital": zod.int().min(createAdminProductVariantBodyPriceHospitalMin),
@@ -2414,7 +2368,6 @@ export const updateAdminProductVariantBodyPriceClinicMin = 0;
 export const updateAdminProductVariantBodyPriceConsumerMin = 0;
 
 export const updateAdminProductVariantBodyCostPriceMin = 0;
-
 
 
 export const UpdateAdminProductVariantBody = zod.object({
@@ -2473,7 +2426,6 @@ export const createAdminProfitRuleBodyPercentBpsMin = 0;
 export const createAdminProfitRuleBodyPercentBpsMax = 10000;
 
 
-
 export const CreateAdminProfitRuleBody = zod.object({
   "name": zod.string().min(1).max(createAdminProfitRuleBodyNameMax),
   "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
@@ -2502,7 +2454,6 @@ export const updateAdminProfitRuleBodyNameMax = 100;
 
 export const updateAdminProfitRuleBodyPercentBpsMin = 0;
 export const updateAdminProfitRuleBodyPercentBpsMax = 10000;
-
 
 
 export const UpdateAdminProfitRuleBody = zod.object({
@@ -2597,7 +2548,6 @@ export const createAdminExpenseBodyTitleMax = 200;
 
 
 export const createAdminExpenseBodyNoteMax = 500;
-
 
 
 export const CreateAdminExpenseBody = zod.object({
@@ -2736,7 +2686,6 @@ export const SendAssistantMessageParams = zod.object({
 export const sendAssistantMessageBodyContentMax = 4000;
 
 
-
 export const SendAssistantMessageBody = zod.object({
   "content": zod.string().min(1).max(sendAssistantMessageBodyContentMax)
 })
@@ -2841,7 +2790,6 @@ export const SendSupportMessageParams = zod.object({
 export const sendSupportMessageBodyContentMax = 4000;
 
 
-
 export const SendSupportMessageBody = zod.object({
   "content": zod.string().min(1).max(sendSupportMessageBodyContentMax)
 })
@@ -2907,7 +2855,6 @@ export const ReplySupportConversationParams = zod.object({
 })
 
 export const replySupportConversationBodyContentMax = 4000;
-
 
 
 export const ReplySupportConversationBody = zod.object({
@@ -3032,9 +2979,6 @@ export const ListAdminQuotationsResponse = zod.array(ListAdminQuotationsResponse
  */
 
 export const createAdminQuotationBodyItemsItemUnitPriceMin = 0;
-
-
-
 
 
 export const CreateAdminQuotationBody = zod.object({
@@ -3477,7 +3421,6 @@ export const UpdateErpItemResponse = zod.object({
  */
 
 
-
 export const ErpAdjustStockBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -3555,8 +3498,6 @@ export const ListErpWarehousesResponse = zod.array(ListErpWarehousesResponseItem
  */
 
 
-
-
 export const CreateErpWarehouseBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -3584,8 +3525,6 @@ export const CreateErpWarehouseResponse = zod.object({
 export const UpdateErpWarehouseParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpWarehouseBody = zod.object({
@@ -3666,8 +3605,6 @@ export const ListErpStockTransfersResponse = zod.array(ListErpStockTransfersResp
 /**
  * @summary 建立調撥單（草稿）
  */
-
-
 
 
 export const CreateErpStockTransferBody = zod.object({
@@ -3771,8 +3708,6 @@ export const ListErpCustomersResponse = zod.array(ListErpCustomersResponseItem)
  */
 
 
-
-
 export const CreateErpCustomerBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -3812,8 +3747,6 @@ export const CreateErpCustomerResponse = zod.object({
 export const UpdateErpCustomerParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpCustomerBody = zod.object({
@@ -3876,7 +3809,6 @@ export const ListErpSuppliersResponse = zod.array(ListErpSuppliersResponseItem)
  */
 
 
-
 export const CreateErpSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -3907,8 +3839,6 @@ export const CreateErpSupplierResponse = zod.object({
 export const UpdateErpSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpSupplierBody = zod.object({
@@ -3960,7 +3890,6 @@ export const ListErpPriceListsResponse = zod.array(ListErpPriceListsResponseItem
  */
 
 
-
 export const CreateErpPriceListBody = zod.object({
   "name": zod.string().min(1),
   "description": zod.string().nullish()
@@ -3987,8 +3916,6 @@ export const CreateErpPriceListResponse = zod.object({
 export const UpdateErpPriceListParams = zod.object({
   "id": zod.coerce.number().int()
 })
-
-
 
 
 export const UpdateErpPriceListBody = zod.object({
@@ -4083,9 +4010,6 @@ export const ListErpQuotationsResponse = zod.array(ListErpQuotationsResponseItem
  */
 
 export const createErpQuotationBodyItemsItemUnitPriceMin = 0;
-
-
-
 
 
 export const CreateErpQuotationBody = zod.object({
@@ -4289,8 +4213,6 @@ export const ListErpSalesOrdersResponse = zod.object({
  */
 
 
-
-
 export const CreateErpSalesOrderBody = zod.object({
   "customerId": zod.int(),
   "warehouseId": zod.int().nullish(),
@@ -4455,8 +4377,6 @@ export const ListErpSalesReturnsResponse = zod.array(ListErpSalesReturnsResponse
  */
 
 
-
-
 export const CreateErpSalesReturnBody = zod.object({
   "salesOrderId": zod.int(),
   "warehouseId": zod.int().nullish(),
@@ -4572,9 +4492,6 @@ export const ListErpPurchaseOrdersResponse = zod.array(ListErpPurchaseOrdersResp
  * @summary 開立採購單（ERP）
  */
 export const createErpPurchaseOrderBodyItemsItemUnitCostMin = 0;
-
-
-
 
 
 export const CreateErpPurchaseOrderBody = zod.object({
@@ -4753,8 +4670,6 @@ export const ListErpPurchaseReturnsResponse = zod.array(ListErpPurchaseReturnsRe
 /**
  * @summary 建立採退單（草稿；依已收貨採購單，防超退）
  */
-
-
 
 
 export const CreateErpPurchaseReturnBody = zod.object({
@@ -4964,7 +4879,6 @@ export const createErpJournalEntryBodyLinesItemCreditMin = 0;
 export const createErpJournalEntryBodyLinesMin = 2;
 
 
-
 export const CreateErpJournalEntryBody = zod.object({
   "entryDate": zod.string(),
   "description": zod.string().nullish(),
@@ -5035,8 +4949,6 @@ export const ListErpVouchersResponse = zod.array(ListErpVouchersResponseItem)
 /**
  * @summary 新增收付款/請款單（可核銷發票）
  */
-
-
 
 
 export const CreateErpVoucherBody = zod.object({
@@ -5129,7 +5041,6 @@ export const ListErpInvoicesResponse = zod.array(ListErpInvoicesResponseItem)
 /**
  * @summary 開立發票
  */
-
 
 
 export const CreateErpInvoiceBody = zod.object({
@@ -5295,7 +5206,6 @@ export const ListErpPaymentRequestsResponse = zod.array(ListErpPaymentRequestsRe
 /**
  * @summary 新增付款申請
  */
-
 
 
 export const CreateErpPaymentRequestBody = zod.object({
@@ -5714,8 +5624,6 @@ export const ListSocialPostsResponse = zod.array(ListSocialPostsResponseItem)
  */
 
 
-
-
 export const CreateSocialPostBody = zod.object({
   "content": zod.string().min(1),
   "platforms": zod.array(zod.string()).min(1),
@@ -5748,9 +5656,6 @@ export const CreateSocialPostResponse = zod.object({
 export const UpdateSocialPostParams = zod.object({
   "id": zod.coerce.string()
 })
-
-
-
 
 
 export const UpdateSocialPostBody = zod.object({
@@ -5840,7 +5745,6 @@ export const PreviewSocialPostResponse = zod.object({
  */
 
 
-
 export const GenerateSocialContentBody = zod.object({
   "topic": zod.string().min(1),
   "platforms": zod.array(zod.string()),
@@ -5858,7 +5762,6 @@ export const GenerateSocialContentResponse = zod.object({
  */
 
 
-
 export const GenerateSocialImageBody = zod.object({
   "prompt": zod.string().min(1)
 })
@@ -5872,7 +5775,6 @@ export const GenerateSocialImageResponse = zod.object({
 /**
  * @summary AI 對話式內容排程規劃
  */
-
 
 
 export const SocialAiPlannerBody = zod.object({
@@ -5897,9 +5799,6 @@ export const SocialAiPlannerResponse = zod.object({
 /**
  * @summary 批次建立排程貼文（AI Planner 計畫）
  */
-
-
-
 
 
 export const BatchCreateSocialPostsBody = zod.object({
@@ -5959,7 +5858,6 @@ export const ListNewsletterDomainsResponse = zod.array(ListNewsletterDomainsResp
  * @summary 新增寄件域名（Resend）
  */
 export const createNewsletterDomainBodyDomainMin = 3;
-
 
 
 export const CreateNewsletterDomainBody = zod.object({
@@ -6037,7 +5935,6 @@ export const ListNewsletterApiKeysResponse = zod.array(ListNewsletterApiKeysResp
 /**
  * @summary 新增 API 金鑰
  */
-
 
 
 export const CreateNewsletterApiKeyBody = zod.object({
@@ -6138,7 +6035,6 @@ export const CreateNewsletterSubscriberResponse = zod.object({
  */
 
 
-
 export const ImportNewsletterSubscribersBody = zod.object({
   "csv": zod.string().min(1),
   "tags": zod.array(zod.string()).optional()
@@ -6213,7 +6109,6 @@ export const ListNewsletterCampaignsResponse = zod.array(ListNewsletterCampaigns
 
 
 export const createNewsletterCampaignBodyFromEmailMin = 3;
-
 
 
 export const CreateNewsletterCampaignBody = zod.object({
@@ -6378,7 +6273,6 @@ export const ListNewsletterSequencesResponse = zod.array(ListNewsletterSequences
  */
 
 
-
 export const CreateNewsletterSequenceBody = zod.object({
   "name": zod.string().min(1),
   "description": zod.string().nullish(),
@@ -6406,8 +6300,6 @@ export const UpdateNewsletterSequenceStepParams = zod.object({
 })
 
 export const updateNewsletterSequenceStepBodyDelayDaysMin = 0;
-
-
 
 
 export const UpdateNewsletterSequenceStepBody = zod.object({
@@ -6534,8 +6426,6 @@ export const CreateNewsletterSequenceStepParams = zod.object({
 export const createNewsletterSequenceStepBodyDelayDaysMin = 0;
 
 
-
-
 export const CreateNewsletterSequenceStepBody = zod.object({
   "subject": zod.string().min(1),
   "htmlContent": zod.string().optional(),
@@ -6623,4 +6513,198 @@ export const NewsletterV1SendResponse = zod.object({
   "id": zod.string().nullish()
 })
 
+
+/**
+ * @summary KPI 目標列表（僅系統管理員）
+ */
+export const ListCmoGoalsResponseItem = zod.object({
+  "id": zod.string(),
+  "metric": zod.string().describe('daily_revenue | paid_revenue | orders_count | new_members | published_posts | points_issued | new_articles'),
+  "label": zod.string(),
+  "targetValue": zod.string(),
+  "currentValue": zod.string(),
+  "unit": zod.string(),
+  "period": zod.string().describe('daily | weekly | monthly | quarterly'),
+  "priority": zod.string().describe('high | medium | low'),
+  "status": zod.string().describe('active | on_track | at_risk | behind | achieved'),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListCmoGoalsResponse = zod.array(ListCmoGoalsResponseItem)
+
+
+/**
+ * @summary 建立 KPI 目標
+ */
+
+
+export const CreateCmoGoalBody = zod.object({
+  "metric": zod.string(),
+  "label": zod.string().min(1),
+  "targetValue": zod.number(),
+  "unit": zod.string().optional(),
+  "period": zod.string().optional(),
+  "priority": zod.string().optional(),
+  "startDate": zod.string(),
+  "endDate": zod.string()
+})
+
+export const CreateCmoGoalResponse = zod.object({
+  "id": zod.string(),
+  "metric": zod.string().describe('daily_revenue | paid_revenue | orders_count | new_members | published_posts | points_issued | new_articles'),
+  "label": zod.string(),
+  "targetValue": zod.string(),
+  "currentValue": zod.string(),
+  "unit": zod.string(),
+  "period": zod.string().describe('daily | weekly | monthly | quarterly'),
+  "priority": zod.string().describe('high | medium | low'),
+  "status": zod.string().describe('active | on_track | at_risk | behind | achieved'),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary 更新 KPI 目標
+ */
+export const UpdateCmoGoalParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+export const UpdateCmoGoalBody = zod.object({
+  "metric": zod.string().optional(),
+  "label": zod.string().min(1).optional(),
+  "targetValue": zod.number().optional(),
+  "unit": zod.string().optional(),
+  "period": zod.string().optional(),
+  "priority": zod.string().optional(),
+  "startDate": zod.string().optional(),
+  "endDate": zod.string().optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateCmoGoalResponse = zod.object({
+  "id": zod.string(),
+  "metric": zod.string().describe('daily_revenue | paid_revenue | orders_count | new_members | published_posts | points_issued | new_articles'),
+  "label": zod.string(),
+  "targetValue": zod.string(),
+  "currentValue": zod.string(),
+  "unit": zod.string(),
+  "period": zod.string().describe('daily | weekly | monthly | quarterly'),
+  "priority": zod.string().describe('high | medium | low'),
+  "status": zod.string().describe('active | on_track | at_risk | behind | achieved'),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary 刪除 KPI 目標
+ */
+export const DeleteCmoGoalParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeleteCmoGoalResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary 立即重算所有 KPI 進度
+ */
+export const RefreshCmoGoalsResponseItem = zod.object({
+  "id": zod.string(),
+  "metric": zod.string().describe('daily_revenue | paid_revenue | orders_count | new_members | published_posts | points_issued | new_articles'),
+  "label": zod.string(),
+  "targetValue": zod.string(),
+  "currentValue": zod.string(),
+  "unit": zod.string(),
+  "period": zod.string().describe('daily | weekly | monthly | quarterly'),
+  "priority": zod.string().describe('high | medium | low'),
+  "status": zod.string().describe('active | on_track | at_risk | behind | achieved'),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const RefreshCmoGoalsResponse = zod.array(RefreshCmoGoalsResponseItem)
+
+
+/**
+ * @summary 近日數據快照
+ */
+export const ListCmoSnapshotsQueryParams = zod.object({
+  "days": zod.coerce.number().int().optional()
+})
+
+export const ListCmoSnapshotsResponseItem = zod.object({
+  "date": zod.string(),
+  "data": zod.record(zod.string(), zod.unknown())
+})
+export const ListCmoSnapshotsResponse = zod.array(ListCmoSnapshotsResponseItem)
+
+
+/**
+ * @summary 營運報告列表
+ */
+export const ListCmoReportsResponseItem = zod.object({
+  "id": zod.string(),
+  "reportDate": zod.string(),
+  "reportType": zod.string().describe('daily | manual'),
+  "summary": zod.string(),
+  "recommendations": zod.string().nullish(),
+  "goalProgress": zod.array(zod.record(zod.string(), zod.unknown())).nullish(),
+  "kpiSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "rawData": zod.record(zod.string(), zod.unknown()).nullish(),
+  "createdAt": zod.string()
+})
+export const ListCmoReportsResponse = zod.array(ListCmoReportsResponseItem)
+
+
+/**
+ * @summary 營運報告詳情
+ */
+export const GetCmoReportParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetCmoReportResponse = zod.object({
+  "id": zod.string(),
+  "reportDate": zod.string(),
+  "reportType": zod.string().describe('daily | manual'),
+  "summary": zod.string(),
+  "recommendations": zod.string().nullish(),
+  "goalProgress": zod.array(zod.record(zod.string(), zod.unknown())).nullish(),
+  "kpiSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "rawData": zod.record(zod.string(), zod.unknown()).nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary 手動觸發生成今日營運報告
+ */
+export const GenerateCmoReportResponse = zod.object({
+  "id": zod.string(),
+  "reportDate": zod.string(),
+  "reportType": zod.string().describe('daily | manual'),
+  "summary": zod.string(),
+  "recommendations": zod.string().nullish(),
+  "goalProgress": zod.array(zod.record(zod.string(), zod.unknown())).nullish(),
+  "kpiSnapshot": zod.record(zod.string(), zod.unknown()).nullish(),
+  "rawData": zod.record(zod.string(), zod.unknown()).nullish(),
+  "createdAt": zod.string()
+})
 

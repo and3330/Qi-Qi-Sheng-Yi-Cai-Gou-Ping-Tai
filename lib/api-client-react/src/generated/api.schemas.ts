@@ -5,6 +5,88 @@
  * 七期生醫採購平台 API
  * OpenAPI spec version: 0.1.0
  */
+export interface CmoGoal {
+  id: string;
+  /** daily_revenue | paid_revenue | orders_count | new_members | published_posts | points_issued | new_articles */
+  metric: string;
+  label: string;
+  targetValue: string;
+  currentValue: string;
+  unit: string;
+  /** daily | weekly | monthly | quarterly */
+  period: string;
+  /** high | medium | low */
+  priority: string;
+  /** active | on_track | at_risk | behind | achieved */
+  status: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCmoGoalInput {
+  metric: string;
+  /** @minLength 1 */
+  label: string;
+  targetValue: number;
+  unit?: string;
+  period?: string;
+  priority?: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface UpdateCmoGoalInput {
+  metric?: string;
+  /** @minLength 1 */
+  label?: string;
+  targetValue?: number;
+  unit?: string;
+  period?: string;
+  priority?: string;
+  startDate?: string;
+  endDate?: string;
+  isActive?: boolean;
+}
+
+export type CmoSnapshotData = { [key: string]: unknown };
+
+export interface CmoSnapshot {
+  date: string;
+  data: CmoSnapshotData;
+}
+
+export type CmoReportGoalProgressItem = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type CmoReportKpiSnapshot = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type CmoReportRawData = { [key: string]: unknown } | null;
+
+export interface CmoReport {
+  id: string;
+  reportDate: string;
+  /** daily | manual */
+  reportType: string;
+  summary: string;
+  /** @nullable */
+  recommendations?: string | null;
+  /** @nullable */
+  goalProgress?: CmoReportGoalProgressItem[] | null;
+  /** @nullable */
+  kpiSnapshot?: CmoReportKpiSnapshot;
+  /** @nullable */
+  rawData?: CmoReportRawData;
+  createdAt: string;
+}
+
 export interface SocialAccount {
   id: string;
   /** facebook | instagram | threads | twitter */
@@ -3939,3 +4021,13 @@ tag?: string;
 q?: string;
 };
 
+export type DeleteCmoGoal200 = {
+  ok: boolean;
+};
+
+export type ListCmoSnapshotsParams = {
+/**
+ * 1-31，預設 7（伺服器端夾限）
+ */
+days?: number;
+};

@@ -36,6 +36,7 @@ syncMirrorStock 同步鏡像；新增回填/遷移一律寫成可重跑的差額
 
 ## OpenAPI/orval 陷阱
 - request body 一律用 $ref component schema；inline body 會與 orval 產生的 {OperationId}Body 型別名稱衝突。
+- query 參數勿加 minimum/maximum：orval zod 產出會在 const 宣告前引用（TS2448），數值夾限改在伺服器端做。
 
 ## 其他
 - 收斂舊 API 時用完整 410 handler 取代原 handler，勿在開頭塞 early-return（TS 對 unreachable code 失去 narrowing）。
