@@ -20,3 +20,8 @@ mutation 路由以 fire-and-forget reindex(kind,id) 同步；刪除用 removeFro
 ## AI CMO 模組
 - SSE 串流不走 orval（不支援），前端以 fetch+ReadableStream 解析；對話無伺服器狀態，context 由伺服器注入，AI 僅建議不執行操作。
 - 「每日」自動報告必須基於已完整結束的日期（前一日）生成，避免半日數據誤導；排程冪等靠 DB 部分唯一約束，勿只靠記憶體旗標。
+
+## 商城後台與 ERP 共用同一個 AI 大腦
+ERP 儀表板與商城後台共用同一份行政助理對話、查詢工具與兩段式操作確認，不建立第二套互不相通的 AI。ERP 入口本身不代表取得平台營運資料權限，目前只有平台 admin/ops 可掛載完整 AI。
+**Why:** 跨系統共用才能延續上下文，但直接把行政助理端點放寬給所有 ERP 角色會讓既有 staff 索引與商城資料越權外洩。
+**How to apply:** 新增任何 ERP AI 入口時沿用同一 conversation owner；若要開放 ERP-only 角色，須先對每個查詢工具、RAG 文件與操作能力建立 ERP 角色/選單範圍，不可只修改路由 middleware。

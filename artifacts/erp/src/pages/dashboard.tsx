@@ -3,6 +3,7 @@ import { useGetErpDashboard, getGetErpDashboardQueryKey } from '@workspace/api-c
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, BriefcaseBusiness, CircleDollarSign, Clock3, FileWarning, FolderKanban, Headphones, PackageSearch, ShoppingCart, UserPlus, Users } from 'lucide-react';
 import { format } from 'date-fns';
+import { AiAssistantWidget } from '@/components/ai-assistant-widget';
 
 export default function DashboardPage() {
   const { data: dashboard, isLoading } = useGetErpDashboard({
@@ -13,7 +14,8 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
+        <AiAssistantWidget />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (
             <Card key={i} className="animate-pulse">
@@ -74,6 +76,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <AiAssistantWidget />
       {sections.map((section) => (
         <section key={section.title} className="space-y-3">
           <h2 className="text-sm font-semibold tracking-wide text-muted-foreground">{section.title}</h2>
