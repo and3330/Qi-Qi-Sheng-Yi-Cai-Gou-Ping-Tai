@@ -143,6 +143,8 @@ export const UpdateAdminMemberParams = zod.object({
 })
 
 
+
+
 export const UpdateAdminMemberBody = zod.object({
   "name": zod.string().min(1).optional(),
   "email": zod.string().nullish(),
@@ -208,6 +210,7 @@ export const ListAdminProductsResponse = zod.array(ListAdminProductsResponseItem
  */
 
 
+
 export const createAdminProductBodyPriceHospitalMin = 0;
 
 export const createAdminProductBodyPriceClinicMin = 0;
@@ -217,6 +220,7 @@ export const createAdminProductBodyPriceConsumerMin = 0;
 export const createAdminProductBodyCostPriceMin = 0;
 
 export const createAdminProductBodyStockMin = 0;
+
 
 
 export const CreateAdminProductBody = zod.object({
@@ -266,6 +270,8 @@ export const UpdateAdminProductParams = zod.object({
 })
 
 
+
+
 export const updateAdminProductBodyPriceHospitalMin = 0;
 
 export const updateAdminProductBodyPriceClinicMin = 0;
@@ -273,6 +279,7 @@ export const updateAdminProductBodyPriceClinicMin = 0;
 export const updateAdminProductBodyPriceConsumerMin = 0;
 
 export const updateAdminProductBodyCostPriceMin = 0;
+
 
 
 export const UpdateAdminProductBody = zod.object({
@@ -316,6 +323,7 @@ export const UpdateAdminProductResponse = zod.object({
 /**
  * @summary 手動調整庫存（盤點 / 報廢等，限管理員）
  */
+
 
 
 export const AdjustAdminStockBody = zod.object({
@@ -392,6 +400,7 @@ export const ListAdminSuppliersResponse = zod.array(ListAdminSuppliersResponseIt
  */
 
 
+
 export const CreateAdminSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -422,6 +431,8 @@ export const CreateAdminSupplierResponse = zod.object({
 export const UpdateAdminSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateAdminSupplierBody = zod.object({
@@ -486,6 +497,9 @@ export const ListAdminPurchaseOrdersResponse = zod.array(ListAdminPurchaseOrders
  * @summary 建立採購單（限管理員）
  */
 export const createAdminPurchaseOrderBodyItemsItemUnitCostMin = 0;
+
+
+
 
 
 export const CreateAdminPurchaseOrderBody = zod.object({
@@ -854,6 +868,8 @@ export const registerBodyPasswordMin = 8;
 export const registerBodyPasswordMax = 72;
 
 
+
+
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax).regex(registerBodyUsernameRegExp),
   "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax),
@@ -883,6 +899,8 @@ export const RegisterResponse = zod.object({
 /**
  * @summary Log in with username and password (starts session)
  */
+
+
 
 
 export const LoginBody = zod.object({
@@ -936,6 +954,7 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Update current member profile
  */
+
 
 
 export const UpdateMeBody = zod.object({
@@ -1086,6 +1105,7 @@ export const GetCartResponse = zod.array(GetCartResponseItem)
  */
 
 
+
 export const AddCartItemBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -1147,6 +1167,8 @@ export const ClearCartResponse = zod.void()
 export const UpdateCartItemParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateCartItemBody = zod.object({
@@ -1242,7 +1264,11 @@ export const ListOrdersResponse = zod.array(ListOrdersResponseItem)
  */
 
 
+
 export const createOrderBodyPointsToUseMin = 0;
+
+
+
 
 
 export const CreateOrderBody = zod.object({
@@ -1473,6 +1499,8 @@ export const ListMyLinktreeLinksResponse = zod.array(ListMyLinktreeLinksResponse
  */
 
 
+
+
 export const CreateMyLinktreeLinkBody = zod.object({
   "title": zod.string().min(1),
   "subtitle": zod.string().nullish(),
@@ -1504,6 +1532,9 @@ export const CreateMyLinktreeLinkResponse = zod.object({
 export const UpdateMyLinktreeLinkParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
+
 
 
 export const UpdateMyLinktreeLinkBody = zod.object({
@@ -1812,6 +1843,7 @@ export const AdjustAdminMemberWalletParams = zod.object({
 export const adjustAdminMemberWalletBodyReasonMax = 200;
 
 
+
 export const AdjustAdminMemberWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -1969,6 +2001,7 @@ export const AdjustInstitutionWalletParams = zod.object({
 export const adjustInstitutionWalletBodyReasonMax = 200;
 
 
+
 export const AdjustInstitutionWalletBody = zod.object({
   "type": zod.enum(['deposit', 'adjust']),
   "amount": zod.int().describe('儲值必須為正；調整可為正負 (NT$)'),
@@ -2030,6 +2063,7 @@ export const createAdminArticleBodySummaryMax = 500;
 export const createAdminArticleBodyImageUrlMax = 500;
 
 
+
 export const CreateAdminArticleBody = zod.object({
   "kind": zod.enum(['article', 'faq']),
   "title": zod.string().min(1).max(createAdminArticleBodyTitleMax),
@@ -2068,6 +2102,7 @@ export const updateAdminArticleBodyCategoryMax = 50;
 export const updateAdminArticleBodySummaryMax = 500;
 
 export const updateAdminArticleBodyImageUrlMax = 500;
+
 
 
 export const UpdateAdminArticleBody = zod.object({
@@ -2134,6 +2169,7 @@ export const createAdminAnnouncementBodyCategoryMax = 50;
 export const createAdminAnnouncementBodyImageUrlMax = 500;
 
 
+
 export const CreateAdminAnnouncementBody = zod.object({
   "title": zod.string().min(1).max(createAdminAnnouncementBodyTitleMax),
   "category": zod.string().min(1).max(createAdminAnnouncementBodyCategoryMax),
@@ -2166,6 +2202,7 @@ export const updateAdminAnnouncementBodyTitleMax = 200;
 export const updateAdminAnnouncementBodyCategoryMax = 50;
 
 export const updateAdminAnnouncementBodyImageUrlMax = 500;
+
 
 
 export const UpdateAdminAnnouncementBody = zod.object({
@@ -2227,11 +2264,18 @@ export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevis
  */
 
 
+
+
+
 export const RequestUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.int().min(1),
   "contentType": zod.string().min(1)
 })
+
+
+
+
 
 
 export const RequestUploadUrlResponse = zod.object({
@@ -2275,6 +2319,7 @@ export const UpdateShipmentPhotosParams = zod.object({
 export const updateShipmentPhotosBodyPhotosItemMax = 500;
 
 export const updateShipmentPhotosBodyPhotosMax = 10;
+
 
 
 export const UpdateShipmentPhotosBody = zod.object({
@@ -2328,6 +2373,7 @@ export const createAdminProductVariantBodyCostPriceMin = 0;
 export const createAdminProductVariantBodyStockMin = 0;
 
 
+
 export const CreateAdminProductVariantBody = zod.object({
   "name": zod.string().min(1).max(createAdminProductVariantBodyNameMax),
   "priceHospital": zod.int().min(createAdminProductVariantBodyPriceHospitalMin),
@@ -2368,6 +2414,7 @@ export const updateAdminProductVariantBodyPriceClinicMin = 0;
 export const updateAdminProductVariantBodyPriceConsumerMin = 0;
 
 export const updateAdminProductVariantBodyCostPriceMin = 0;
+
 
 
 export const UpdateAdminProductVariantBody = zod.object({
@@ -2426,6 +2473,7 @@ export const createAdminProfitRuleBodyPercentBpsMin = 0;
 export const createAdminProfitRuleBodyPercentBpsMax = 10000;
 
 
+
 export const CreateAdminProfitRuleBody = zod.object({
   "name": zod.string().min(1).max(createAdminProfitRuleBodyNameMax),
   "tier": zod.enum(['hospital', 'clinic', 'consumer', 'all']),
@@ -2454,6 +2502,7 @@ export const updateAdminProfitRuleBodyNameMax = 100;
 
 export const updateAdminProfitRuleBodyPercentBpsMin = 0;
 export const updateAdminProfitRuleBodyPercentBpsMax = 10000;
+
 
 
 export const UpdateAdminProfitRuleBody = zod.object({
@@ -2548,6 +2597,7 @@ export const createAdminExpenseBodyTitleMax = 200;
 
 
 export const createAdminExpenseBodyNoteMax = 500;
+
 
 
 export const CreateAdminExpenseBody = zod.object({
@@ -2686,6 +2736,7 @@ export const SendAssistantMessageParams = zod.object({
 export const sendAssistantMessageBodyContentMax = 4000;
 
 
+
 export const SendAssistantMessageBody = zod.object({
   "content": zod.string().min(1).max(sendAssistantMessageBodyContentMax)
 })
@@ -2790,6 +2841,7 @@ export const SendSupportMessageParams = zod.object({
 export const sendSupportMessageBodyContentMax = 4000;
 
 
+
 export const SendSupportMessageBody = zod.object({
   "content": zod.string().min(1).max(sendSupportMessageBodyContentMax)
 })
@@ -2855,6 +2907,7 @@ export const ReplySupportConversationParams = zod.object({
 })
 
 export const replySupportConversationBodyContentMax = 4000;
+
 
 
 export const ReplySupportConversationBody = zod.object({
@@ -2979,6 +3032,9 @@ export const ListAdminQuotationsResponse = zod.array(ListAdminQuotationsResponse
  */
 
 export const createAdminQuotationBodyItemsItemUnitPriceMin = 0;
+
+
+
 
 
 export const CreateAdminQuotationBody = zod.object({
@@ -3164,7 +3220,17 @@ export const GetErpDashboardResponse = zod.object({
   "oldValues": zod.unknown().optional(),
   "newValues": zod.unknown().optional(),
   "createdAt": zod.string()
-}))
+})),
+  "monthlySalesAmount": zod.int().optional(),
+  "monthlySalesOrderCount": zod.int().optional(),
+  "pendingPurchaseOrderCount": zod.int().optional(),
+  "lowStockItemCount": zod.int().optional(),
+  "pendingLeaveRequestCount": zod.int().optional(),
+  "openWorkOrderCount": zod.int().optional(),
+  "openComplaintCount": zod.int().optional(),
+  "activeProjectCount": zod.int().optional(),
+  "expiringContractCount": zod.int().optional(),
+  "monthlyNewLeadCount": zod.int().optional()
 })
 
 
@@ -3421,6 +3487,7 @@ export const UpdateErpItemResponse = zod.object({
  */
 
 
+
 export const ErpAdjustStockBody = zod.object({
   "productId": zod.int(),
   "variantId": zod.int().nullish(),
@@ -3498,6 +3565,8 @@ export const ListErpWarehousesResponse = zod.array(ListErpWarehousesResponseItem
  */
 
 
+
+
 export const CreateErpWarehouseBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -3525,6 +3594,8 @@ export const CreateErpWarehouseResponse = zod.object({
 export const UpdateErpWarehouseParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateErpWarehouseBody = zod.object({
@@ -3605,6 +3676,8 @@ export const ListErpStockTransfersResponse = zod.array(ListErpStockTransfersResp
 /**
  * @summary 建立調撥單（草稿）
  */
+
+
 
 
 export const CreateErpStockTransferBody = zod.object({
@@ -3708,6 +3781,8 @@ export const ListErpCustomersResponse = zod.array(ListErpCustomersResponseItem)
  */
 
 
+
+
 export const CreateErpCustomerBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -3747,6 +3822,8 @@ export const CreateErpCustomerResponse = zod.object({
 export const UpdateErpCustomerParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateErpCustomerBody = zod.object({
@@ -3809,6 +3886,7 @@ export const ListErpSuppliersResponse = zod.array(ListErpSuppliersResponseItem)
  */
 
 
+
 export const CreateErpSupplierBody = zod.object({
   "name": zod.string().min(1),
   "contactPerson": zod.string().nullish(),
@@ -3839,6 +3917,8 @@ export const CreateErpSupplierResponse = zod.object({
 export const UpdateErpSupplierParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateErpSupplierBody = zod.object({
@@ -3890,6 +3970,7 @@ export const ListErpPriceListsResponse = zod.array(ListErpPriceListsResponseItem
  */
 
 
+
 export const CreateErpPriceListBody = zod.object({
   "name": zod.string().min(1),
   "description": zod.string().nullish()
@@ -3916,6 +3997,8 @@ export const CreateErpPriceListResponse = zod.object({
 export const UpdateErpPriceListParams = zod.object({
   "id": zod.coerce.number().int()
 })
+
+
 
 
 export const UpdateErpPriceListBody = zod.object({
@@ -4010,6 +4093,9 @@ export const ListErpQuotationsResponse = zod.array(ListErpQuotationsResponseItem
  */
 
 export const createErpQuotationBodyItemsItemUnitPriceMin = 0;
+
+
+
 
 
 export const CreateErpQuotationBody = zod.object({
@@ -4213,6 +4299,8 @@ export const ListErpSalesOrdersResponse = zod.object({
  */
 
 
+
+
 export const CreateErpSalesOrderBody = zod.object({
   "customerId": zod.int(),
   "warehouseId": zod.int().nullish(),
@@ -4377,6 +4465,8 @@ export const ListErpSalesReturnsResponse = zod.array(ListErpSalesReturnsResponse
  */
 
 
+
+
 export const CreateErpSalesReturnBody = zod.object({
   "salesOrderId": zod.int(),
   "warehouseId": zod.int().nullish(),
@@ -4492,6 +4582,9 @@ export const ListErpPurchaseOrdersResponse = zod.array(ListErpPurchaseOrdersResp
  * @summary 開立採購單（ERP）
  */
 export const createErpPurchaseOrderBodyItemsItemUnitCostMin = 0;
+
+
+
 
 
 export const CreateErpPurchaseOrderBody = zod.object({
@@ -4670,6 +4763,8 @@ export const ListErpPurchaseReturnsResponse = zod.array(ListErpPurchaseReturnsRe
 /**
  * @summary 建立採退單（草稿；依已收貨採購單，防超退）
  */
+
+
 
 
 export const CreateErpPurchaseReturnBody = zod.object({
@@ -4879,6 +4974,7 @@ export const createErpJournalEntryBodyLinesItemCreditMin = 0;
 export const createErpJournalEntryBodyLinesMin = 2;
 
 
+
 export const CreateErpJournalEntryBody = zod.object({
   "entryDate": zod.string(),
   "description": zod.string().nullish(),
@@ -4949,6 +5045,8 @@ export const ListErpVouchersResponse = zod.array(ListErpVouchersResponseItem)
 /**
  * @summary 新增收付款/請款單（可核銷發票）
  */
+
+
 
 
 export const CreateErpVoucherBody = zod.object({
@@ -5041,6 +5139,7 @@ export const ListErpInvoicesResponse = zod.array(ListErpInvoicesResponseItem)
 /**
  * @summary 開立發票
  */
+
 
 
 export const CreateErpInvoiceBody = zod.object({
@@ -5206,6 +5305,7 @@ export const ListErpPaymentRequestsResponse = zod.array(ListErpPaymentRequestsRe
 /**
  * @summary 新增付款申請
  */
+
 
 
 export const CreateErpPaymentRequestBody = zod.object({
@@ -5624,6 +5724,8 @@ export const ListSocialPostsResponse = zod.array(ListSocialPostsResponseItem)
  */
 
 
+
+
 export const CreateSocialPostBody = zod.object({
   "content": zod.string().min(1),
   "platforms": zod.array(zod.string()).min(1),
@@ -5656,6 +5758,9 @@ export const CreateSocialPostResponse = zod.object({
 export const UpdateSocialPostParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
+
 
 
 export const UpdateSocialPostBody = zod.object({
@@ -5745,6 +5850,7 @@ export const PreviewSocialPostResponse = zod.object({
  */
 
 
+
 export const GenerateSocialContentBody = zod.object({
   "topic": zod.string().min(1),
   "platforms": zod.array(zod.string()),
@@ -5762,6 +5868,7 @@ export const GenerateSocialContentResponse = zod.object({
  */
 
 
+
 export const GenerateSocialImageBody = zod.object({
   "prompt": zod.string().min(1)
 })
@@ -5775,6 +5882,7 @@ export const GenerateSocialImageResponse = zod.object({
 /**
  * @summary AI 對話式內容排程規劃
  */
+
 
 
 export const SocialAiPlannerBody = zod.object({
@@ -5799,6 +5907,9 @@ export const SocialAiPlannerResponse = zod.object({
 /**
  * @summary 批次建立排程貼文（AI Planner 計畫）
  */
+
+
+
 
 
 export const BatchCreateSocialPostsBody = zod.object({
@@ -5858,6 +5969,7 @@ export const ListNewsletterDomainsResponse = zod.array(ListNewsletterDomainsResp
  * @summary 新增寄件域名（Resend）
  */
 export const createNewsletterDomainBodyDomainMin = 3;
+
 
 
 export const CreateNewsletterDomainBody = zod.object({
@@ -5935,6 +6047,7 @@ export const ListNewsletterApiKeysResponse = zod.array(ListNewsletterApiKeysResp
 /**
  * @summary 新增 API 金鑰
  */
+
 
 
 export const CreateNewsletterApiKeyBody = zod.object({
@@ -6035,6 +6148,7 @@ export const CreateNewsletterSubscriberResponse = zod.object({
  */
 
 
+
 export const ImportNewsletterSubscribersBody = zod.object({
   "csv": zod.string().min(1),
   "tags": zod.array(zod.string()).optional()
@@ -6109,6 +6223,7 @@ export const ListNewsletterCampaignsResponse = zod.array(ListNewsletterCampaigns
 
 
 export const createNewsletterCampaignBodyFromEmailMin = 3;
+
 
 
 export const CreateNewsletterCampaignBody = zod.object({
@@ -6273,6 +6388,7 @@ export const ListNewsletterSequencesResponse = zod.array(ListNewsletterSequences
  */
 
 
+
 export const CreateNewsletterSequenceBody = zod.object({
   "name": zod.string().min(1),
   "description": zod.string().nullish(),
@@ -6300,6 +6416,8 @@ export const UpdateNewsletterSequenceStepParams = zod.object({
 })
 
 export const updateNewsletterSequenceStepBodyDelayDaysMin = 0;
+
+
 
 
 export const UpdateNewsletterSequenceStepBody = zod.object({
@@ -6426,6 +6544,8 @@ export const CreateNewsletterSequenceStepParams = zod.object({
 export const createNewsletterSequenceStepBodyDelayDaysMin = 0;
 
 
+
+
 export const CreateNewsletterSequenceStepBody = zod.object({
   "subject": zod.string().min(1),
   "htmlContent": zod.string().optional(),
@@ -6541,6 +6661,7 @@ export const ListCmoGoalsResponse = zod.array(ListCmoGoalsResponseItem)
  */
 
 
+
 export const CreateCmoGoalBody = zod.object({
   "metric": zod.string(),
   "label": zod.string().min(1),
@@ -6576,6 +6697,8 @@ export const CreateCmoGoalResponse = zod.object({
 export const UpdateCmoGoalParams = zod.object({
   "id": zod.coerce.string()
 })
+
+
 
 
 export const UpdateCmoGoalBody = zod.object({
@@ -6707,4 +6830,2150 @@ export const GenerateCmoReportResponse = zod.object({
   "rawData": zod.record(zod.string(), zod.unknown()).nullish(),
   "createdAt": zod.string()
 })
+
+
+export const SearchErpQueryParams = zod.object({
+  "q": zod.coerce.string()
+})
+
+export const SearchErpResponseItem = zod.object({
+  "type": zod.string(),
+  "id": zod.int(),
+  "title": zod.string(),
+  "subtitle": zod.string().nullish(),
+  "path": zod.string()
+})
+export const SearchErpResponse = zod.array(SearchErpResponseItem)
+
+
+export const ListErpNotificationsResponseItem = zod.object({
+  "id": zod.int(),
+  "memberId": zod.int(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "body": zod.string().nullish(),
+  "linkPath": zod.string().nullish(),
+  "isRead": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListErpNotificationsResponse = zod.array(ListErpNotificationsResponseItem)
+
+
+export const GetErpNotificationsUnreadCountResponse = zod.object({
+  "count": zod.int()
+})
+
+
+export const ReadErpNotificationsBody = zod.object({
+  "ids": zod.array(zod.int()).optional(),
+  "all": zod.boolean().optional()
+})
+
+export const ReadErpNotificationsResponse = zod.unknown()
+
+
+export const getErpCalendarQueryMonthRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])$');
+
+
+export const GetErpCalendarQueryParams = zod.object({
+  "month": zod.coerce.string().regex(getErpCalendarQueryMonthRegExp)
+})
+
+export const GetErpCalendarResponseItem = zod.object({
+  "date": zod.string(),
+  "type": zod.string(),
+  "title": zod.string(),
+  "path": zod.string()
+})
+export const GetErpCalendarResponse = zod.array(GetErpCalendarResponseItem)
+
+
+export const ListErpHrEmployeesResponseItem = zod.object({
+  "id": zod.int(),
+  "employeeNo": zod.string(),
+  "name": zod.string(),
+  "memberId": zod.int().nullish(),
+  "departmentId": zod.int().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "jobGradeId": zod.int().nullish(),
+  "hireDate": zod.string().nullish(),
+  "terminationDate": zod.string().nullish(),
+  "status": zod.enum(['active', 'leave', 'terminated']),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "idNumber": zod.string().nullish(),
+  "birthDate": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "emergencyContact": zod.string().nullish(),
+  "bankAccount": zod.string().nullish(),
+  "baseSalary": zod.int().optional(),
+  "laborInsuranceGrade": zod.int().nullish(),
+  "healthInsuranceGrade": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpHrEmployeesResponse = zod.array(ListErpHrEmployeesResponseItem)
+
+
+
+
+export const createErpHrEmployeeBodyStatusDefault = `active`;
+export const createErpHrEmployeeBodyBaseSalaryDefault = 0;
+
+export const CreateErpHrEmployeeBody = zod.object({
+  "employeeNo": zod.string().min(1),
+  "name": zod.string().min(1),
+  "memberId": zod.int().nullish(),
+  "departmentId": zod.int().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "jobGradeId": zod.int().nullish(),
+  "hireDate": zod.string().nullish(),
+  "terminationDate": zod.string().nullish(),
+  "status": zod.enum(['active', 'leave', 'terminated']).default(createErpHrEmployeeBodyStatusDefault),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "idNumber": zod.string().nullish(),
+  "birthDate": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "emergencyContact": zod.string().nullish(),
+  "bankAccount": zod.string().nullish(),
+  "baseSalary": zod.int().default(createErpHrEmployeeBodyBaseSalaryDefault),
+  "laborInsuranceGrade": zod.int().nullish(),
+  "healthInsuranceGrade": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpHrEmployeeResponse = zod.object({
+  "id": zod.int(),
+  "employeeNo": zod.string(),
+  "name": zod.string(),
+  "memberId": zod.int().nullish(),
+  "departmentId": zod.int().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "jobGradeId": zod.int().nullish(),
+  "hireDate": zod.string().nullish(),
+  "terminationDate": zod.string().nullish(),
+  "status": zod.enum(['active', 'leave', 'terminated']),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "idNumber": zod.string().nullish(),
+  "birthDate": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "emergencyContact": zod.string().nullish(),
+  "bankAccount": zod.string().nullish(),
+  "baseSalary": zod.int().optional(),
+  "laborInsuranceGrade": zod.int().nullish(),
+  "healthInsuranceGrade": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpHrEmployeeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+export const updateErpHrEmployeeBodyStatusDefault = `active`;
+export const updateErpHrEmployeeBodyBaseSalaryDefault = 0;
+
+export const UpdateErpHrEmployeeBody = zod.object({
+  "employeeNo": zod.string().min(1),
+  "name": zod.string().min(1),
+  "memberId": zod.int().nullish(),
+  "departmentId": zod.int().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "jobGradeId": zod.int().nullish(),
+  "hireDate": zod.string().nullish(),
+  "terminationDate": zod.string().nullish(),
+  "status": zod.enum(['active', 'leave', 'terminated']).default(updateErpHrEmployeeBodyStatusDefault),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "idNumber": zod.string().nullish(),
+  "birthDate": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "emergencyContact": zod.string().nullish(),
+  "bankAccount": zod.string().nullish(),
+  "baseSalary": zod.int().default(updateErpHrEmployeeBodyBaseSalaryDefault),
+  "laborInsuranceGrade": zod.int().nullish(),
+  "healthInsuranceGrade": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpHrEmployeeResponse = zod.object({
+  "id": zod.int(),
+  "employeeNo": zod.string(),
+  "name": zod.string(),
+  "memberId": zod.int().nullish(),
+  "departmentId": zod.int().nullish(),
+  "jobTitle": zod.string().nullish(),
+  "jobGradeId": zod.int().nullish(),
+  "hireDate": zod.string().nullish(),
+  "terminationDate": zod.string().nullish(),
+  "status": zod.enum(['active', 'leave', 'terminated']),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "idNumber": zod.string().nullish(),
+  "birthDate": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "emergencyContact": zod.string().nullish(),
+  "bankAccount": zod.string().nullish(),
+  "baseSalary": zod.int().optional(),
+  "laborInsuranceGrade": zod.int().nullish(),
+  "healthInsuranceGrade": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpHrAttendanceResponseItem = zod.object({
+  "id": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "workDate": zod.string(),
+  "clockIn": zod.string().nullish(),
+  "clockOut": zod.string().nullish(),
+  "shiftId": zod.int().nullish(),
+  "status": zod.enum(['normal', 'late', 'early_leave', 'absent', 'leave']),
+  "notes": zod.string().nullish()
+})
+export const ListErpHrAttendanceResponse = zod.array(ListErpHrAttendanceResponseItem)
+
+
+export const CreateErpHrAttendanceBody = zod.object({
+  "employeeId": zod.int(),
+  "workDate": zod.string(),
+  "clockIn": zod.string().nullish(),
+  "clockOut": zod.string().nullish(),
+  "shiftId": zod.int().nullish(),
+  "status": zod.enum(['normal', 'late', 'early_leave', 'absent', 'leave']),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpHrAttendanceResponse = zod.object({
+  "id": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "workDate": zod.string(),
+  "clockIn": zod.string().nullish(),
+  "clockOut": zod.string().nullish(),
+  "shiftId": zod.int().nullish(),
+  "status": zod.enum(['normal', 'late', 'early_leave', 'absent', 'leave']),
+  "notes": zod.string().nullish()
+})
+
+
+export const ClockErpHrAttendanceBody = zod.object({
+  "notes": zod.string().nullish()
+})
+
+export const ClockErpHrAttendanceResponse = zod.object({
+  "id": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "workDate": zod.string(),
+  "clockIn": zod.string().nullish(),
+  "clockOut": zod.string().nullish(),
+  "shiftId": zod.int().nullish(),
+  "status": zod.enum(['normal', 'late', 'early_leave', 'absent', 'leave']),
+  "notes": zod.string().nullish()
+})
+
+
+export const ListErpHrLeaveTypesResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "annualQuota": zod.int(),
+  "requiresProof": zod.boolean()
+})
+export const ListErpHrLeaveTypesResponse = zod.array(ListErpHrLeaveTypesResponseItem)
+
+
+
+export const createErpHrLeaveTypeBodyAnnualQuotaMin = 0;
+
+
+
+export const CreateErpHrLeaveTypeBody = zod.object({
+  "name": zod.string().min(1),
+  "annualQuota": zod.int().min(createErpHrLeaveTypeBodyAnnualQuotaMin),
+  "requiresProof": zod.boolean()
+})
+
+export const CreateErpHrLeaveTypeResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "annualQuota": zod.int(),
+  "requiresProof": zod.boolean()
+})
+
+
+export const UpdateErpHrLeaveTypeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+export const updateErpHrLeaveTypeBodyAnnualQuotaMin = 0;
+
+
+
+export const UpdateErpHrLeaveTypeBody = zod.object({
+  "name": zod.string().min(1),
+  "annualQuota": zod.int().min(updateErpHrLeaveTypeBodyAnnualQuotaMin),
+  "requiresProof": zod.boolean()
+})
+
+export const UpdateErpHrLeaveTypeResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "annualQuota": zod.int(),
+  "requiresProof": zod.boolean()
+})
+
+
+export const DeleteErpHrLeaveTypeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpHrLeaveTypeResponse = zod.void()
+
+
+export const ListErpHrLeavesResponseItem = zod.object({
+  "id": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "leaveTypeId": zod.int(),
+  "leaveTypeName": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "hours": zod.int(),
+  "reason": zod.string().nullish(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
+  "approverId": zod.int().nullish(),
+  "approvedAt": zod.string().nullish(),
+  "rejectReason": zod.string().nullish()
+})
+export const ListErpHrLeavesResponse = zod.array(ListErpHrLeavesResponseItem)
+
+
+
+
+
+export const CreateErpHrLeaveBody = zod.object({
+  "leaveTypeId": zod.int(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "hours": zod.int().min(1),
+  "reason": zod.string().nullish()
+})
+
+export const CreateErpHrLeaveResponse = zod.object({
+  "id": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "leaveTypeId": zod.int(),
+  "leaveTypeName": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "hours": zod.int(),
+  "reason": zod.string().nullish(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
+  "approverId": zod.int().nullish(),
+  "approvedAt": zod.string().nullish(),
+  "rejectReason": zod.string().nullish()
+})
+
+
+export const ActionErpHrLeaveParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ActionErpHrLeaveBody = zod.object({
+  "action": zod.enum(['approve', 'reject', 'cancel']),
+  "rejectReason": zod.string().nullish()
+})
+
+export const ActionErpHrLeaveResponse = zod.object({
+  "id": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "leaveTypeId": zod.int(),
+  "leaveTypeName": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string(),
+  "hours": zod.int(),
+  "reason": zod.string().nullish(),
+  "status": zod.enum(['pending', 'approved', 'rejected', 'cancelled']),
+  "approverId": zod.int().nullish(),
+  "approvedAt": zod.string().nullish(),
+  "rejectReason": zod.string().nullish()
+})
+
+
+export const ListErpHrPayrollRunsResponseItem = zod.object({
+  "id": zod.int(),
+  "period": zod.string(),
+  "status": zod.enum(['draft', 'confirmed', 'paid']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpHrPayrollRunsResponse = zod.array(ListErpHrPayrollRunsResponseItem)
+
+
+export const createErpHrPayrollRunBodyPeriodRegExp = new RegExp('^\\d{4}-(0[1-9]|1[0-2])$');
+
+
+export const CreateErpHrPayrollRunBody = zod.object({
+  "period": zod.string().regex(createErpHrPayrollRunBodyPeriodRegExp),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpHrPayrollRunResponse = zod.object({
+  "id": zod.int(),
+  "period": zod.string(),
+  "status": zod.enum(['draft', 'confirmed', 'paid']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const GetErpHrPayrollRunParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetErpHrPayrollRunResponse = zod.object({
+  "id": zod.int(),
+  "period": zod.string(),
+  "status": zod.enum(['draft', 'confirmed', 'paid']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "runId": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "baseSalary": zod.int(),
+  "overtimePay": zod.int(),
+  "allowances": zod.int(),
+  "laborInsurance": zod.int(),
+  "healthInsurance": zod.int(),
+  "otherDeductions": zod.int(),
+  "netPay": zod.int(),
+  "notes": zod.string().nullish()
+}))
+}))
+
+
+export const UpdateErpHrPayrollRunParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpHrPayrollRunBody = zod.object({
+  "status": zod.enum(['confirmed', 'paid']),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpHrPayrollRunResponse = zod.object({
+  "id": zod.int(),
+  "period": zod.string(),
+  "status": zod.enum(['draft', 'confirmed', 'paid']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const GenerateErpHrPayrollParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const generateErpHrPayrollBodyReplaceDefault = false;
+
+export const GenerateErpHrPayrollBody = zod.object({
+  "replace": zod.boolean().default(generateErpHrPayrollBodyReplaceDefault)
+})
+
+export const GenerateErpHrPayrollResponse = zod.object({
+  "id": zod.int(),
+  "period": zod.string(),
+  "status": zod.enum(['draft', 'confirmed', 'paid']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "runId": zod.int(),
+  "employeeId": zod.int(),
+  "employeeName": zod.string(),
+  "baseSalary": zod.int(),
+  "overtimePay": zod.int(),
+  "allowances": zod.int(),
+  "laborInsurance": zod.int(),
+  "healthInsurance": zod.int(),
+  "otherDeductions": zod.int(),
+  "netPay": zod.int(),
+  "notes": zod.string().nullish()
+}))
+}))
+
+
+export const ListErpHrJobGradesResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "rank": zod.int(),
+  "minSalary": zod.int(),
+  "maxSalary": zod.int()
+})
+export const ListErpHrJobGradesResponse = zod.array(ListErpHrJobGradesResponseItem)
+
+
+export const CreateErpHrJobGradeBody = zod.object({
+  "name": zod.string(),
+  "rank": zod.int(),
+  "minSalary": zod.int(),
+  "maxSalary": zod.int()
+})
+
+export const CreateErpHrJobGradeResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "rank": zod.int(),
+  "minSalary": zod.int(),
+  "maxSalary": zod.int()
+})
+
+
+export const UpdateErpHrJobGradeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpHrJobGradeBody = zod.object({
+  "name": zod.string(),
+  "rank": zod.int(),
+  "minSalary": zod.int(),
+  "maxSalary": zod.int()
+})
+
+export const UpdateErpHrJobGradeResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "rank": zod.int(),
+  "minSalary": zod.int(),
+  "maxSalary": zod.int()
+})
+
+
+export const DeleteErpHrJobGradeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpHrJobGradeResponse = zod.void()
+
+
+export const ListErpHrShiftsResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "breakMinutes": zod.int()
+})
+export const ListErpHrShiftsResponse = zod.array(ListErpHrShiftsResponseItem)
+
+
+export const createErpHrShiftBodyBreakMinutesMin = 0;
+
+
+
+export const CreateErpHrShiftBody = zod.object({
+  "name": zod.string(),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "breakMinutes": zod.int().min(createErpHrShiftBodyBreakMinutesMin)
+})
+
+export const CreateErpHrShiftResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "breakMinutes": zod.int()
+})
+
+
+export const UpdateErpHrShiftParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateErpHrShiftBodyBreakMinutesMin = 0;
+
+
+
+export const UpdateErpHrShiftBody = zod.object({
+  "name": zod.string(),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "breakMinutes": zod.int().min(updateErpHrShiftBodyBreakMinutesMin)
+})
+
+export const UpdateErpHrShiftResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "startTime": zod.string(),
+  "endTime": zod.string(),
+  "breakMinutes": zod.int()
+})
+
+
+export const DeleteErpHrShiftParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpHrShiftResponse = zod.void()
+
+
+export const ListErpHrInsuranceBracketsResponseItem = zod.object({
+  "id": zod.int(),
+  "type": zod.enum(['labor', 'health']),
+  "grade": zod.int(),
+  "salaryMin": zod.int(),
+  "salaryMax": zod.int(),
+  "employeeAmount": zod.int(),
+  "employerAmount": zod.int()
+})
+export const ListErpHrInsuranceBracketsResponse = zod.array(ListErpHrInsuranceBracketsResponseItem)
+
+
+export const CreateErpHrInsuranceBracketBody = zod.object({
+  "type": zod.enum(['labor', 'health']),
+  "grade": zod.int(),
+  "salaryMin": zod.int(),
+  "salaryMax": zod.int(),
+  "employeeAmount": zod.int(),
+  "employerAmount": zod.int()
+})
+
+export const CreateErpHrInsuranceBracketResponse = zod.object({
+  "id": zod.int(),
+  "type": zod.enum(['labor', 'health']),
+  "grade": zod.int(),
+  "salaryMin": zod.int(),
+  "salaryMax": zod.int(),
+  "employeeAmount": zod.int(),
+  "employerAmount": zod.int()
+})
+
+
+export const UpdateErpHrInsuranceBracketParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpHrInsuranceBracketBody = zod.object({
+  "type": zod.enum(['labor', 'health']),
+  "grade": zod.int(),
+  "salaryMin": zod.int(),
+  "salaryMax": zod.int(),
+  "employeeAmount": zod.int(),
+  "employerAmount": zod.int()
+})
+
+export const UpdateErpHrInsuranceBracketResponse = zod.object({
+  "id": zod.int(),
+  "type": zod.enum(['labor', 'health']),
+  "grade": zod.int(),
+  "salaryMin": zod.int(),
+  "salaryMax": zod.int(),
+  "employeeAmount": zod.int(),
+  "employerAmount": zod.int()
+})
+
+
+export const DeleteErpHrInsuranceBracketParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpHrInsuranceBracketResponse = zod.void()
+
+
+export const ListErpCrmAssigneesResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "username": zod.string()
+})
+export const ListErpCrmAssigneesResponse = zod.array(ListErpCrmAssigneesResponseItem)
+
+
+export const ListErpLeadsQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "status": zod.coerce.string().optional()
+})
+
+export const ListErpLeadsResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "company": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "source": zod.enum(['referral', 'web', 'exhibition', 'cold_call', 'other']),
+  "status": zod.enum(['new', 'contacted', 'qualified', 'converted', 'lost']),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpLeadsResponse = zod.array(ListErpLeadsResponseItem)
+
+
+
+export const createErpLeadBodySourceDefault = `other`;
+
+export const CreateErpLeadBody = zod.object({
+  "name": zod.string().min(1),
+  "company": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "source": zod.enum(['referral', 'web', 'exhibition', 'cold_call', 'other']).default(createErpLeadBodySourceDefault),
+  "status": zod.enum(['new', 'contacted', 'qualified', 'lost']).optional(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpLeadResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "company": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "source": zod.enum(['referral', 'web', 'exhibition', 'cold_call', 'other']),
+  "status": zod.enum(['new', 'contacted', 'qualified', 'converted', 'lost']),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpLeadParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+export const updateErpLeadBodyOneSourceDefault = `other`;
+
+export const UpdateErpLeadBody = zod.object({
+  "name": zod.string().min(1),
+  "company": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "source": zod.enum(['referral', 'web', 'exhibition', 'cold_call', 'other']).default(updateErpLeadBodyOneSourceDefault),
+  "status": zod.enum(['new', 'contacted', 'qualified', 'lost']).optional(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpLeadResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "company": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "source": zod.enum(['referral', 'web', 'exhibition', 'cold_call', 'other']),
+  "status": zod.enum(['new', 'contacted', 'qualified', 'converted', 'lost']),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ConvertErpLeadParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const convertErpLeadBodyExpectedAmountMin = 0;
+
+export const convertErpLeadBodyProbabilityMin = 0;
+export const convertErpLeadBodyProbabilityMax = 100;
+
+
+
+export const ConvertErpLeadBody = zod.object({
+  "createCustomer": zod.boolean(),
+  "createOpportunity": zod.boolean(),
+  "opportunityName": zod.string().nullish(),
+  "expectedAmount": zod.int().min(convertErpLeadBodyExpectedAmountMin).optional(),
+  "probability": zod.int().min(convertErpLeadBodyProbabilityMin).max(convertErpLeadBodyProbabilityMax).optional()
+})
+
+export const ConvertErpLeadResponse = zod.object({
+  "lead": zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "company": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "source": zod.enum(['referral', 'web', 'exhibition', 'cold_call', 'other']),
+  "status": zod.enum(['new', 'contacted', 'qualified', 'converted', 'lost']),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+}),
+  "customer": zod.union([zod.object({
+  "id": zod.int(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "memberId": zod.int().nullish(),
+  "memberUsername": zod.string().nullish(),
+  "institutionId": zod.int().nullish(),
+  "contactPerson": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "address": zod.string().nullish(),
+  "taxId": zod.string().nullish(),
+  "paymentTerms": zod.string().nullish(),
+  "priceListId": zod.int().nullish(),
+  "note": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.string()
+}),zod.null()]).optional(),
+  "opportunity": zod.union([zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "leadId": zod.int().nullish(),
+  "customerId": zod.int().nullish(),
+  "stage": zod.enum(['prospecting', 'proposal', 'negotiation', 'won', 'lost']),
+  "expectedAmount": zod.int(),
+  "probability": zod.int(),
+  "expectedCloseDate": zod.string().nullish(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "lostReason": zod.string().nullish(),
+  "createdAt": zod.string()
+}),zod.null()]).optional()
+})
+
+
+export const ListErpOpportunitiesQueryParams = zod.object({
+  "stage": zod.coerce.string().optional()
+})
+
+export const ListErpOpportunitiesResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "leadId": zod.int().nullish(),
+  "customerId": zod.int().nullish(),
+  "stage": zod.enum(['prospecting', 'proposal', 'negotiation', 'won', 'lost']),
+  "expectedAmount": zod.int(),
+  "probability": zod.int(),
+  "expectedCloseDate": zod.string().nullish(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "lostReason": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpOpportunitiesResponse = zod.array(ListErpOpportunitiesResponseItem)
+
+
+export const createErpOpportunityBodyExpectedAmountMin = 0;
+
+export const createErpOpportunityBodyProbabilityMin = 0;
+export const createErpOpportunityBodyProbabilityMax = 100;
+
+
+
+export const CreateErpOpportunityBody = zod.object({
+  "name": zod.string(),
+  "leadId": zod.int().nullish(),
+  "customerId": zod.int().nullish(),
+  "stage": zod.enum(['prospecting', 'proposal', 'negotiation', 'won', 'lost']).optional(),
+  "expectedAmount": zod.int().min(createErpOpportunityBodyExpectedAmountMin).optional(),
+  "probability": zod.int().min(createErpOpportunityBodyProbabilityMin).max(createErpOpportunityBodyProbabilityMax).optional(),
+  "expectedCloseDate": zod.string().nullish(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "lostReason": zod.string().nullish()
+})
+
+export const CreateErpOpportunityResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "leadId": zod.int().nullish(),
+  "customerId": zod.int().nullish(),
+  "stage": zod.enum(['prospecting', 'proposal', 'negotiation', 'won', 'lost']),
+  "expectedAmount": zod.int(),
+  "probability": zod.int(),
+  "expectedCloseDate": zod.string().nullish(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "lostReason": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpOpportunityParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateErpOpportunityBodyOneExpectedAmountMin = 0;
+
+export const updateErpOpportunityBodyOneProbabilityMin = 0;
+export const updateErpOpportunityBodyOneProbabilityMax = 100;
+
+
+
+export const UpdateErpOpportunityBody = zod.object({
+  "name": zod.string(),
+  "leadId": zod.int().nullish(),
+  "customerId": zod.int().nullish(),
+  "stage": zod.enum(['prospecting', 'proposal', 'negotiation', 'won', 'lost']).optional(),
+  "expectedAmount": zod.int().min(updateErpOpportunityBodyOneExpectedAmountMin).optional(),
+  "probability": zod.int().min(updateErpOpportunityBodyOneProbabilityMin).max(updateErpOpportunityBodyOneProbabilityMax).optional(),
+  "expectedCloseDate": zod.string().nullish(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "lostReason": zod.string().nullish()
+})
+
+export const UpdateErpOpportunityResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "leadId": zod.int().nullish(),
+  "customerId": zod.int().nullish(),
+  "stage": zod.enum(['prospecting', 'proposal', 'negotiation', 'won', 'lost']),
+  "expectedAmount": zod.int(),
+  "probability": zod.int(),
+  "expectedCloseDate": zod.string().nullish(),
+  "ownerId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "lostReason": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpComplaintsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListErpComplaintsResponseItem = zod.object({
+  "id": zod.int(),
+  "complaintNo": zod.string(),
+  "customerId": zod.int().nullish(),
+  "memberId": zod.int().nullish(),
+  "category": zod.enum(['product', 'delivery', 'service', 'billing', 'other']),
+  "severity": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "subject": zod.string(),
+  "content": zod.string(),
+  "status": zod.enum(['open', 'investigating', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "resolution": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpComplaintsResponse = zod.array(ListErpComplaintsResponseItem)
+
+
+export const CreateErpComplaintBody = zod.object({
+  "customerId": zod.int().nullish(),
+  "memberId": zod.int().nullish(),
+  "category": zod.enum(['product', 'delivery', 'service', 'billing', 'other']).optional(),
+  "severity": zod.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  "subject": zod.string(),
+  "content": zod.string(),
+  "status": zod.enum(['open', 'investigating', 'resolved', 'closed']).optional(),
+  "assigneeId": zod.int().nullish(),
+  "resolution": zod.string().nullish()
+})
+
+export const CreateErpComplaintResponse = zod.object({
+  "id": zod.int(),
+  "complaintNo": zod.string(),
+  "customerId": zod.int().nullish(),
+  "memberId": zod.int().nullish(),
+  "category": zod.enum(['product', 'delivery', 'service', 'billing', 'other']),
+  "severity": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "subject": zod.string(),
+  "content": zod.string(),
+  "status": zod.enum(['open', 'investigating', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "resolution": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpComplaintParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpComplaintBody = zod.object({
+  "customerId": zod.int().nullish(),
+  "memberId": zod.int().nullish(),
+  "category": zod.enum(['product', 'delivery', 'service', 'billing', 'other']).optional(),
+  "severity": zod.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  "subject": zod.string(),
+  "content": zod.string(),
+  "status": zod.enum(['open', 'investigating', 'resolved', 'closed']).optional(),
+  "assigneeId": zod.int().nullish(),
+  "resolution": zod.string().nullish()
+})
+
+export const UpdateErpComplaintResponse = zod.object({
+  "id": zod.int(),
+  "complaintNo": zod.string(),
+  "customerId": zod.int().nullish(),
+  "memberId": zod.int().nullish(),
+  "category": zod.enum(['product', 'delivery', 'service', 'billing', 'other']),
+  "severity": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "subject": zod.string(),
+  "content": zod.string(),
+  "status": zod.enum(['open', 'investigating', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "resolution": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ConvertErpComplaintToTicketParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ConvertErpComplaintToTicketBody = zod.object({
+  "requesterName": zod.string().nullish()
+})
+
+export const ConvertErpComplaintToTicketResponse = zod.object({
+  "id": zod.int(),
+  "ticketNo": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "status": zod.enum(['open', 'in_progress', 'pending', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "requesterName": zod.string().nullish(),
+  "customerId": zod.int().nullish(),
+  "complaintId": zod.int().nullish(),
+  "dueAt": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpTicketsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListErpTicketsResponseItem = zod.object({
+  "id": zod.int(),
+  "ticketNo": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "status": zod.enum(['open', 'in_progress', 'pending', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "requesterName": zod.string().nullish(),
+  "customerId": zod.int().nullish(),
+  "complaintId": zod.int().nullish(),
+  "dueAt": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpTicketsResponse = zod.array(ListErpTicketsResponseItem)
+
+
+export const CreateErpTicketBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  "status": zod.enum(['open', 'in_progress', 'pending', 'resolved', 'closed']).optional(),
+  "assigneeId": zod.int().nullish(),
+  "requesterName": zod.string().nullish(),
+  "customerId": zod.int().nullish(),
+  "complaintId": zod.int().nullish(),
+  "dueAt": zod.string().nullish()
+})
+
+export const CreateErpTicketResponse = zod.object({
+  "id": zod.int(),
+  "ticketNo": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "status": zod.enum(['open', 'in_progress', 'pending', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "requesterName": zod.string().nullish(),
+  "customerId": zod.int().nullish(),
+  "complaintId": zod.int().nullish(),
+  "dueAt": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const GetErpTicketParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetErpTicketResponse = zod.object({
+  "id": zod.int(),
+  "ticketNo": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "status": zod.enum(['open', 'in_progress', 'pending', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "requesterName": zod.string().nullish(),
+  "customerId": zod.int().nullish(),
+  "complaintId": zod.int().nullish(),
+  "dueAt": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "comments": zod.array(zod.object({
+  "id": zod.int(),
+  "ticketId": zod.int(),
+  "authorId": zod.int().nullish(),
+  "content": zod.string(),
+  "createdAt": zod.string()
+}))
+}))
+
+
+export const UpdateErpTicketParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpTicketBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  "status": zod.enum(['open', 'in_progress', 'pending', 'resolved', 'closed']).optional(),
+  "assigneeId": zod.int().nullish(),
+  "requesterName": zod.string().nullish(),
+  "customerId": zod.int().nullish(),
+  "complaintId": zod.int().nullish(),
+  "dueAt": zod.string().nullish()
+})
+
+export const UpdateErpTicketResponse = zod.object({
+  "id": zod.int(),
+  "ticketNo": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "status": zod.enum(['open', 'in_progress', 'pending', 'resolved', 'closed']),
+  "assigneeId": zod.int().nullish(),
+  "requesterName": zod.string().nullish(),
+  "customerId": zod.int().nullish(),
+  "complaintId": zod.int().nullish(),
+  "dueAt": zod.string().nullish(),
+  "resolvedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const AddErpTicketCommentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const AddErpTicketCommentBody = zod.object({
+  "content": zod.string()
+})
+
+export const AddErpTicketCommentResponse = zod.object({
+  "id": zod.int(),
+  "ticketId": zod.int(),
+  "authorId": zod.int().nullish(),
+  "content": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpKbArticlesQueryParams = zod.object({
+  "q": zod.coerce.string().optional(),
+  "category": zod.coerce.string().optional()
+})
+
+export const ListErpKbArticlesResponseItem = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string(),
+  "tags": zod.array(zod.string()),
+  "isPublished": zod.boolean(),
+  "authorId": zod.int().nullish(),
+  "updatedAt": zod.string(),
+  "createdAt": zod.string()
+})
+export const ListErpKbArticlesResponse = zod.array(ListErpKbArticlesResponseItem)
+
+
+export const createErpKbArticleBodyTagsDefault = [];
+export const createErpKbArticleBodyIsPublishedDefault = false;
+
+export const CreateErpKbArticleBody = zod.object({
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string(),
+  "tags": zod.array(zod.string()).default(createErpKbArticleBodyTagsDefault),
+  "isPublished": zod.boolean().default(createErpKbArticleBodyIsPublishedDefault)
+})
+
+export const CreateErpKbArticleResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string(),
+  "tags": zod.array(zod.string()),
+  "isPublished": zod.boolean(),
+  "authorId": zod.int().nullish(),
+  "updatedAt": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpKbArticleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpKbArticleBody = zod.object({
+  "title": zod.string().optional(),
+  "category": zod.string().optional(),
+  "content": zod.string().optional(),
+  "tags": zod.array(zod.string()).optional(),
+  "isPublished": zod.boolean().optional()
+})
+
+export const UpdateErpKbArticleResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string(),
+  "tags": zod.array(zod.string()),
+  "isPublished": zod.boolean(),
+  "authorId": zod.int().nullish(),
+  "updatedAt": zod.string(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpProjectMembersResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "username": zod.string()
+})
+export const ListErpProjectMembersResponse = zod.array(ListErpProjectMembersResponseItem)
+
+
+export const ListErpProjectsResponseItem = zod.object({
+  "id": zod.int(),
+  "projectNo": zod.string(),
+  "name": zod.string(),
+  "customerId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "status": zod.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "budget": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpProjectsResponse = zod.array(ListErpProjectsResponseItem)
+
+
+export const CreateErpProjectBody = zod.object({
+  "name": zod.string(),
+  "customerId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "budget": zod.int().nullish(),
+  "description": zod.string().nullish()
+})
+
+export const CreateErpProjectResponse = zod.object({
+  "id": zod.int(),
+  "projectNo": zod.string(),
+  "name": zod.string(),
+  "customerId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "status": zod.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "budget": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const GetErpProjectParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetErpProjectResponse = zod.object({
+  "id": zod.int(),
+  "projectNo": zod.string(),
+  "name": zod.string(),
+  "customerId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "status": zod.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "budget": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+}).and(zod.object({
+  "tasks": zod.array(zod.object({
+  "id": zod.int(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "assigneeId": zod.int().nullish(),
+  "status": zod.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "dueDate": zod.string().nullish(),
+  "sortOrder": zod.int(),
+  "estimatedHours": zod.number().nullish(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish()
+})),
+  "taskStats": zod.object({
+  "todo": zod.int(),
+  "in_progress": zod.int(),
+  "review": zod.int(),
+  "done": zod.int(),
+  "cancelled": zod.int()
+}),
+  "totalHours": zod.number()
+}))
+
+
+export const UpdateErpProjectParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpProjectBody = zod.object({
+  "name": zod.string().optional(),
+  "customerId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "budget": zod.int().nullish(),
+  "description": zod.string().nullish()
+})
+
+export const UpdateErpProjectResponse = zod.object({
+  "id": zod.int(),
+  "projectNo": zod.string(),
+  "name": zod.string(),
+  "customerId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "status": zod.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "budget": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteErpProjectParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpProjectResponse = zod.void()
+
+
+export const UpdateErpProjectStatusParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpProjectStatusBody = zod.object({
+  "status": zod.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled'])
+})
+
+export const UpdateErpProjectStatusResponse = zod.object({
+  "id": zod.int(),
+  "projectNo": zod.string(),
+  "name": zod.string(),
+  "customerId": zod.int().nullish(),
+  "managerId": zod.int().nullish(),
+  "status": zod.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "budget": zod.int().nullish(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpProjectTasksQueryParams = zod.object({
+  "mine": zod.coerce.boolean().optional(),
+  "projectId": zod.coerce.number().int().optional()
+})
+
+export const ListErpProjectTasksResponseItem = zod.object({
+  "id": zod.int(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "assigneeId": zod.int().nullish(),
+  "status": zod.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "dueDate": zod.string().nullish(),
+  "sortOrder": zod.int(),
+  "estimatedHours": zod.number().nullish(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish()
+})
+export const ListErpProjectTasksResponse = zod.array(ListErpProjectTasksResponseItem)
+
+
+export const createErpProjectTaskBodyPriorityDefault = `medium`;
+export const createErpProjectTaskBodySortOrderDefault = 0;
+
+export const CreateErpProjectTaskBody = zod.object({
+  "projectId": zod.int(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "assigneeId": zod.int().nullish(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']).default(createErpProjectTaskBodyPriorityDefault),
+  "dueDate": zod.string().nullish(),
+  "sortOrder": zod.int().default(createErpProjectTaskBodySortOrderDefault),
+  "estimatedHours": zod.number().nullish()
+})
+
+export const CreateErpProjectTaskResponse = zod.object({
+  "id": zod.int(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "assigneeId": zod.int().nullish(),
+  "status": zod.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "dueDate": zod.string().nullish(),
+  "sortOrder": zod.int(),
+  "estimatedHours": zod.number().nullish(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish()
+})
+
+
+export const UpdateErpProjectTaskParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpProjectTaskBody = zod.object({
+  "projectId": zod.int().optional(),
+  "title": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "assigneeId": zod.int().nullish(),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  "dueDate": zod.string().nullish(),
+  "sortOrder": zod.int().optional(),
+  "estimatedHours": zod.number().nullish()
+})
+
+export const UpdateErpProjectTaskResponse = zod.object({
+  "id": zod.int(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "assigneeId": zod.int().nullish(),
+  "status": zod.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "dueDate": zod.string().nullish(),
+  "sortOrder": zod.int(),
+  "estimatedHours": zod.number().nullish(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish()
+})
+
+
+export const DeleteErpProjectTaskParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpProjectTaskResponse = zod.void()
+
+
+export const UpdateErpProjectTaskStatusParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpProjectTaskStatusBody = zod.object({
+  "status": zod.enum(['todo', 'in_progress', 'review', 'done', 'cancelled'])
+})
+
+export const UpdateErpProjectTaskStatusResponse = zod.object({
+  "id": zod.int(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "assigneeId": zod.int().nullish(),
+  "status": zod.enum(['todo', 'in_progress', 'review', 'done', 'cancelled']),
+  "priority": zod.enum(['low', 'medium', 'high', 'urgent']),
+  "dueDate": zod.string().nullish(),
+  "sortOrder": zod.int(),
+  "estimatedHours": zod.number().nullish(),
+  "createdAt": zod.string(),
+  "completedAt": zod.string().nullish()
+})
+
+
+export const ListErpJobCardsQueryParams = zod.object({
+  "memberId": zod.coerce.number().int().optional()
+})
+
+export const ListErpJobCardsResponseItem = zod.object({
+  "id": zod.int(),
+  "taskId": zod.int().nullish(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "memberId": zod.int(),
+  "memberName": zod.string().optional(),
+  "workDate": zod.string(),
+  "hours": zod.number(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpJobCardsResponse = zod.array(ListErpJobCardsResponseItem)
+
+
+export const CreateErpJobCardBody = zod.object({
+  "taskId": zod.int().nullish(),
+  "projectId": zod.int(),
+  "workDate": zod.string(),
+  "hours": zod.number(),
+  "description": zod.string().nullish()
+})
+
+export const CreateErpJobCardResponse = zod.object({
+  "id": zod.int(),
+  "taskId": zod.int().nullish(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "memberId": zod.int(),
+  "memberName": zod.string().optional(),
+  "workDate": zod.string(),
+  "hours": zod.number(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpJobCardParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpJobCardBody = zod.object({
+  "taskId": zod.int().nullish(),
+  "projectId": zod.int().optional(),
+  "workDate": zod.string().optional(),
+  "hours": zod.number().optional(),
+  "description": zod.string().nullish()
+})
+
+export const UpdateErpJobCardResponse = zod.object({
+  "id": zod.int(),
+  "taskId": zod.int().nullish(),
+  "projectId": zod.int(),
+  "projectName": zod.string().optional(),
+  "memberId": zod.int(),
+  "memberName": zod.string().optional(),
+  "workDate": zod.string(),
+  "hours": zod.number(),
+  "description": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteErpJobCardParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpJobCardResponse = zod.void()
+
+
+export const ListErpContractsQueryParams = zod.object({
+  "expiring": zod.coerce.boolean().optional()
+})
+
+export const ListErpContractsResponseItem = zod.object({
+  "id": zod.int(),
+  "contractNo": zod.string(),
+  "title": zod.string(),
+  "partyType": zod.enum(['customer', 'supplier', 'other']),
+  "customerId": zod.int().nullish(),
+  "supplierId": zod.int().nullish(),
+  "amount": zod.int().nullish(),
+  "signedDate": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "status": zod.enum(['draft', 'active', 'expired', 'terminated']),
+  "renewalNotice": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpContractsResponse = zod.array(ListErpContractsResponseItem)
+
+
+export const createErpContractBodyStatusDefault = `draft`;
+export const createErpContractBodyRenewalNoticeDefault = false;
+
+export const CreateErpContractBody = zod.object({
+  "title": zod.string(),
+  "partyType": zod.enum(['customer', 'supplier', 'other']),
+  "customerId": zod.int().nullish(),
+  "supplierId": zod.int().nullish(),
+  "amount": zod.int().nullish(),
+  "signedDate": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "status": zod.enum(['draft', 'active', 'expired', 'terminated']).default(createErpContractBodyStatusDefault),
+  "renewalNotice": zod.boolean().default(createErpContractBodyRenewalNoticeDefault),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpContractResponse = zod.object({
+  "id": zod.int(),
+  "contractNo": zod.string(),
+  "title": zod.string(),
+  "partyType": zod.enum(['customer', 'supplier', 'other']),
+  "customerId": zod.int().nullish(),
+  "supplierId": zod.int().nullish(),
+  "amount": zod.int().nullish(),
+  "signedDate": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "status": zod.enum(['draft', 'active', 'expired', 'terminated']),
+  "renewalNotice": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpContractParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpContractBody = zod.object({
+  "title": zod.string().optional(),
+  "partyType": zod.enum(['customer', 'supplier', 'other']).optional(),
+  "customerId": zod.int().nullish(),
+  "supplierId": zod.int().nullish(),
+  "amount": zod.int().nullish(),
+  "signedDate": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "status": zod.enum(['draft', 'active', 'expired', 'terminated']).optional(),
+  "renewalNotice": zod.boolean().optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpContractResponse = zod.object({
+  "id": zod.int(),
+  "contractNo": zod.string(),
+  "title": zod.string(),
+  "partyType": zod.enum(['customer', 'supplier', 'other']),
+  "customerId": zod.int().nullish(),
+  "supplierId": zod.int().nullish(),
+  "amount": zod.int().nullish(),
+  "signedDate": zod.string().nullish(),
+  "startDate": zod.string().nullish(),
+  "endDate": zod.string().nullish(),
+  "status": zod.enum(['draft', 'active', 'expired', 'terminated']),
+  "renewalNotice": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const DeleteErpContractParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteErpContractResponse = zod.void()
+
+
+export const ListErpAssetsResponseItem = zod.object({
+  "id": zod.int(),
+  "assetNo": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "purchaseDate": zod.string().nullish(),
+  "cost": zod.int(),
+  "salvageValue": zod.int(),
+  "usefulLifeMonths": zod.int(),
+  "depreciationMethod": zod.string(),
+  "status": zod.enum(['active', 'disposed', 'idle']),
+  "locationNote": zod.string().nullish(),
+  "custodianId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpAssetsResponse = zod.array(ListErpAssetsResponseItem)
+
+
+export const createErpAssetBodySalvageValueDefault = 0;
+export const createErpAssetBodyDepreciationMethodDefault = `straight_line`;
+export const createErpAssetBodyStatusDefault = `active`;
+
+export const CreateErpAssetBody = zod.object({
+  "name": zod.string(),
+  "category": zod.string(),
+  "purchaseDate": zod.string().nullish(),
+  "cost": zod.int(),
+  "salvageValue": zod.int().default(createErpAssetBodySalvageValueDefault),
+  "usefulLifeMonths": zod.int(),
+  "depreciationMethod": zod.string().default(createErpAssetBodyDepreciationMethodDefault),
+  "status": zod.enum(['active', 'disposed', 'idle']).default(createErpAssetBodyStatusDefault),
+  "locationNote": zod.string().nullish(),
+  "custodianId": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpAssetResponse = zod.object({
+  "id": zod.int(),
+  "assetNo": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "purchaseDate": zod.string().nullish(),
+  "cost": zod.int(),
+  "salvageValue": zod.int(),
+  "usefulLifeMonths": zod.int(),
+  "depreciationMethod": zod.string(),
+  "status": zod.enum(['active', 'disposed', 'idle']),
+  "locationNote": zod.string().nullish(),
+  "custodianId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const UpdateErpAssetParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateErpAssetBodyOneSalvageValueDefault = 0;
+export const updateErpAssetBodyOneDepreciationMethodDefault = `straight_line`;
+export const updateErpAssetBodyOneStatusDefault = `active`;
+
+export const UpdateErpAssetBody = zod.object({
+  "name": zod.string(),
+  "category": zod.string(),
+  "purchaseDate": zod.string().nullish(),
+  "cost": zod.int(),
+  "salvageValue": zod.int().default(updateErpAssetBodyOneSalvageValueDefault),
+  "usefulLifeMonths": zod.int(),
+  "depreciationMethod": zod.string().default(updateErpAssetBodyOneDepreciationMethodDefault),
+  "status": zod.enum(['active', 'disposed', 'idle']).default(updateErpAssetBodyOneStatusDefault),
+  "locationNote": zod.string().nullish(),
+  "custodianId": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpAssetResponse = zod.object({
+  "id": zod.int(),
+  "assetNo": zod.string(),
+  "name": zod.string(),
+  "category": zod.string(),
+  "purchaseDate": zod.string().nullish(),
+  "cost": zod.int(),
+  "salvageValue": zod.int(),
+  "usefulLifeMonths": zod.int(),
+  "depreciationMethod": zod.string(),
+  "status": zod.enum(['active', 'disposed', 'idle']),
+  "locationNote": zod.string().nullish(),
+  "custodianId": zod.int().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpAssetMaintenancesParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListErpAssetMaintenancesResponseItem = zod.object({
+  "id": zod.int(),
+  "assetId": zod.int(),
+  "maintenanceDate": zod.string(),
+  "type": zod.enum(['routine', 'repair']),
+  "cost": zod.int(),
+  "vendor": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpAssetMaintenancesResponse = zod.array(ListErpAssetMaintenancesResponseItem)
+
+
+export const CreateErpAssetMaintenanceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const CreateErpAssetMaintenanceBody = zod.object({
+  "maintenanceDate": zod.string(),
+  "type": zod.enum(['routine', 'repair']),
+  "cost": zod.int(),
+  "vendor": zod.string().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpAssetMaintenanceResponse = zod.object({
+  "id": zod.int(),
+  "assetId": zod.int(),
+  "maintenanceDate": zod.string(),
+  "type": zod.enum(['routine', 'repair']),
+  "cost": zod.int(),
+  "vendor": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+export const ListErpAssetDepreciationsResponseItem = zod.object({
+  "id": zod.int(),
+  "assetId": zod.int(),
+  "period": zod.string(),
+  "amount": zod.int(),
+  "journalEntryId": zod.int().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpAssetDepreciationsResponse = zod.array(ListErpAssetDepreciationsResponseItem)
+
+
+export const RunErpAssetDepreciationBody = zod.object({
+  "period": zod.string()
+})
+
+export const RunErpAssetDepreciationResponse = zod.unknown()
+
+
+export const ListErpBomsResponseItem = zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string(),
+  "version": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullish()
+})
+export const ListErpBomsResponse = zod.array(ListErpBomsResponseItem)
+
+
+export const createErpBomBodyVersionDefault = `1.0`;
+export const createErpBomBodyIsActiveDefault = true;
+
+export const CreateErpBomBody = zod.object({
+  "productId": zod.int(),
+  "name": zod.string(),
+  "version": zod.string().default(createErpBomBodyVersionDefault),
+  "isActive": zod.boolean().default(createErpBomBodyIsActiveDefault),
+  "notes": zod.string().nullish(),
+  "lines": zod.array(zod.object({
+  "componentProductId": zod.int(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "notes": zod.string().nullish()
+})).optional()
+})
+
+export const CreateErpBomResponse = zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string(),
+  "version": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullish()
+})
+
+
+export const GetErpBomParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetErpBomResponse = zod.unknown()
+
+
+export const UpdateErpBomParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpBomBody = zod.object({
+  "productId": zod.int().optional(),
+  "name": zod.string().optional(),
+  "version": zod.string().optional(),
+  "isActive": zod.boolean().optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpBomResponse = zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "name": zod.string(),
+  "version": zod.string(),
+  "isActive": zod.boolean(),
+  "notes": zod.string().nullish()
+})
+
+
+export const ListErpWorkstationsResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "capacityPerDay": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "isActive": zod.boolean()
+})
+export const ListErpWorkstationsResponse = zod.array(ListErpWorkstationsResponseItem)
+
+
+export const createErpWorkstationBodyIsActiveDefault = true;
+
+export const CreateErpWorkstationBody = zod.object({
+  "name": zod.string(),
+  "code": zod.string(),
+  "capacityPerDay": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "isActive": zod.boolean().default(createErpWorkstationBodyIsActiveDefault)
+})
+
+export const CreateErpWorkstationResponse = zod.void()
+
+
+export const UpdateErpWorkstationParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateErpWorkstationBodyIsActiveDefault = true;
+
+export const UpdateErpWorkstationBody = zod.object({
+  "name": zod.string(),
+  "code": zod.string(),
+  "capacityPerDay": zod.number().nullish(),
+  "notes": zod.string().nullish(),
+  "isActive": zod.boolean().default(updateErpWorkstationBodyIsActiveDefault)
+})
+
+export const UpdateErpWorkstationResponse = zod.unknown()
+
+
+export const ListErpWorkOrdersResponseItem = zod.object({
+  "id": zod.int(),
+  "workOrderNo": zod.string(),
+  "bomId": zod.int().nullish(),
+  "productId": zod.int(),
+  "quantity": zod.number(),
+  "status": zod.string(),
+  "workstationId": zod.int().nullish(),
+  "plannedStartDate": zod.string().nullish(),
+  "plannedEndDate": zod.string().nullish(),
+  "actualStartAt": zod.string().nullish(),
+  "actualEndAt": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListErpWorkOrdersResponse = zod.array(ListErpWorkOrdersResponseItem)
+
+
+export const CreateErpWorkOrderBody = zod.object({
+  "bomId": zod.int().nullish(),
+  "productId": zod.int(),
+  "quantity": zod.number(),
+  "workstationId": zod.int().nullish(),
+  "plannedStartDate": zod.string().nullish(),
+  "plannedEndDate": zod.string().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpWorkOrderResponse = zod.void()
+
+
+export const UpdateErpWorkOrderStatusParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpWorkOrderStatusBody = zod.object({
+  "status": zod.string()
+})
+
+export const UpdateErpWorkOrderStatusResponse = zod.unknown()
+
+
+export const ListErpProductionPlansResponseItem = zod.object({
+  "id": zod.int(),
+  "period": zod.string(),
+  "productId": zod.int(),
+  "plannedQuantity": zod.number(),
+  "notes": zod.string().nullish()
+})
+export const ListErpProductionPlansResponse = zod.array(ListErpProductionPlansResponseItem)
+
+
+export const CreateErpProductionPlanBody = zod.object({
+  "period": zod.string(),
+  "productId": zod.int(),
+  "plannedQuantity": zod.number(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpProductionPlanResponse = zod.void()
+
+
+export const UpdateErpProductionPlanParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpProductionPlanBody = zod.object({
+  "period": zod.string(),
+  "productId": zod.int(),
+  "plannedQuantity": zod.number(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpProductionPlanResponse = zod.unknown()
+
+
+export const ListErpInspectionsResponseItem = zod.object({
+  "id": zod.int(),
+  "inspectionNo": zod.string(),
+  "type": zod.string(),
+  "refType": zod.string(),
+  "refId": zod.int().nullish(),
+  "productId": zod.int(),
+  "sampleSize": zod.int(),
+  "passedQty": zod.int(),
+  "failedQty": zod.int(),
+  "result": zod.string(),
+  "inspectorId": zod.int().nullish(),
+  "inspectedAt": zod.string(),
+  "notes": zod.string().nullish()
+})
+export const ListErpInspectionsResponse = zod.array(ListErpInspectionsResponseItem)
+
+
+export const CreateErpInspectionBody = zod.object({
+  "type": zod.string(),
+  "refType": zod.string(),
+  "refId": zod.int().nullish(),
+  "productId": zod.int(),
+  "sampleSize": zod.int(),
+  "passedQty": zod.int(),
+  "failedQty": zod.int(),
+  "result": zod.string(),
+  "inspectorId": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateErpInspectionResponse = zod.void()
+
+
+export const UpdateErpInspectionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpInspectionBody = zod.object({
+  "type": zod.string(),
+  "refType": zod.string(),
+  "refId": zod.int().nullish(),
+  "productId": zod.int(),
+  "sampleSize": zod.int(),
+  "passedQty": zod.int(),
+  "failedQty": zod.int(),
+  "result": zod.string(),
+  "inspectorId": zod.int().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateErpInspectionResponse = zod.unknown()
+
+
+export const ListErpNonconformancesResponseItem = zod.object({
+  "id": zod.int(),
+  "ncNo": zod.string(),
+  "inspectionId": zod.int().nullish(),
+  "productId": zod.int().nullish(),
+  "description": zod.string(),
+  "severity": zod.string(),
+  "status": zod.string(),
+  "disposition": zod.string().nullish(),
+  "closedAt": zod.string().nullish()
+})
+export const ListErpNonconformancesResponse = zod.array(ListErpNonconformancesResponseItem)
+
+
+export const CreateErpNonconformanceBody = zod.object({
+  "inspectionId": zod.int().nullish(),
+  "productId": zod.int().nullish(),
+  "description": zod.string(),
+  "severity": zod.string(),
+  "status": zod.string(),
+  "disposition": zod.string().nullish()
+})
+
+export const CreateErpNonconformanceResponse = zod.void()
+
+
+export const UpdateErpNonconformanceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpNonconformanceBody = zod.object({
+  "inspectionId": zod.int().nullish(),
+  "productId": zod.int().nullish(),
+  "description": zod.string(),
+  "severity": zod.string(),
+  "status": zod.string(),
+  "disposition": zod.string().nullish()
+})
+
+export const UpdateErpNonconformanceResponse = zod.unknown()
+
+
+export const ListErpCapasResponseItem = zod.object({
+  "id": zod.int(),
+  "capaNo": zod.string(),
+  "nonconformanceId": zod.int().nullish(),
+  "type": zod.string(),
+  "rootCause": zod.string(),
+  "actionPlan": zod.string(),
+  "ownerId": zod.int().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string(),
+  "verifiedAt": zod.string().nullish()
+})
+export const ListErpCapasResponse = zod.array(ListErpCapasResponseItem)
+
+
+export const CreateErpCapaBody = zod.object({
+  "nonconformanceId": zod.int().nullish(),
+  "type": zod.string(),
+  "rootCause": zod.string(),
+  "actionPlan": zod.string(),
+  "ownerId": zod.int().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string()
+})
+
+export const CreateErpCapaResponse = zod.void()
+
+
+export const UpdateErpCapaParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateErpCapaBody = zod.object({
+  "nonconformanceId": zod.int().nullish(),
+  "type": zod.string(),
+  "rootCause": zod.string(),
+  "actionPlan": zod.string(),
+  "ownerId": zod.int().nullish(),
+  "dueDate": zod.string().nullish(),
+  "status": zod.string()
+})
+
+export const UpdateErpCapaResponse = zod.unknown()
+
 

@@ -1,0 +1,1 @@
+import { useCreateErpWorkstation,useListErpWorkstations } from '@workspace/api-client-react'; import { ManufacturingPage } from './simple-page'; export default function Page(){return <ManufacturingPage title="工作站" kind="station" useList={useListErpWorkstations} useCreate={useCreateErpWorkstation}/>}

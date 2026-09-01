@@ -7,6 +7,7 @@ import {
   salesOrderItemsTable,
   purchaseOrdersTable,
   purchaseOrderItemsTable,
+  erpAssetDepreciationsTable,
   suppliersTable,
   type ErpJournalLine,
 } from "@workspace/db";
@@ -253,6 +254,23 @@ export async function postPurchaseOrderInvoice(purchaseOrderId: number): Promise
       .update(erpInvoicesTable)
       .set({ journalEntryId: jeId })
       .where(eq(erpInvoicesTable.id, inv.id));
+  });
+}
+
+/** 資產折舊：借折舊費用、貸累計折舊。 */
+export async function postAssetDepreciation(depreciationId: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(erpAssetDepreciationsTable)
+      .where(eq(erpAssetDepreciationsTable.id, depreciationId));
+    if (!row || row.amount <= 0) return;
+    const journalEntryId = await createAutoJournalEntry(tx, {
+      entryDate: `${row.period}-01`, description: `資產 #${row.assetId} ${row.period} 折舊自動立帳`,
+      reference: `${row.assetId}-${row.period}`,
+      lines: [{ accountName: "折舊費用", debit: row.amount, credit: 0 }, { accountName: "累計折舊", debit: 0, credit: row.amount }],
+      sourceType: "asset_depreciation", sourceId: `${row.assetId}-${row.period}`,
+    });
+    await tx.update(erpAssetDepreciationsTable).set({ journalEntryId })
+      .where(eq(erpAssetDepreciationsTable.id, row.id));
   });
 }
 

@@ -2480,6 +2480,16 @@ export interface ErpDashboard {
   departmentCount: number;
   auditLogCount: number;
   recentAuditLogs: ErpAuditLog[];
+  monthlySalesAmount?: number;
+  monthlySalesOrderCount?: number;
+  pendingPurchaseOrderCount?: number;
+  lowStockItemCount?: number;
+  pendingLeaveRequestCount?: number;
+  openWorkOrderCount?: number;
+  openComplaintCount?: number;
+  activeProjectCount?: number;
+  expiringContractCount?: number;
+  monthlyNewLeadCount?: number;
 }
 
 export interface ErpUser {
@@ -3616,6 +3626,1444 @@ export interface NewsletterUsage {
   thisMonth: NewsletterUsageBucket;
 }
 
+export interface ErpSearchResult {
+  type: string;
+  id: number;
+  title: string;
+  /** @nullable */
+  subtitle?: string | null;
+  path: string;
+}
+
+export interface ErpNotification {
+  id: number;
+  memberId: number;
+  type: string;
+  title: string;
+  /** @nullable */
+  body?: string | null;
+  /** @nullable */
+  linkPath?: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface ErpNotificationReadInput {
+  ids?: number[];
+  all?: boolean;
+}
+
+export interface ErpNotificationUnreadCount {
+  count: number;
+}
+
+export interface ErpCalendarEvent {
+  date: string;
+  type: string;
+  title: string;
+  path: string;
+}
+
+export type ErpHrEmployeeStatus = typeof ErpHrEmployeeStatus[keyof typeof ErpHrEmployeeStatus];
+
+
+export const ErpHrEmployeeStatus = {
+  active: 'active',
+  leave: 'leave',
+  terminated: 'terminated',
+} as const;
+
+export interface ErpHrEmployee {
+  id: number;
+  employeeNo: string;
+  name: string;
+  memberId?: number | null;
+  departmentId?: number | null;
+  jobTitle?: string | null;
+  jobGradeId?: number | null;
+  hireDate?: string | null;
+  terminationDate?: string | null;
+  status: ErpHrEmployeeStatus;
+  email?: string | null;
+  phone?: string | null;
+  idNumber?: string | null;
+  birthDate?: string | null;
+  address?: string | null;
+  emergencyContact?: string | null;
+  bankAccount?: string | null;
+  baseSalary?: number;
+  laborInsuranceGrade?: number | null;
+  healthInsuranceGrade?: number | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type ErpHrEmployeeInputStatus = typeof ErpHrEmployeeInputStatus[keyof typeof ErpHrEmployeeInputStatus];
+
+
+export const ErpHrEmployeeInputStatus = {
+  active: 'active',
+  leave: 'leave',
+  terminated: 'terminated',
+} as const;
+
+export interface ErpHrEmployeeInput {
+  /** @minLength 1 */
+  employeeNo: string;
+  /** @minLength 1 */
+  name: string;
+  memberId?: number | null;
+  departmentId?: number | null;
+  jobTitle?: string | null;
+  jobGradeId?: number | null;
+  hireDate?: string | null;
+  terminationDate?: string | null;
+  status?: ErpHrEmployeeInputStatus;
+  email?: string | null;
+  phone?: string | null;
+  idNumber?: string | null;
+  birthDate?: string | null;
+  address?: string | null;
+  emergencyContact?: string | null;
+  bankAccount?: string | null;
+  baseSalary?: number;
+  laborInsuranceGrade?: number | null;
+  healthInsuranceGrade?: number | null;
+  notes?: string | null;
+}
+
+export type ErpHrAttendanceStatus = typeof ErpHrAttendanceStatus[keyof typeof ErpHrAttendanceStatus];
+
+
+export const ErpHrAttendanceStatus = {
+  normal: 'normal',
+  late: 'late',
+  early_leave: 'early_leave',
+  absent: 'absent',
+  leave: 'leave',
+} as const;
+
+export interface ErpHrAttendance {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  workDate: string;
+  clockIn?: string | null;
+  clockOut?: string | null;
+  shiftId?: number | null;
+  status: ErpHrAttendanceStatus;
+  notes?: string | null;
+}
+
+export type ErpHrAttendanceInputStatus = typeof ErpHrAttendanceInputStatus[keyof typeof ErpHrAttendanceInputStatus];
+
+
+export const ErpHrAttendanceInputStatus = {
+  normal: 'normal',
+  late: 'late',
+  early_leave: 'early_leave',
+  absent: 'absent',
+  leave: 'leave',
+} as const;
+
+export interface ErpHrAttendanceInput {
+  employeeId: number;
+  workDate: string;
+  clockIn?: string | null;
+  clockOut?: string | null;
+  shiftId?: number | null;
+  status: ErpHrAttendanceInputStatus;
+  notes?: string | null;
+}
+
+export interface ErpHrClockInput {
+  notes?: string | null;
+}
+
+export interface ErpHrLeaveType {
+  id: number;
+  name: string;
+  annualQuota: number;
+  requiresProof: boolean;
+}
+
+export interface ErpHrLeaveTypeInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 0 */
+  annualQuota: number;
+  requiresProof: boolean;
+}
+
+export type ErpHrLeaveStatus = typeof ErpHrLeaveStatus[keyof typeof ErpHrLeaveStatus];
+
+
+export const ErpHrLeaveStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ErpHrLeave {
+  id: number;
+  employeeId: number;
+  employeeName: string;
+  leaveTypeId: number;
+  leaveTypeName: string;
+  startAt: string;
+  endAt: string;
+  hours: number;
+  reason?: string | null;
+  status: ErpHrLeaveStatus;
+  approverId?: number | null;
+  approvedAt?: string | null;
+  rejectReason?: string | null;
+}
+
+export interface ErpHrLeaveInput {
+  leaveTypeId: number;
+  startAt: string;
+  endAt: string;
+  /** @minimum 1 */
+  hours: number;
+  reason?: string | null;
+}
+
+export type ErpHrLeaveActionInputAction = typeof ErpHrLeaveActionInputAction[keyof typeof ErpHrLeaveActionInputAction];
+
+
+export const ErpHrLeaveActionInputAction = {
+  approve: 'approve',
+  reject: 'reject',
+  cancel: 'cancel',
+} as const;
+
+export interface ErpHrLeaveActionInput {
+  action: ErpHrLeaveActionInputAction;
+  rejectReason?: string | null;
+}
+
+export type ErpHrPayrollRunStatus = typeof ErpHrPayrollRunStatus[keyof typeof ErpHrPayrollRunStatus];
+
+
+export const ErpHrPayrollRunStatus = {
+  draft: 'draft',
+  confirmed: 'confirmed',
+  paid: 'paid',
+} as const;
+
+export interface ErpHrPayrollRun {
+  id: number;
+  period: string;
+  status: ErpHrPayrollRunStatus;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface ErpHrPayrollItem {
+  id: number;
+  runId: number;
+  employeeId: number;
+  employeeName: string;
+  baseSalary: number;
+  overtimePay: number;
+  allowances: number;
+  laborInsurance: number;
+  healthInsurance: number;
+  otherDeductions: number;
+  netPay: number;
+  notes?: string | null;
+}
+
+export type ErpHrPayrollRunDetail = ErpHrPayrollRun & {
+  items: ErpHrPayrollItem[];
+};
+
+export interface ErpHrPayrollRunInput {
+  /** @pattern ^\d{4}-(0[1-9]|1[0-2])$ */
+  period: string;
+  notes?: string | null;
+}
+
+export type ErpHrPayrollRunUpdateStatus = typeof ErpHrPayrollRunUpdateStatus[keyof typeof ErpHrPayrollRunUpdateStatus];
+
+
+export const ErpHrPayrollRunUpdateStatus = {
+  confirmed: 'confirmed',
+  paid: 'paid',
+} as const;
+
+export interface ErpHrPayrollRunUpdate {
+  status: ErpHrPayrollRunUpdateStatus;
+  notes?: string | null;
+}
+
+export interface ErpHrGeneratePayrollInput {
+  replace?: boolean;
+}
+
+export interface ErpHrJobGrade {
+  id: number;
+  name: string;
+  rank: number;
+  minSalary: number;
+  maxSalary: number;
+}
+
+export interface ErpHrJobGradeInput {
+  name: string;
+  rank: number;
+  minSalary: number;
+  maxSalary: number;
+}
+
+export interface ErpHrShift {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+}
+
+export interface ErpHrShiftInput {
+  name: string;
+  startTime: string;
+  endTime: string;
+  /** @minimum 0 */
+  breakMinutes: number;
+}
+
+export type ErpHrInsuranceBracketType = typeof ErpHrInsuranceBracketType[keyof typeof ErpHrInsuranceBracketType];
+
+
+export const ErpHrInsuranceBracketType = {
+  labor: 'labor',
+  health: 'health',
+} as const;
+
+export interface ErpHrInsuranceBracket {
+  id: number;
+  type: ErpHrInsuranceBracketType;
+  grade: number;
+  salaryMin: number;
+  salaryMax: number;
+  employeeAmount: number;
+  employerAmount: number;
+}
+
+export type ErpHrInsuranceBracketInputType = typeof ErpHrInsuranceBracketInputType[keyof typeof ErpHrInsuranceBracketInputType];
+
+
+export const ErpHrInsuranceBracketInputType = {
+  labor: 'labor',
+  health: 'health',
+} as const;
+
+export interface ErpHrInsuranceBracketInput {
+  type: ErpHrInsuranceBracketInputType;
+  grade: number;
+  salaryMin: number;
+  salaryMax: number;
+  employeeAmount: number;
+  employerAmount: number;
+}
+
+export interface ErpCrmAssignee {
+  id: number;
+  name: string;
+  username: string;
+}
+
+export type ErpLeadSource = typeof ErpLeadSource[keyof typeof ErpLeadSource];
+
+
+export const ErpLeadSource = {
+  referral: 'referral',
+  web: 'web',
+  exhibition: 'exhibition',
+  cold_call: 'cold_call',
+  other: 'other',
+} as const;
+
+export type ErpLeadStatus = typeof ErpLeadStatus[keyof typeof ErpLeadStatus];
+
+
+export const ErpLeadStatus = {
+  new: 'new',
+  contacted: 'contacted',
+  qualified: 'qualified',
+  converted: 'converted',
+  lost: 'lost',
+} as const;
+
+export interface ErpLead {
+  id: number;
+  name: string;
+  /** @nullable */
+  company?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  source: ErpLeadSource;
+  status: ErpLeadStatus;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type ErpLeadInputSource = typeof ErpLeadInputSource[keyof typeof ErpLeadInputSource];
+
+
+export const ErpLeadInputSource = {
+  referral: 'referral',
+  web: 'web',
+  exhibition: 'exhibition',
+  cold_call: 'cold_call',
+  other: 'other',
+} as const;
+
+export type ErpLeadInputStatus = typeof ErpLeadInputStatus[keyof typeof ErpLeadInputStatus];
+
+
+export const ErpLeadInputStatus = {
+  new: 'new',
+  contacted: 'contacted',
+  qualified: 'qualified',
+  lost: 'lost',
+} as const;
+
+export interface ErpLeadInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  company?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  source?: ErpLeadInputSource;
+  status?: ErpLeadInputStatus;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type ErpLeadUpdate = ErpLeadInput;
+
+export interface ErpLeadConvertInput {
+  createCustomer: boolean;
+  createOpportunity: boolean;
+  /** @nullable */
+  opportunityName?: string | null;
+  /** @minimum 0 */
+  expectedAmount?: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  probability?: number;
+}
+
+export type ErpOpportunityStage = typeof ErpOpportunityStage[keyof typeof ErpOpportunityStage];
+
+
+export const ErpOpportunityStage = {
+  prospecting: 'prospecting',
+  proposal: 'proposal',
+  negotiation: 'negotiation',
+  won: 'won',
+  lost: 'lost',
+} as const;
+
+export interface ErpOpportunity {
+  id: number;
+  name: string;
+  /** @nullable */
+  leadId?: number | null;
+  /** @nullable */
+  customerId?: number | null;
+  stage: ErpOpportunityStage;
+  expectedAmount: number;
+  probability: number;
+  /** @nullable */
+  expectedCloseDate?: string | null;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  lostReason?: string | null;
+  createdAt: string;
+}
+
+export interface ErpLeadConvertResult {
+  lead: ErpLead;
+  customer?: ErpCustomer | null;
+  opportunity?: ErpOpportunity | null;
+}
+
+export type ErpOpportunityInputStage = typeof ErpOpportunityInputStage[keyof typeof ErpOpportunityInputStage];
+
+
+export const ErpOpportunityInputStage = {
+  prospecting: 'prospecting',
+  proposal: 'proposal',
+  negotiation: 'negotiation',
+  won: 'won',
+  lost: 'lost',
+} as const;
+
+export interface ErpOpportunityInput {
+  name: string;
+  /** @nullable */
+  leadId?: number | null;
+  /** @nullable */
+  customerId?: number | null;
+  stage?: ErpOpportunityInputStage;
+  /** @minimum 0 */
+  expectedAmount?: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  probability?: number;
+  /** @nullable */
+  expectedCloseDate?: string | null;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  lostReason?: string | null;
+}
+
+export type ErpOpportunityUpdate = ErpOpportunityInput;
+
+export type ErpComplaintCategory = typeof ErpComplaintCategory[keyof typeof ErpComplaintCategory];
+
+
+export const ErpComplaintCategory = {
+  product: 'product',
+  delivery: 'delivery',
+  service: 'service',
+  billing: 'billing',
+  other: 'other',
+} as const;
+
+export type ErpComplaintSeverity = typeof ErpComplaintSeverity[keyof typeof ErpComplaintSeverity];
+
+
+export const ErpComplaintSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export type ErpComplaintStatus = typeof ErpComplaintStatus[keyof typeof ErpComplaintStatus];
+
+
+export const ErpComplaintStatus = {
+  open: 'open',
+  investigating: 'investigating',
+  resolved: 'resolved',
+  closed: 'closed',
+} as const;
+
+export interface ErpComplaint {
+  id: number;
+  complaintNo: string;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  memberId?: number | null;
+  category: ErpComplaintCategory;
+  severity: ErpComplaintSeverity;
+  subject: string;
+  content: string;
+  status: ErpComplaintStatus;
+  /** @nullable */
+  assigneeId?: number | null;
+  /** @nullable */
+  resolution?: string | null;
+  /** @nullable */
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export type ErpComplaintInputCategory = typeof ErpComplaintInputCategory[keyof typeof ErpComplaintInputCategory];
+
+
+export const ErpComplaintInputCategory = {
+  product: 'product',
+  delivery: 'delivery',
+  service: 'service',
+  billing: 'billing',
+  other: 'other',
+} as const;
+
+export type ErpComplaintInputSeverity = typeof ErpComplaintInputSeverity[keyof typeof ErpComplaintInputSeverity];
+
+
+export const ErpComplaintInputSeverity = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export type ErpComplaintInputStatus = typeof ErpComplaintInputStatus[keyof typeof ErpComplaintInputStatus];
+
+
+export const ErpComplaintInputStatus = {
+  open: 'open',
+  investigating: 'investigating',
+  resolved: 'resolved',
+  closed: 'closed',
+} as const;
+
+export interface ErpComplaintInput {
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  memberId?: number | null;
+  category?: ErpComplaintInputCategory;
+  severity?: ErpComplaintInputSeverity;
+  subject: string;
+  content: string;
+  status?: ErpComplaintInputStatus;
+  /** @nullable */
+  assigneeId?: number | null;
+  /** @nullable */
+  resolution?: string | null;
+}
+
+export type ErpComplaintUpdate = ErpComplaintInput;
+
+export interface ErpComplaintTicketInput {
+  /** @nullable */
+  requesterName?: string | null;
+}
+
+export type ErpTicketPriority = typeof ErpTicketPriority[keyof typeof ErpTicketPriority];
+
+
+export const ErpTicketPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export type ErpTicketStatus = typeof ErpTicketStatus[keyof typeof ErpTicketStatus];
+
+
+export const ErpTicketStatus = {
+  open: 'open',
+  in_progress: 'in_progress',
+  pending: 'pending',
+  resolved: 'resolved',
+  closed: 'closed',
+} as const;
+
+export interface ErpTicket {
+  id: number;
+  ticketNo: string;
+  title: string;
+  description: string;
+  priority: ErpTicketPriority;
+  status: ErpTicketStatus;
+  /** @nullable */
+  assigneeId?: number | null;
+  /** @nullable */
+  requesterName?: string | null;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  complaintId?: number | null;
+  /** @nullable */
+  dueAt?: string | null;
+  /** @nullable */
+  resolvedAt?: string | null;
+  createdAt: string;
+}
+
+export type ErpTicketInputPriority = typeof ErpTicketInputPriority[keyof typeof ErpTicketInputPriority];
+
+
+export const ErpTicketInputPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export type ErpTicketInputStatus = typeof ErpTicketInputStatus[keyof typeof ErpTicketInputStatus];
+
+
+export const ErpTicketInputStatus = {
+  open: 'open',
+  in_progress: 'in_progress',
+  pending: 'pending',
+  resolved: 'resolved',
+  closed: 'closed',
+} as const;
+
+export interface ErpTicketInput {
+  title: string;
+  description: string;
+  priority?: ErpTicketInputPriority;
+  status?: ErpTicketInputStatus;
+  /** @nullable */
+  assigneeId?: number | null;
+  /** @nullable */
+  requesterName?: string | null;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  complaintId?: number | null;
+  /** @nullable */
+  dueAt?: string | null;
+}
+
+export type ErpTicketUpdate = ErpTicketInput;
+
+export interface ErpTicketComment {
+  id: number;
+  ticketId: number;
+  /** @nullable */
+  authorId?: number | null;
+  content: string;
+  createdAt: string;
+}
+
+export interface ErpTicketCommentInput {
+  content: string;
+}
+
+export type ErpTicketDetail = ErpTicket & {
+  comments: ErpTicketComment[];
+};
+
+export interface ErpKbArticle {
+  id: number;
+  title: string;
+  category: string;
+  content: string;
+  tags: string[];
+  isPublished: boolean;
+  /** @nullable */
+  authorId?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface ErpKbArticleInput {
+  title: string;
+  category: string;
+  content: string;
+  tags?: string[];
+  isPublished?: boolean;
+}
+
+export interface ErpKbArticleUpdate {
+  title?: string;
+  category?: string;
+  content?: string;
+  tags?: string[];
+  isPublished?: boolean;
+}
+
+export interface ErpProjectMember {
+  id: number;
+  name: string;
+  username: string;
+}
+
+export type ErpProjectStatus = typeof ErpProjectStatus[keyof typeof ErpProjectStatus];
+
+
+export const ErpProjectStatus = {
+  planning: 'planning',
+  active: 'active',
+  on_hold: 'on_hold',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ErpProject {
+  id: number;
+  projectNo: string;
+  name: string;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  managerId?: number | null;
+  status: ErpProjectStatus;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  budget?: number | null;
+  /** @nullable */
+  description?: string | null;
+  createdAt: string;
+}
+
+export interface ErpProjectInput {
+  name: string;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  managerId?: number | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  budget?: number | null;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface ErpProjectUpdate {
+  name?: string;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  managerId?: number | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  /** @nullable */
+  budget?: number | null;
+  /** @nullable */
+  description?: string | null;
+}
+
+export type ErpProjectStatusInputStatus = typeof ErpProjectStatusInputStatus[keyof typeof ErpProjectStatusInputStatus];
+
+
+export const ErpProjectStatusInputStatus = {
+  planning: 'planning',
+  active: 'active',
+  on_hold: 'on_hold',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ErpProjectStatusInput {
+  status: ErpProjectStatusInputStatus;
+}
+
+export type ErpProjectTaskStatus = typeof ErpProjectTaskStatus[keyof typeof ErpProjectTaskStatus];
+
+
+export const ErpProjectTaskStatus = {
+  todo: 'todo',
+  in_progress: 'in_progress',
+  review: 'review',
+  done: 'done',
+  cancelled: 'cancelled',
+} as const;
+
+export type ErpProjectTaskPriority = typeof ErpProjectTaskPriority[keyof typeof ErpProjectTaskPriority];
+
+
+export const ErpProjectTaskPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export interface ErpProjectTask {
+  id: number;
+  projectId: number;
+  projectName?: string;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  assigneeId?: number | null;
+  status: ErpProjectTaskStatus;
+  priority: ErpProjectTaskPriority;
+  /** @nullable */
+  dueDate?: string | null;
+  sortOrder: number;
+  /** @nullable */
+  estimatedHours?: number | null;
+  createdAt: string;
+  /** @nullable */
+  completedAt?: string | null;
+}
+
+export type ErpProjectTaskInputPriority = typeof ErpProjectTaskInputPriority[keyof typeof ErpProjectTaskInputPriority];
+
+
+export const ErpProjectTaskInputPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export interface ErpProjectTaskInput {
+  projectId: number;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  assigneeId?: number | null;
+  priority?: ErpProjectTaskInputPriority;
+  /** @nullable */
+  dueDate?: string | null;
+  sortOrder?: number;
+  /** @nullable */
+  estimatedHours?: number | null;
+}
+
+export type ErpProjectTaskUpdatePriority = typeof ErpProjectTaskUpdatePriority[keyof typeof ErpProjectTaskUpdatePriority];
+
+
+export const ErpProjectTaskUpdatePriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  urgent: 'urgent',
+} as const;
+
+export interface ErpProjectTaskUpdate {
+  projectId?: number;
+  title?: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  assigneeId?: number | null;
+  priority?: ErpProjectTaskUpdatePriority;
+  /** @nullable */
+  dueDate?: string | null;
+  sortOrder?: number;
+  /** @nullable */
+  estimatedHours?: number | null;
+}
+
+export type ErpProjectTaskStatusInputStatus = typeof ErpProjectTaskStatusInputStatus[keyof typeof ErpProjectTaskStatusInputStatus];
+
+
+export const ErpProjectTaskStatusInputStatus = {
+  todo: 'todo',
+  in_progress: 'in_progress',
+  review: 'review',
+  done: 'done',
+  cancelled: 'cancelled',
+} as const;
+
+export interface ErpProjectTaskStatusInput {
+  status: ErpProjectTaskStatusInputStatus;
+}
+
+export interface ErpTaskStats {
+  todo: number;
+  in_progress: number;
+  review: number;
+  done: number;
+  cancelled: number;
+}
+
+export type ErpProjectDetail = ErpProject & {
+  tasks: ErpProjectTask[];
+  taskStats: ErpTaskStats;
+  totalHours: number;
+};
+
+export interface ErpJobCard {
+  id: number;
+  /** @nullable */
+  taskId?: number | null;
+  projectId: number;
+  projectName?: string;
+  memberId: number;
+  memberName?: string;
+  workDate: string;
+  hours: number;
+  /** @nullable */
+  description?: string | null;
+  createdAt: string;
+}
+
+export interface ErpJobCardInput {
+  /** @nullable */
+  taskId?: number | null;
+  projectId: number;
+  workDate: string;
+  hours: number;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface ErpJobCardUpdate {
+  /** @nullable */
+  taskId?: number | null;
+  projectId?: number;
+  workDate?: string;
+  hours?: number;
+  /** @nullable */
+  description?: string | null;
+}
+
+export type ErpContractPartyType = typeof ErpContractPartyType[keyof typeof ErpContractPartyType];
+
+
+export const ErpContractPartyType = {
+  customer: 'customer',
+  supplier: 'supplier',
+  other: 'other',
+} as const;
+
+export type ErpContractStatus = typeof ErpContractStatus[keyof typeof ErpContractStatus];
+
+
+export const ErpContractStatus = {
+  draft: 'draft',
+  active: 'active',
+  expired: 'expired',
+  terminated: 'terminated',
+} as const;
+
+export interface ErpContract {
+  id: number;
+  contractNo: string;
+  title: string;
+  partyType: ErpContractPartyType;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  signedDate?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  status: ErpContractStatus;
+  renewalNotice: boolean;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type ErpContractInputPartyType = typeof ErpContractInputPartyType[keyof typeof ErpContractInputPartyType];
+
+
+export const ErpContractInputPartyType = {
+  customer: 'customer',
+  supplier: 'supplier',
+  other: 'other',
+} as const;
+
+export type ErpContractInputStatus = typeof ErpContractInputStatus[keyof typeof ErpContractInputStatus];
+
+
+export const ErpContractInputStatus = {
+  draft: 'draft',
+  active: 'active',
+  expired: 'expired',
+  terminated: 'terminated',
+} as const;
+
+export interface ErpContractInput {
+  title: string;
+  partyType: ErpContractInputPartyType;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  signedDate?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  status?: ErpContractInputStatus;
+  renewalNotice?: boolean;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type ErpContractUpdatePartyType = typeof ErpContractUpdatePartyType[keyof typeof ErpContractUpdatePartyType];
+
+
+export const ErpContractUpdatePartyType = {
+  customer: 'customer',
+  supplier: 'supplier',
+  other: 'other',
+} as const;
+
+export type ErpContractUpdateStatus = typeof ErpContractUpdateStatus[keyof typeof ErpContractUpdateStatus];
+
+
+export const ErpContractUpdateStatus = {
+  draft: 'draft',
+  active: 'active',
+  expired: 'expired',
+  terminated: 'terminated',
+} as const;
+
+export interface ErpContractUpdate {
+  title?: string;
+  partyType?: ErpContractUpdatePartyType;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  supplierId?: number | null;
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  signedDate?: string | null;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  endDate?: string | null;
+  status?: ErpContractUpdateStatus;
+  renewalNotice?: boolean;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type ErpAssetStatus = typeof ErpAssetStatus[keyof typeof ErpAssetStatus];
+
+
+export const ErpAssetStatus = {
+  active: 'active',
+  disposed: 'disposed',
+  idle: 'idle',
+} as const;
+
+export interface ErpAsset {
+  id: number;
+  assetNo: string;
+  name: string;
+  category: string;
+  /** @nullable */
+  purchaseDate?: string | null;
+  cost: number;
+  salvageValue: number;
+  usefulLifeMonths: number;
+  depreciationMethod: string;
+  status: ErpAssetStatus;
+  /** @nullable */
+  locationNote?: string | null;
+  /** @nullable */
+  custodianId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type ErpAssetInputStatus = typeof ErpAssetInputStatus[keyof typeof ErpAssetInputStatus];
+
+
+export const ErpAssetInputStatus = {
+  active: 'active',
+  disposed: 'disposed',
+  idle: 'idle',
+} as const;
+
+export interface ErpAssetInput {
+  name: string;
+  category: string;
+  /** @nullable */
+  purchaseDate?: string | null;
+  cost: number;
+  salvageValue?: number;
+  usefulLifeMonths: number;
+  depreciationMethod?: string;
+  status?: ErpAssetInputStatus;
+  /** @nullable */
+  locationNote?: string | null;
+  /** @nullable */
+  custodianId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type ErpAssetUpdate = ErpAssetInput;
+
+export type ErpAssetMaintenanceType = typeof ErpAssetMaintenanceType[keyof typeof ErpAssetMaintenanceType];
+
+
+export const ErpAssetMaintenanceType = {
+  routine: 'routine',
+  repair: 'repair',
+} as const;
+
+export interface ErpAssetMaintenance {
+  id: number;
+  assetId: number;
+  maintenanceDate: string;
+  type: ErpAssetMaintenanceType;
+  cost: number;
+  /** @nullable */
+  vendor?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+}
+
+export type ErpAssetMaintenanceInputType = typeof ErpAssetMaintenanceInputType[keyof typeof ErpAssetMaintenanceInputType];
+
+
+export const ErpAssetMaintenanceInputType = {
+  routine: 'routine',
+  repair: 'repair',
+} as const;
+
+export interface ErpAssetMaintenanceInput {
+  maintenanceDate: string;
+  type: ErpAssetMaintenanceInputType;
+  cost: number;
+  /** @nullable */
+  vendor?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpAssetDepreciation {
+  id: number;
+  assetId: number;
+  period: string;
+  amount: number;
+  /** @nullable */
+  journalEntryId?: number | null;
+  createdAt: string;
+}
+
+export interface ErpAssetDepreciationRunInput {
+  period: string;
+}
+
+export interface ErpBom {
+  id: number;
+  productId: number;
+  name: string;
+  version: string;
+  isActive: boolean;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpBomLineInput {
+  componentProductId: number;
+  quantity: number;
+  unit: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpBomInput {
+  productId: number;
+  name: string;
+  version?: string;
+  isActive?: boolean;
+  /** @nullable */
+  notes?: string | null;
+  lines?: ErpBomLineInput[];
+}
+
+export interface ErpBomUpdate {
+  productId?: number;
+  name?: string;
+  version?: string;
+  isActive?: boolean;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpWorkstation {
+  id: number;
+  name: string;
+  code: string;
+  /** @nullable */
+  capacityPerDay?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  isActive: boolean;
+}
+
+export interface ErpWorkstationInput {
+  name: string;
+  code: string;
+  /** @nullable */
+  capacityPerDay?: number | null;
+  /** @nullable */
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface ErpWorkOrder {
+  id: number;
+  workOrderNo: string;
+  /** @nullable */
+  bomId?: number | null;
+  productId: number;
+  quantity: number;
+  status: string;
+  /** @nullable */
+  workstationId?: number | null;
+  /** @nullable */
+  plannedStartDate?: string | null;
+  /** @nullable */
+  plannedEndDate?: string | null;
+  /** @nullable */
+  actualStartAt?: string | null;
+  /** @nullable */
+  actualEndAt?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface ErpWorkOrderInput {
+  /** @nullable */
+  bomId?: number | null;
+  productId: number;
+  quantity: number;
+  /** @nullable */
+  workstationId?: number | null;
+  /** @nullable */
+  plannedStartDate?: string | null;
+  /** @nullable */
+  plannedEndDate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpStatusInput {
+  status: string;
+}
+
+export interface ErpProductionPlan {
+  id: number;
+  period: string;
+  productId: number;
+  plannedQuantity: number;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpProductionPlanInput {
+  period: string;
+  productId: number;
+  plannedQuantity: number;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpInspection {
+  id: number;
+  inspectionNo: string;
+  type: string;
+  refType: string;
+  /** @nullable */
+  refId?: number | null;
+  productId: number;
+  sampleSize: number;
+  passedQty: number;
+  failedQty: number;
+  result: string;
+  /** @nullable */
+  inspectorId?: number | null;
+  inspectedAt: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpInspectionInput {
+  type: string;
+  refType: string;
+  /** @nullable */
+  refId?: number | null;
+  productId: number;
+  sampleSize: number;
+  passedQty: number;
+  failedQty: number;
+  result: string;
+  /** @nullable */
+  inspectorId?: number | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ErpNonconformance {
+  id: number;
+  ncNo: string;
+  /** @nullable */
+  inspectionId?: number | null;
+  /** @nullable */
+  productId?: number | null;
+  description: string;
+  severity: string;
+  status: string;
+  /** @nullable */
+  disposition?: string | null;
+  /** @nullable */
+  closedAt?: string | null;
+}
+
+export interface ErpNonconformanceInput {
+  /** @nullable */
+  inspectionId?: number | null;
+  /** @nullable */
+  productId?: number | null;
+  description: string;
+  severity: string;
+  status: string;
+  /** @nullable */
+  disposition?: string | null;
+}
+
+export interface ErpCapa {
+  id: number;
+  capaNo: string;
+  /** @nullable */
+  nonconformanceId?: number | null;
+  type: string;
+  rootCause: string;
+  actionPlan: string;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  dueDate?: string | null;
+  status: string;
+  /** @nullable */
+  verifiedAt?: string | null;
+}
+
+export interface ErpCapaInput {
+  /** @nullable */
+  nonconformanceId?: number | null;
+  type: string;
+  rootCause: string;
+  actionPlan: string;
+  /** @nullable */
+  ownerId?: number | null;
+  /** @nullable */
+  dueDate?: string | null;
+  status: string;
+}
+
 export type ListPortalOrdersParams = {
 status?: ListPortalOrdersStatus;
 };
@@ -4031,3 +5479,50 @@ export type ListCmoSnapshotsParams = {
  */
 days?: number;
 };
+
+export type SearchErpParams = {
+q: string;
+};
+
+export type GetErpCalendarParams = {
+/**
+ * @pattern ^\d{4}-(0[1-9]|1[0-2])$
+ */
+month: string;
+};
+
+export type ListErpLeadsParams = {
+q?: string;
+status?: string;
+};
+
+export type ListErpOpportunitiesParams = {
+stage?: string;
+};
+
+export type ListErpComplaintsParams = {
+status?: string;
+};
+
+export type ListErpTicketsParams = {
+status?: string;
+};
+
+export type ListErpKbArticlesParams = {
+q?: string;
+category?: string;
+};
+
+export type ListErpProjectTasksParams = {
+mine?: boolean;
+projectId?: number;
+};
+
+export type ListErpJobCardsParams = {
+memberId?: number;
+};
+
+export type ListErpContractsParams = {
+expiring?: boolean;
+};
+

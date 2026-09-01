@@ -1,0 +1,1 @@
+import { useCreateErpInspection,useListErpInspections } from '@workspace/api-client-react'; import { QualityPage } from './simple-page'; export default function Page(){return <QualityPage title="品質檢驗" kind="inspection" useList={useListErpInspections} useCreate={useCreateErpInspection}/>}

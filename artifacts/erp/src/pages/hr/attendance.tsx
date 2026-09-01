@@ -1,0 +1,21 @@
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Clock, Loader2, Plus } from 'lucide-react';
+import { getListErpHrAttendanceQueryKey, useClockErpHrAttendance, useCreateErpHrAttendance, useListErpHrAttendance } from '@workspace/api-client-react';
+import { useErpAuth } from '@/hooks/use-erp-auth';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button'; import { Card } from '@/components/ui/card'; import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'; import { Input } from '@/components/ui/input'; import { Label } from '@/components/ui/label'; import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+const hrRoles = ['super_admin', 'admin', 'hr_admin', 'manager'];
+const message = (e: any) => e?.response?.data?.error || e?.message || '操作失敗';
+export default function AttendancePage() {
+  const { data, isLoading } = useListErpHrAttendance(); const { user } = useErpAuth(); const qc = useQueryClient(); const { toast } = useToast(); const [open, setOpen] = useState(false);
+  const refresh = () => qc.invalidateQueries({ queryKey: getListErpHrAttendanceQueryKey() });
+  const clock = useClockErpHrAttendance({ mutation: { onSuccess: () => { refresh(); toast({ title: '打卡成功' }); }, onError: (e) => toast({ title: '打卡失敗', description: message(e), variant: 'destructive' }) } });
+  return <div className="space-y-6"><div className="flex justify-between"><h2 className="flex items-center gap-2 text-xl font-bold"><Clock className="h-5 w-5 text-primary" />出勤打卡</h2><div className="flex gap-2">{hrRoles.includes(user?.erpRole || '') && <Button variant="outline" onClick={() => setOpen(true)}><Plus className="mr-2 h-4 w-4" />補登</Button>}<Button disabled={clock.isPending} onClick={() => clock.mutate({ data: {} })}>現在打卡</Button></div></div>
+    <Card><Table><TableHeader><TableRow>{['日期', '員工', '上班', '下班', '狀態', '備註'].map((x) => <TableHead key={x}>{x}</TableHead>)}</TableRow></TableHeader><TableBody>{isLoading ? <TableRow><TableCell colSpan={6}><Loader2 className="mx-auto my-8 animate-spin" /></TableCell></TableRow> : data?.map((r) => <TableRow key={r.id}><TableCell>{r.workDate}</TableCell><TableCell>{r.employeeName}</TableCell><TableCell>{r.clockIn ? new Date(r.clockIn).toLocaleString('zh-TW') : '—'}</TableCell><TableCell>{r.clockOut ? new Date(r.clockOut).toLocaleString('zh-TW') : '—'}</TableCell><TableCell>{r.status}</TableCell><TableCell>{r.notes || '—'}</TableCell></TableRow>)}</TableBody></Table></Card><AttendanceDialog open={open} onClose={() => setOpen(false)} refresh={refresh} /></div>;
+}
+function AttendanceDialog({ open, onClose, refresh }: { open: boolean; onClose: () => void; refresh: () => void }) {
+  const [employeeId, setEmployeeId] = useState(''); const [workDate, setWorkDate] = useState(''); const [clockIn, setClockIn] = useState(''); const [clockOut, setClockOut] = useState(''); const { toast } = useToast();
+  const save = useCreateErpHrAttendance({ mutation: { onSuccess: () => { refresh(); toast({ title: '補登完成' }); onClose(); }, onError: (e) => toast({ title: '補登失敗', description: message(e), variant: 'destructive' }) } });
+  return <Dialog open={open} onOpenChange={(v) => !v && onClose()}><DialogContent><DialogHeader><DialogTitle>補登出勤</DialogTitle></DialogHeader><div className="grid gap-4"><div><Label>員工 ID</Label><Input type="number" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} /></div><div><Label>工作日</Label><Input type="date" value={workDate} onChange={(e) => setWorkDate(e.target.value)} /></div><div><Label>上班時間</Label><Input type="datetime-local" value={clockIn} onChange={(e) => setClockIn(e.target.value)} /></div><div><Label>下班時間</Label><Input type="datetime-local" value={clockOut} onChange={(e) => setClockOut(e.target.value)} /></div></div><DialogFooter><Button variant="outline" onClick={onClose}>取消</Button><Button disabled={!employeeId || !workDate} onClick={() => save.mutate({ data: { employeeId: Number(employeeId), workDate, clockIn: clockIn ? new Date(clockIn).toISOString() : null, clockOut: clockOut ? new Date(clockOut).toISOString() : null, shiftId: null, status: 'normal', notes: null } })}>儲存</Button></DialogFooter></DialogContent></Dialog>;
+}

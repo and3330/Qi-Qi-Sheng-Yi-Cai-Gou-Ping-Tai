@@ -1,0 +1,1 @@
+import { useCreateErpWorkOrder,useListErpWorkOrders,useUpdateErpWorkOrderStatus } from '@workspace/api-client-react'; import { ManufacturingPage } from './simple-page'; export default function Page(){return <ManufacturingPage title="製令" kind="order" useList={useListErpWorkOrders} useCreate={useCreateErpWorkOrder} useStatus={useUpdateErpWorkOrderStatus}/>}

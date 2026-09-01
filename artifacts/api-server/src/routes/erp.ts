@@ -85,7 +85,7 @@ router.get("/erp/me", requireErpAny, (req, res) => {
 /* ---------- dashboard ---------- */
 
 router.get("/erp/dashboard", requireErpMenu("/"), async (_req, res) => {
-  const [[users], [erpUsers], [depts], [logs], recent] = await Promise.all([
+  const [[users], [erpUsers], [depts], [logs], recent, metricsResult] = await Promise.all([
     db.select({ n: count() }).from(membersTable),
     db
       .select({ n: count() })
@@ -103,13 +103,35 @@ router.get("/erp/dashboard", requireErpMenu("/"), async (_req, res) => {
       .from(erpAuditLogsTable)
       .orderBy(desc(erpAuditLogsTable.id))
       .limit(10),
+    db.execute(sql`SELECT
+      COALESCE((SELECT sum(total_amount) FROM sales_orders WHERE created_at >= date_trunc('month', now()) AND status <> 'cancelled'),0)::int monthly_sales_amount,
+      (SELECT count(*) FROM sales_orders WHERE created_at >= date_trunc('month', now()) AND status <> 'cancelled')::int monthly_sales_order_count,
+      (SELECT count(*) FROM purchase_orders WHERE status='ordered')::int pending_purchase_order_count,
+      (SELECT count(*) FROM products WHERE stock < safety_stock AND is_virtual=false)::int low_stock_item_count,
+      (SELECT count(*) FROM erp_leave_requests WHERE status='pending')::int pending_leave_request_count,
+      (SELECT count(*) FROM erp_work_orders WHERE status NOT IN ('completed','cancelled'))::int open_work_order_count,
+      (SELECT count(*) FROM erp_complaints WHERE status NOT IN ('resolved','closed'))::int open_complaint_count,
+      (SELECT count(*) FROM erp_projects WHERE status='active')::int active_project_count,
+      (SELECT count(*) FROM erp_contracts WHERE status='active' AND end_date::date BETWEEN current_date AND current_date+30)::int expiring_contract_count,
+      (SELECT count(*) FROM erp_leads WHERE created_at >= date_trunc('month', now()))::int monthly_new_lead_count`),
   ]);
+  const metrics = ((metricsResult as any).rows ?? metricsResult)[0] ?? {};
   res.json({
     userCount: users.n,
     erpUserCount: erpUsers.n,
     departmentCount: depts.n,
     auditLogCount: logs.n,
     recentAuditLogs: recent.map(serializeAuditLog),
+    monthlySalesAmount: metrics.monthly_sales_amount,
+    monthlySalesOrderCount: metrics.monthly_sales_order_count,
+    pendingPurchaseOrderCount: metrics.pending_purchase_order_count,
+    lowStockItemCount: metrics.low_stock_item_count,
+    pendingLeaveRequestCount: metrics.pending_leave_request_count,
+    openWorkOrderCount: metrics.open_work_order_count,
+    openComplaintCount: metrics.open_complaint_count,
+    activeProjectCount: metrics.active_project_count,
+    expiringContractCount: metrics.expiring_contract_count,
+    monthlyNewLeadCount: metrics.monthly_new_lead_count,
   });
 });
 

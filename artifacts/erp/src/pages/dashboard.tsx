@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGetErpDashboard, getGetErpDashboardQueryKey } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, ShieldCheck, Building2, Activity } from 'lucide-react';
+import { Activity, BriefcaseBusiness, CircleDollarSign, Clock3, FileWarning, FolderKanban, Headphones, PackageSearch, ShoppingCart, UserPlus, Users } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function DashboardPage() {
@@ -26,50 +26,73 @@ export default function DashboardPage() {
     );
   }
 
+  const summary = dashboard as typeof dashboard & {
+    monthlySalesAmount?: number;
+    monthlySalesOrderCount?: number;
+    pendingPurchaseOrderCount?: number;
+    lowStockItemCount?: number;
+    pendingLeaveRequestCount?: number;
+    openWorkOrderCount?: number;
+    openComplaintCount?: number;
+    activeProjectCount?: number;
+    expiringContractCount?: number;
+    monthlyNewLeadCount?: number;
+  };
+
+  const sections = [
+    {
+      title: '銷售 / 採購',
+      cards: [
+        { label: '本月銷貨金額', value: `$${(summary?.monthlySalesAmount ?? 0).toLocaleString('zh-TW')}`, hint: `${summary?.monthlySalesOrderCount ?? 0} 筆銷貨單`, icon: CircleDollarSign },
+        { label: '待收貨採購單', value: summary?.pendingPurchaseOrderCount ?? 0, hint: '尚待完成收貨', icon: ShoppingCart },
+        ...(summary?.lowStockItemCount === undefined ? [] : [{ label: '低庫存品項', value: summary.lowStockItemCount, hint: '低於安全庫存', icon: PackageSearch }]),
+      ],
+    },
+    {
+      title: '人資',
+      cards: [
+        { label: '待簽核請假', value: summary?.pendingLeaveRequestCount ?? 0, hint: '等待主管或人資處理', icon: Clock3 },
+        { label: 'ERP 使用者', value: summary?.erpUserCount ?? 0, hint: `共 ${summary?.departmentCount ?? 0} 個部門`, icon: Users },
+      ],
+    },
+    {
+      title: '客服',
+      cards: [
+        { label: '開放工單', value: summary?.openWorkOrderCount ?? 0, hint: '尚未結案', icon: Headphones },
+        { label: '開放客訴', value: summary?.openComplaintCount ?? 0, hint: '尚未結案', icon: FileWarning },
+        { label: '本月新潛客', value: summary?.monthlyNewLeadCount ?? 0, hint: '本月建立', icon: UserPlus },
+      ],
+    },
+    {
+      title: '專案 / 合約',
+      cards: [
+        { label: '進行中專案', value: summary?.activeProjectCount ?? 0, hint: '目前執行中', icon: FolderKanban },
+        { label: '30 天內到期合約', value: summary?.expiringContractCount ?? 0, hint: '請留意續約時程', icon: BriefcaseBusiness },
+      ],
+    },
+  ];
+
   return (
     <div className="space-y-8">
-      {/* Top Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">總使用者數</CardTitle>
-            <Users className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{dashboard?.userCount ?? 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">ERP 權限帳號</CardTitle>
-            <ShieldCheck className="w-4 h-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{dashboard?.erpUserCount ?? 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">組織部門數</CardTitle>
-            <Building2 className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{dashboard?.departmentCount ?? 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">今日操作紀錄</CardTitle>
-            <Activity className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{dashboard?.auditLogCount ?? 0}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {sections.map((section) => (
+        <section key={section.title} className="space-y-3">
+          <h2 className="text-sm font-semibold tracking-wide text-muted-foreground">{section.title}</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {section.cards.map(({ label, value, hint, icon: Icon }) => (
+              <Card key={label} className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+                  <Icon className="size-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{value}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      ))}
 
       {/* Recent Activity */}
       <Card className="shadow-sm border-t-4 border-t-primary">

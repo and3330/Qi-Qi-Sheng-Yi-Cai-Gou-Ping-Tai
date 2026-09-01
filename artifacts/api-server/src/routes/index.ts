@@ -35,6 +35,14 @@ import adminSocialRouter from "./adminSocial";
 import newsletterRouter from "./newsletter";
 import newsletterPublicRouter from "./newsletterPublic";
 import adminCmoRouter from "./adminCmo";
+import erpHrRouter from "./erpHr";
+import erpCrmRouter from "./erpCrm";
+import erpProjectsRouter from "./erpProjects";
+import erpContractsRouter from "./erpContracts";
+import erpAssetsRouter from "./erpAssets";
+import erpManufacturingRouter from "./erpManufacturing";
+import erpQualityRouter from "./erpQuality";
+import erpHorizontalRouter from "./erpHorizontal";
 
 const router: IRouter = Router();
 router.use(healthRouter);
@@ -73,5 +81,13 @@ router.use(adminSocialRouter);
 router.use(newsletterRouter);
 router.use(newsletterPublicRouter);
 router.use(adminCmoRouter);
+router.use(erpHrRouter);
+router.use(erpCrmRouter);
+router.use(erpProjectsRouter);
+router.use(erpContractsRouter);
+router.use(erpAssetsRouter);
+router.use(erpManufacturingRouter);
+router.use(erpQualityRouter);
+router.use(erpHorizontalRouter);
 
 export default router;

@@ -1,15 +1,23 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useErpAuth } from '@/hooks/use-erp-auth';
 import { NAV_CONFIG } from '@/lib/nav';
 import { ERP_ROLES, ErpRole } from '@/lib/roles';
 import { useGetErpMenuPermissions, getGetErpMenuPermissionsQueryKey } from '@workspace/api-client-react';
-import { LogOut, LayoutDashboard, Users, Building2, Shield, Activity, ExternalLink } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Building2, Shield, Activity, Bell, ExternalLink, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useErpAuth();
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+  const queryClient = useQueryClient();
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const { data: menuPermissions } = useGetErpMenuPermissions({
     query: {
@@ -17,6 +25,51 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       enabled: !!user?.erpRole,
     }
   });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchText.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setSearchOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const { data: searchResults = [], isFetching: searching } = useQuery({
+    queryKey: ['erp-global-search', debouncedSearch],
+    queryFn: () => api<SearchResult[]>(`/erp/search?q=${encodeURIComponent(debouncedSearch)}`),
+    enabled: searchOpen && debouncedSearch.length > 0,
+  });
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['erp-notifications'],
+    queryFn: () => api<Notification[]>('/erp/notifications'),
+    refetchInterval: 60_000,
+  });
+  const { data: unread } = useQuery({
+    queryKey: ['erp-notifications-unread'],
+    queryFn: () => api<{ count: number }>('/erp/notifications/unread-count'),
+    refetchInterval: 60_000,
+  });
+  const markRead = useMutation({
+    mutationFn: (body: { ids?: number[]; all?: boolean }) => api('/erp/notifications/read', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['erp-notifications'] });
+      void queryClient.invalidateQueries({ queryKey: ['erp-notifications-unread'] });
+    },
+  });
+
+  const groupedResults = useMemo(() => {
+    const groups = new Map<string, SearchResult[]>();
+    for (const result of searchResults) groups.set(result.type, [...(groups.get(result.type) ?? []), result]);
+    return groups;
+  }, [searchResults]);
 
   const visibleNavGroups = useMemo(() => {
     if (!user?.erpRole) return {};
@@ -132,10 +185,59 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 bg-secondary/30">
-        <header className="h-16 bg-card border-b flex items-center px-8 shrink-0">
+        <header className="h-16 bg-card border-b flex items-center gap-4 px-8 shrink-0">
           <h2 className="text-lg font-semibold text-card-foreground">
             {NAV_CONFIG.find(item => item.path === location)?.label || '頁面'}
           </h2>
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            className="ml-auto flex h-9 w-full max-w-sm items-center gap-2 rounded-md border bg-background px-3 text-sm text-muted-foreground hover:bg-accent"
+          >
+            <Search className="size-4" />
+            <span>搜尋品項、單據、客戶…</span>
+            <kbd className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px]">⌘ K</kbd>
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="relative" aria-label="通知">
+                <Bell className="size-5" />
+                {(unread?.count ?? 0) > 0 && (
+                  <Badge className="absolute -right-1 -top-1 h-5 min-w-5 justify-center px-1 text-[10px]">
+                    {(unread?.count ?? 0) > 99 ? '99+' : unread?.count}
+                  </Badge>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-96">
+              <div className="flex items-center justify-between px-2">
+                <DropdownMenuLabel>通知</DropdownMenuLabel>
+                {(unread?.count ?? 0) > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => markRead.mutate({ all: true })}>全部已讀</Button>
+                )}
+              </div>
+              <DropdownMenuSeparator />
+              {notifications.length === 0 ? (
+                <p className="px-3 py-8 text-center text-sm text-muted-foreground">目前沒有通知</p>
+              ) : notifications.map((notification) => (
+                <DropdownMenuItem
+                  key={notification.id}
+                  className="items-start py-3"
+                  onSelect={() => {
+                    if (!notification.isRead) markRead.mutate({ ids: [notification.id] });
+                    if (notification.linkPath) navigate(notification.linkPath);
+                  }}
+                >
+                  <span className={`mt-1.5 size-2 shrink-0 rounded-full ${notification.isRead ? 'bg-muted' : 'bg-primary'}`} />
+                  <span className="min-w-0">
+                    <span className="block font-medium">{notification.title}</span>
+                    {notification.body && <span className="mt-0.5 block line-clamp-2 text-xs text-muted-foreground">{notification.body}</span>}
+                    <span className="mt-1 block text-[11px] text-muted-foreground">{new Date(notification.createdAt).toLocaleString('zh-TW')}</span>
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
         <div className="flex-1 p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
@@ -143,6 +245,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </main>
+      <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <CommandInput placeholder="輸入關鍵字搜尋…" value={searchText} onValueChange={setSearchText} />
+        <CommandList>
+          <CommandEmpty>{searching ? '搜尋中…' : debouncedSearch ? '找不到符合的結果' : '請輸入搜尋關鍵字'}</CommandEmpty>
+          {[...groupedResults.entries()].map(([type, results]) => (
+            <CommandGroup key={type} heading={SEARCH_TYPE_LABELS[type] ?? type}>
+              {results.map((result) => (
+                <CommandItem
+                  key={`${result.type}-${result.id}`}
+                  value={`${result.type}-${result.id}-${result.title}`}
+                  onSelect={() => {
+                    setSearchOpen(false);
+                    setSearchText('');
+                    navigate(result.path);
+                  }}
+                >
+                  <Search className="size-4 text-muted-foreground" />
+                  <span className="min-w-0">
+                    <span className="block truncate">{result.title}</span>
+                    {result.subtitle && <span className="block truncate text-xs text-muted-foreground">{result.subtitle}</span>}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ))}
+        </CommandList>
+      </CommandDialog>
     </div>
   );
+}
+
+type SearchResult = { type: string; id: string | number; title: string; subtitle?: string | null; path: string };
+
+type Notification = { id: number; type: string; title: string; body?: string | null; linkPath?: string | null; isRead: boolean; createdAt: string };
+
+const SEARCH_TYPE_LABELS: Record<string, string> = {
+  item: '品項', customer: '客戶', supplier: '供應商', sales_order: '銷貨單',
+  purchase_order: '採購單', employee: '員工', project: '專案', work_order: '製令',
+  ticket: '工單票', complaint: '客訴', contract: '合約', knowledge_base: '知識庫',
+};
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    credentials: 'include',
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  });
+  if (!response.ok) throw new Error(`API request failed (${response.status})`);
+  return response.json() as Promise<T>;
 }

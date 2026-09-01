@@ -37,6 +37,30 @@ import AgingReportPage from '@/pages/reports/aging';
 import AnalysisReportPage from '@/pages/reports/analysis';
 import { useErpAuth } from '@/hooks/use-erp-auth';
 import { Loader2 } from 'lucide-react';
+import CalendarPage from '@/pages/calendar';
+import EmployeesPage from '@/pages/hr/employees';
+import AttendancePage from '@/pages/hr/attendance';
+import LeavesPage from '@/pages/hr/leaves';
+import PayrollPage from '@/pages/hr/payroll';
+import HrSettingsPage from '@/pages/hr/settings';
+import LeadsPage from '@/pages/crm/leads';
+import OpportunitiesPage from '@/pages/crm/opportunities';
+import ComplaintsPage from '@/pages/crm/complaints';
+import TicketsPage from '@/pages/crm/tickets';
+import KnowledgeBasePage from '@/pages/crm/knowledge-base';
+import ProjectsPage from '@/pages/projects/list';
+import MyTasksPage from '@/pages/projects/tasks';
+import TimesheetsPage from '@/pages/projects/timesheets';
+import ContractsPage from '@/pages/contracts/list';
+import AssetsPage from '@/pages/assets/list';
+import DepreciationPage from '@/pages/assets/depreciation';
+import BomsPage from '@/pages/manufacturing/boms';
+import WorkOrdersPage from '@/pages/manufacturing/work-orders';
+import WorkstationsPage from '@/pages/manufacturing/workstations';
+import ProductionPlansPage from '@/pages/manufacturing/plans';
+import InspectionsPage from '@/pages/quality/inspections';
+import NonconformancesPage from '@/pages/quality/nonconformances';
+import CapasPage from '@/pages/quality/capas';
 
 const queryClient = new QueryClient();
 
@@ -73,6 +97,7 @@ function RouterContent() {
             <RoleGate>
               <Switch>
                 <Route path="/" component={DashboardPage} />
+                <Route path="/calendar" component={CalendarPage} />
                 <Route path="/inventory/items" component={ItemsPage} />
                 <Route path="/inventory/warehouses" component={WarehousesPage} />
                 <Route path="/inventory/movements" component={MovementsPage} />
@@ -96,6 +121,29 @@ function RouterContent() {
                 <Route path="/reports/financial" component={FinancialReportsPage} />
                 <Route path="/reports/aging" component={AgingReportPage} />
                 <Route path="/reports/analysis" component={AnalysisReportPage} />
+                <Route path="/hr/employees" component={EmployeesPage} />
+                <Route path="/hr/attendance" component={AttendancePage} />
+                <Route path="/hr/leaves" component={LeavesPage} />
+                <Route path="/hr/payroll" component={PayrollPage} />
+                <Route path="/hr/settings" component={HrSettingsPage} />
+                <Route path="/crm/leads" component={LeadsPage} />
+                <Route path="/crm/opportunities" component={OpportunitiesPage} />
+                <Route path="/crm/complaints" component={ComplaintsPage} />
+                <Route path="/crm/tickets" component={TicketsPage} />
+                <Route path="/crm/knowledge-base" component={KnowledgeBasePage} />
+                <Route path="/projects/list" component={ProjectsPage} />
+                <Route path="/projects/tasks" component={MyTasksPage} />
+                <Route path="/projects/timesheets" component={TimesheetsPage} />
+                <Route path="/contracts/list" component={ContractsPage} />
+                <Route path="/assets/list" component={AssetsPage} />
+                <Route path="/assets/depreciation" component={DepreciationPage} />
+                <Route path="/manufacturing/boms" component={BomsPage} />
+                <Route path="/manufacturing/work-orders" component={WorkOrdersPage} />
+                <Route path="/manufacturing/workstations" component={WorkstationsPage} />
+                <Route path="/manufacturing/plans" component={ProductionPlansPage} />
+                <Route path="/quality/inspections" component={InspectionsPage} />
+                <Route path="/quality/nonconformances" component={NonconformancesPage} />
+                <Route path="/quality/capas" component={CapasPage} />
                 <Route path="/system/users" component={UsersPage} />
                 <Route path="/system/departments" component={DepartmentsPage} />
                 <Route path="/system/menu-permissions" component={MenuPermissionsPage} />

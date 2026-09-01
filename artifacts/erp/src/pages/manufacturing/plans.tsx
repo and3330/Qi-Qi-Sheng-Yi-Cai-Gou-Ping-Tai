@@ -1,0 +1,1 @@
+import { useCreateErpProductionPlan,useListErpProductionPlans } from '@workspace/api-client-react'; import { ManufacturingPage } from './simple-page'; export default function Page(){return <ManufacturingPage title="生產計畫" kind="plan" useList={useListErpProductionPlans} useCreate={useCreateErpProductionPlan}/>}

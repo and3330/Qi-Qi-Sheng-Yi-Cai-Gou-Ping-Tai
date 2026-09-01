@@ -15,4 +15,14 @@ export interface ErpDashboard {
   departmentCount: number;
   auditLogCount: number;
   recentAuditLogs: ErpAuditLog[];
+  monthlySalesAmount?: number;
+  monthlySalesOrderCount?: number;
+  pendingPurchaseOrderCount?: number;
+  lowStockItemCount?: number;
+  pendingLeaveRequestCount?: number;
+  openWorkOrderCount?: number;
+  openComplaintCount?: number;
+  activeProjectCount?: number;
+  expiringContractCount?: number;
+  monthlyNewLeadCount?: number;
 }

@@ -8,6 +8,7 @@
 - [ERP access model](erp-access-model.md) — /erp shares shop session; erp_role null + platform admin ⇒ super_admin; requireErp middleware + erp_menu_permissions overrides; audit via erp_audit_logs.
 - [使用者提供之 URL 規則](user-supplied-urls.md) — 任何會員可存的外連 URL 必須後端 allowlist 協定（http/https/mailto/tel），防 javascript:/data: 儲存型 XSS；PUT 設定端點只寫入請求提供的欄位。
 - [ERP 會計模組不變式](erp-accounting.md) — 發票金額只由核銷 recompute；自動立帳走名稱解析+來源冪等、fire-and-forget；關帳日只擋人工寫入；合約用 settlements/partyId。
+- [ERP HR/CRM 等新模組規則](erp-hr-crm-modules.md) — 薪資遮罩必在後端；折舊立帳 (assetId,period)+source 冪等；製令不動庫存；CRM 工單與商城客服對話分離。
 - [AI 大腦架構](ai-brain-architecture.md) — embeddings 不走平台代理（金鑰選配、關鍵字退回）；助理操作須伺服器端兩段式確認（prompt 不可信）；工具回傳不入歷史須注入 pending 提示。
 - [Social marketing integrations](social-marketing-integrations.md) — 各平台憑證可分階段設定；缺少單一平台憑證不可阻斷草稿、預覽與 AI 功能。
 - [Newsletter/drip-sequence patterns](newsletter-module-patterns.md) — unsubscribe needs a per-subscriber token + GET-no-mutate/POST-mutate split; retry sequence steps with backoff, never skip past a failed send; hash API keys; wire new tables into a start-script migration.
