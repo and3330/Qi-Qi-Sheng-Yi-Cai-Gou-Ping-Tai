@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/qiqi-system-guide/"
+title = "七期生醫商城後台與 ERP 完整操作簡報"
+description = "82 頁繁體中文系統導覽簡報，以真實商城後台與 ERP 畫面說明功能、操作、資料關聯、權限與注意事項，供教育訓練、交付驗收與內部簡報使用。"
+version = "1.0.0"
+id = "artifacts/qiqi-system-guide"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/qiqi-system-guide/" ]
+localPort = 20647
+
+[services.development]
+run = "pnpm --filter @workspace/qiqi-system-guide run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/qiqi-system-guide", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/qiqi-system-guide/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20647"
+BASE_PATH = "/qiqi-system-guide/"

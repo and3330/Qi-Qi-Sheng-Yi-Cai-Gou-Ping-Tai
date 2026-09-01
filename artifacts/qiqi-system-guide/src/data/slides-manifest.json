@@ -1,0 +1,658 @@
+[
+  {
+    "id": "e13d2f9e-d216-4004-b33b-144c7a94e1cd",
+    "position": 1,
+    "filepath": "src/pages/slides/Slide01.tsx",
+    "title": "完整操作簡報",
+    "description": "商城後台 × ERP｜教育訓練、交付驗收與營運導覽",
+    "speakerNotes": ""
+  },
+  {
+    "id": "65910f74-19af-46e1-805a-4db1b400c18a",
+    "position": 2,
+    "filepath": "src/pages/slides/Slide02.tsx",
+    "title": "簡報目錄",
+    "description": "系統總覽｜商城後台｜ERP｜跨系統治理",
+    "speakerNotes": ""
+  },
+  {
+    "id": "338aeae6-d4e6-4879-ab6f-6fa249749728",
+    "position": 3,
+    "filepath": "src/pages/slides/Slide03.tsx",
+    "title": "雙系統架構",
+    "description": "商城承接會員、內容與訂單；ERP 承接進銷存、財會與內部管理",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d7a54ed2-727f-4e09-bee2-e076a7e537e9",
+    "position": 4,
+    "filepath": "src/pages/slides/Slide04.tsx",
+    "title": "角色與權限",
+    "description": "同一登入工作階段，依平台角色、ERP 角色與選單覆寫共同控管",
+    "speakerNotes": ""
+  },
+  {
+    "id": "2abd468b-5c5c-46ab-bc8d-c1d87628c571",
+    "position": 5,
+    "filepath": "src/pages/slides/Slide05.tsx",
+    "title": "商城與 ERP 的職責",
+    "description": "商城負責前台營運；ERP 維持庫存、單據、會計與管理資料的一致性",
+    "speakerNotes": ""
+  },
+  {
+    "id": "3b81509c-6a5e-479a-9f9a-466810abe723",
+    "position": 6,
+    "filepath": "src/pages/slides/Slide06.tsx",
+    "title": "手機版操作",
+    "description": "商城後台採底部分頁與完整功能面板；ERP 採行動抽屜與模組群組",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e039984b-7d6e-48bb-a693-ee8b6da253b1",
+    "position": 7,
+    "filepath": "src/pages/slides/Slide07.tsx",
+    "title": "儀表板",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "f28f2041-bca7-4947-9ec5-5b115f2a0cb1",
+    "position": 8,
+    "filepath": "src/pages/slides/Slide08.tsx",
+    "title": "會員管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9203aa2c-ff30-4b75-9007-0b8db62ccc5b",
+    "position": 9,
+    "filepath": "src/pages/slides/Slide09.tsx",
+    "title": "商品管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "84755e4f-2cc1-4a01-86b9-5ab96c5f879a",
+    "position": 10,
+    "filepath": "src/pages/slides/Slide10.tsx",
+    "title": "訂單管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "0fabc169-3c9b-43be-986c-a0ba3babb1a8",
+    "position": 11,
+    "filepath": "src/pages/slides/Slide11.tsx",
+    "title": "內容管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "1496daa3-fcce-4fb5-bfb2-314c05c3d992",
+    "position": 12,
+    "filepath": "src/pages/slides/Slide12.tsx",
+    "title": "客服中心",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "80c07135-1ecd-4756-9c9c-e9866dce9a17",
+    "position": 13,
+    "filepath": "src/pages/slides/Slide13.tsx",
+    "title": "AI 營運助手",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d976e6d3-76ce-4166-a3de-b8d3a9d88230",
+    "position": 14,
+    "filepath": "src/pages/slides/Slide14.tsx",
+    "title": "AI CMO",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e4c9e5a1-82f1-4974-8d87-ce2d8a9a4f29",
+    "position": 15,
+    "filepath": "src/pages/slides/Slide15.tsx",
+    "title": "機構管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "297bc4b2-d829-49a5-9c2f-5030bf13058d",
+    "position": 16,
+    "filepath": "src/pages/slides/Slide16.tsx",
+    "title": "社群帳號",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "26aa227c-18b2-4cbc-937d-2f2d4ab55cbb",
+    "position": 17,
+    "filepath": "src/pages/slides/Slide17.tsx",
+    "title": "社群貼文",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "b52f27f9-e9f5-4093-9472-4437e3164edd",
+    "position": 18,
+    "filepath": "src/pages/slides/Slide18.tsx",
+    "title": "佣金管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e0676efd-19ef-4a8b-84c9-e7d4cd14c871",
+    "position": 19,
+    "filepath": "src/pages/slides/Slide19.tsx",
+    "title": "分潤管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "712d8a15-b2e0-41d9-98a9-a5789018b2bb",
+    "position": 20,
+    "filepath": "src/pages/slides/Slide20.tsx",
+    "title": "機構錢包",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "bf152e04-76da-45fc-8937-98b0e9bdfa04",
+    "position": 21,
+    "filepath": "src/pages/slides/Slide21.tsx",
+    "title": "會員錢包",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "04aa2564-bc50-4b91-8e72-3ac3a01fb39b",
+    "position": 22,
+    "filepath": "src/pages/slides/Slide22.tsx",
+    "title": "個人名片頁",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "700f8190-f0f4-40c0-a316-09e9c985a294",
+    "position": 23,
+    "filepath": "src/pages/slides/Slide23.tsx",
+    "title": "電子報網域",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "8b248e08-861a-40e2-84d0-3d189e4eab12",
+    "position": 24,
+    "filepath": "src/pages/slides/Slide24.tsx",
+    "title": "訂閱者管理",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "99c2cf21-4ee1-4827-8918-04b7e5992419",
+    "position": 25,
+    "filepath": "src/pages/slides/Slide25.tsx",
+    "title": "電子報活動",
+    "description": "商城商城後台功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "804838fd-9a79-415e-a582-24d6ac8e4da6",
+    "position": 26,
+    "filepath": "src/pages/slides/Slide26.tsx",
+    "title": "儀表板",
+    "description": "ERP儀表板功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "da457831-a6a4-40ea-a79e-6d5106d4c66e",
+    "position": 27,
+    "filepath": "src/pages/slides/Slide27.tsx",
+    "title": "行事曆",
+    "description": "ERP儀表板功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "0885ee02-f533-4703-bcb9-788b14c7938c",
+    "position": 28,
+    "filepath": "src/pages/slides/Slide28.tsx",
+    "title": "品項",
+    "description": "ERP庫存功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c4d49fcb-f342-4057-9765-e82b047c34fd",
+    "position": 29,
+    "filepath": "src/pages/slides/Slide29.tsx",
+    "title": "倉庫",
+    "description": "ERP庫存功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "b03d22a9-e837-4c14-9dab-8f62c9b04ca4",
+    "position": 30,
+    "filepath": "src/pages/slides/Slide30.tsx",
+    "title": "庫存異動",
+    "description": "ERP庫存功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "af0a59b2-0523-4ffc-837e-e3846f2e417d",
+    "position": 31,
+    "filepath": "src/pages/slides/Slide31.tsx",
+    "title": "庫存調撥",
+    "description": "ERP庫存功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "3452db37-ce73-424a-851c-253f4394d498",
+    "position": 32,
+    "filepath": "src/pages/slides/Slide32.tsx",
+    "title": "報價單",
+    "description": "ERP銷售功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "31bb01ac-c6df-4523-9203-75cde2c1c745",
+    "position": 33,
+    "filepath": "src/pages/slides/Slide33.tsx",
+    "title": "銷貨單",
+    "description": "ERP銷售功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "2164bbcd-feb4-40a0-9e52-cce9618050ed",
+    "position": 34,
+    "filepath": "src/pages/slides/Slide34.tsx",
+    "title": "銷貨退回",
+    "description": "ERP銷售功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "1bd96076-27f8-4eab-b0cd-622fe608826d",
+    "position": 35,
+    "filepath": "src/pages/slides/Slide35.tsx",
+    "title": "價格表",
+    "description": "ERP銷售功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "81e6f716-eca8-45e5-b591-94b5c04c8f5d",
+    "position": 36,
+    "filepath": "src/pages/slides/Slide36.tsx",
+    "title": "採購單",
+    "description": "ERP採購功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e5799572-aa22-49fd-a1c9-2ba57421c67a",
+    "position": 37,
+    "filepath": "src/pages/slides/Slide37.tsx",
+    "title": "採購收貨",
+    "description": "ERP採購功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "7640ecbb-fd94-4364-8a52-2323ad3d1226",
+    "position": 38,
+    "filepath": "src/pages/slides/Slide38.tsx",
+    "title": "採購退回",
+    "description": "ERP採購功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "1d83a12a-0386-44f2-a05b-84f83e3b821c",
+    "position": 39,
+    "filepath": "src/pages/slides/Slide39.tsx",
+    "title": "客戶",
+    "description": "ERP往來對象功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d67acbff-d0c0-49a7-a54d-153549eafbce",
+    "position": 40,
+    "filepath": "src/pages/slides/Slide40.tsx",
+    "title": "供應商",
+    "description": "ERP往來對象功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "5e91cc88-fb8b-44c2-9e74-21cb00f08f40",
+    "position": 41,
+    "filepath": "src/pages/slides/Slide41.tsx",
+    "title": "會計科目",
+    "description": "ERP會計功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "2b158ec9-ad8e-4ff6-ac17-97159d015c69",
+    "position": 42,
+    "filepath": "src/pages/slides/Slide42.tsx",
+    "title": "傳票／日記帳",
+    "description": "ERP會計功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "b8ecb7d4-8cae-48a6-864c-c740caaaf68f",
+    "position": 43,
+    "filepath": "src/pages/slides/Slide43.tsx",
+    "title": "發票管理",
+    "description": "ERP會計功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "c67ac982-51e2-4afa-b259-3f9cbddb8322",
+    "position": 44,
+    "filepath": "src/pages/slides/Slide44.tsx",
+    "title": "收付款單",
+    "description": "ERP會計功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "44a338ee-467f-488e-8aa1-42add4cad4dc",
+    "position": 45,
+    "filepath": "src/pages/slides/Slide45.tsx",
+    "title": "付款申請",
+    "description": "ERP會計功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "dcef698b-3417-42a4-867d-7c0a4d0ac490",
+    "position": 46,
+    "filepath": "src/pages/slides/Slide46.tsx",
+    "title": "銀行對帳",
+    "description": "ERP會計功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "101d104b-2a0a-4099-bd01-76d9e202f8b4",
+    "position": 47,
+    "filepath": "src/pages/slides/Slide47.tsx",
+    "title": "營業稅申報",
+    "description": "ERP會計功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "91a2b412-02e6-4e0a-8b50-0e5a21f9f03c",
+    "position": 48,
+    "filepath": "src/pages/slides/Slide48.tsx",
+    "title": "財務報表",
+    "description": "ERP報表功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "f721075a-fd69-4787-b8f9-448c8d38c59c",
+    "position": 49,
+    "filepath": "src/pages/slides/Slide49.tsx",
+    "title": "帳齡分析",
+    "description": "ERP報表功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "8ddffc97-a45d-45e1-ae59-2e213b4676e4",
+    "position": 50,
+    "filepath": "src/pages/slides/Slide50.tsx",
+    "title": "銷售／採購分析",
+    "description": "ERP報表功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "646bc817-6aa9-45c4-8161-5f85c8446e6e",
+    "position": 51,
+    "filepath": "src/pages/slides/Slide51.tsx",
+    "title": "員工主檔",
+    "description": "ERP人資功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "9b11d5c5-4ece-42c9-9eba-44aad15a2fd4",
+    "position": 52,
+    "filepath": "src/pages/slides/Slide52.tsx",
+    "title": "出勤打卡",
+    "description": "ERP人資功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "1435ec85-ccae-4efb-b7f5-1851461b784f",
+    "position": 53,
+    "filepath": "src/pages/slides/Slide53.tsx",
+    "title": "請假簽核",
+    "description": "ERP人資功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "0dd5f1f6-c824-4151-b69a-450aa4b4e209",
+    "position": 54,
+    "filepath": "src/pages/slides/Slide54.tsx",
+    "title": "薪資",
+    "description": "ERP人資功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "731c07f6-e71d-4e00-b127-edf25dc3d06e",
+    "position": 55,
+    "filepath": "src/pages/slides/Slide55.tsx",
+    "title": "人資設定",
+    "description": "ERP人資功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "502e975b-a762-4074-8de1-2c55e2016626",
+    "position": 56,
+    "filepath": "src/pages/slides/Slide56.tsx",
+    "title": "潛在客戶",
+    "description": "ERP客戶關係功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "00fd5d86-9324-49a0-8fcc-e149602c3756",
+    "position": 57,
+    "filepath": "src/pages/slides/Slide57.tsx",
+    "title": "商機",
+    "description": "ERP客戶關係功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e9a0a877-4d6c-4951-9c8f-331b1f32ba52",
+    "position": 58,
+    "filepath": "src/pages/slides/Slide58.tsx",
+    "title": "客訴",
+    "description": "ERP客戶關係功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "44ed73f6-c99c-4ca2-9eef-c4e4e49c549e",
+    "position": 59,
+    "filepath": "src/pages/slides/Slide59.tsx",
+    "title": "工單",
+    "description": "ERP客戶關係功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "8bb1ac70-1d80-4243-ac9f-e3b44bd4d2b6",
+    "position": 60,
+    "filepath": "src/pages/slides/Slide60.tsx",
+    "title": "知識庫",
+    "description": "ERP客戶關係功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "afb24386-d626-4532-970c-8d53a6c467a7",
+    "position": 61,
+    "filepath": "src/pages/slides/Slide61.tsx",
+    "title": "專案",
+    "description": "ERP專案功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "edb9f920-2638-4d3e-bb60-7adddccfa813",
+    "position": 62,
+    "filepath": "src/pages/slides/Slide62.tsx",
+    "title": "我的任務",
+    "description": "ERP專案功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "8380580d-82c8-474a-9f69-b1afa541a286",
+    "position": 63,
+    "filepath": "src/pages/slides/Slide63.tsx",
+    "title": "工時",
+    "description": "ERP專案功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "3bb40c44-24ef-40d3-8115-f173bce54602",
+    "position": 64,
+    "filepath": "src/pages/slides/Slide64.tsx",
+    "title": "合約管理",
+    "description": "ERP合約功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "42a74fe9-01fc-4881-addc-7a23da63d623",
+    "position": 65,
+    "filepath": "src/pages/slides/Slide65.tsx",
+    "title": "資產登錄",
+    "description": "ERP資產功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d365c897-4218-4c34-b746-287bb6421c5f",
+    "position": 66,
+    "filepath": "src/pages/slides/Slide66.tsx",
+    "title": "資產折舊",
+    "description": "ERP資產功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "e2d36a6d-2ea1-4f2a-8ab4-6bffb4e7c987",
+    "position": 67,
+    "filepath": "src/pages/slides/Slide67.tsx",
+    "title": "物料清單",
+    "description": "ERP製造功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "bc8b9f8e-7424-4fd3-8659-c350ee03dab3",
+    "position": 68,
+    "filepath": "src/pages/slides/Slide68.tsx",
+    "title": "製令",
+    "description": "ERP製造功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "62c23ef8-3547-4cd9-8680-62d64a6c8570",
+    "position": 69,
+    "filepath": "src/pages/slides/Slide69.tsx",
+    "title": "工作站",
+    "description": "ERP製造功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "5b5a0401-933a-4992-9631-5a21578f0a8e",
+    "position": 70,
+    "filepath": "src/pages/slides/Slide70.tsx",
+    "title": "生產計畫",
+    "description": "ERP製造功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "b16caf47-d254-45aa-9fe1-c87dbe3d26b6",
+    "position": 71,
+    "filepath": "src/pages/slides/Slide71.tsx",
+    "title": "品質檢驗",
+    "description": "ERP品質功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "5fd96016-b013-4ec5-900d-dc51e3a14c8f",
+    "position": 72,
+    "filepath": "src/pages/slides/Slide72.tsx",
+    "title": "不合格處理",
+    "description": "ERP品質功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "ca320622-afd3-4e91-ad40-cd976dfb2d4b",
+    "position": 73,
+    "filepath": "src/pages/slides/Slide73.tsx",
+    "title": "品質設定",
+    "description": "ERP品質功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "4d84cf00-2b31-43b4-a99c-8af4f524ecf0",
+    "position": 74,
+    "filepath": "src/pages/slides/Slide74.tsx",
+    "title": "使用者管理",
+    "description": "ERP系統管理功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "7b367063-7992-45e8-ba3f-5a2ff2eafe54",
+    "position": 75,
+    "filepath": "src/pages/slides/Slide75.tsx",
+    "title": "權限設定",
+    "description": "ERP系統管理功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "afb7da3d-eddc-4b4c-9407-b6da1cf69931",
+    "position": 76,
+    "filepath": "src/pages/slides/Slide76.tsx",
+    "title": "稽核日誌",
+    "description": "ERP系統管理功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "58acf3f8-5310-4cb4-b6b0-fde1e3b086e5",
+    "position": 77,
+    "filepath": "src/pages/slides/Slide77.tsx",
+    "title": "公司設定",
+    "description": "ERP系統管理功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "d9b6dc4e-5c08-47b3-9511-45bf63e9ff04",
+    "position": 78,
+    "filepath": "src/pages/slides/Slide78.tsx",
+    "title": "系統設定",
+    "description": "ERP系統管理功能畫面與操作說明",
+    "speakerNotes": ""
+  },
+  {
+    "id": "455a6fc1-192a-4249-a5f7-caa005d8a8aa",
+    "position": 79,
+    "filepath": "src/pages/slides/Slide79.tsx",
+    "title": "跨系統 AI",
+    "description": "商城與 ERP 共用對話、檢索與受控工具；具副作用的操作必須兩段式確認",
+    "speakerNotes": ""
+  },
+  {
+    "id": "26dd21f3-a0ea-4925-8b6e-5e967cc42471",
+    "position": 80,
+    "filepath": "src/pages/slides/Slide80.tsx",
+    "title": "資料安全與稽核",
+    "description": "敏感薪資後端遮罩、私有物件存取控管、角色權限與稽核軌跡並行",
+    "speakerNotes": ""
+  },
+  {
+    "id": "150e3e70-6fa2-4ca9-8fcf-3cd8c911def4",
+    "position": 81,
+    "filepath": "src/pages/slides/Slide81.tsx",
+    "title": "待開發藍圖",
+    "description": "製令完工扣料入庫、薪資自動計算、電子發票與更多營運韌性仍列為規劃",
+    "speakerNotes": ""
+  },
+  {
+    "id": "0ce34a37-7dbf-4ef8-b6fe-60a79bbc0e4f",
+    "position": 82,
+    "filepath": "src/pages/slides/Slide82.tsx",
+    "title": "功能索引與結語",
+    "description": "以商城支援成長，以 ERP 維持帳務與營運一致；所有功能依權限開放",
+    "speakerNotes": ""
+  }
+]
