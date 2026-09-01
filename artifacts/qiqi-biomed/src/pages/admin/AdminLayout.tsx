@@ -174,7 +174,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-/** 具 ERP 權限（erpRole 有值，或平台 admin 視同 super_admin）才顯示「進入ERP」 */
+/** 具 ERP 權限（erpRole 有值，或平台 admin 視同 super_admin）才顯示「進入ERP」按鈕 */
 function ErpEntryLink() {
   const { me } = useAuth();
   const meAny = me as (typeof me & { erpRole?: string | null }) | undefined;
@@ -183,7 +183,7 @@ function ErpEntryLink() {
   return (
     <a
       href="/erp/"
-      className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+      className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
       data-testid="link-admin-enter-erp"
     >
       <Briefcase size={16} /> 進入ERP
@@ -220,6 +220,9 @@ export function AdminLayout({
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-[100dvh] w-60 shrink-0 flex-col border-r bg-white md:flex">
         <SidebarHeader />
+        <div className="px-3 pb-1">
+          <ErpEntryLink />
+        </div>
         <div className="flex-1 overflow-y-auto py-2">
           <NavLinks />
         </div>
@@ -231,7 +234,6 @@ export function AdminLayout({
           >
             <ArrowLeft size={16} /> 回前台商城
           </Link>
-          <ErpEntryLink />
         </div>
       </aside>
 
@@ -253,6 +255,9 @@ export function AdminLayout({
                 <X size={20} />
               </button>
             </div>
+            <div className="px-3 pb-1">
+              <ErpEntryLink />
+            </div>
             <div className="flex-1 overflow-y-auto py-2">
               <NavLinks onNavigate={() => setMobileOpen(false)} />
             </div>
@@ -263,7 +268,6 @@ export function AdminLayout({
               >
                 <ArrowLeft size={16} /> 回前台商城
               </Link>
-              <ErpEntryLink />
             </div>
           </div>
         </div>
