@@ -33,7 +33,7 @@ export default function Slide8() {
         </div>
         <div className="relative rounded-[1.2vw] overflow-hidden border border-slate-200 shadow-lg bg-white">
           <img src={`${base}screens/shop-members.jpg`} crossOrigin="anonymous" className="w-full h-full object-cover object-top" />
-          <div className="absolute bottom-0 inset-x-0 bg-slate-950/80 text-white px-[2vw] py-[1.3vh] text-[1.5vw]">登入保護畫面｜最終版待置換</div>
+          
         </div>
       </div>
     </div>

@@ -56,3 +56,17 @@ mtime_ms = 1788258731762
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:4e42c516-c8d8-42d7-9918-721c7afd7f7e/4644fbe7-7c8a-4270-a193-2d5f8270b1b0/e0d102c6-7df6-4d51-b7e0-2d1452600e85"
 storage_version_token = "1788258733186756"
 content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+[[outputs]]
+id = "PCTL7Aqa3P_rTy53n39VX"
+uri = "file://.local/outputs/----------ERP-------.pptx"
+type = "slides"
+title = "七期生醫商城後台與 ERP 完整操作簡報（真實截圖版）"
+description = "82 頁 PPTX，72 個功能頁均為管理員登入後的真實系統畫面。"
+logical_id = "13f1e1de-e737-4c51-a6c9-38c99d1302ca"
+content_hash = "sha256:f01b43308699099ee1e7bca3165195119f4290ffab953b1deec5c13ab9daab46"
+size = 13804577
+mtime_ms = 1788289047971
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:4e42c516-c8d8-42d7-9918-721c7afd7f7e/13f1e1de-e737-4c51-a6c9-38c99d1302ca/d9704b41-846c-4479-bc66-192dfee98b9c"
+storage_version_token = "1788289059934537"
+content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
