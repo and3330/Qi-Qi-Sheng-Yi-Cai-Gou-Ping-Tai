@@ -285,14 +285,8 @@ router.get("/admin/content-revisions", requireOps, async (req, res) => {
   res.json(rows.map(serializeRevision));
 });
 
-router.post("/admin/content-revisions/:id/restore", requireOps, async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) {
-    res.status(400).json({ error: "Invalid id" });
-    return;
-  }
-
-  const restored = await db.transaction(async (tx) => {
+export async function restoreContentRevision(id: number, editedBy: number) {
+  return db.transaction(async (tx) => {
     const [revision] = await tx
       .select()
       .from(contentRevisionsTable)
@@ -324,7 +318,7 @@ router.post("/admin/content-revisions/:id/restore", requireOps, async (req, res)
           summary: row.summary,
           content: row.content,
           status: row.status,
-          editedBy: req.member!.id,
+          editedBy,
           note: `還原自版本 #${revision.id}`,
         })
         .returning();
@@ -354,7 +348,7 @@ router.post("/admin/content-revisions/:id/restore", requireOps, async (req, res)
           summary: null,
           content: row.content,
           status: row.status,
-          editedBy: req.member!.id,
+          editedBy,
           note: `還原自版本 #${revision.id}`,
         })
         .returning();
@@ -363,6 +357,16 @@ router.post("/admin/content-revisions/:id/restore", requireOps, async (req, res)
 
     return null;
   });
+}
+
+router.post("/admin/content-revisions/:id/restore", requireOps, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const restored = await restoreContentRevision(id, req.member!.id);
 
   if (!restored) {
     res.status(404).json({ error: "找不到此版本或原內容" });

@@ -10,7 +10,8 @@
     "pretypecheck": "cd ../.. && pnpm run typecheck:libs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:assistant-auth": "tsx --test src/lib/assistantTools.integration.test.ts",
-    "test:cmo": "tsx --test src/lib/cmoScheduler.test.ts"
+    "test:cmo": "tsx --test src/lib/cmoScheduler.test.ts",
+    "test:content-restore": "tsx --test --test-concurrency=1 src/routes/adminContent.restore.test.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^8.0.1",
