@@ -1934,6 +1934,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+  /admin/content-revisions/{id}/comparison:
+    get:
+      operationId: getAdminContentRevisionComparison
+      tags:
+        - admin
+      summary: 內容管理：比較指定版本與目前內容（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Selected revision and current content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentRevisionComparison'
+        '404':
+          description: Revision or current content not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/content-revisions/{id}/restore:
     post:
       operationId: restoreAdminContentRevision
@@ -9516,6 +9541,38 @@ components:
         createdAt:
           type: string
           format: date-time
+    ContentRevisionSnapshot:
+      type: object
+      required:
+        - title
+        - status
+      properties:
+        title:
+          type: string
+        category:
+          type:
+            - string
+            - 'null'
+        summary:
+          type:
+            - string
+            - 'null'
+        content:
+          type:
+            - string
+            - 'null'
+        status:
+          type: string
+    ContentRevisionComparison:
+      type: object
+      required:
+        - revision
+        - current
+      properties:
+        revision:
+          $ref: '#/components/schemas/ContentRevision'
+        current:
+          $ref: '#/components/schemas/ContentRevisionSnapshot'
     ContentRevisionRestoreResult:
       type: object
       required:

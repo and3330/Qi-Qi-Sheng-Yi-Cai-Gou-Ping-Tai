@@ -2321,6 +2321,37 @@ export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevis
 
 
 /**
+ * @summary 內容管理：比較指定版本與目前內容（限管理員）
+ */
+export const GetAdminContentRevisionComparisonParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const GetAdminContentRevisionComparisonResponse = zod.object({
+  "revision": zod.object({
+  "id": zod.int(),
+  "entityKind": zod.enum(['article', 'announcement']),
+  "entityId": zod.int(),
+  "title": zod.string(),
+  "category": zod.string().nullish(),
+  "summary": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "status": zod.string(),
+  "editedBy": zod.int().nullish(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "current": zod.object({
+  "title": zod.string(),
+  "category": zod.string().nullish(),
+  "summary": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "status": zod.string()
+})
+})
+
+
+/**
  * @summary 內容管理：還原指定版本並建立新版本紀錄（限管理員）
  */
 export const RestoreAdminContentRevisionParams = zod.object({

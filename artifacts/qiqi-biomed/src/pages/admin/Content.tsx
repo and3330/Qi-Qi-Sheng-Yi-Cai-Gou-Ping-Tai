@@ -7,16 +7,18 @@ import {
   useCreateAdminAnnouncement,
   useUpdateAdminAnnouncement,
   useListAdminContentRevisions,
+  useGetAdminContentRevisionComparison,
   useRestoreAdminContentRevision,
   getListAdminArticlesQueryKey,
   getListAdminAnnouncementsQueryKey,
   getListAdminContentRevisionsQueryKey,
   type AdminArticle,
   type AdminAnnouncement,
-  type ContentRevision
+  type ContentRevision,
+  type ContentRevisionSnapshot
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, History, FileText, Bell, Archive, RotateCcw } from "lucide-react";
+import { Plus, Pencil, History, FileText, Bell, Archive, RotateCcw, GitCompareArrows } from "lucide-react";
 import { AdminLayout } from "./AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { diffText } from "@/lib/textDiff";
 
 function StatusBadge({ status }: { status: string }) {
   switch(status) {
@@ -52,11 +55,117 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
+function DiffValue({ before, after, side }: { before: string | null | undefined; after: string | null | undefined; side: "before" | "after" }) {
+  const oldValue = before || "";
+  const newValue = after || "";
+  if (oldValue === newValue) return <span>{oldValue || "—"}</span>;
+  const visible = diffText(oldValue, newValue).filter((part) =>
+    part.kind === "same" || (side === "before" ? part.kind === "removed" : part.kind === "added")
+  );
+  return (
+    <span>
+      {!visible.length ? <span className="text-muted-foreground">—</span> : visible.map((part, index) => (
+        <span
+          key={index}
+          className={part.kind === "removed"
+            ? "rounded-sm bg-red-100 px-0.5 text-red-800 line-through decoration-red-500"
+            : part.kind === "added"
+              ? "rounded-sm bg-emerald-100 px-0.5 text-emerald-800"
+              : undefined}
+        >
+          {part.value}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ComparisonDialog({ revision, onClose, onRestore }: { revision: ContentRevision; onClose: () => void; onRestore: (revision: ContentRevision) => void }) {
+  const { data, isLoading, isError } = useGetAdminContentRevisionComparison(revision.id);
+  const fields: Array<{ key: keyof ContentRevisionSnapshot; label: string; multiline?: boolean }> = [
+    { key: "title", label: "標題" },
+    { key: "category", label: "分類" },
+    ...(revision.entityKind === "article" ? [{ key: "summary" as const, label: "摘要", multiline: true }] : []),
+    { key: "content", label: "內文", multiline: true },
+    { key: "status", label: "狀態" },
+  ];
+  const changedCount = data
+    ? fields.filter(({ key }) => (data.revision[key] || "") !== (data.current[key] || "")).length
+    : 0;
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-5xl overflow-hidden rounded-2xl p-0">
+        <DialogHeader className="border-b px-5 py-4 pr-12">
+          <DialogTitle>比較版本與目前內容</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            紅色刪除線是此版本將移除的內容，綠色是還原後將加入的內容。
+          </p>
+        </DialogHeader>
+        <div className="max-h-[calc(90vh-150px)] overflow-y-auto px-4 py-4 sm:px-6">
+          {isLoading ? <Skeleton className="h-72 w-full" /> : isError || !data ? (
+            <p className="py-12 text-center text-sm text-destructive">無法載入差異，請稍後再試。</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Badge variant={changedCount ? "secondary" : "outline"}>
+                  {changedCount ? `${changedCount} 個欄位不同` : "內容完全相同"}
+                </Badge>
+                <span className="text-muted-foreground">版本時間：{new Date(data.revision.createdAt).toLocaleString("zh-TW")}</span>
+              </div>
+              {fields.map(({ key, label, multiline }) => {
+                const before = data.revision[key];
+                const after = data.current[key];
+                const changed = (before || "") !== (after || "");
+                return (
+                  <section key={key} className={`overflow-hidden rounded-xl border ${changed ? "border-amber-200" : "border-border"}`}>
+                    <div className="flex items-center justify-between border-b bg-muted/30 px-3 py-2">
+                      <h3 className="text-sm font-semibold">{label}</h3>
+                      <Badge variant="outline" className={changed ? "border-amber-300 bg-amber-50 text-amber-700" : "text-muted-foreground"}>
+                        {changed ? (!before ? "新增" : !after ? "刪除" : "變更") : "未變更"}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 divide-y sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                      <div className={`min-w-0 p-3 ${key === "status" && changed ? "bg-emerald-50/60" : ""}`}>
+                        <div className="mb-2 text-xs font-medium text-muted-foreground">指定版本（還原後）</div>
+                        {key === "status" ? <StatusBadge status={String(before)} /> : (
+                          <div className={`${multiline ? "max-h-64 overflow-y-auto whitespace-pre-wrap" : ""} break-words text-sm leading-6`}>
+                            <DiffValue before={after} after={before} side="after" />
+                          </div>
+                        )}
+                      </div>
+                      <div className={`min-w-0 p-3 ${key === "status" && changed ? "bg-red-50/60" : "bg-slate-50/60"}`}>
+                        <div className="mb-2 text-xs font-medium text-muted-foreground">目前內容</div>
+                        {key === "status" ? <StatusBadge status={String(after)} /> : (
+                          <div className={`${multiline ? "max-h-64 overflow-y-auto whitespace-pre-wrap" : ""} break-words text-sm leading-6`}>
+                            <DiffValue before={after} after={before} side="before" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <DialogFooter className="border-t px-5 py-3">
+          <Button variant="outline" onClick={onClose}>關閉</Button>
+          <Button disabled={!data} onClick={() => onRestore(revision)}>
+            <RotateCcw size={14} className="mr-1" /> 還原此版本
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "article" | "announcement", entityId: number, onClose: () => void }) {
   const queryClient = useQueryClient();
   const { data: revisions, isLoading } = useListAdminContentRevisions({ entityKind, entityId });
   const restoreRevision = useRestoreAdminContentRevision();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [comparisonTarget, setComparisonTarget] = useState<ContentRevision | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<ContentRevision | null>(null);
   const [error, setError] = useState("");
 
@@ -106,7 +215,10 @@ function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "artic
                     <StatusBadge status={r.status} />
                     {r.note && <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">{r.note}</span>}
                   </div>
-                  <div className="mt-3 flex gap-2">
+                   <div className="mt-3 flex flex-wrap gap-2">
+                     <Button type="button" size="sm" variant="outline" onClick={() => setComparisonTarget(r)}>
+                       <GitCompareArrows size={14} className="mr-1" /> 比較目前版本
+                     </Button>
                     <Button type="button" size="sm" variant="outline" onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>
                       {expandedId === r.id ? "收合內容" : "查看完整內容"}
                     </Button>
@@ -140,6 +252,17 @@ function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "artic
         </div>
       </DialogContent>
       </Dialog>
+      {comparisonTarget && (
+        <ComparisonDialog
+          revision={comparisonTarget}
+          onClose={() => setComparisonTarget(null)}
+          onRestore={(revision) => {
+            setComparisonTarget(null);
+            setError("");
+            setRestoreTarget(revision);
+          }}
+        />
+      )}
       <AlertDialog open={Boolean(restoreTarget)} onOpenChange={(open) => !open && !restoreRevision.isPending && setRestoreTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

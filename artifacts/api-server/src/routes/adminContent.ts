@@ -290,6 +290,72 @@ router.get("/admin/content-revisions", requireOps, async (req, res) => {
   res.json(rows.map(serializeRevision));
 });
 
+export async function getContentRevisionComparison(id: number) {
+  const [revision] = await db
+    .select()
+    .from(contentRevisionsTable)
+    .where(eq(contentRevisionsTable.id, id))
+    .limit(1);
+
+  if (!revision) return null;
+
+  if (revision.entityKind === "article") {
+    const [current] = await db
+      .select()
+      .from(articlesTable)
+      .where(eq(articlesTable.id, revision.entityId))
+      .limit(1);
+    if (!current) return null;
+    return {
+      revision: serializeRevision(revision),
+      current: {
+        title: current.title,
+        category: current.category,
+        summary: current.summary,
+        content: current.content,
+        status: current.status,
+      },
+    };
+  }
+
+  if (revision.entityKind === "announcement") {
+    const [current] = await db
+      .select()
+      .from(announcementsTable)
+      .where(eq(announcementsTable.id, revision.entityId))
+      .limit(1);
+    if (!current) return null;
+    return {
+      revision: serializeRevision(revision),
+      current: {
+        title: current.title,
+        category: current.category,
+        summary: null,
+        content: current.content,
+        status: current.status,
+      },
+    };
+  }
+
+  return null;
+}
+
+router.get("/admin/content-revisions/:id/comparison", requireOps, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const comparison = await getContentRevisionComparison(id);
+  if (!comparison) {
+    res.status(404).json({ error: "找不到此版本或目前內容" });
+    return;
+  }
+
+  res.json(comparison);
+});
+
 export async function restoreContentRevision(id: number, editedBy: number) {
   return db.transaction(async (tx) => {
     const [revision] = await tx

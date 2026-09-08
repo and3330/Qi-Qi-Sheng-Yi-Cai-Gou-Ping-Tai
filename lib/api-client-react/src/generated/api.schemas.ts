@@ -1178,6 +1178,22 @@ export interface ContentRevision {
   createdAt: string;
 }
 
+export interface ContentRevisionSnapshot {
+  title: string;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  content?: string | null;
+  status: string;
+}
+
+export interface ContentRevisionComparison {
+  revision: ContentRevision;
+  current: ContentRevisionSnapshot;
+}
+
 export type ContentRevisionRestoreResultEntityKind = typeof ContentRevisionRestoreResultEntityKind[keyof typeof ContentRevisionRestoreResultEntityKind];
 
 

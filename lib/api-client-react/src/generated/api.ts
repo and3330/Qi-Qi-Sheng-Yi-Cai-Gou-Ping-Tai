@@ -63,6 +63,7 @@ import type {
   CmoSnapshot,
   CommissionReport,
   ContentRevision,
+  ContentRevisionComparison,
   ContentRevisionRestoreResult,
   CreateCmoGoalInput,
   CreateConversationInput,
@@ -6390,6 +6391,83 @@ export function useListAdminContentRevisions<TData = Awaited<ReturnType<typeof l
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListAdminContentRevisionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminContentRevisionComparisonUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/content-revisions/${id}/comparison`
+}
+
+/**
+ * @summary 內容管理：比較指定版本與目前內容（限管理員）
+ */
+export const getAdminContentRevisionComparison = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ContentRevisionComparison> => {
+
+  return customFetch<ContentRevisionComparison>(getGetAdminContentRevisionComparisonUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminContentRevisionComparisonQueryKey = (id: number,) => {
+    return [
+    `/api/admin/content-revisions/${id}/comparison`
+    ] as const;
+    }
+
+
+export const getGetAdminContentRevisionComparisonQueryOptions = <TData = Awaited<ReturnType<typeof getAdminContentRevisionComparison>>, TError = ErrorType<ErrorMessage>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminContentRevisionComparison>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminContentRevisionComparisonQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminContentRevisionComparison>>> = ({ signal }) => getAdminContentRevisionComparison(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminContentRevisionComparison>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminContentRevisionComparisonQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminContentRevisionComparison>>>
+export type GetAdminContentRevisionComparisonQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary 內容管理：比較指定版本與目前內容（限管理員）
+ */
+
+export function useGetAdminContentRevisionComparison<TData = Awaited<ReturnType<typeof getAdminContentRevisionComparison>>, TError = ErrorType<ErrorMessage>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminContentRevisionComparison>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminContentRevisionComparisonQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -27421,4 +27499,3 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getUpdateErpCapaMutationOptions(options));
     }
-
