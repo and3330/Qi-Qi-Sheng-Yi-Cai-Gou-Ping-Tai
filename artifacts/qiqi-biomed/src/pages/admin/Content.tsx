@@ -9,12 +9,13 @@ import {
   useListAdminContentRevisions,
   getListAdminArticlesQueryKey,
   getListAdminAnnouncementsQueryKey,
+  getListAdminContentRevisionsQueryKey,
   type AdminArticle,
   type AdminAnnouncement,
   type ContentRevision
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, History, FileText, Bell } from "lucide-react";
+import { Plus, Pencil, History, FileText, Bell, Archive } from "lucide-react";
 import { AdminLayout } from "./AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function StatusBadge({ status }: { status: string }) {
   switch(status) {
@@ -77,7 +88,11 @@ function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "artic
   );
 }
 
-function ContentEditorDialog({
+type EditableContent =
+  | { kind: "article"; item: AdminArticle }
+  | { kind: "announcement"; item: AdminAnnouncement };
+
+function ContentDialog({
   kind,
   item,
   onClose,
@@ -88,24 +103,21 @@ function ContentEditorDialog({
 }) {
   const queryClient = useQueryClient();
   const createArticle = useCreateAdminArticle();
-  const createAnnouncement = useCreateAdminAnnouncement();
   const updateArticle = useUpdateAdminArticle();
+  const createAnnouncement = useCreateAdminAnnouncement();
   const updateAnnouncement = useUpdateAdminAnnouncement();
-  const articleItem = kind === "article" ? item as AdminArticle | undefined : undefined;
-  const [articleKind, setArticleKind] = useState<"article" | "faq">(articleItem?.kind ?? "article");
+  const article = kind === "article" && item ? item as AdminArticle : undefined;
+  const [articleKind, setArticleKind] = useState<"article" | "faq">(article?.kind ?? "article");
   const [title, setTitle] = useState(item?.title ?? "");
   const [category, setCategory] = useState(item?.category ?? "");
-  const [summary, setSummary] = useState(articleItem?.summary ?? "");
+  const [summary, setSummary] = useState(article?.summary ?? "");
   const [content, setContent] = useState(item?.content ?? "");
   const [imageUrl, setImageUrl] = useState(item?.imageUrl ?? "");
   const [status, setStatus] = useState<"draft" | "review" | "published" | "archived">(item?.status ?? "draft");
   const [error, setError] = useState("");
   const isEditing = Boolean(item);
-  const isPending =
-    createArticle.isPending ||
-    createAnnouncement.isPending ||
-    updateArticle.isPending ||
-    updateAnnouncement.isPending;
+  const isPending = createArticle.isPending || updateArticle.isPending
+    || createAnnouncement.isPending || updateAnnouncement.isPending;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -122,11 +134,8 @@ function ContentEditorDialog({
           imageUrl: imageUrl.trim() || null,
           status,
         };
-        if (item) {
-          await updateArticle.mutateAsync({ id: item.id, data });
-        } else {
-          await createArticle.mutateAsync({ data });
-        }
+        if (item) await updateArticle.mutateAsync({ id: item.id, data });
+        else await createArticle.mutateAsync({ data });
         await queryClient.invalidateQueries({ queryKey: getListAdminArticlesQueryKey() });
       } else {
         const data = {
@@ -136,12 +145,17 @@ function ContentEditorDialog({
           imageUrl: imageUrl.trim() || null,
           status,
         };
-        if (item) {
-          await updateAnnouncement.mutateAsync({ id: item.id, data });
-        } else {
-          await createAnnouncement.mutateAsync({ data });
-        }
+        if (item) await updateAnnouncement.mutateAsync({ id: item.id, data });
+        else await createAnnouncement.mutateAsync({ data });
         await queryClient.invalidateQueries({ queryKey: getListAdminAnnouncementsQueryKey() });
+      }
+      if (item) {
+        await queryClient.invalidateQueries({
+          queryKey: getListAdminContentRevisionsQueryKey({
+            entityKind: kind,
+            entityId: item.id,
+          }),
+        });
       }
       onClose();
     } catch {
@@ -153,7 +167,7 @@ function ContentEditorDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "編輯" : "新增"}{kind === "article" ? "文章" : "公告"}</DialogTitle>
+          <DialogTitle>{isEditing ? "編輯" : "新增"}{kind === "article" ? "文章／FAQ" : "公告"}</DialogTitle>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
           {kind === "article" && (
@@ -234,7 +248,7 @@ function ContentEditorDialog({
               <option value="draft">草稿</option>
               <option value="review">送審中</option>
               <option value="published">立即上架</option>
-              <option value="archived">下架</option>
+              {isEditing && <option value="archived">下架</option>}
             </select>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -252,15 +266,75 @@ function ContentEditorDialog({
   );
 }
 
+function ArchiveContentDialog({
+  target,
+  onClose,
+}: {
+  target: EditableContent;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const updateArticle = useUpdateAdminArticle();
+  const updateAnnouncement = useUpdateAdminAnnouncement();
+  const [error, setError] = useState("");
+  const isPending = updateArticle.isPending || updateAnnouncement.isPending;
+
+  async function handleArchive() {
+    setError("");
+    try {
+      if (target.kind === "article") {
+        await updateArticle.mutateAsync({ id: target.item.id, data: { status: "archived" } });
+        await queryClient.invalidateQueries({ queryKey: getListAdminArticlesQueryKey() });
+      } else {
+        await updateAnnouncement.mutateAsync({ id: target.item.id, data: { status: "archived" } });
+        await queryClient.invalidateQueries({ queryKey: getListAdminAnnouncementsQueryKey() });
+      }
+      await queryClient.invalidateQueries({
+        queryKey: getListAdminContentRevisionsQueryKey({
+          entityKind: target.kind,
+          entityId: target.item.id,
+        }),
+      });
+      onClose();
+    } catch {
+      setError("下架失敗，請稍後再試。");
+    }
+  }
+
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && !isPending && onClose()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>確定要下架這筆內容？</AlertDialogTitle>
+          <AlertDialogDescription>
+            「{target.item.title}」下架後將不再對外顯示，但資料與版本紀錄都會保留，之後仍可重新編輯上架。
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>取消</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={isPending}
+            onClick={(event) => {
+              event.preventDefault();
+              void handleArchive();
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending ? "下架中…" : "確認下架"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export default function AdminContentPage() {
   const [tab, setTab] = useState<"articles" | "announcements">("articles");
   const [revTarget, setRevTarget] = useState<{kind: "article"|"announcement", id: number} | null>(null);
   const [createKind, setCreateKind] = useState<"article" | "announcement" | null>(null);
-  const [editTarget, setEditTarget] = useState<
-    { kind: "article"; item: AdminArticle } |
-    { kind: "announcement"; item: AdminAnnouncement } |
-    null
-  >(null);
+  const [editTarget, setEditTarget] = useState<EditableContent | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<EditableContent | null>(null);
 
   const { data: articles, isLoading: loadingArticles } = useListAdminArticles();
   const { data: announcements, isLoading: loadingAnnouncements } = useListAdminAnnouncements();
@@ -330,16 +404,14 @@ export default function AdminContentPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setRevTarget({kind: 'article', id: a.id})}>
                           <History size={16} />
                         </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-primary"
-                          aria-label={`編輯文章：${a.title}`}
-                          onClick={() => setEditTarget({ kind: "article", item: a })}
-                        >
+                        <Button aria-label={`編輯 ${a.title}`} variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => setEditTarget({ kind: "article", item: a })}>
                           <Pencil size={16} />
                         </Button>
+                        {a.status !== "archived" && (
+                          <Button aria-label={`下架 ${a.title}`} variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setArchiveTarget({ kind: "article", item: a })}>
+                            <Archive size={16} />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -362,16 +434,14 @@ export default function AdminContentPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setRevTarget({kind: 'announcement', id: a.id})}>
                           <History size={16} />
                         </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-primary"
-                          aria-label={`編輯公告：${a.title}`}
-                          onClick={() => setEditTarget({ kind: "announcement", item: a })}
-                        >
+                        <Button aria-label={`編輯 ${a.title}`} variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => setEditTarget({ kind: "announcement", item: a })}>
                           <Pencil size={16} />
                         </Button>
+                        {a.status !== "archived" && (
+                          <Button aria-label={`下架 ${a.title}`} variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setArchiveTarget({ kind: "announcement", item: a })}>
+                            <Archive size={16} />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -390,15 +460,18 @@ export default function AdminContentPage() {
         />
       )}
       {createKind && (
-        <ContentEditorDialog kind={createKind} onClose={() => setCreateKind(null)} />
+        <ContentDialog kind={createKind} onClose={() => setCreateKind(null)} />
       )}
       {editTarget && (
-        <ContentEditorDialog
+        <ContentDialog
           key={`${editTarget.kind}-${editTarget.item.id}`}
           kind={editTarget.kind}
           item={editTarget.item}
           onClose={() => setEditTarget(null)}
         />
+      )}
+      {archiveTarget && (
+        <ArchiveContentDialog target={archiveTarget} onClose={() => setArchiveTarget(null)} />
       )}
     </AdminLayout>
   );
