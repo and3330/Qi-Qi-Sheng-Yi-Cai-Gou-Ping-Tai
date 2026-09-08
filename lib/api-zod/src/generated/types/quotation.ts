@@ -27,6 +27,8 @@ export interface Quotation {
   /** @nullable */
   note?: string | null;
   /** @nullable */
+  creatorEmployeeId?: number | null;
+  /** @nullable */
   convertedOrderId?: number | null;
   /** @nullable */
   convertedOrderNo?: string | null;

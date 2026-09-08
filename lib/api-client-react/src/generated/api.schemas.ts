@@ -1639,6 +1639,8 @@ export interface AdminPurchaseOrder {
   totalAmount: number;
   /** @nullable */
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   /** @nullable */
   orderedAt?: string | null;
@@ -1663,6 +1665,11 @@ export interface PurchaseOrderLineInput {
 export interface PurchaseOrderInput {
   supplierId: number;
   warehouseId?: number | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   /** @nullable */
   note?: string | null;
   /** @minItems 1 */
@@ -2427,6 +2434,11 @@ export interface QuotationInput {
   /** @nullable */
   institutionId?: number | null;
   /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
+  /**
      * YYYY-MM-DD
      * @nullable
      */
@@ -2479,6 +2491,8 @@ export interface Quotation {
   validUntil?: string | null;
   /** @nullable */
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   /** @nullable */
   convertedOrderId?: number | null;
   /** @nullable */
@@ -2797,6 +2811,8 @@ export interface ErpSalesOrder {
   status: string;
   totalAmount: number;
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   confirmedAt?: string | null;
   shippedAt?: string | null;
@@ -2835,6 +2851,8 @@ export interface ErpSalesReturn {
   totalAmount: number;
   reason?: string | null;
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   confirmedAt?: string | null;
   items: ErpSalesReturnItem[];
@@ -2864,6 +2882,8 @@ export interface ErpPurchaseReturn {
   totalAmount: number;
   reason?: string | null;
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   confirmedAt?: string | null;
   items: ErpPurchaseReturnItem[];
@@ -2937,6 +2957,8 @@ export interface ErpStockTransfer {
   toWarehouseName: string;
   status: string;
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   confirmedAt?: string | null;
   items: ErpStockTransferItem[];
@@ -2953,6 +2975,11 @@ export interface ErpStockTransferInput {
   fromWarehouseId: number;
   toWarehouseId: number;
   note?: string | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   /** @minItems 1 */
   items: ErpStockTransferInputItemsItem[];
 }
@@ -3003,6 +3030,11 @@ export type ErpSalesOrderInputItemsItem = {
 export interface ErpSalesOrderInput {
   customerId: number;
   warehouseId?: number | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   note?: string | null;
   /** @minItems 1 */
   items: ErpSalesOrderInputItemsItem[];
@@ -3031,6 +3063,11 @@ export type ErpSalesReturnInputItemsItem = {
 export interface ErpSalesReturnInput {
   salesOrderId: number;
   warehouseId?: number | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   reason?: string | null;
   note?: string | null;
   /** @minItems 1 */
@@ -3046,6 +3083,11 @@ export type ErpPurchaseReturnInputItemsItem = {
 export interface ErpPurchaseReturnInput {
   purchaseOrderId: number;
   warehouseId?: number | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   reason?: string | null;
   note?: string | null;
   /** @minItems 1 */

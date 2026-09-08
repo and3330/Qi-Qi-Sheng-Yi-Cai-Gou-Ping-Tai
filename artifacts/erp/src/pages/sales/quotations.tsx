@@ -5,7 +5,7 @@ import {
   useConvertErpQuotation,
   useCreateErpQuotation,
   useGetErpQuotation,
-  useListErpItems,
+  useListErpItems, useListErpHrEmployees,
   useListErpQuotations,
   useUpdateErpQuotationStatus,
 } from "@workspace/api-client-react";
@@ -45,16 +45,20 @@ export default function QuotationsPage() {
   const [institutionId, setInstitutionId] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [note, setNote] = useState("");
+  const [creatorEmployeeId, setCreatorEmployeeId] = useState("");
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const params = { status: status === "all" ? undefined : status };
   const { data: quotations, isLoading } = useListErpQuotations(params);
   const { data: products } = useListErpItems();
+  const { data: employees, isLoading: employeesLoading } = useListErpHrEmployees();
+  const activeEmployees = employees?.filter((employee) => employee.status === "active") ?? [];
+  const creatorName = (id?: number | null) => employees?.find((employee) => employee.id === id)?.name || "—";
   const { data: detail, isLoading: detailLoading } = useGetErpQuotation(detailId ?? 0, {
     query: { queryKey: getGetErpQuotationQueryKey(detailId ?? 0), enabled: detailId !== null },
   });
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListErpQuotationsQueryKey() });
   const reset = () => {
-    setCustomerName(""); setMemberId(""); setInstitutionId(""); setValidUntil(""); setNote(""); setLines([emptyLine()]);
+    setCustomerName(""); setMemberId(""); setInstitutionId(""); setValidUntil(""); setNote(""); setCreatorEmployeeId(""); setLines([emptyLine()]);
   };
   const create = useCreateErpQuotation({ mutation: {
     onSuccess: () => { invalidate(); toast({ title: "已建立報價單" }); setCreateOpen(false); reset(); },
@@ -78,7 +82,7 @@ export default function QuotationsPage() {
       toast({ title: "請填寫客戶與有效品項", description: "單價不可小於 0，數量至少為 1", variant: "destructive" }); return;
     }
     create.mutate({ data: { customerName: customerName.trim(), memberId: memberId ? Number(memberId) : null,
-      institutionId: institutionId ? Number(institutionId) : null, validUntil: validUntil || null, note: note || null, items } });
+      institutionId: institutionId ? Number(institutionId) : null, creatorEmployeeId: creatorEmployeeId ? Number(creatorEmployeeId) : null, validUntil: validUntil || null, note: note || null, items } });
   };
 
   return <div className="space-y-6">
@@ -93,20 +97,20 @@ export default function QuotationsPage() {
     <Card className="overflow-hidden border-t-2 border-t-primary shadow-sm"><Table>
       <TableHeader className="bg-secondary/50"><TableRow>
         <TableHead>單號</TableHead><TableHead>客戶</TableHead><TableHead>有效期限</TableHead>
-        <TableHead className="text-right">金額</TableHead><TableHead>狀態</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead>
+        <TableHead className="text-right">金額</TableHead><TableHead>狀態</TableHead><TableHead>製單人</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead>
       </TableRow></TableHeader>
-      <TableBody>{isLoading ? <TableRow><TableCell colSpan={7} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
-        : !quotations?.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground">查無報價單</TableCell></TableRow>
+      <TableBody>{isLoading ? <TableRow><TableCell colSpan={8} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+        : !quotations?.length ? <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted-foreground">查無報價單</TableCell></TableRow>
         : quotations.map((q) => <TableRow key={q.id}>
           <TableCell className="font-medium">{q.quoteNo}</TableCell><TableCell>{q.customerName}</TableCell>
           <TableCell>{q.validUntil || "—"}</TableCell><TableCell className="text-right">NT$ {q.totalAmount.toLocaleString()}</TableCell>
-          <TableCell><Badge variant="outline" className={statusColor[q.status]}>{statusLabel[q.status]}</Badge></TableCell>
+          <TableCell><Badge variant="outline" className={statusColor[q.status]}>{statusLabel[q.status]}</Badge></TableCell><TableCell>{creatorName(q.creatorEmployeeId)}</TableCell>
           <TableCell>{new Date(q.createdAt).toLocaleDateString("zh-TW")}</TableCell>
           <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => setDetailId(q.id)}><Eye className="mr-1 h-4 w-4" />明細</Button></TableCell>
         </TableRow>)}</TableBody>
     </Table></Card>
 
-    <Dialog open={createOpen} onOpenChange={setCreateOpen}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+    <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) reset(); }}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
       <DialogHeader><DialogTitle>建立報價單</DialogTitle></DialogHeader>
       <div className="grid gap-4 py-2">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -114,6 +118,7 @@ export default function QuotationsPage() {
           <div className="space-y-2"><Label>有效期限</Label><Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} /></div>
           <div className="space-y-2"><Label>會員 ID（轉單必填）</Label><Input type="number" value={memberId} onChange={(e) => setMemberId(e.target.value)} /></div>
           <div className="space-y-2"><Label>機構 ID</Label><Input type="number" value={institutionId} onChange={(e) => setInstitutionId(e.target.value)} /></div>
+           <div className="space-y-2"><Label>製單人（選填）</Label><Select value={creatorEmployeeId} onValueChange={setCreatorEmployeeId} disabled={employeesLoading || !activeEmployees.length}><SelectTrigger><SelectValue placeholder={employeesLoading ? "載入員工中…" : activeEmployees.length ? "選擇製單人" : "無在職員工"} /></SelectTrigger><SelectContent>{activeEmployees.map((employee) => <SelectItem key={employee.id} value={String(employee.id)}>{employee.employeeNo}－{employee.name}</SelectItem>)}</SelectContent></Select></div>
         </div>
         <div className="space-y-2"><Label>報價品項 *</Label>{lines.map((line, index) => {
           const product = products?.find((p) => p.id === Number(line.productId));
@@ -145,7 +150,7 @@ export default function QuotationsPage() {
         <div className="flex gap-2"><Badge variant="outline" className={statusColor[detail.status]}>{statusLabel[detail.status]}</Badge>
           {detail.convertedOrderNo && <Badge variant="outline">訂單：{detail.convertedOrderNo}</Badge>}</div>
         <div className="grid gap-2 rounded-lg bg-muted/40 p-4 text-sm sm:grid-cols-2">
-          <div>客戶：{detail.customerName}</div><div>有效期限：{detail.validUntil || "—"}</div>
+          <div>客戶：{detail.customerName}</div><div>有效期限：{detail.validUntil || "—"}</div><div>製單人：{creatorName(detail.creatorEmployeeId)}</div>
           {detail.memberName && <div>會員：{detail.memberName}</div>}{detail.institutionName && <div>機構：{detail.institutionName}</div>}
           {detail.note && <div className="sm:col-span-2">備註：{detail.note}</div>}
         </div>

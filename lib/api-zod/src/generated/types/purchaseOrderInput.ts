@@ -10,6 +10,11 @@ import type { PurchaseOrderLineInput } from './purchaseOrderLineInput';
 export interface PurchaseOrderInput {
   supplierId: number;
   warehouseId?: number | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   /** @nullable */
   note?: string | null;
   /** @minItems 1 */

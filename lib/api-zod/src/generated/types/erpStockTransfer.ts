@@ -16,6 +16,8 @@ export interface ErpStockTransfer {
   toWarehouseName: string;
   status: string;
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   confirmedAt?: string | null;
   items: ErpStockTransferItem[];

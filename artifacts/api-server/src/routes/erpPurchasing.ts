@@ -11,6 +11,7 @@ import {
   productVariantsTable,
   stockMovementsTable,
   erpAuditLogsTable,
+  erpEmployeesTable,
   type PurchaseOrder,
   type PurchaseOrderItem,
   type PurchaseReturn,
@@ -74,6 +75,7 @@ function serializePO(po: PurchaseOrder, supplierName: string, items: PurchaseOrd
     status: po.status,
     totalAmount: po.totalAmount,
     note: po.note,
+    creatorEmployeeId: po.creatorEmployeeId,
     createdAt: po.createdAt.toISOString(),
     orderedAt: po.orderedAt ? po.orderedAt.toISOString() : null,
     receivedAt: po.receivedAt ? po.receivedAt.toISOString() : null,
@@ -154,6 +156,22 @@ router.post("/erp/purchase-orders", requireErpMenu("/purchasing/orders"), async 
     return;
   }
   const input = parsed.data;
+  if (input.creatorEmployeeId != null) {
+    const [employee] = await db
+      .select({ id: erpEmployeesTable.id })
+      .from(erpEmployeesTable)
+      .where(
+        and(
+          eq(erpEmployeesTable.id, input.creatorEmployeeId),
+          eq(erpEmployeesTable.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!employee) {
+      res.status(400).json({ error: "製單人不存在或已停用" });
+      return;
+    }
+  }
 
   const [supplier] = await db
     .select()
@@ -245,6 +263,7 @@ router.post("/erp/purchase-orders", requireErpMenu("/purchasing/orders"), async 
         totalAmount,
         note: input.note ?? null,
         createdBy: req.member!.id,
+        creatorEmployeeId: input.creatorEmployeeId ?? null,
       })
       .returning();
     const items = await tx
@@ -477,6 +496,7 @@ function serializePR(
     totalAmount: pr.totalAmount,
     reason: pr.reason,
     note: pr.note,
+    creatorEmployeeId: pr.creatorEmployeeId,
     createdAt: pr.createdAt.toISOString(),
     confirmedAt: pr.confirmedAt ? pr.confirmedAt.toISOString() : null,
     items: items.map((i) => ({
@@ -564,6 +584,22 @@ router.post("/erp/purchase-returns", requireErpMenu("/purchasing/returns"), asyn
     return;
   }
   const input = parsed.data;
+  if (input.creatorEmployeeId != null) {
+    const [employee] = await db
+      .select({ id: erpEmployeesTable.id })
+      .from(erpEmployeesTable)
+      .where(
+        and(
+          eq(erpEmployeesTable.id, input.creatorEmployeeId),
+          eq(erpEmployeesTable.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!employee) {
+      res.status(400).json({ error: "製單人不存在或已停用" });
+      return;
+    }
+  }
 
   // 同一來源明細重複列 → 合併數量，避免逐列檢查被繞過
   const qtyByItemId = new Map<number, number>();
@@ -671,6 +707,7 @@ router.post("/erp/purchase-returns", requireErpMenu("/purchasing/returns"), asyn
           reason: input.reason ?? null,
           note: input.note ?? null,
           createdBy: req.member!.id,
+          creatorEmployeeId: input.creatorEmployeeId ?? po.creatorEmployeeId ?? null,
         })
         .returning();
       const items = await tx

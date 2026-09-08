@@ -10206,6 +10206,10 @@ components:
           type:
             - string
             - 'null'
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
         createdAt:
           type: string
           format: date-time
@@ -10254,6 +10258,11 @@ components:
         warehouseId:
           type: integer
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
+          description: 製單人 ERP 員工 ID
         note:
           type:
             - string
@@ -11561,6 +11570,11 @@ components:
           type:
             - integer
             - 'null'
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
+          description: 製單人 ERP 員工 ID
         validUntil:
           type:
             - string
@@ -11655,6 +11669,10 @@ components:
         note:
           type:
             - string
+            - 'null'
+        creatorEmployeeId:
+          type:
+            - integer
             - 'null'
         convertedOrderId:
           type:
@@ -12341,6 +12359,10 @@ components:
         note:
           type: string
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
         createdAt:
           type: string
         confirmedAt:
@@ -12444,6 +12466,10 @@ components:
         note:
           type: string
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
         createdAt:
           type: string
         confirmedAt:
@@ -12523,6 +12549,10 @@ components:
         note:
           type: string
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
         createdAt:
           type: string
         confirmedAt:
@@ -12693,6 +12723,10 @@ components:
         note:
           type: string
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
         createdAt:
           type: string
         confirmedAt:
@@ -12716,6 +12750,11 @@ components:
         note:
           type: string
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
+          description: 製單人 ERP 員工 ID
         items:
           type: array
           minItems: 1
@@ -12796,6 +12835,11 @@ components:
         warehouseId:
           type: integer
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
+          description: 製單人 ERP 員工 ID
         note:
           type: string
           nullable: true
@@ -12842,6 +12886,11 @@ components:
         warehouseId:
           type: integer
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
+          description: 製單人 ERP 員工 ID
         reason:
           type: string
           nullable: true
@@ -12873,6 +12922,11 @@ components:
         warehouseId:
           type: integer
           nullable: true
+        creatorEmployeeId:
+          type:
+            - integer
+            - 'null'
+          description: 製單人 ERP 員工 ID
         reason:
           type: string
           nullable: true

@@ -11,6 +11,11 @@ export interface ErpStockTransferInput {
   fromWarehouseId: number;
   toWarehouseId: number;
   note?: string | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   /** @minItems 1 */
   items: ErpStockTransferInputItemsItem[];
 }

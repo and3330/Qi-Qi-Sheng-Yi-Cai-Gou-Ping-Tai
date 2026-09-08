@@ -10,6 +10,11 @@ import type { ErpSalesOrderInputItemsItem } from './erpSalesOrderInputItemsItem'
 export interface ErpSalesOrderInput {
   customerId: number;
   warehouseId?: number | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   note?: string | null;
   /** @minItems 1 */
   items: ErpSalesOrderInputItemsItem[];

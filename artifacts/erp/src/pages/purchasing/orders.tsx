@@ -6,6 +6,7 @@ import {
   useCreateErpPurchaseOrder,
   useGetErpPurchaseOrder,
   useListErpItems,
+  useListErpHrEmployees,
   useListErpPurchaseOrders,
   useListErpSuppliers,
   useListErpWarehouses,
@@ -73,6 +74,7 @@ export default function PurchaseOrdersPage() {
   const [supplierId, setSupplierId] = useState('');
   const [warehouseId, setWarehouseId] = useState('default');
   const [note, setNote] = useState('');
+  const [creatorEmployeeId, setCreatorEmployeeId] = useState('');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -81,13 +83,16 @@ export default function PurchaseOrdersPage() {
   const { data: suppliers } = useListErpSuppliers({});
   const { data: items } = useListErpItems({});
   const { data: warehouses } = useListErpWarehouses();
+  const { data: employees, isLoading: employeesLoading } = useListErpHrEmployees();
+  const activeEmployees = employees?.filter((employee) => employee.status === 'active') ?? [];
+  const creatorName = (id?: number | null) => employees?.find((employee) => employee.id === id)?.name || '—';
   const { data: detail, isLoading: detailLoading } = useGetErpPurchaseOrder(selectedId ?? 0, {
     query: { enabled: selectedId !== null, queryKey: getGetErpPurchaseOrderQueryKey(selectedId ?? 0) },
   });
   const physicalItems = useMemo(() => (items ?? []).filter((item) => !item.isVirtual && item.isActive), [items]);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListErpPurchaseOrdersQueryKey() });
   const resetCreate = () => {
-    setCreateOpen(false); setSupplierId(''); setWarehouseId('default'); setNote(''); setLines([emptyLine()]);
+    setCreateOpen(false); setSupplierId(''); setWarehouseId('default'); setNote(''); setCreatorEmployeeId(''); setLines([emptyLine()]);
   };
   const createOrder = useCreateErpPurchaseOrder({
     mutation: {
@@ -119,7 +124,7 @@ export default function PurchaseOrdersPage() {
     }
     createOrder.mutate({
       data: {
-        supplierId: Number(supplierId), warehouseId: warehouseId === 'default' ? null : Number(warehouseId), note: note.trim() || null,
+        supplierId: Number(supplierId), warehouseId: warehouseId === 'default' ? null : Number(warehouseId), creatorEmployeeId: creatorEmployeeId ? Number(creatorEmployeeId) : null, note: note.trim() || null,
         items: chosen.map((line) => ({ productId: Number(line.productId), variantId: line.variantId ? Number(line.variantId) : null, unitCost: Number(line.unitCost), quantity: Number(line.quantity) })),
       },
     });
@@ -140,14 +145,14 @@ export default function PurchaseOrdersPage() {
       </div>
       <Card className="overflow-hidden border-t-2 border-t-primary shadow-sm">
         <Table>
-          <TableHeader className="bg-secondary/50"><TableRow><TableHead>單號</TableHead><TableHead>供應商</TableHead><TableHead>品項數</TableHead><TableHead className="text-right">金額</TableHead><TableHead>狀態</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+          <TableHeader className="bg-secondary/50"><TableRow><TableHead>單號</TableHead><TableHead>供應商</TableHead><TableHead>品項數</TableHead><TableHead className="text-right">金額</TableHead><TableHead>狀態</TableHead><TableHead>製單人</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
           <TableBody>
-            {isLoading ? <TableRow><TableCell colSpan={7} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
-              : !orders?.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground">尚無採購單</TableCell></TableRow>
+            {isLoading ? <TableRow><TableCell colSpan={8} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+              : !orders?.length ? <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted-foreground">尚無採購單</TableCell></TableRow>
               : orders.map((order) => <TableRow key={order.id}>
                 <TableCell className="font-mono text-xs">{order.poNo}</TableCell><TableCell>{order.supplierName}</TableCell><TableCell>{order.items.length}</TableCell>
                 <TableCell className="text-right font-medium">NT$ {order.totalAmount.toLocaleString()}</TableCell>
-                <TableCell><Badge variant="outline" className={statusClass[order.status]}>{statusLabel[order.status]}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className={statusClass[order.status]}>{statusLabel[order.status]}</Badge></TableCell><TableCell>{creatorName(order.creatorEmployeeId)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleString('zh-TW')}</TableCell>
                 <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => setSelectedId(order.id)}><Eye className="mr-1 h-4 w-4" />詳情</Button></TableCell>
               </TableRow>)}
@@ -162,6 +167,7 @@ export default function PurchaseOrdersPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2"><Label>供應商 *</Label><Select value={supplierId} onValueChange={setSupplierId}><SelectTrigger><SelectValue placeholder="選擇供應商" /></SelectTrigger><SelectContent>{(suppliers ?? []).filter((row) => row.isActive).map((row) => <SelectItem key={row.id} value={String(row.id)}>{row.name}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>收貨倉</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">預設倉</SelectItem>{warehouses?.filter((w) => w.isActive).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}</SelectContent></Select></div>
+               <div className="space-y-2"><Label>製單人（選填）</Label><Select value={creatorEmployeeId} onValueChange={setCreatorEmployeeId} disabled={employeesLoading || !activeEmployees.length}><SelectTrigger><SelectValue placeholder={employeesLoading ? '載入員工中…' : activeEmployees.length ? '選擇製單人' : '無在職員工'} /></SelectTrigger><SelectContent>{activeEmployees.map((employee) => <SelectItem key={employee.id} value={String(employee.id)}>{employee.employeeNo}－{employee.name}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-2"><Label>備註</Label><Input value={note} onChange={(e) => setNote(e.target.value)} /></div>
             </div>
             <div className="space-y-3">
@@ -188,7 +194,7 @@ export default function PurchaseOrdersPage() {
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2">採購單 {detail?.poNo}{detail && <Badge variant="outline" className={statusClass[detail.status]}>{statusLabel[detail.status]}</Badge>}</DialogTitle></DialogHeader>
           {detailLoading ? <Loader2 className="mx-auto my-10 h-6 w-6 animate-spin" /> : detail && <div className="space-y-4">
-            <div className="grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">供應商：</span>{detail.supplierName}</p><p><span className="text-muted-foreground">建立時間：</span>{new Date(detail.createdAt).toLocaleString('zh-TW')}</p>{detail.note && <p className="sm:col-span-2"><span className="text-muted-foreground">備註：</span>{detail.note}</p>}</div>
+            <div className="grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">供應商：</span>{detail.supplierName}</p><p><span className="text-muted-foreground">製單人：</span>{creatorName(detail.creatorEmployeeId)}</p><p><span className="text-muted-foreground">建立時間：</span>{new Date(detail.createdAt).toLocaleString('zh-TW')}</p>{detail.note && <p className="sm:col-span-2"><span className="text-muted-foreground">備註：</span>{detail.note}</p>}</div>
             <OrderItems order={detail} /><p className="text-right font-bold">合計：NT$ {detail.totalAmount.toLocaleString()}</p>
           </div>}
           <DialogFooter>

@@ -75,6 +75,7 @@ export async function createSalesOrderForShopOrder(
   customerName: string,
   lines: SalesOrderLine[],
   source: "shop" | "quotation" = "shop",
+  creatorEmployeeId: number | null = null,
 ): Promise<number> {
   const [so] = await tx
     .insert(salesOrdersTable)
@@ -88,6 +89,7 @@ export async function createSalesOrderForShopOrder(
       status: "confirmed",
       totalAmount: order.totalAmount,
       note: order.note ?? null,
+      creatorEmployeeId,
       confirmedAt: new Date(),
     })
     .returning({ id: salesOrdersTable.id });

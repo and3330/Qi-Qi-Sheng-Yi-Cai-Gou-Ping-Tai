@@ -6,6 +6,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import { suppliersTable } from "./suppliers";
+import { erpEmployeesTable } from "./erpHr";
 
 export const purchaseOrdersTable = pgTable("purchase_orders", {
   id: serial("id").primaryKey(),
@@ -19,6 +20,8 @@ export const purchaseOrdersTable = pgTable("purchase_orders", {
   note: text("note"),
   warehouseId: integer("warehouse_id"),
   createdBy: integer("created_by"),
+    // 製單人：可與建立帳號（createdBy）不同
+    creatorEmployeeId: integer("creator_employee_id").references(() => erpEmployeesTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   orderedAt: timestamp("ordered_at"),
   receivedAt: timestamp("received_at"),

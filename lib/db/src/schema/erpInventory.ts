@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import { suppliersTable } from "./suppliers";
 import { membersTable } from "./members";
 import { institutionsTable } from "./institutions";
+import { erpEmployeesTable } from "./erpHr";
 
 /** 倉庫（單一預設倉為主，其他倉先做資料層準備） */
 export const erpWarehousesTable = pgTable("erp_warehouses", {
@@ -66,6 +67,8 @@ export const stockTransfersTable = pgTable(
     status: text("status").notNull().default("draft"),
     note: text("note"),
     createdBy: integer("created_by"),
+    // 製單人：可與建立帳號（createdBy）不同
+    creatorEmployeeId: integer("creator_employee_id").references(() => erpEmployeesTable.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     confirmedAt: timestamp("confirmed_at"),
   },
@@ -163,6 +166,8 @@ export const salesOrdersTable = pgTable(
     totalAmount: integer("total_amount").notNull().default(0),
     note: text("note"),
     createdBy: integer("created_by"),
+    // 製單人：可與建立帳號（createdBy）不同
+    creatorEmployeeId: integer("creator_employee_id").references(() => erpEmployeesTable.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     confirmedAt: timestamp("confirmed_at"),
     shippedAt: timestamp("shipped_at"),
@@ -209,6 +214,8 @@ export const salesReturnsTable = pgTable(
     reason: text("reason"),
     note: text("note"),
     createdBy: integer("created_by"),
+    // 製單人：可與建立帳號（createdBy）不同
+    creatorEmployeeId: integer("creator_employee_id").references(() => erpEmployeesTable.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     confirmedAt: timestamp("confirmed_at"),
   },
@@ -247,6 +254,8 @@ export const purchaseReturnsTable = pgTable(
     reason: text("reason"),
     note: text("note"),
     createdBy: integer("created_by"),
+    // 製單人：可與建立帳號（createdBy）不同
+    creatorEmployeeId: integer("creator_employee_id").references(() => erpEmployeesTable.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     confirmedAt: timestamp("confirmed_at"),
   },

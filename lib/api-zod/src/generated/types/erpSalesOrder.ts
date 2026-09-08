@@ -19,6 +19,8 @@ export interface ErpSalesOrder {
   status: string;
   totalAmount: number;
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   confirmedAt?: string | null;
   shippedAt?: string | null;

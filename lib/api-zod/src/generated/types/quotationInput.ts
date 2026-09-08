@@ -18,6 +18,11 @@ export interface QuotationInput {
   /** @nullable */
   institutionId?: number | null;
   /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
+  /**
      * YYYY-MM-DD
      * @nullable
      */

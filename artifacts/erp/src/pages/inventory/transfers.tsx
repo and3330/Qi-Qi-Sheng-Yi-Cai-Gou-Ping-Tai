@@ -7,6 +7,7 @@ import {
   getListErpWarehouseStockQueryKey,
   getListErpWarehousesQueryKey,
   useCreateErpStockTransfer,
+  useListErpHrEmployees,
   useListErpItems,
   useListErpStockTransfers,
   useListErpWarehouses,
@@ -43,6 +44,7 @@ export default function TransfersPage() {
   const [fromWarehouseId, setFromWarehouseId] = useState('');
   const [toWarehouseId, setToWarehouseId] = useState('');
   const [note, setNote] = useState('');
+  const [creatorEmployeeId, setCreatorEmployeeId] = useState('');
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const { data: transfers, isLoading } = useListErpStockTransfers(
     { status: status === 'all' ? undefined : status },
@@ -50,6 +52,9 @@ export default function TransfersPage() {
   );
   const { data: warehouses } = useListErpWarehouses({ query: { queryKey: getListErpWarehousesQueryKey() } });
   const { data: products } = useListErpItems({}, { query: { queryKey: getListErpItemsQueryKey({}) } });
+  const { data: employees, isLoading: employeesLoading } = useListErpHrEmployees();
+  const activeEmployees = employees?.filter((employee) => employee.status === 'active') ?? [];
+  const creatorName = (id?: number | null) => employees?.find((employee) => employee.id === id)?.name || '—';
   const activeWarehouses = warehouses?.filter((warehouse) => warehouse.isActive) ?? [];
   const physicalItems = products?.filter((product) => product.isActive && !product.isVirtual) ?? [];
   const invalidate = () => {
@@ -63,6 +68,7 @@ export default function TransfersPage() {
     setFromWarehouseId('');
     setToWarehouseId('');
     setNote('');
+    setCreatorEmployeeId('');
     setLines([emptyLine()]);
   };
   const create = useCreateErpStockTransfer({ mutation: {
@@ -96,6 +102,7 @@ export default function TransfersPage() {
       fromWarehouseId: Number(fromWarehouseId),
       toWarehouseId: Number(toWarehouseId),
       note: note.trim() || null,
+      creatorEmployeeId: creatorEmployeeId ? Number(creatorEmployeeId) : null,
       items: selected.map((line) => ({ productId: Number(line.productId), variantId: line.variantId ? Number(line.variantId) : null, quantity: Number(line.quantity) })),
     } });
   };
@@ -110,14 +117,15 @@ export default function TransfersPage() {
       <div className="flex gap-2"><Select value={status} onValueChange={setStatus}><SelectTrigger className="w-36 bg-card"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部狀態</SelectItem>{Object.entries(statusLabels).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><Button onClick={() => setCreateOpen(true)}><Plus className="mr-1 h-4 w-4" />建立調撥單</Button></div>
     </div>
     <Card className="overflow-x-auto border-t-2 border-t-primary shadow-sm"><Table>
-      <TableHeader className="bg-secondary/50"><TableRow><TableHead>單號</TableHead><TableHead>來源倉</TableHead><TableHead>目的倉</TableHead><TableHead>品項</TableHead><TableHead>狀態</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+      <TableHeader className="bg-secondary/50"><TableRow><TableHead>單號</TableHead><TableHead>來源倉</TableHead><TableHead>目的倉</TableHead><TableHead>品項</TableHead><TableHead>狀態</TableHead><TableHead>製單人</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
       <TableBody>
-        {isLoading ? <TableRow><TableCell colSpan={7} className="h-32"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
-          : !transfers?.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground">尚無庫存調撥單</TableCell></TableRow>
+        {isLoading ? <TableRow><TableCell colSpan={8} className="h-32"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+          : !transfers?.length ? <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted-foreground">尚無庫存調撥單</TableCell></TableRow>
           : transfers.map((transfer) => <TableRow key={transfer.id}>
             <TableCell className="font-mono">{transfer.stNo}</TableCell><TableCell>{transfer.fromWarehouseName}</TableCell><TableCell>{transfer.toWarehouseName}</TableCell>
             <TableCell><div>{transfer.items.length} 項</div><div className="max-w-xs truncate text-xs text-muted-foreground">{transfer.items.map((item) => `${item.productName}${item.variantName ? `／${item.variantName}` : ''} × ${item.quantity}`).join('、')}</div></TableCell>
             <TableCell><Badge variant="outline" className={statusClasses[transfer.status]}>{statusLabels[transfer.status] || transfer.status}</Badge></TableCell>
+            <TableCell>{creatorName(transfer.creatorEmployeeId)}</TableCell>
             <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{new Date(transfer.createdAt).toLocaleString('zh-TW')}</TableCell>
             <TableCell className="text-right">{transfer.status === 'draft' && <div className="flex justify-end gap-2"><Button size="sm" disabled={update.isPending} onClick={() => changeStatus(transfer.id, 'confirmed')}><CheckCircle2 className="mr-1 h-4 w-4" />確認</Button><Button size="sm" variant="outline" className="text-destructive" disabled={update.isPending} onClick={() => changeStatus(transfer.id, 'cancelled')}><XCircle className="mr-1 h-4 w-4" />取消</Button></div>}</TableCell>
           </TableRow>)}
@@ -130,6 +138,7 @@ export default function TransfersPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2"><Label>來源倉 *</Label><Select value={fromWarehouseId} onValueChange={setFromWarehouseId}><SelectTrigger><SelectValue placeholder="選擇來源倉" /></SelectTrigger><SelectContent>{activeWarehouses.map((warehouse) => <SelectItem key={warehouse.id} value={String(warehouse.id)} disabled={String(warehouse.id) === toWarehouseId}>{warehouse.name}</SelectItem>)}</SelectContent></Select></div>
           <div className="space-y-2"><Label>目的倉 *</Label><Select value={toWarehouseId} onValueChange={setToWarehouseId}><SelectTrigger><SelectValue placeholder="選擇目的倉" /></SelectTrigger><SelectContent>{activeWarehouses.map((warehouse) => <SelectItem key={warehouse.id} value={String(warehouse.id)} disabled={String(warehouse.id) === fromWarehouseId}>{warehouse.name}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-2"><Label>製單人（選填）</Label><Select value={creatorEmployeeId} onValueChange={setCreatorEmployeeId} disabled={employeesLoading || !activeEmployees.length}><SelectTrigger><SelectValue placeholder={employeesLoading ? '載入員工中…' : activeEmployees.length ? '選擇製單人' : '無在職員工'} /></SelectTrigger><SelectContent>{activeEmployees.map((employee) => <SelectItem key={employee.id} value={String(employee.id)}>{employee.employeeNo}－{employee.name}</SelectItem>)}</SelectContent></Select></div>
         </div>
         <div className="space-y-3"><Label>調撥明細 *</Label>
           {lines.map((line, index) => {

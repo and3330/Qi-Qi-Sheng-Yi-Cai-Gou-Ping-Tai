@@ -15,6 +15,7 @@ import {
   warehouseStockTable,
   stockTransfersTable,
   stockTransferItemsTable,
+  erpEmployeesTable,
   type Supplier,
   type ErpCustomer,
   type StockTransfer,
@@ -540,6 +541,7 @@ function serializeST(
     toWarehouseName: toName,
     status: st.status,
     note: st.note,
+    creatorEmployeeId: st.creatorEmployeeId,
     createdAt: st.createdAt.toISOString(),
     confirmedAt: st.confirmedAt ? st.confirmedAt.toISOString() : null,
     items: items.map((i) => ({
@@ -620,6 +622,22 @@ router.post("/erp/stock-transfers", requireErpMenu("/inventory/transfers"), asyn
     return;
   }
   const input = parsed.data;
+  if (input.creatorEmployeeId != null) {
+    const [employee] = await db
+      .select({ id: erpEmployeesTable.id })
+      .from(erpEmployeesTable)
+      .where(
+        and(
+          eq(erpEmployeesTable.id, input.creatorEmployeeId),
+          eq(erpEmployeesTable.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!employee) {
+      res.status(400).json({ error: "製單人不存在或已停用" });
+      return;
+    }
+  }
   if (input.fromWarehouseId === input.toWarehouseId) {
     res.status(400).json({ error: "來源倉與目的倉不可相同" });
     return;
@@ -714,6 +732,7 @@ router.post("/erp/stock-transfers", requireErpMenu("/inventory/transfers"), asyn
           status: "draft",
           note: input.note ?? null,
           createdBy: req.member!.id,
+          creatorEmployeeId: input.creatorEmployeeId ?? null,
         })
         .returning();
       const items = await tx

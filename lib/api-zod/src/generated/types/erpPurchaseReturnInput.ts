@@ -10,6 +10,11 @@ import type { ErpPurchaseReturnInputItemsItem } from './erpPurchaseReturnInputIt
 export interface ErpPurchaseReturnInput {
   purchaseOrderId: number;
   warehouseId?: number | null;
+  /**
+     * 製單人 ERP 員工 ID
+     * @nullable
+     */
+  creatorEmployeeId?: number | null;
   reason?: string | null;
   note?: string | null;
   /** @minItems 1 */

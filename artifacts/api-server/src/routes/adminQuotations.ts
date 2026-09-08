@@ -8,6 +8,7 @@ import {
   productVariantsTable,
   membersTable,
   institutionsTable,
+  erpEmployeesTable,
   ordersTable,
   orderItemsTable,
   stockMovementsTable,
@@ -60,6 +61,7 @@ function serializeQuotation(
     totalAmount: q.totalAmount,
     validUntil: q.validUntil ? q.validUntil.toISOString().slice(0, 10) : null,
     note: q.note,
+    creatorEmployeeId: q.creatorEmployeeId,
     convertedOrderId: q.convertedOrderId,
     convertedOrderNo: extra?.convertedOrderNo ?? null,
     createdAt: q.createdAt.toISOString(),
@@ -204,6 +206,22 @@ router.post(base, guard, async (req, res) => {
       return;
     }
   }
+  if (input.creatorEmployeeId != null) {
+    const [employee] = await db
+      .select({ id: erpEmployeesTable.id })
+      .from(erpEmployeesTable)
+      .where(
+        and(
+          eq(erpEmployeesTable.id, input.creatorEmployeeId),
+          eq(erpEmployeesTable.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!employee) {
+      res.status(400).json({ error: "製單人不存在或已停用" });
+      return;
+    }
+  }
 
   const productIds = input.items.map((i) => i.productId);
   const products = await db
@@ -278,6 +296,7 @@ router.post(base, guard, async (req, res) => {
         validUntil: input.validUntil ? new Date(input.validUntil) : null,
         note: input.note ?? null,
         createdBy: req.member!.id,
+        creatorEmployeeId: input.creatorEmployeeId ?? null,
       })
       .returning();
     const items = await tx
@@ -555,6 +574,7 @@ router.post(`${base}/:id/convert`, guard, async (req, res) => {
           isVirtual: prodById.get(i.productId)?.isVirtual ?? false,
         })),
         "quotation",
+        q.creatorEmployeeId,
       );
 
       await tx

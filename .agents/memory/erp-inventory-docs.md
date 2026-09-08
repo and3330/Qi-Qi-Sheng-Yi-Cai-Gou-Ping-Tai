@@ -38,6 +38,15 @@ syncMirrorStock 同步鏡像；新增回填/遷移一律寫成可重跑的差額
 - request body 一律用 $ref component schema；inline body 會與 orval 產生的 {OperationId}Body 型別名稱衝突。
 - query 參數勿加 minimum/maximum：orval zod 產出會在 const 宣告前引用（TS2448），數值夾限改在伺服器端做。
 
+## 進銷存製單人規則
+- 使用者手動選擇的 HR 員工必須存放在獨立的 `creatorEmployeeId`，不可覆寫既有 `createdBy`；前者是單據上的製單人，後者是實際操作帳號的稽核軌跡。
+- 報價單轉銷貨單時沿用製單人；採購退回未另選製單人時沿用原採購單。採購入庫是更新原採購單，直接保留原製單人。
+- 直接建立單據時只接受在職員工；歷史單據與未指定情況允許 null。
+
+**Why:** 製單人可能與登入建立單據的人不同，但稽核紀錄仍必須保留真正的操作帳號。
+
+**How to apply:** 新增進銷存單據或轉單流程時，同時考慮 `creatorEmployeeId` 的選取、回傳與繼承，不得改變 `createdBy` 語意。
+
 ## 其他
 - 收斂舊 API 時用完整 410 handler 取代原 handler，勿在開頭塞 early-return（TS 對 unreachable code 失去 narrowing）。
 - 本專案 DDL 遷移腳本必須冪等且涵蓋前置基礎表；dev/部署 DB 可能落後 schema 檔，執行前先比對 information_schema。

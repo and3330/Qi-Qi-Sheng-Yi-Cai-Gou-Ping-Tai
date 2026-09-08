@@ -19,6 +19,8 @@ export interface ErpPurchaseReturn {
   totalAmount: number;
   reason?: string | null;
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: string;
   confirmedAt?: string | null;
   items: ErpPurchaseReturnItem[];

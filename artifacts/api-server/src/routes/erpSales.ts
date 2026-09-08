@@ -13,6 +13,7 @@ import {
   salesReturnsTable,
   salesReturnItemsTable,
   erpAuditLogsTable,
+  erpEmployeesTable,
   type SalesOrder,
   type SalesOrderItem,
   type SalesReturn,
@@ -86,6 +87,7 @@ function serializeSO(so: SalesOrder, items: SalesOrderItem[]) {
     status: so.status,
     totalAmount: so.totalAmount,
     note: so.note,
+    creatorEmployeeId: so.creatorEmployeeId,
     createdAt: so.createdAt.toISOString(),
     confirmedAt: so.confirmedAt ? so.confirmedAt.toISOString() : null,
     shippedAt: so.shippedAt ? so.shippedAt.toISOString() : null,
@@ -179,6 +181,22 @@ router.post("/erp/sales-orders", requireErpMenu("/sales/orders"), async (req, re
     return;
   }
   const input = parsed.data;
+  if (input.creatorEmployeeId != null) {
+    const [employee] = await db
+      .select({ id: erpEmployeesTable.id })
+      .from(erpEmployeesTable)
+      .where(
+        and(
+          eq(erpEmployeesTable.id, input.creatorEmployeeId),
+          eq(erpEmployeesTable.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!employee) {
+      res.status(400).json({ error: "製單人不存在或已停用" });
+      return;
+    }
+  }
 
   const [customer] = await db
     .select()
@@ -293,6 +311,7 @@ router.post("/erp/sales-orders", requireErpMenu("/sales/orders"), async (req, re
         totalAmount,
         note: input.note ?? null,
         createdBy: req.member!.id,
+        creatorEmployeeId: input.creatorEmployeeId ?? null,
       })
       .returning();
     const items = await tx
@@ -512,6 +531,7 @@ function serializeSR(sr: SalesReturn, items: SalesReturnItem[], salesOrderNo?: s
     totalAmount: sr.totalAmount,
     reason: sr.reason,
     note: sr.note,
+    creatorEmployeeId: sr.creatorEmployeeId,
     createdAt: sr.createdAt.toISOString(),
     confirmedAt: sr.confirmedAt ? sr.confirmedAt.toISOString() : null,
     items: items.map((i) => ({
@@ -596,6 +616,22 @@ router.post("/erp/sales-returns", requireErpMenu("/sales/returns"), async (req, 
     return;
   }
   const input = parsed.data;
+  if (input.creatorEmployeeId != null) {
+    const [employee] = await db
+      .select({ id: erpEmployeesTable.id })
+      .from(erpEmployeesTable)
+      .where(
+        and(
+          eq(erpEmployeesTable.id, input.creatorEmployeeId),
+          eq(erpEmployeesTable.status, "active"),
+        ),
+      )
+      .limit(1);
+    if (!employee) {
+      res.status(400).json({ error: "製單人不存在或已停用" });
+      return;
+    }
+  }
 
   // 同一來源明細重複列 → 合併數量，避免逐列檢查被繞過
   const qtyByItemId = new Map<number, number>();
@@ -709,6 +745,7 @@ router.post("/erp/sales-returns", requireErpMenu("/sales/returns"), async (req, 
           reason: input.reason ?? null,
           note: input.note ?? null,
           createdBy: req.member!.id,
+          creatorEmployeeId: input.creatorEmployeeId ?? null,
         })
         .returning();
       const items = await tx

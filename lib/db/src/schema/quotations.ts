@@ -1,6 +1,7 @@
 import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { membersTable } from "./members";
 import { institutionsTable } from "./institutions";
+import { erpEmployeesTable } from "./erpHr";
 
 /**
  * 報價單：後台建立、綁定機構／會員客戶，可轉為正式訂單
@@ -22,6 +23,8 @@ export const quotationsTable = pgTable(
     // 轉出的訂單
     convertedOrderId: integer("converted_order_id"),
     createdBy: integer("created_by").notNull(),
+    // 製單人：可與建立帳號（createdBy）不同
+    creatorEmployeeId: integer("creator_employee_id").references(() => erpEmployeesTable.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

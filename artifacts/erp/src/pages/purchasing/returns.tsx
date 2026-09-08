@@ -4,6 +4,7 @@ import {
   getListErpItemsQueryKey,
   getListErpPurchaseReturnsQueryKey,
   useCreateErpPurchaseReturn,
+  useListErpHrEmployees,
   useListErpPurchaseOrders,
   useListErpPurchaseReturns,
   useListErpWarehouses,
@@ -39,15 +40,19 @@ export default function PurchaseReturnsPage() {
   const [quantities, setQuantities] = useState<Record<number, string>>({});
   const [reason, setReason] = useState('');
   const [note, setNote] = useState('');
+  const [creatorEmployeeId, setCreatorEmployeeId] = useState('');
   const [detail, setDetail] = useState<ErpPurchaseReturn | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: returns, isLoading } = useListErpPurchaseReturns(status === 'all' ? {} : { status });
   const { data: receivedOrders } = useListErpPurchaseOrders({ status: 'received' });
   const { data: warehouses } = useListErpWarehouses();
+  const { data: employees, isLoading: employeesLoading } = useListErpHrEmployees();
+  const activeEmployees = employees?.filter((employee) => employee.status === 'active') ?? [];
+  const creatorName = (id?: number | null) => employees?.find((employee) => employee.id === id)?.name || '—';
   const selectedOrder = useMemo(() => receivedOrders?.find((order) => order.id === Number(purchaseOrderId)), [receivedOrders, purchaseOrderId]);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListErpPurchaseReturnsQueryKey() });
-  const reset = () => { setCreateOpen(false); setPurchaseOrderId(''); setWarehouseId('default'); setQuantities({}); setReason(''); setNote(''); };
+  const reset = () => { setCreateOpen(false); setPurchaseOrderId(''); setWarehouseId('default'); setQuantities({}); setReason(''); setNote(''); setCreatorEmployeeId(''); };
   const createReturn = useCreateErpPurchaseReturn({
     mutation: {
       onSuccess: () => { invalidate(); toast({ title: '已建立採購退回單', description: '退回單目前為草稿' }); reset(); },
@@ -75,7 +80,7 @@ export default function PurchaseReturnsPage() {
     if (items.some((row) => !Number.isInteger(row.quantity) || row.quantity > (selectedOrder.items.find((item) => item.id === row.purchaseOrderItemId)?.quantity ?? 0))) {
       toast({ title: '退回數量不正確', description: '數量須為正整數且不可超過原採購數量', variant: 'destructive' }); return;
     }
-    createReturn.mutate({ data: { purchaseOrderId: selectedOrder.id, warehouseId: warehouseId === 'default' ? null : Number(warehouseId), reason: reason.trim() || null, note: note.trim() || null, items } });
+    createReturn.mutate({ data: { purchaseOrderId: selectedOrder.id, warehouseId: warehouseId === 'default' ? null : Number(warehouseId), creatorEmployeeId: creatorEmployeeId ? Number(creatorEmployeeId) : null, reason: reason.trim() || null, note: note.trim() || null, items } });
     return;
   };
   const openCreate = () => { reset(); setCreateOpen(true); };
@@ -88,13 +93,13 @@ export default function PurchaseReturnsPage() {
       </div>
       <Card className="overflow-hidden border-t-2 border-t-primary shadow-sm">
         <Table>
-          <TableHeader className="bg-secondary/50"><TableRow><TableHead>退回單號</TableHead><TableHead>原採購單</TableHead><TableHead>供應商</TableHead><TableHead>品項數</TableHead><TableHead className="text-right">金額</TableHead><TableHead>狀態</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
+          <TableHeader className="bg-secondary/50"><TableRow><TableHead>退回單號</TableHead><TableHead>原採購單</TableHead><TableHead>供應商</TableHead><TableHead>品項數</TableHead><TableHead className="text-right">金額</TableHead><TableHead>狀態</TableHead><TableHead>製單人</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
           <TableBody>
-            {isLoading ? <TableRow><TableCell colSpan={8} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
-              : !returns?.length ? <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted-foreground">尚無採購退回單</TableCell></TableRow>
+            {isLoading ? <TableRow><TableCell colSpan={9} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
+              : !returns?.length ? <TableRow><TableCell colSpan={9} className="h-32 text-center text-muted-foreground">尚無採購退回單</TableCell></TableRow>
               : returns.map((row) => <TableRow key={row.id}>
                 <TableCell className="font-mono text-xs">{row.prNo}</TableCell><TableCell className="font-mono text-xs">{row.purchaseOrderNo || '—'}</TableCell><TableCell>{row.supplierName}</TableCell><TableCell>{row.items.length}</TableCell>
-                <TableCell className="text-right font-medium">NT$ {row.totalAmount.toLocaleString()}</TableCell><TableCell><Badge variant="outline" className={statusClass[row.status]}>{statusLabel[row.status] ?? row.status}</Badge></TableCell>
+                <TableCell className="text-right font-medium">NT$ {row.totalAmount.toLocaleString()}</TableCell><TableCell><Badge variant="outline" className={statusClass[row.status]}>{statusLabel[row.status] ?? row.status}</Badge></TableCell><TableCell>{creatorName(row.creatorEmployeeId)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{new Date(row.createdAt).toLocaleString('zh-TW')}</TableCell><TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => setDetail(row)}><Eye className="mr-1 h-4 w-4" />詳情</Button></TableCell>
               </TableRow>)}
           </TableBody>
@@ -107,6 +112,7 @@ export default function PurchaseReturnsPage() {
           <div className="space-y-4">
             <div className="space-y-2"><Label>已收貨採購單 *</Label><Select value={purchaseOrderId} onValueChange={(value) => { setPurchaseOrderId(value); setQuantities({}); }}><SelectTrigger><SelectValue placeholder="選擇採購單" /></SelectTrigger><SelectContent>{(receivedOrders ?? []).map((order) => <SelectItem key={order.id} value={String(order.id)}>{order.poNo}｜{order.supplierName}｜NT$ {order.totalAmount.toLocaleString()}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>出貨倉</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">預設倉</SelectItem>{warehouses?.filter((w) => w.isActive).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}</SelectContent></Select></div>
+             <div className="space-y-2"><Label>製單人（選填）</Label><Select value={creatorEmployeeId} onValueChange={setCreatorEmployeeId} disabled={employeesLoading || !activeEmployees.length}><SelectTrigger><SelectValue placeholder={employeesLoading ? '載入員工中…' : activeEmployees.length ? '選擇製單人' : '無在職員工'} /></SelectTrigger><SelectContent>{activeEmployees.map((employee) => <SelectItem key={employee.id} value={String(employee.id)}>{employee.employeeNo}－{employee.name}</SelectItem>)}</SelectContent></Select></div>
             {selectedOrder && <div className="overflow-hidden rounded-md border"><Table><TableHeader><TableRow><TableHead>品項</TableHead><TableHead>規格</TableHead><TableHead className="text-right">原數量</TableHead><TableHead className="w-36 text-right">退回數量</TableHead></TableRow></TableHeader><TableBody>{selectedOrder.items.map((item) => <TableRow key={item.id}><TableCell><div className="font-medium">{item.productName}</div><div className="text-xs text-muted-foreground">{item.productCode}</div></TableCell><TableCell>{item.variantName || '—'}</TableCell><TableCell className="text-right">{item.quantity}</TableCell><TableCell><Input className="text-right" type="number" min={0} max={item.quantity} step={1} value={quantities[item.id] ?? ''} onChange={(e) => setQuantities((current) => ({ ...current, [item.id]: e.target.value }))} /></TableCell></TableRow>)}</TableBody></Table></div>}
             <div className="grid gap-4 sm:grid-cols-2"><div className="space-y-2"><Label>退回原因</Label><Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="例如：瑕疵、規格錯誤" /></div><div className="space-y-2"><Label>備註</Label><Textarea value={note} onChange={(e) => setNote(e.target.value)} /></div></div>
           </div>
@@ -118,7 +124,7 @@ export default function PurchaseReturnsPage() {
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2">退回單 {detail?.prNo}{detail && <Badge variant="outline" className={statusClass[detail.status]}>{statusLabel[detail.status] ?? detail.status}</Badge>}</DialogTitle></DialogHeader>
           {detail && <div className="space-y-4">
-            <div className="grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">供應商：</span>{detail.supplierName}</p><p><span className="text-muted-foreground">原採購單：</span>{detail.purchaseOrderNo || '—'}</p>{detail.reason && <p><span className="text-muted-foreground">原因：</span>{detail.reason}</p>}{detail.note && <p><span className="text-muted-foreground">備註：</span>{detail.note}</p>}</div>
+            <div className="grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">供應商：</span>{detail.supplierName}</p><p><span className="text-muted-foreground">原採購單：</span>{detail.purchaseOrderNo || '—'}</p><p><span className="text-muted-foreground">製單人：</span>{creatorName(detail.creatorEmployeeId)}</p>{detail.reason && <p><span className="text-muted-foreground">原因：</span>{detail.reason}</p>}{detail.note && <p><span className="text-muted-foreground">備註：</span>{detail.note}</p>}</div>
             <div className="overflow-hidden rounded-md border"><Table><TableHeader><TableRow><TableHead>品項</TableHead><TableHead>規格</TableHead><TableHead className="text-right">成本</TableHead><TableHead className="text-right">退回數量</TableHead><TableHead className="text-right">小計</TableHead></TableRow></TableHeader><TableBody>{detail.items.map((item) => <TableRow key={item.id}><TableCell><div className="font-medium">{item.productName}</div><div className="text-xs text-muted-foreground">{item.productCode}</div></TableCell><TableCell>{item.variantName || '—'}</TableCell><TableCell className="text-right">NT$ {item.unitCost.toLocaleString()}</TableCell><TableCell className="text-right">{item.quantity}</TableCell><TableCell className="text-right">NT$ {(item.unitCost * item.quantity).toLocaleString()}</TableCell></TableRow>)}</TableBody></Table></div>
             <p className="text-right font-bold">合計：NT$ {detail.totalAmount.toLocaleString()}</p>
           </div>}

@@ -19,6 +19,8 @@ export interface AdminPurchaseOrder {
   totalAmount: number;
   /** @nullable */
   note?: string | null;
+  /** @nullable */
+  creatorEmployeeId?: number | null;
   createdAt: Date;
   /** @nullable */
   orderedAt?: Date | null;
