@@ -27,6 +27,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  ANNOUNCEMENT_CATEGORIES,
+  ARTICLE_CATEGORIES,
+} from "@/lib/content-categories";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -317,6 +321,9 @@ function ContentDialog({
   const [imageUrl, setImageUrl] = useState(item?.imageUrl ?? "");
   const [status, setStatus] = useState<"draft" | "review" | "published" | "archived">(item?.status ?? "draft");
   const [error, setError] = useState("");
+  const categoryOptions: readonly string[] =
+    kind === "article" ? ARTICLE_CATEGORIES : ANNOUNCEMENT_CATEGORIES;
+  const hasLegacyCategory = Boolean(category && !categoryOptions.includes(category));
   const isEditing = Boolean(item);
   const isPending = createArticle.isPending || updateArticle.isPending
     || createAnnouncement.isPending || updateAnnouncement.isPending;
@@ -399,13 +406,24 @@ function ContentDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="content-category">分類</Label>
-            <Input
+            <select
               id="content-category"
               value={category}
               onChange={(event) => setCategory(event.target.value)}
-              maxLength={50}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               required
-            />
+            >
+              <option value="" disabled>請選擇前台分類</option>
+              {hasLegacyCategory && (
+                <option value={category}>{category}（舊分類）</option>
+              )}
+              {categoryOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              此分類會對應前台顯示與篩選。
+            </p>
           </div>
           {kind === "article" && (
             <div className="space-y-2">

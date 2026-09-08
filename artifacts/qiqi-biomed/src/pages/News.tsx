@@ -4,8 +4,7 @@ import { useListAnnouncements } from "@workspace/api-client-react";
 import { ArrowLeft, Search, Bell, ChevronRight, Truck, FileText, Image } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { classNames } from "@/lib/utils";
-
-const CATEGORIES = ["全部", "平台公告", "產品快報", "活動訊息", "合作醫院"];
+import { NEWS_CATEGORIES } from "@/lib/content-categories";
 
 const getCategoryStyle = (cat: string) => {
   switch (cat) {
@@ -55,7 +54,7 @@ export default function NewsPage() {
       {/* Category Chips */}
       <div className="sticky top-[env(safe-area-inset-top,0)+60px] z-30 bg-gray-50/95 backdrop-blur-sm shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
         <div className="flex overflow-x-auto gap-2 px-4 py-3 hide-scrollbar">
-          {CATEGORIES.map(cat => (
+          {NEWS_CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
