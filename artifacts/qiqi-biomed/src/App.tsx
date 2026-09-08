@@ -23,6 +23,7 @@ import HospitalsPage from "./pages/Hospitals";
 import NewsPage from "./pages/News";
 import FavoritesPage from "./pages/Favorites";
 import MemberPage from "./pages/Member";
+import PointsPage from "./pages/Points";
 import SupportPage from "./pages/Support";
 import SignInPage from "./pages/SignIn";
 import MemberLinktreePage from "./pages/MemberLinktree";
@@ -188,6 +189,7 @@ function AppRoutes() {
               <ProtectedRoute path="/orders/:id" component={OrderDetailPage} />
               <ProtectedRoute path="/favorites" component={FavoritesPage} />
               <ProtectedRoute path="/member" component={MemberPage} />
+              <ProtectedRoute path="/points" component={PointsPage} />
               <ProtectedRoute path="/member/linktree" component={MemberLinktreePage} />
               <ProtectedRoute path="/support" component={SupportPage} />
 
