@@ -1761,6 +1761,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminArticle'
+        '400':
+          description: Invalid id or input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '404':
           description: Not found
           content:
@@ -1861,6 +1867,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminAnnouncement'
+        '400':
+          description: Invalid id or input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
         '404':
           description: Not found
           content:
@@ -1916,6 +1928,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ContentRevision'
+        '400':
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/content-revisions/{id}/restore:
     post:
       operationId: restoreAdminContentRevision

@@ -229,9 +229,11 @@ const builders: Record<string, (id: number) => Promise<DocInput | null>> = {
   commission: buildCommissionDoc,
 };
 
+const pendingReindexes = new Set<Promise<void>>();
+
 /** 非同步重建單一實體索引（fire-and-forget，路由中呼叫，不阻塞回應） */
 export function reindex(kind: keyof typeof builders | string, id: number) {
-  void (async () => {
+  const operation = (async () => {
     try {
       const builder = builders[kind];
       if (!builder) return;
@@ -242,6 +244,15 @@ export function reindex(kind: keyof typeof builders | string, id: number) {
       console.error(`[aiIndex] reindex ${kind}#${id} failed:`, err);
     }
   })();
+  pendingReindexes.add(operation);
+  void operation.finally(() => pendingReindexes.delete(operation));
+}
+
+/** Wait for fire-and-forget writes to settle in integration tests and shutdown hooks. */
+export async function waitForPendingReindexes() {
+  while (pendingReindexes.size) {
+    await Promise.all([...pendingReindexes]);
+  }
 }
 
 export function removeFromIndex(kind: string, id: number) {

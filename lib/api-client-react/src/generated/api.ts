@@ -6358,7 +6358,7 @@ export const getListAdminContentRevisionsQueryKey = (params?: ListAdminContentRe
     }
 
 
-export const getListAdminContentRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminContentRevisions>>, TError = ErrorType<unknown>>(params: ListAdminContentRevisionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContentRevisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListAdminContentRevisionsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminContentRevisions>>, TError = ErrorType<ErrorMessage>>(params: ListAdminContentRevisionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContentRevisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -6377,14 +6377,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListAdminContentRevisionsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminContentRevisions>>>
-export type ListAdminContentRevisionsQueryError = ErrorType<unknown>
+export type ListAdminContentRevisionsQueryError = ErrorType<ErrorMessage>
 
 
 /**
  * @summary 內容管理：版本紀錄（限管理員）
  */
 
-export function useListAdminContentRevisions<TData = Awaited<ReturnType<typeof listAdminContentRevisions>>, TError = ErrorType<unknown>>(
+export function useListAdminContentRevisions<TData = Awaited<ReturnType<typeof listAdminContentRevisions>>, TError = ErrorType<ErrorMessage>>(
  params: ListAdminContentRevisionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminContentRevisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
