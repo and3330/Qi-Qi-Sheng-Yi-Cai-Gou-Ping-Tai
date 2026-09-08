@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, index, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -42,6 +42,9 @@ export const contentRevisionsTable = pgTable(
     category: text("category"),
     summary: text("summary"),
     content: text("content"),
+    imageUrl: text("image_url"),
+    // 舊版本在加入圖片快照前沒有此欄位語意；false 時還原需保留目前圖片。
+    imageSnapshotPresent: boolean("image_snapshot_present").notNull().default(false),
     status: text("status").notNull(),
     // 編輯者（管理員 id）
     editedBy: integer("edited_by"),

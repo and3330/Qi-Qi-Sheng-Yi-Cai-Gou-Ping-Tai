@@ -27,7 +27,16 @@ async function revisions(entityKind: string, entityId: number) {
     .orderBy(asc(contentRevisionsTable.id));
 }
 
-async function createArticleFixture(kind: "article" | "faq") {
+async function createArticleFixture(
+  kind: "article" | "faq",
+  options: { currentImageUrl?: string | null; oldImageUrl?: string | null; legacyRevision?: boolean } = {},
+) {
+  const currentImageUrl = Object.hasOwn(options, "currentImageUrl")
+    ? options.currentImageUrl
+    : `${marker}-${kind}-current-image`;
+  const oldImageUrl = Object.hasOwn(options, "oldImageUrl")
+    ? options.oldImageUrl
+    : `${marker}-${kind}-old-image`;
   const [article] = await db
     .insert(articlesTable)
     .values({
@@ -36,6 +45,7 @@ async function createArticleFixture(kind: "article" | "faq") {
       category: `${marker}-current-category`,
       summary: `${marker}-current-summary`,
       content: `${marker}-current-content`,
+      imageUrl: currentImageUrl,
       status: "draft",
     })
     .returning();
@@ -50,6 +60,8 @@ async function createArticleFixture(kind: "article" | "faq") {
       category: `${marker}-old-category`,
       summary: `${marker}-${kind}-old-summary`,
       content: `${marker}-${kind}-old-content`,
+      imageUrl: oldImageUrl,
+      imageSnapshotPresent: !options.legacyRevision,
       status: "published",
       editedBy: -1,
       note: "original snapshot",
@@ -74,6 +86,7 @@ test("文章還原所有快照欄位，新增版本且完整保留舊版本", as
       category: restored.category,
       summary: restored.summary,
       content: restored.content,
+      imageUrl: restored.imageUrl,
       status: restored.status,
     },
     {
@@ -82,6 +95,7 @@ test("文章還原所有快照欄位，新增版本且完整保留舊版本", as
       category: oldRevision.category,
       summary: oldRevision.summary,
       content: oldRevision.content,
+      imageUrl: oldRevision.imageUrl,
       status: oldRevision.status,
     },
   );
@@ -91,6 +105,8 @@ test("文章還原所有快照欄位，新增版本且完整保留舊版本", as
   assert.deepEqual(afterRestore.slice(0, before.length), before);
   assert.equal(afterRestore.at(-1)?.id, result?.revisionId);
   assert.equal(afterRestore.at(-1)?.note, `還原自版本 #${oldRevision.id}`);
+  assert.equal(afterRestore.at(-1)?.imageUrl, oldRevision.imageUrl);
+  assert.equal(afterRestore.at(-1)?.imageSnapshotPresent, true);
 });
 
 test("FAQ 以文章版本還原，且不會改變內容類型", async () => {
@@ -120,6 +136,32 @@ test("FAQ 以文章版本還原，且不會改變內容類型", async () => {
   assert.equal((await revisions("article", article.id)).length, 2);
 });
 
+test("沒有圖片的文章版本會在還原時清除目前圖片", async () => {
+  const { article, oldRevision } = await createArticleFixture("article", {
+    oldImageUrl: null,
+  });
+
+  await restoreContentRevision(oldRevision.id, -2);
+
+  const [restored] = await db.select().from(articlesTable).where(eq(articlesTable.id, article.id));
+  assert.equal(restored.imageUrl, null);
+  assert.equal((await revisions("article", article.id)).at(-1)?.imageSnapshotPresent, true);
+});
+
+test("既有舊版本沒有圖片快照時保留目前圖片", async () => {
+  const currentImageUrl = `${marker}-legacy-current-image`;
+  const { article, oldRevision } = await createArticleFixture("article", {
+    currentImageUrl,
+    legacyRevision: true,
+  });
+
+  await restoreContentRevision(oldRevision.id, -2);
+
+  const [restored] = await db.select().from(articlesTable).where(eq(articlesTable.id, article.id));
+  assert.equal(restored.imageUrl, currentImageUrl);
+  assert.equal((await revisions("article", article.id)).at(-1)?.imageUrl, currentImageUrl);
+});
+
 test("公告還原標題、分類、內文與狀態，新增版本並保留歷史", async () => {
   const [announcement] = await db
     .insert(announcementsTable)
@@ -127,6 +169,7 @@ test("公告還原標題、分類、內文與狀態，新增版本並保留歷�
       title: `${marker}-announcement-current-title`,
       category: `${marker}-announcement-current-category`,
       content: `${marker}-announcement-current-content`,
+      imageUrl: `${marker}-announcement-current-image`,
       status: "archived",
     })
     .returning();
@@ -140,6 +183,8 @@ test("公告還原標題、分類、內文與狀態，新增版本並保留歷�
       category: `${marker}-announcement-old-category`,
       summary: null,
       content: `${marker}-announcement-old-content`,
+      imageUrl: `${marker}-announcement-old-image`,
+      imageSnapshotPresent: true,
       status: "review",
       editedBy: -1,
       note: "original snapshot",
@@ -158,12 +203,14 @@ test("公告還原標題、分類、內文與狀態，新增版本並保留歷�
       title: restored.title,
       category: restored.category,
       content: restored.content,
+      imageUrl: restored.imageUrl,
       status: restored.status,
     },
     {
       title: oldRevision.title,
       category: oldRevision.category,
       content: oldRevision.content,
+      imageUrl: oldRevision.imageUrl,
       status: oldRevision.status,
     },
   );
@@ -171,6 +218,8 @@ test("公告還原標題、分類、內文與狀態，新增版本並保留歷�
   assert.equal(afterRestore.length, before.length + 1);
   assert.deepEqual(afterRestore.slice(0, before.length), before);
   assert.equal(afterRestore.at(-1)?.id, result?.revisionId);
+  assert.equal(afterRestore.at(-1)?.imageUrl, oldRevision.imageUrl);
+  assert.equal(afterRestore.at(-1)?.imageSnapshotPresent, true);
 });
 
 test("不存在的版本不會更新內容或新增歷史", async () => {
