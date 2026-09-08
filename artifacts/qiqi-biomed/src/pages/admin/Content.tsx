@@ -2,26 +2,28 @@ import { useState } from "react";
 import { 
   useListAdminArticles,
   useCreateAdminArticle,
-  useUpdateAdminArticle,
-  useDeleteAdminArticle,
   useListAdminAnnouncements,
   useCreateAdminAnnouncement,
-  useUpdateAdminAnnouncement,
-  useDeleteAdminAnnouncement,
   useListAdminContentRevisions,
+  getListAdminArticlesQueryKey,
+  getListAdminAnnouncementsQueryKey,
   type AdminArticle,
   type AdminAnnouncement,
   type ContentRevision
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, History, Send, Eye, EyeOff, FileText, Bell } from "lucide-react";
+import { Plus, Pencil, History, FileText, Bell } from "lucide-react";
 import { AdminLayout } from "./AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -73,9 +75,168 @@ function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "artic
   );
 }
 
+function CreateContentDialog({
+  kind,
+  onClose,
+}: {
+  kind: "article" | "announcement";
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const createArticle = useCreateAdminArticle();
+  const createAnnouncement = useCreateAdminAnnouncement();
+  const [articleKind, setArticleKind] = useState<"article" | "faq">("article");
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("");
+  const [summary, setSummary] = useState("");
+  const [content, setContent] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [status, setStatus] = useState<"draft" | "review" | "published">("draft");
+  const [error, setError] = useState("");
+  const isPending = createArticle.isPending || createAnnouncement.isPending;
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    try {
+      if (kind === "article") {
+        await createArticle.mutateAsync({
+          data: {
+            kind: articleKind,
+            title: title.trim(),
+            category: category.trim(),
+            summary: summary.trim() || null,
+            content: content.trim() || null,
+            imageUrl: imageUrl.trim() || null,
+            status,
+          },
+        });
+        await queryClient.invalidateQueries({ queryKey: getListAdminArticlesQueryKey() });
+      } else {
+        await createAnnouncement.mutateAsync({
+          data: {
+            title: title.trim(),
+            category: category.trim(),
+            content: content.trim() || null,
+            imageUrl: imageUrl.trim() || null,
+            status,
+          },
+        });
+        await queryClient.invalidateQueries({ queryKey: getListAdminAnnouncementsQueryKey() });
+      }
+      onClose();
+    } catch {
+      setError("建立失敗，請確認欄位內容後再試一次。");
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>新增{kind === "article" ? "文章" : "公告"}</DialogTitle>
+        </DialogHeader>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {kind === "article" && (
+            <div className="space-y-2">
+              <Label htmlFor="content-kind">內容類型</Label>
+              <select
+                id="content-kind"
+                value={articleKind}
+                onChange={(event) => setArticleKind(event.target.value as "article" | "faq")}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="article">文章</option>
+                <option value="faq">FAQ</option>
+              </select>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="content-title">標題</Label>
+            <Input
+              id="content-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={200}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="content-category">分類</Label>
+            <Input
+              id="content-category"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+              maxLength={50}
+              required
+            />
+          </div>
+          {kind === "article" && (
+            <div className="space-y-2">
+              <Label htmlFor="content-summary">摘要</Label>
+              <Textarea
+                id="content-summary"
+                value={summary}
+                onChange={(event) => setSummary(event.target.value)}
+                maxLength={500}
+                rows={3}
+              />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="content-body">內容（Markdown）</Label>
+            <Textarea
+              id="content-body"
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              rows={8}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="content-image">圖片網址</Label>
+            <Input
+              id="content-image"
+              type="url"
+              value={imageUrl}
+              onChange={(event) => setImageUrl(event.target.value)}
+              maxLength={500}
+              placeholder="https://..."
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="content-status">狀態</Label>
+            <select
+              id="content-status"
+              value={status}
+              onChange={(event) => setStatus(event.target.value as typeof status)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="draft">草稿</option>
+              <option value="review">送審中</option>
+              <option value="published">立即上架</option>
+            </select>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
+              取消
+            </Button>
+            <Button type="submit" disabled={isPending || !title.trim() || !category.trim()}>
+              {isPending ? "建立中…" : "建立"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AdminContentPage() {
   const [tab, setTab] = useState<"articles" | "announcements">("articles");
   const [revTarget, setRevTarget] = useState<{kind: "article"|"announcement", id: number} | null>(null);
+  const [createKind, setCreateKind] = useState<"article" | "announcement" | null>(null);
 
   const { data: articles, isLoading: loadingArticles } = useListAdminArticles();
   const { data: announcements, isLoading: loadingAnnouncements } = useListAdminAnnouncements();
@@ -99,7 +260,12 @@ export default function AdminContentPage() {
 
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-bold text-lg">{tab === 'articles' ? '文章列表' : '公告列表'}</h2>
-        <Button size="sm" className="rounded-xl">
+        <Button
+          type="button"
+          size="sm"
+          className="rounded-xl"
+          onClick={() => setCreateKind(tab === "articles" ? "article" : "announcement")}
+        >
           <Plus size={16} className="mr-1" /> 新增{tab === 'articles' ? '文章' : '公告'}
         </Button>
       </div>
@@ -184,6 +350,9 @@ export default function AdminContentPage() {
           entityId={revTarget.id} 
           onClose={() => setRevTarget(null)} 
         />
+      )}
+      {createKind && (
+        <CreateContentDialog kind={createKind} onClose={() => setCreateKind(null)} />
       )}
     </AdminLayout>
   );
