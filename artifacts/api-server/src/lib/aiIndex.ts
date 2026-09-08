@@ -12,6 +12,7 @@ import {
   articlesTable,
   announcementsTable,
   profitShareRecordsTable,
+  aiKnowledgeTable,
 } from "@workspace/db";
 
 /**
@@ -51,7 +52,8 @@ type DocInput = {
 
 async function upsertDoc(doc: DocInput) {
   const embedding =
-    doc.entityKind === "article" && doc.scope === "public"
+    (doc.entityKind === "article" || doc.entityKind === "ai_knowledge") &&
+    doc.scope === "public"
       ? await embed(`${doc.title}\n${doc.content}`)
       : null;
   await db
@@ -202,6 +204,23 @@ async function buildAnnouncementDoc(id: number): Promise<DocInput | null> {
   };
 }
 
+async function buildAiKnowledgeDoc(id: number): Promise<DocInput | null> {
+  const [knowledge] = await db
+    .select()
+    .from(aiKnowledgeTable)
+    .where(eq(aiKnowledgeTable.id, id))
+    .limit(1);
+  if (!knowledge || !knowledge.isActive) return null;
+  return {
+    entityKind: "ai_knowledge",
+    entityId: id,
+    title: `客服知識：${knowledge.title}`,
+    content: `分類：${knowledge.category}。\n${knowledge.content}`.slice(0, 6000),
+    metadata: { knowledgeId: id, category: knowledge.category },
+    scope: "public",
+  };
+}
+
 async function buildCommissionDoc(id: number): Promise<DocInput | null> {
   const [r] = await db
     .select()
@@ -226,12 +245,13 @@ const builders: Record<string, (id: number) => Promise<DocInput | null>> = {
   institution: buildInstitutionDoc,
   article: buildArticleDoc,
   announcement: buildAnnouncementDoc,
+  ai_knowledge: buildAiKnowledgeDoc,
   commission: buildCommissionDoc,
 };
 
 const pendingReindexes = new Set<Promise<void>>();
 
-/** 非同步重建單一實體索引（fire-and-forget，路由中呼叫，不阻塞回應） */
+/** 非同步重建單一實體索引；呼叫端可選擇 await，未 await 時仍由 pending 集合追蹤。 */
 export function reindex(kind: keyof typeof builders | string, id: number) {
   const operation = (async () => {
     try {
@@ -246,6 +266,7 @@ export function reindex(kind: keyof typeof builders | string, id: number) {
   })();
   pendingReindexes.add(operation);
   void operation.finally(() => pendingReindexes.delete(operation));
+  return operation;
 }
 
 /** Wait for fire-and-forget writes to settle in integration tests and shutdown hooks. */
@@ -256,7 +277,7 @@ export async function waitForPendingReindexes() {
 }
 
 export function removeFromIndex(kind: string, id: number) {
-  void removeDoc(kind, id).catch((err) =>
+  return removeDoc(kind, id).catch((err) =>
     console.error(`[aiIndex] remove ${kind}#${id} failed:`, err),
   );
 }
@@ -271,6 +292,7 @@ export async function backfillAll(): Promise<Record<string, number>> {
     ["institution", (await db.select({ id: institutionsTable.id }).from(institutionsTable)).map((r) => r.id)],
     ["article", (await db.select({ id: articlesTable.id }).from(articlesTable)).map((r) => r.id)],
     ["announcement", (await db.select({ id: announcementsTable.id }).from(announcementsTable)).map((r) => r.id)],
+    ["ai_knowledge", (await db.select({ id: aiKnowledgeTable.id }).from(aiKnowledgeTable)).map((r) => r.id)],
     ["commission", (await db.select({ id: profitShareRecordsTable.id }).from(profitShareRecordsTable)).map((r) => r.id)],
   ];
   for (const [kind, ids] of jobs) {

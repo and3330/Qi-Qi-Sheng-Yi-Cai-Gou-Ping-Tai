@@ -19,6 +19,7 @@
     "migrate:newsletter": "node scripts/migrate-newsletter.mjs",
     "migrate:cmo": "node scripts/migrate-cmo.mjs",
     "migrate:content-revision-images": "node scripts/migrate-content-revision-images.mjs",
+    "migrate:ai-knowledge": "node scripts/migrate-ai-knowledge.mjs",
     "migrate:erp-hr": "node scripts/migrate-erp-hr.mjs",
     "migrate:erp-document-creators": "node scripts/migrate-erp-document-creators.mjs",
     "migrate:erp-crm": "node scripts/migrate-erp-crm.mjs",

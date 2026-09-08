@@ -1151,6 +1151,54 @@ export interface AdminAnnouncementUpdate {
   status?: AdminAnnouncementUpdateStatus;
 }
 
+export interface AdminAiKnowledge {
+  id: number;
+  title: string;
+  category: string;
+  content: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminAiKnowledgeInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  category: string;
+  /**
+     * @minLength 1
+     * @maxLength 12000
+     */
+  content: string;
+  isActive?: boolean;
+}
+
+export interface AdminAiKnowledgeUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title?: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  category?: string;
+  /**
+     * @minLength 1
+     * @maxLength 12000
+     */
+  content?: string;
+  isActive?: boolean;
+}
+
 export type ContentRevisionEntityKind = typeof ContentRevisionEntityKind[keyof typeof ContentRevisionEntityKind];
 
 

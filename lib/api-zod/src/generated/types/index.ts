@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminAiKnowledge';
+export * from './adminAiKnowledgeInput';
+export * from './adminAiKnowledgeUpdate';
 export * from './adminAnnouncement';
 export * from './adminAnnouncementInput';
 export * from './adminAnnouncementInputStatus';

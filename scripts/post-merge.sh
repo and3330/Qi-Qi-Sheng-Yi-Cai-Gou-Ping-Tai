@@ -10,3 +10,4 @@ pnpm --filter @workspace/db run migrate:finance-wallet
 pnpm --filter @workspace/db run migrate:erp-inventory
 
 pnpm --filter @workspace/db run migrate:cmo
+pnpm --filter @workspace/db run migrate:ai-knowledge

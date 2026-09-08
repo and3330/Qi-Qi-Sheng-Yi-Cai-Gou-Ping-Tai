@@ -57,6 +57,7 @@ import AdminNewsletterCampaignsPage from "./pages/admin/NewsletterCampaigns";
 import AdminNewsletterSequencesPage from "./pages/admin/NewsletterSequences";
 import AdminSequenceFlowEditorPage from "./pages/admin/SequenceFlowEditor";
 import AdminAiCmoPage from "./pages/admin/AiCmo";
+import AdminAiKnowledgePage from "./pages/admin/AiKnowledge";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,6 +115,7 @@ function AdminArea() {
           <Route path="/admin/content" component={AdminContentPage} />
           <Route path="/admin/support" component={AdminSupportPage} />
           <Route path="/admin/ai-assistant" component={AdminAiAssistantPage} />
+          <Route path="/admin/ai-knowledge" component={AdminAiKnowledgePage} />
           <Route path="/admin/ai-cmo" component={AdminAiCmoPage} />
           <Route path="/admin/institutions" component={AdminInstitutionsPage} />
           <Route path="/admin/social-accounts" component={AdminSocialAccountsPage} />

@@ -20,6 +20,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminAiKnowledge,
+  AdminAiKnowledgeInput,
+  AdminAiKnowledgeUpdate,
   AdminAnnouncement,
   AdminAnnouncementInput,
   AdminAnnouncementUpdate,
@@ -5721,6 +5724,297 @@ export const useAdjustInstitutionWallet = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getAdjustInstitutionWalletMutationOptions(options));
+    }
+
+export const getListAdminAiKnowledgeUrl = () => {
+
+
+
+
+  return `/api/admin/ai-knowledge`
+}
+
+/**
+ * @summary AI 客服知識庫列表（限管理員與營運）
+ */
+export const listAdminAiKnowledge = async ( options?: Parameters<typeof customFetch>[1]): Promise<AdminAiKnowledge[]> => {
+
+  return customFetch<AdminAiKnowledge[]>(getListAdminAiKnowledgeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAiKnowledgeQueryKey = () => {
+    return [
+    `/api/admin/ai-knowledge`
+    ] as const;
+    }
+
+
+export const getListAdminAiKnowledgeQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAiKnowledge>>, TError = ErrorType<ErrorMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAiKnowledge>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAiKnowledgeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAiKnowledge>>> = ({ signal }) => listAdminAiKnowledge({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAiKnowledge>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminAiKnowledgeQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAiKnowledge>>>
+export type ListAdminAiKnowledgeQueryError = ErrorType<ErrorMessage>
+
+
+/**
+ * @summary AI 客服知識庫列表（限管理員與營運）
+ */
+
+export function useListAdminAiKnowledge<TData = Awaited<ReturnType<typeof listAdminAiKnowledge>>, TError = ErrorType<ErrorMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminAiKnowledge>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminAiKnowledgeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAdminAiKnowledgeUrl = () => {
+
+
+
+
+  return `/api/admin/ai-knowledge`
+}
+
+/**
+ * @summary 新增 AI 客服知識（限管理員與營運）
+ */
+export const createAdminAiKnowledge = async (adminAiKnowledgeInput: AdminAiKnowledgeInput, options?: Parameters<typeof customFetch>[1]): Promise<AdminAiKnowledge> => {
+
+  return customFetch<AdminAiKnowledge>(getCreateAdminAiKnowledgeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminAiKnowledgeInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminAiKnowledgeMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAiKnowledge>>, TError,{data: BodyType<AdminAiKnowledgeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminAiKnowledge>>, TError,{data: BodyType<AdminAiKnowledgeInput>}, TContext> => {
+
+const mutationKey = ['createAdminAiKnowledge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminAiKnowledge>>, {data: BodyType<AdminAiKnowledgeInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminAiKnowledge(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminAiKnowledgeMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminAiKnowledge>>>
+    export type CreateAdminAiKnowledgeMutationBody = BodyType<AdminAiKnowledgeInput>
+    export type CreateAdminAiKnowledgeMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 新增 AI 客服知識（限管理員與營運）
+ */
+export const useCreateAdminAiKnowledge = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAiKnowledge>>, TError,{data: BodyType<AdminAiKnowledgeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminAiKnowledge>>,
+        TError,
+        {data: BodyType<AdminAiKnowledgeInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAdminAiKnowledgeMutationOptions(options));
+    }
+
+export const getUpdateAdminAiKnowledgeUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/ai-knowledge/${id}`
+}
+
+/**
+ * @summary 編輯或停用 AI 客服知識（限管理員與營運）
+ */
+export const updateAdminAiKnowledge = async (id: number,
+    adminAiKnowledgeUpdate: AdminAiKnowledgeUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminAiKnowledge> => {
+
+  return customFetch<AdminAiKnowledge>(getUpdateAdminAiKnowledgeUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(adminAiKnowledgeUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminAiKnowledgeMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminAiKnowledge>>, TError,{id: number;data: BodyType<AdminAiKnowledgeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminAiKnowledge>>, TError,{id: number;data: BodyType<AdminAiKnowledgeUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminAiKnowledge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminAiKnowledge>>, {id: number;data: BodyType<AdminAiKnowledgeUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminAiKnowledge(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminAiKnowledgeMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminAiKnowledge>>>
+    export type UpdateAdminAiKnowledgeMutationBody = BodyType<AdminAiKnowledgeUpdate>
+    export type UpdateAdminAiKnowledgeMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 編輯或停用 AI 客服知識（限管理員與營運）
+ */
+export const useUpdateAdminAiKnowledge = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminAiKnowledge>>, TError,{id: number;data: BodyType<AdminAiKnowledgeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminAiKnowledge>>,
+        TError,
+        {id: number;data: BodyType<AdminAiKnowledgeUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminAiKnowledgeMutationOptions(options));
+    }
+
+export const getDeleteAdminAiKnowledgeUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/ai-knowledge/${id}`
+}
+
+/**
+ * @summary 刪除 AI 客服知識（限管理員與營運）
+ */
+export const deleteAdminAiKnowledge = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteAdminAiKnowledgeUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdminAiKnowledgeMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAiKnowledge>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAiKnowledge>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAdminAiKnowledge'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAdminAiKnowledge>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAdminAiKnowledge(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdminAiKnowledgeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAdminAiKnowledge>>>
+
+    export type DeleteAdminAiKnowledgeMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 刪除 AI 客服知識（限管理員與營運）
+ */
+export const useDeleteAdminAiKnowledge = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAdminAiKnowledge>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAdminAiKnowledge>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAdminAiKnowledgeMutationOptions(options));
     }
 
 export const getListAdminArticlesUrl = (params?: ListAdminArticlesParams,) => {

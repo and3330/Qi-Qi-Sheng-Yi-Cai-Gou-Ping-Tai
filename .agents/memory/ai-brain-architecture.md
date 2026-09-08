@@ -15,7 +15,14 @@ Prompt 裡的「先確認再執行」不可信（架構師審查判定為重大�
 會員 RAG 只查 scope=public 文件；模型以輸出「[轉真人]」標記觸發 needsHuman（伺服器剝除標記後入庫）；轉真人後 AI 停止回覆、等客服 agent 角色訊息。禁療效宣稱、禁診斷用藥建議寫在 system prompt。
 
 ## 索引同步
-mutation 路由以 fire-and-forget reindex(kind,id) 同步；刪除用 removeFromIndex。新增資料寫入路由時記得掛 hook。
+一般 mutation 路由可用 fire-and-forget `reindex(kind,id)`；需要保證回應前已可檢索的流程必須 await。刪除用 removeFromIndex。新增資料寫入路由時記得掛 hook。
+
+## AI 客服專用知識庫
+後台可維護獨立客服知識；啟用項目同步成 scope=public 的 RAG 文件，停用或刪除立即移出索引。這是檢索增強，不是重新訓練模型。
+
+**Why:** 管理員需要直接補充客服答案，同時必須能立刻撤回錯誤或過期內容。
+
+**How to apply:** 客服知識 CRUD 的索引同步必須 await；只有啟用項目能進會員客服的 public 檢索。
 
 ## AI CMO 模組
 - SSE 串流不走 orval（不支援），前端以 fetch+ReadableStream 解析；對話無伺服器狀態，context 由伺服器注入，AI 僅建議不執行操作。

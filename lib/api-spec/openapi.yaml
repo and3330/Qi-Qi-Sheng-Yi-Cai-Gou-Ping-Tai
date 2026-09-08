@@ -1687,6 +1687,114 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+  /admin/ai-knowledge:
+    get:
+      operationId: listAdminAiKnowledge
+      tags:
+        - admin
+      summary: AI 客服知識庫列表（限管理員與營運）
+      responses:
+        '200':
+          description: Knowledge records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminAiKnowledge'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    post:
+      operationId: createAdminAiKnowledge
+      tags:
+        - admin
+      summary: 新增 AI 客服知識（限管理員與營運）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAiKnowledgeInput'
+      responses:
+        '201':
+          description: Created knowledge record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAiKnowledge'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /admin/ai-knowledge/{id}:
+    patch:
+      operationId: updateAdminAiKnowledge
+      tags:
+        - admin
+      summary: 編輯或停用 AI 客服知識（限管理員與營運）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAiKnowledgeUpdate'
+      responses:
+        '200':
+          description: Updated knowledge record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAiKnowledge'
+        '400':
+          description: Invalid id or input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      operationId: deleteAdminAiKnowledge
+      tags:
+        - admin
+      summary: 刪除 AI 客服知識（限管理員與營運）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          description: Invalid id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/articles:
     get:
       operationId: listAdminArticles
@@ -9495,6 +9603,72 @@ components:
             - review
             - published
             - archived
+    AdminAiKnowledge:
+      type: object
+      required:
+        - id
+        - title
+        - category
+        - content
+        - isActive
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        content:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    AdminAiKnowledgeInput:
+      type: object
+      required:
+        - title
+        - category
+        - content
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        isActive:
+          type: boolean
+          default: true
+    AdminAiKnowledgeUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        category:
+          type: string
+          minLength: 1
+          maxLength: 100
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        isActive:
+          type: boolean
     ContentRevision:
       type: object
       required:

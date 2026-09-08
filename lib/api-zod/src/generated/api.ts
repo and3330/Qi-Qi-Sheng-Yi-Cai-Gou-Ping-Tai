@@ -2091,6 +2091,93 @@ export const AdjustInstitutionWalletResponse = zod.object({
 
 
 /**
+ * @summary AI 客服知識庫列表（限管理員與營運）
+ */
+export const ListAdminAiKnowledgeResponseItem = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAdminAiKnowledgeResponse = zod.array(ListAdminAiKnowledgeResponseItem)
+
+
+/**
+ * @summary 新增 AI 客服知識（限管理員與營運）
+ */
+export const createAdminAiKnowledgeBodyTitleMax = 200;
+
+export const createAdminAiKnowledgeBodyCategoryMax = 100;
+
+export const createAdminAiKnowledgeBodyContentMax = 12000;
+
+export const createAdminAiKnowledgeBodyIsActiveDefault = true;
+
+export const CreateAdminAiKnowledgeBody = zod.object({
+  "title": zod.string().min(1).max(createAdminAiKnowledgeBodyTitleMax),
+  "category": zod.string().min(1).max(createAdminAiKnowledgeBodyCategoryMax),
+  "content": zod.string().min(1).max(createAdminAiKnowledgeBodyContentMax),
+  "isActive": zod.boolean().default(createAdminAiKnowledgeBodyIsActiveDefault)
+})
+
+export const CreateAdminAiKnowledgeResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 編輯或停用 AI 客服知識（限管理員與營運）
+ */
+export const UpdateAdminAiKnowledgeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const updateAdminAiKnowledgeBodyTitleMax = 200;
+
+export const updateAdminAiKnowledgeBodyCategoryMax = 100;
+
+export const updateAdminAiKnowledgeBodyContentMax = 12000;
+
+
+
+export const UpdateAdminAiKnowledgeBody = zod.object({
+  "title": zod.string().min(1).max(updateAdminAiKnowledgeBodyTitleMax).optional(),
+  "category": zod.string().min(1).max(updateAdminAiKnowledgeBodyCategoryMax).optional(),
+  "content": zod.string().min(1).max(updateAdminAiKnowledgeBodyContentMax).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAdminAiKnowledgeResponse = zod.object({
+  "id": zod.int(),
+  "title": zod.string(),
+  "category": zod.string(),
+  "content": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 刪除 AI 客服知識（限管理員與營運）
+ */
+export const DeleteAdminAiKnowledgeParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteAdminAiKnowledgeResponse = zod.void()
+
+
+/**
  * @summary 內容管理：文章／FAQ 列表（限管理員）
  */
 export const ListAdminArticlesQueryParams = zod.object({
