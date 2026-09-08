@@ -285,4 +285,92 @@ router.get("/admin/content-revisions", requireOps, async (req, res) => {
   res.json(rows.map(serializeRevision));
 });
 
+router.post("/admin/content-revisions/:id/restore", requireOps, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const restored = await db.transaction(async (tx) => {
+    const [revision] = await tx
+      .select()
+      .from(contentRevisionsTable)
+      .where(eq(contentRevisionsTable.id, id))
+      .limit(1);
+    if (!revision || !revision.category) return null;
+
+    if (revision.entityKind === "article") {
+      const [row] = await tx
+        .update(articlesTable)
+        .set({
+          title: revision.title,
+          category: revision.category,
+          summary: revision.summary,
+          content: revision.content,
+          status: revision.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(articlesTable.id, revision.entityId))
+        .returning();
+      if (!row) return null;
+      const [newRevision] = await tx
+        .insert(contentRevisionsTable)
+        .values({
+          entityKind: "article",
+          entityId: row.id,
+          title: row.title,
+          category: row.category,
+          summary: row.summary,
+          content: row.content,
+          status: row.status,
+          editedBy: req.member!.id,
+          note: `還原自版本 #${revision.id}`,
+        })
+        .returning();
+      return { revisionId: newRevision.id, entityKind: "article" as const, entityId: row.id };
+    }
+
+    if (revision.entityKind === "announcement") {
+      const [row] = await tx
+        .update(announcementsTable)
+        .set({
+          title: revision.title,
+          category: revision.category,
+          content: revision.content,
+          status: revision.status,
+          updatedAt: new Date(),
+        })
+        .where(eq(announcementsTable.id, revision.entityId))
+        .returning();
+      if (!row) return null;
+      const [newRevision] = await tx
+        .insert(contentRevisionsTable)
+        .values({
+          entityKind: "announcement",
+          entityId: row.id,
+          title: row.title,
+          category: row.category,
+          summary: null,
+          content: row.content,
+          status: row.status,
+          editedBy: req.member!.id,
+          note: `還原自版本 #${revision.id}`,
+        })
+        .returning();
+      return { revisionId: newRevision.id, entityKind: "announcement" as const, entityId: row.id };
+    }
+
+    return null;
+  });
+
+  if (!restored) {
+    res.status(404).json({ error: "找不到此版本或原內容" });
+    return;
+  }
+
+  reindex(restored.entityKind, restored.entityId);
+  res.json(restored);
+});
+
 export default router;

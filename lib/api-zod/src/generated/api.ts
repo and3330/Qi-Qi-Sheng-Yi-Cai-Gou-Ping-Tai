@@ -2321,6 +2321,20 @@ export const ListAdminContentRevisionsResponse = zod.array(ListAdminContentRevis
 
 
 /**
+ * @summary 內容管理：還原指定版本並建立新版本紀錄（限管理員）
+ */
+export const RestoreAdminContentRevisionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const RestoreAdminContentRevisionResponse = zod.object({
+  "revisionId": zod.int(),
+  "entityKind": zod.enum(['article', 'announcement']),
+  "entityId": zod.int()
+})
+
+
+/**
  * @summary 取得檔案上傳網址（限營運人員）
  */
 

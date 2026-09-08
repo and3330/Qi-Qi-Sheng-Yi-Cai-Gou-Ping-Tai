@@ -63,6 +63,7 @@ import type {
   CmoSnapshot,
   CommissionReport,
   ContentRevision,
+  ContentRevisionRestoreResult,
   CreateCmoGoalInput,
   CreateConversationInput,
   CreateSocialPostInput,
@@ -6400,6 +6401,77 @@ export function useListAdminContentRevisions<TData = Awaited<ReturnType<typeof l
 
 
 
+
+export const getRestoreAdminContentRevisionUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/content-revisions/${id}/restore`
+}
+
+/**
+ * @summary 內容管理：還原指定版本並建立新版本紀錄（限管理員）
+ */
+export const restoreAdminContentRevision = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<ContentRevisionRestoreResult> => {
+
+  return customFetch<ContentRevisionRestoreResult>(getRestoreAdminContentRevisionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRestoreAdminContentRevisionMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAdminContentRevision>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreAdminContentRevision>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['restoreAdminContentRevision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreAdminContentRevision>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  restoreAdminContentRevision(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreAdminContentRevisionMutationResult = NonNullable<Awaited<ReturnType<typeof restoreAdminContentRevision>>>
+
+    export type RestoreAdminContentRevisionMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 內容管理：還原指定版本並建立新版本紀錄（限管理員）
+ */
+export const useRestoreAdminContentRevision = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreAdminContentRevision>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreAdminContentRevision>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRestoreAdminContentRevisionMutationOptions(options));
+    }
 
 export const getRequestUploadUrlUrl = () => {
 

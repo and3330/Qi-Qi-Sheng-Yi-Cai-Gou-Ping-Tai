@@ -7,6 +7,7 @@ import {
   useCreateAdminAnnouncement,
   useUpdateAdminAnnouncement,
   useListAdminContentRevisions,
+  useRestoreAdminContentRevision,
   getListAdminArticlesQueryKey,
   getListAdminAnnouncementsQueryKey,
   getListAdminContentRevisionsQueryKey,
@@ -15,7 +16,7 @@ import {
   type ContentRevision
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, History, FileText, Bell, Archive } from "lucide-react";
+import { Plus, Pencil, History, FileText, Bell, Archive, RotateCcw } from "lucide-react";
 import { AdminLayout } from "./AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,11 +53,38 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "article" | "announcement", entityId: number, onClose: () => void }) {
+  const queryClient = useQueryClient();
   const { data: revisions, isLoading } = useListAdminContentRevisions({ entityKind, entityId });
-  
+  const restoreRevision = useRestoreAdminContentRevision();
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<ContentRevision | null>(null);
+  const [error, setError] = useState("");
+
+  async function handleRestore() {
+    if (!restoreTarget) return;
+    setError("");
+    try {
+      await restoreRevision.mutateAsync({ id: restoreTarget.id });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getListAdminContentRevisionsQueryKey({ entityKind, entityId }),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: entityKind === "article"
+            ? getListAdminArticlesQueryKey()
+            : getListAdminAnnouncementsQueryKey(),
+        }),
+      ]);
+      setRestoreTarget(null);
+    } catch {
+      setError("還原失敗，請稍後再試。");
+    }
+  }
+
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md rounded-2xl">
+    <>
+      <Dialog open onOpenChange={(o) => !o && !restoreRevision.isPending && onClose()}>
+      <DialogContent className="max-w-2xl rounded-2xl">
         <DialogHeader>
           <DialogTitle>版本紀錄</DialogTitle>
         </DialogHeader>
@@ -78,13 +106,64 @@ function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "artic
                     <StatusBadge status={r.status} />
                     {r.note && <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">{r.note}</span>}
                   </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>
+                      {expandedId === r.id ? "收合內容" : "查看完整內容"}
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => { setError(""); setRestoreTarget(r); }}>
+                      <RotateCcw size={14} className="mr-1" /> 還原此版本
+                    </Button>
+                  </div>
+                  {expandedId === r.id && (
+                    <div className="mt-3 space-y-3 rounded-xl border bg-muted/20 p-4 text-sm">
+                      <div><span className="font-medium">標題：</span>{r.title}</div>
+                      <div><span className="font-medium">分類：</span>{r.category || "—"}</div>
+                      {entityKind === "article" && (
+                        <div>
+                          <div className="font-medium mb-1">摘要：</div>
+                          <div className="whitespace-pre-wrap break-words">{r.summary || "—"}</div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium mb-1">完整內容：</div>
+                        <div className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-background p-3">
+                          {r.content || "—"}
+                        </div>
+                      </div>
+                      <div><span className="font-medium">狀態：</span><StatusBadge status={r.status} /></div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+      <AlertDialog open={Boolean(restoreTarget)} onOpenChange={(open) => !open && !restoreRevision.isPending && setRestoreTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確定要還原這個版本？</AlertDialogTitle>
+            <AlertDialogDescription>
+              將把目前內容改為「{restoreTarget?.title}」的版本，並新增一筆還原紀錄；既有版本不會被覆蓋或刪除。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={restoreRevision.isPending}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={restoreRevision.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleRestore();
+              }}
+            >
+              {restoreRevision.isPending ? "還原中…" : "確認還原"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

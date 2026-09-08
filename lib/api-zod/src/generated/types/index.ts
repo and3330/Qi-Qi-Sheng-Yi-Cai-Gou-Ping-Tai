@@ -86,6 +86,8 @@ export * from './commissionRecord';
 export * from './commissionReport';
 export * from './contentRevision';
 export * from './contentRevisionEntityKind';
+export * from './contentRevisionRestoreResult';
+export * from './contentRevisionRestoreResultEntityKind';
 export * from './createCmoGoalInput';
 export * from './createConversationInput';
 export * from './createSocialPostInput';

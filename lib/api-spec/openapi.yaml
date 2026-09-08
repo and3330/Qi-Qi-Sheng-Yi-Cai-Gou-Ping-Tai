@@ -1916,6 +1916,31 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/ContentRevision'
+  /admin/content-revisions/{id}/restore:
+    post:
+      operationId: restoreAdminContentRevision
+      tags:
+        - admin
+      summary: 內容管理：還原指定版本並建立新版本紀錄（限管理員）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentRevisionRestoreResult'
+        '404':
+          description: Revision or content not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
   /storage/uploads/request-url:
     post:
       tags:
@@ -9473,6 +9498,22 @@ components:
         createdAt:
           type: string
           format: date-time
+    ContentRevisionRestoreResult:
+      type: object
+      required:
+        - revisionId
+        - entityKind
+        - entityId
+      properties:
+        revisionId:
+          type: integer
+        entityKind:
+          type: string
+          enum:
+            - article
+            - announcement
+        entityId:
+          type: integer
     ShipmentPhotosInput:
       type: object
       required:

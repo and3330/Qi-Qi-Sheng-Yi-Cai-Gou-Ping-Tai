@@ -1178,6 +1178,20 @@ export interface ContentRevision {
   createdAt: string;
 }
 
+export type ContentRevisionRestoreResultEntityKind = typeof ContentRevisionRestoreResultEntityKind[keyof typeof ContentRevisionRestoreResultEntityKind];
+
+
+export const ContentRevisionRestoreResultEntityKind = {
+  article: 'article',
+  announcement: 'announcement',
+} as const;
+
+export interface ContentRevisionRestoreResult {
+  revisionId: number;
+  entityKind: ContentRevisionRestoreResultEntityKind;
+  entityId: number;
+}
+
 export interface ShipmentPhotosInput {
   /**
      * @maxItems 10
