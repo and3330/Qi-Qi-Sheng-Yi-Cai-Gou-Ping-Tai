@@ -2,8 +2,10 @@ import { useState } from "react";
 import { 
   useListAdminArticles,
   useCreateAdminArticle,
+  useUpdateAdminArticle,
   useListAdminAnnouncements,
   useCreateAdminAnnouncement,
+  useUpdateAdminAnnouncement,
   useListAdminContentRevisions,
   getListAdminArticlesQueryKey,
   getListAdminAnnouncementsQueryKey,
@@ -75,25 +77,35 @@ function RevisionsDialog({ entityKind, entityId, onClose }: { entityKind: "artic
   );
 }
 
-function CreateContentDialog({
+function ContentEditorDialog({
   kind,
+  item,
   onClose,
 }: {
   kind: "article" | "announcement";
+  item?: AdminArticle | AdminAnnouncement;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const createArticle = useCreateAdminArticle();
   const createAnnouncement = useCreateAdminAnnouncement();
-  const [articleKind, setArticleKind] = useState<"article" | "faq">("article");
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
-  const [summary, setSummary] = useState("");
-  const [content, setContent] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [status, setStatus] = useState<"draft" | "review" | "published">("draft");
+  const updateArticle = useUpdateAdminArticle();
+  const updateAnnouncement = useUpdateAdminAnnouncement();
+  const articleItem = kind === "article" ? item as AdminArticle | undefined : undefined;
+  const [articleKind, setArticleKind] = useState<"article" | "faq">(articleItem?.kind ?? "article");
+  const [title, setTitle] = useState(item?.title ?? "");
+  const [category, setCategory] = useState(item?.category ?? "");
+  const [summary, setSummary] = useState(articleItem?.summary ?? "");
+  const [content, setContent] = useState(item?.content ?? "");
+  const [imageUrl, setImageUrl] = useState(item?.imageUrl ?? "");
+  const [status, setStatus] = useState<"draft" | "review" | "published" | "archived">(item?.status ?? "draft");
   const [error, setError] = useState("");
-  const isPending = createArticle.isPending || createAnnouncement.isPending;
+  const isEditing = Boolean(item);
+  const isPending =
+    createArticle.isPending ||
+    createAnnouncement.isPending ||
+    updateArticle.isPending ||
+    updateAnnouncement.isPending;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -101,33 +113,39 @@ function CreateContentDialog({
 
     try {
       if (kind === "article") {
-        await createArticle.mutateAsync({
-          data: {
-            kind: articleKind,
-            title: title.trim(),
-            category: category.trim(),
-            summary: summary.trim() || null,
-            content: content.trim() || null,
-            imageUrl: imageUrl.trim() || null,
-            status,
-          },
-        });
+        const data = {
+          kind: articleKind,
+          title: title.trim(),
+          category: category.trim(),
+          summary: summary.trim() || null,
+          content: content.trim() || null,
+          imageUrl: imageUrl.trim() || null,
+          status,
+        };
+        if (item) {
+          await updateArticle.mutateAsync({ id: item.id, data });
+        } else {
+          await createArticle.mutateAsync({ data });
+        }
         await queryClient.invalidateQueries({ queryKey: getListAdminArticlesQueryKey() });
       } else {
-        await createAnnouncement.mutateAsync({
-          data: {
-            title: title.trim(),
-            category: category.trim(),
-            content: content.trim() || null,
-            imageUrl: imageUrl.trim() || null,
-            status,
-          },
-        });
+        const data = {
+          title: title.trim(),
+          category: category.trim(),
+          content: content.trim() || null,
+          imageUrl: imageUrl.trim() || null,
+          status,
+        };
+        if (item) {
+          await updateAnnouncement.mutateAsync({ id: item.id, data });
+        } else {
+          await createAnnouncement.mutateAsync({ data });
+        }
         await queryClient.invalidateQueries({ queryKey: getListAdminAnnouncementsQueryKey() });
       }
       onClose();
     } catch {
-      setError("建立失敗，請確認欄位內容後再試一次。");
+      setError(`${isEditing ? "儲存" : "建立"}失敗，請確認欄位內容後再試一次。`);
     }
   }
 
@@ -135,7 +153,7 @@ function CreateContentDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl rounded-2xl">
         <DialogHeader>
-          <DialogTitle>新增{kind === "article" ? "文章" : "公告"}</DialogTitle>
+          <DialogTitle>{isEditing ? "編輯" : "新增"}{kind === "article" ? "文章" : "公告"}</DialogTitle>
         </DialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
           {kind === "article" && (
@@ -216,6 +234,7 @@ function CreateContentDialog({
               <option value="draft">草稿</option>
               <option value="review">送審中</option>
               <option value="published">立即上架</option>
+              <option value="archived">下架</option>
             </select>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
@@ -224,7 +243,7 @@ function CreateContentDialog({
               取消
             </Button>
             <Button type="submit" disabled={isPending || !title.trim() || !category.trim()}>
-              {isPending ? "建立中…" : "建立"}
+              {isPending ? "儲存中…" : isEditing ? "儲存變更" : "建立"}
             </Button>
           </DialogFooter>
         </form>
@@ -237,6 +256,11 @@ export default function AdminContentPage() {
   const [tab, setTab] = useState<"articles" | "announcements">("articles");
   const [revTarget, setRevTarget] = useState<{kind: "article"|"announcement", id: number} | null>(null);
   const [createKind, setCreateKind] = useState<"article" | "announcement" | null>(null);
+  const [editTarget, setEditTarget] = useState<
+    { kind: "article"; item: AdminArticle } |
+    { kind: "announcement"; item: AdminAnnouncement } |
+    null
+  >(null);
 
   const { data: articles, isLoading: loadingArticles } = useListAdminArticles();
   const { data: announcements, isLoading: loadingAnnouncements } = useListAdminAnnouncements();
@@ -306,7 +330,14 @@ export default function AdminContentPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setRevTarget({kind: 'article', id: a.id})}>
                           <History size={16} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary"
+                          aria-label={`編輯文章：${a.title}`}
+                          onClick={() => setEditTarget({ kind: "article", item: a })}
+                        >
                           <Pencil size={16} />
                         </Button>
                       </td>
@@ -331,7 +362,14 @@ export default function AdminContentPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setRevTarget({kind: 'announcement', id: a.id})}>
                           <History size={16} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary"
+                          aria-label={`編輯公告：${a.title}`}
+                          onClick={() => setEditTarget({ kind: "announcement", item: a })}
+                        >
                           <Pencil size={16} />
                         </Button>
                       </td>
@@ -352,7 +390,15 @@ export default function AdminContentPage() {
         />
       )}
       {createKind && (
-        <CreateContentDialog kind={createKind} onClose={() => setCreateKind(null)} />
+        <ContentEditorDialog kind={createKind} onClose={() => setCreateKind(null)} />
+      )}
+      {editTarget && (
+        <ContentEditorDialog
+          key={`${editTarget.kind}-${editTarget.item.id}`}
+          kind={editTarget.kind}
+          item={editTarget.item}
+          onClose={() => setEditTarget(null)}
+        />
       )}
     </AdminLayout>
   );
