@@ -23,7 +23,7 @@ export default function PointsPage() {
 
   return (
     <div className="pb-24 bg-gray-50 min-h-[100dvh]">
-      <header className="sticky top-0 z-50 bg-white border-b flex items-center px-4 h-14">
+      <header className="sticky top-0 z-30 bg-white border-b flex items-center px-4 h-14">
         <Link href="/member" className="p-2 -ml-2 text-gray-500 active:text-gray-900">
           <ArrowLeft size={20} />
         </Link>

@@ -189,7 +189,7 @@ export default function SupportPage() {
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-nav-offset">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
+      <div className="sticky top-0 z-30 bg-white px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
         <Link href="/member" className="p-2 text-gray-900 hover:text-primary transition-colors -ml-2">
           <ArrowLeft size={24} />
         </Link>

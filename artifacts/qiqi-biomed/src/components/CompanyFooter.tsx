@@ -2,13 +2,13 @@ import { Phone, Printer, Clock, Mail, MapPin, MessageCircle } from "lucide-react
 
 export default function CompanyFooter() {
   return (
-    <footer className="mt-6 bg-[#f3f7f5] border-t border-[#e3ece7] px-5 pt-6 pb-8 text-gray-600">
+    <footer className="mt-6 bg-[hsl(203_40%_95%)] border-t border-[hsl(200_30%_88%)] px-5 pt-8 pb-8 lg:px-8 [&>*]:mx-auto [&>*]:max-w-7xl text-gray-600">
       <div className="text-sm font-bold text-gray-800 mb-1">
         七期生醫科技股份有限公司
       </div>
       <div className="text-[11px] text-gray-500 mb-4">統一編號 83131399</div>
 
-      <div className="space-y-2.5 text-[12px]">
+      <div className="grid gap-2.5 text-[12px] sm:grid-cols-2 lg:grid-cols-3">
         <div className="flex items-start gap-2">
           <Phone size={14} className="text-primary mt-0.5 shrink-0" />
           <span>
@@ -42,7 +42,7 @@ export default function CompanyFooter() {
         </div>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-[#e3ece7] text-center text-[10px] text-gray-400">
+      <div className="mt-5 pt-4 border-t border-[hsl(200_30%_88%)] text-center text-[10px] text-gray-400">
         © {new Date().getFullYear()} 七期生醫科技股份有限公司 All Rights
         Reserved.
       </div>

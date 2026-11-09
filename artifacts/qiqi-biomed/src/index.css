@@ -241,3 +241,49 @@
     pointer-events: none;
   }
 }
+
+/* ---------- Storefront scoped theme (does not affect /admin) ---------- */
+.storefront {
+  --primary: 200 86% 28%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 196 90% 36%;
+  --accent: 198 50% 95%;
+  --accent-foreground: 200 86% 26%;
+  --secondary: 198 40% 95%;
+  --secondary-foreground: 200 60% 22%;
+  --background: 200 30% 98%;
+  --foreground: 205 40% 14%;
+  --muted: 200 25% 95%;
+  --muted-foreground: 205 14% 42%;
+  --border: 200 22% 89%;
+  --input: 200 22% 86%;
+  --card-border: 200 22% 89%;
+  --sf-gold: 41 62% 60%;
+  --sf-gold-deep: 38 55% 42%;
+  --sf-deep: 203 88% 20%;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.sf-band {
+  background: linear-gradient(180deg, hsl(203 88% 22%) 0%, hsl(196 82% 32%) 100%);
+}
+.sf-drawer {
+  background: linear-gradient(180deg, hsl(203 86% 24%) 0%, hsl(200 88% 17%) 100%);
+}
+.sf-gold-btn {
+  background: linear-gradient(90deg, hsl(43 70% 72%), hsl(var(--sf-gold)));
+  color: hsl(205 60% 14%);
+}
+.storefront :focus-visible {
+  outline: 2px solid hsl(var(--sf-gold));
+  outline-offset: 2px;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+@media (prefers-reduced-motion: reduce) {
+  .storefront *, .storefront *::before, .storefront *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -41,7 +41,7 @@ export default function FavoritesPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20 animate-in fade-in">
-      <div className="bg-white px-4 pt-safe pb-4 shadow-sm sticky top-0 z-40 flex items-center gap-3">
+      <div className="bg-white px-4 pt-safe pb-4 shadow-sm sticky top-0 z-30 flex items-center gap-3">
         <Button asChild variant="ghost" size="icon" className="-ml-2"><Link href="/member"><ArrowLeft size={20}/></Link></Button>
         <h1 className="font-bold text-xl text-gray-900 pt-1">收藏清單</h1>
       </div>

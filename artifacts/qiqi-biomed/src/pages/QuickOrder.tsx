@@ -91,7 +91,7 @@ export default function QuickOrderPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <div className="sticky top-0 z-40 bg-primary px-4 pt-safe pb-4 shadow-md flex flex-col gap-3">
+      <div className="sticky top-0 z-30 bg-primary px-4 pt-safe pb-4 shadow-md flex flex-col gap-3">
         <div className="flex items-center text-white">
           <Button asChild variant="ghost" size="icon" className="text-white hover:bg-white/20 -ml-2"><Link href="/"><ArrowLeft size={20}/></Link></Button>
           <h1 className="font-bold flex-1 text-center pr-8 text-lg">快速訂購</h1>
@@ -166,7 +166,7 @@ export default function QuickOrderPage() {
         )}
       </div>
 
-      <div className="fixed bottom-0 z-50 w-full max-w-md bg-white border-t p-3 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+      <div className="sticky bottom-nav-offset lg:bottom-0 z-30 w-full bg-white border-t p-3 pb-safe shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
         <Button 
           className="w-full h-12 text-base font-bold rounded-xl"
           disabled={selected.size === 0 || isSubmitting}

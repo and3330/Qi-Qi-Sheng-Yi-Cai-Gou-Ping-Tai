@@ -36,7 +36,7 @@ export default function NewsPage() {
     <div className="flex flex-col min-h-screen bg-gray-50 pb-safe animate-in fade-in bottom-nav-offset mb-16">
       
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-primary px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
+      <div className="sticky top-0 z-30 bg-primary px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
         <Link href="/" className="p-2 text-white/90 hover:text-white transition-colors -ml-2 cursor-pointer">
           <ArrowLeft size={24} />
         </Link>

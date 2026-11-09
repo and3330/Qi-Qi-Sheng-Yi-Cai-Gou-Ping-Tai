@@ -23,7 +23,7 @@ export default function KnowledgePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20 animate-in fade-in">
-      <div className="sticky top-0 z-40 bg-primary px-4 pt-safe pb-4 shadow-md">
+      <div className="sticky top-0 z-30 bg-primary px-4 pt-safe pb-4 shadow-md">
         <h1 className="text-white font-bold text-center text-lg mb-4">知識專區</h1>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />

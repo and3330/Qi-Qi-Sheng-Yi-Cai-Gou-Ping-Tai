@@ -128,7 +128,7 @@ export default function ProductPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background animate-in fade-in pb-36">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-md max-w-md mx-auto">
+      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-md">
         <Button variant="ghost" size="icon" className="rounded-full bg-white shadow-sm" onClick={() => window.history.back()}>
           <ChevronLeft size={20} />
         </Button>
@@ -143,7 +143,7 @@ export default function ProductPage() {
       </div>
 
       {/* Image */}
-      <div className="aspect-square bg-white w-full pt-16 flex items-center justify-center p-8">
+      <div className="aspect-square bg-white w-full flex items-center justify-center p-8">
         {product.imageUrl ? (
           <img src={product.imageUrl} alt={product.name} className="w-full h-full object-contain mix-blend-multiply" />
         ) : (
@@ -226,7 +226,7 @@ export default function ProductPage() {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-nav-offset z-50 w-full max-w-md bg-white border-t p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
+      <div className="sticky bottom-nav-offset lg:bottom-0 z-30 w-full bg-white border-t p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.05)]">
         <div className="flex items-center gap-3">
           <div className="flex items-center border rounded-lg overflow-hidden h-12 bg-gray-50">
             <button 

@@ -1,195 +1,138 @@
-import { useState } from "react";
-import { Link } from "wouter";
-import { Search, ShoppingCart, SlidersHorizontal, ChevronDown } from "lucide-react";
-import { useListProducts, useGetMe, useAddCartItem, getGetCartQueryKey, getGetMeQueryKey } from "@workspace/api-client-react";
-import { formatPrice, classNames } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { useEffect, useState, FormEvent } from "react";
+import { Link, useLocation, useSearch } from "wouter";
+import { Search, X, PackageSearch } from "lucide-react";
+import { useListProducts, useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useQueryClient } from "@tanstack/react-query";
+import { ProductCard, ProductCardSkeleton, useStoreAddToCart, tierLabel } from "@/components/storefront/ProductCard";
+import { SHOP_CATEGORIES } from "@/components/storefront/nav";
 
-const CATEGORIES = ["全部", "保健食品", "醫療耗材", "保養清潔", "院所專區"];
+type Sort = "recommended" | "priceAsc" | "priceDesc" | "newest";
+const SORTS: { v: Sort; label: string }[] = [
+  { v: "recommended", label: "推薦排序" },
+  { v: "newest", label: "最新上架" },
+  { v: "priceAsc", label: "價格由低到高" },
+  { v: "priceDesc", label: "價格由高到低" },
+];
+const VALID_CATS = SHOP_CATEGORIES.map((c) => c.name as string);
 
 export default function ShopPage() {
   const { isLoaded, isSignedIn } = useAuth();
-  const { data: me } = useGetMe({ query: { enabled: isLoaded && !!isSignedIn, retry: false, queryKey: getGetMeQueryKey() } }); // won't throw if not logged in if backend returns 401 and we ignore it
-  
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("全部");
-  const [sort, setSort] = useState<"recommended" | "priceAsc" | "priceDesc" | "newest">("recommended");
-  
-  const { data: products, isLoading } = useListProducts({
+  const { data: me } = useGetMe({ query: { enabled: isLoaded && !!isSignedIn, retry: false, queryKey: getGetMeQueryKey() } });
+  const [, setLocation] = useLocation();
+  const qs = useSearch();
+  const params = new URLSearchParams(qs);
+  const rawCat = params.get("category") ?? "";
+  const category = VALID_CATS.includes(rawCat) ? rawCat : "";
+  const search = params.get("q") ?? "";
+  const sortParam = params.get("sort") as Sort | null;
+  const sort: Sort = SORTS.some((s) => s.v === sortParam) ? (sortParam as Sort) : "recommended";
+
+  const [draft, setDraft] = useState(search);
+  useEffect(() => setDraft(search), [search]);
+
+  const update = (next: { category?: string; q?: string; sort?: Sort }) => {
+    const p = new URLSearchParams();
+    const c = next.category ?? category;
+    const q = next.q ?? search;
+    const s = next.sort ?? sort;
+    if (c) p.set("category", c);
+    if (q) p.set("q", q);
+    if (s !== "recommended") p.set("sort", s);
+    const str = p.toString();
+    setLocation(str ? `/shop?${str}` : "/shop");
+  };
+
+  const { data: products, isLoading, isError, refetch } = useListProducts({
     search: search || undefined,
-    category: category === "全部" ? undefined : category,
+    category: category || undefined,
     sort,
   });
+  const { add } = useStoreAddToCart(!!isSignedIn);
 
-  const { mutate: addToCart } = useAddCartItem();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const onSubmit = (e: FormEvent) => { e.preventDefault(); update({ q: draft.trim() }); };
+  const title = category || (search ? `搜尋「${search}」` : "全部商品");
 
-  const handleAddCart = (productId: number) => {
-    addToCart({ data: { productId, quantity: 1 } }, {
-      onSuccess: () => {
-        toast({ title: "已加入購物車", duration: 2000 });
-        queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
-      },
-      onError: () => {
-        toast({ title: "請先登入", variant: "destructive", duration: 2000 });
-      }
-    });
-  };
-
-  const getPrice = (product: any) => {
-    if (me?.tier === "hospital") return product.priceHospital;
-    if (me?.tier === "clinic") return product.priceClinic;
-    return product.priceConsumer;
-  };
-
-  const getTierLabel = () => {
-    if (me?.tier === "hospital") return "醫院專屬價";
-    if (me?.tier === "clinic") return "合作價";
-    return "一般售價";
-  };
+  const catBtn = (active: boolean) =>
+    `whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${active ? "bg-primary text-white" : "bg-white text-foreground border hover:border-primary hover:text-primary"}`;
 
   return (
-    <div className="flex flex-col min-h-screen bg-background animate-in fade-in duration-300">
-      <div className="sticky top-0 z-40 bg-primary px-4 pt-safe pb-4 shadow-md">
-        <h1 className="text-white font-bold text-center text-lg mb-4">商城</h1>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <Input 
-            type="search" 
-            placeholder="搜尋商品、品牌或關鍵字" 
-            className="w-full bg-white border-0 pl-10 h-10 rounded-xl"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+    <div className="animate-in fade-in duration-300">
+      <div className="sf-band px-4 pb-6 pt-5 text-white md:px-6">
+        <div className="mx-auto max-w-7xl">
+          <nav aria-label="麵包屑" className="text-xs text-white/75"><Link href="/" className="hover:underline">首頁</Link> / <Link href="/shop" className="hover:underline">商城</Link>{category && ` / ${category}`}</nav>
+          <h1 className="mt-2 text-2xl font-bold tracking-wider md:text-3xl">{title}</h1>
+          <form onSubmit={onSubmit} role="search" className="relative mt-4 max-w-xl">
+            <label htmlFor="shop-search" className="sr-only">搜尋商品</label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} aria-hidden />
+            <input id="shop-search" type="search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="搜尋商品名稱、編號"
+              className="h-11 w-full rounded-full bg-white pl-10 pr-24 text-sm text-foreground" data-testid="input-shop-search" />
+            {draft && <button type="button" aria-label="清除搜尋" onClick={() => { setDraft(""); update({ q: "" }); }} className="absolute right-[4.5rem] top-1/2 -translate-y-1/2 p-1 text-muted-foreground"><X size={16} /></button>}
+            <button type="submit" className="absolute right-1 top-1 h-9 rounded-full bg-[hsl(var(--sf-deep))] px-4 text-sm font-bold" data-testid="button-shop-search">搜尋</button>
+          </form>
         </div>
       </div>
 
-      <div className="px-4 py-3 bg-white border-b shadow-sm sticky top-[108px] z-30">
-        <div className="flex overflow-x-auto no-scrollbar gap-2 pb-1">
-          {CATEGORIES.map(c => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={classNames(
-                "px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
-                category === c ? "bg-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="p-4">
-        {/* Filters & Sort */}
-        <div className="flex justify-between items-center mb-4 px-1">
-          <div className="flex items-center text-sm font-medium text-gray-700">
-            <span className="text-gray-500 font-normal">共 {products?.length || 0} 件商品</span>
+      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-6 md:px-6 lg:grid-cols-[220px_1fr]">
+        <aside className="hidden lg:block" aria-label="商品分類">
+          <h2 className="border-b-2 border-primary pb-2 text-sm font-bold text-[hsl(var(--sf-deep))]">商品分類</h2>
+          <ul className="mt-2">
+            {["", ...VALID_CATS].map((c) => (
+              <li key={c || "all"}>
+                <button type="button" onClick={() => update({ category: c })} aria-current={category === c ? "true" : undefined}
+                  className={`w-full border-b py-3 text-left text-sm ${category === c ? "font-bold text-primary" : "hover:text-primary"}`}>
+                  {c || "全部商品"}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-6 rounded-lg bg-accent p-4 text-xs leading-relaxed text-accent-foreground">
+            目前顯示價格：<strong>{tierLabel(me)}</strong>
+            {!isSignedIn && <><br /><Link href="/sign-in" className="font-bold underline">登入</Link>後依會員身份顯示專屬價格。</>}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 text-xs font-medium px-2">
-                {sort === "recommended" && "推薦排序"}
-                {sort === "priceAsc" && "價格由低到高"}
-                {sort === "priceDesc" && "價格由高到低"}
-                {sort === "newest" && "最新上架"}
-                <ChevronDown size={14} className="ml-1" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[140px]">
-              <DropdownMenuItem onClick={() => setSort("recommended")}>推薦排序</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSort("priceAsc")}>價格由低到高</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSort("priceDesc")}>價格由高到低</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSort("newest")}>最新上架</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        </aside>
 
-        {/* Product Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array(6).fill(0).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 animate-pulse h-64" />
+        <div>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar lg:hidden" role="group" aria-label="商品分類">
+            {["", ...VALID_CATS].map((c) => (
+              <button key={c || "all"} type="button" onClick={() => update({ category: c })} aria-pressed={category === c} className={catBtn(category === c)} data-testid={`button-cat-${c || "all"}`}>
+                {c || "全部"}
+              </button>
             ))}
           </div>
-        ) : products?.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <p>找不到符合條件的商品</p>
+
+          <div className="mt-4 flex items-center justify-between lg:mt-0">
+            <p className="text-sm text-muted-foreground" aria-live="polite">共 {products?.length ?? 0} 件商品</p>
+            <label className="flex items-center gap-2 text-sm">
+              <span className="sr-only">排序方式</span>
+              <select value={sort} onChange={(e) => update({ sort: e.target.value as Sort })} className="h-9 rounded-md border bg-white px-2 text-sm" data-testid="select-sort">
+                {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+              </select>
+            </label>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {products?.map(product => (
-              <Link key={product.id} href={`/product/${product.id}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex flex-col h-full hover-elevate">
-                <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-gray-50 flex items-center justify-center">
-                  {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply" />
-                  ) : (
-                    <div className="text-gray-300 font-bold text-xs">{product.code}</div>
-                  )}
-                  {product.isHot && (
-                    <span className="absolute top-2 left-2 bg-destructive text-white text-[10px] font-bold px-1.5 py-0.5 rounded-sm">熱銷</span>
-                  )}
-                  {product.isNew && !product.isHot && (
-                    <span className="absolute top-2 left-2 bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-sm">新品</span>
-                  )}
-                </div>
-                
-                <h3 className="text-sm font-bold text-gray-800 line-clamp-2 mb-1">{product.name}</h3>
-                <p className="text-[10px] text-gray-500 line-clamp-1 mb-auto">{product.spec || product.description || "\u00A0"}</p>
-                
-                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-gray-400 block -mb-0.5">{getTierLabel()}</span>
-                    <span className="text-primary font-bold text-sm">{formatPrice(getPrice(product))}</span>
-                  </div>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="h-7 w-7 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white shrink-0"
-                    onClick={(e) => { e.preventDefault(); handleAddCart(product.id); }}
-                  >
-                    <ShoppingCart size={14} />
-                  </Button>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-        
-        {/* Delivery banner */}
-        {!isLoading && products && products.length > 0 && (
-          <div className="mt-6 bg-primary/5 rounded-xl p-4 flex items-center justify-between border border-primary/10">
-            <div className="flex items-center gap-3">
-              <div className="bg-white p-2 rounded-full text-primary">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-              </div>
-              <div>
-                <p className="font-bold text-sm text-gray-800">院所專區滿 NT$3,000 免運費</p>
-                <p className="text-xs text-gray-500">專屬服務・快速出貨・安心保障</p>
-              </div>
+
+          {isError ? (
+            <div className="mt-10 rounded-lg bg-white p-10 text-center">
+              <p className="text-muted-foreground">商品載入失敗</p>
+              <button type="button" onClick={() => refetch()} className="mt-3 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white">重新載入</button>
             </div>
-          </div>
-        )}
+          ) : isLoading ? (
+            <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+            </div>
+          ) : products?.length === 0 ? (
+            <div className="mt-10 flex flex-col items-center rounded-lg border border-dashed bg-white px-6 py-16 text-center">
+              <PackageSearch size={44} className="text-primary/40" aria-hidden />
+              <p className="mt-4 font-bold">找不到符合條件的商品</p>
+              <p className="mt-1 text-sm text-muted-foreground">試試其他關鍵字，或瀏覽全部商品。</p>
+              <button type="button" onClick={() => setLocation("/shop")} className="mt-5 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white">清除篩選</button>
+            </div>
+          ) : (
+            <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 xl:grid-cols-4">
+              {products?.map((p) => <ProductCard key={p.id} product={p} me={me} onAdd={add} />)}
+            </div>
+          )}
+        </div>
       </div>
-
-      <Link 
-        href="/support" 
-        className="fixed right-4 bottom-nav-offset mb-6 bg-amber-500 text-white w-14 h-14 rounded-full shadow-lg flex flex-col items-center justify-center z-40 active:scale-95 transition-transform"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-0.5"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
-      </Link>
     </div>
   );
 }

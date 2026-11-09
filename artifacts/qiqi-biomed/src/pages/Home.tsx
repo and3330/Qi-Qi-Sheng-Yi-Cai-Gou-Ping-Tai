@@ -1,330 +1,232 @@
-import CompanyFooter from '@/components/CompanyFooter';
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { 
-  ShoppingBag, Building2, BookOpen, Bell, Search, 
-  ShoppingCart, User, ShieldCheck, CheckCircle2, 
-  Truck, Crown, Menu, CreditCard, HeadphonesIcon, TrendingUp, ChevronRight
+import {
+  ShieldCheck, BadgePercent, HeadphonesIcon, ChevronLeft, ChevronRight, Building2, TrendingUp, LayoutDashboard,
+  Pill, Syringe, Sparkles, Hospital,
 } from "lucide-react";
-import { useGetHomeSummary, useGetPortalSummary, getGetPortalSummaryQueryKey, useAddCartItem, getGetCartQueryKey, useGetCart } from "@workspace/api-client-react";
+import { useGetHomeSummary, useGetPortalSummary, getGetPortalSummaryQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQueryClient } from "@tanstack/react-query";
-import { formatPrice, classNames } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { formatPrice } from "@/lib/utils";
+import { ProductCard, ProductCardSkeleton, useStoreAddToCart } from "@/components/storefront/ProductCard";
+import { SHOP_CATEGORIES, categoryHref } from "@/components/storefront/nav";
+
+const CAT_ICONS = [Pill, Syringe, Sparkles, Hospital];
+
+type Slide = { key: string; image: string; eyebrow: string; title: string; body: string; href: string; cta: string };
+
+function Carousel({ slides }: { slides: Slide[] }) {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const n = slides.length;
+  const go = useCallback((d: number) => setI((v) => (v + d + n) % n), [n]);
+  useEffect(() => {
+    if (paused || n < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(() => go(1), 6000);
+    return () => clearInterval(t);
+  }, [paused, n, go]);
+  useEffect(() => { if (i >= n) setI(0); }, [n, i]);
+  if (!n) return null;
+  return (
+    <section
+      aria-roledescription="carousel" aria-label="精選資訊"
+      className="relative mx-auto max-w-5xl"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)} onBlurCapture={() => setPaused(false)}
+    >
+      <div className="relative overflow-hidden bg-white shadow-lg md:rounded-lg">
+        <div className="flex transition-transform duration-700 ease-out" style={{ transform: `translateX(-${i * 100}%)` }}>
+          {slides.map((s, idx) => (
+            <div key={s.key} className="relative w-full shrink-0" role="group" aria-roledescription="slide" aria-label={`${idx + 1} / ${n}`} aria-hidden={idx !== i}>
+              <div className="grid md:grid-cols-[1.1fr_1fr] min-h-[260px] md:min-h-[320px]">
+                <div className="relative order-2 flex flex-col justify-center px-6 py-6 md:order-1 md:px-10">
+                  <span className="text-xs font-bold tracking-[0.25em] text-[hsl(var(--sf-gold-deep))]">{s.eyebrow}</span>
+                  <h2 className="mt-2 text-xl font-bold leading-snug text-[hsl(var(--sf-deep))] md:text-3xl line-clamp-2">{s.title}</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground line-clamp-3">{s.body}</p>
+                  <Link href={s.href} tabIndex={idx === i ? 0 : -1} className="mt-5 inline-flex w-fit items-center gap-1 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white hover:bg-[hsl(var(--sf-deep))]">
+                    {s.cta} <ChevronRight size={16} />
+                  </Link>
+                </div>
+                <div className="order-1 h-44 md:order-2 md:h-auto">
+                  <img src={s.image} alt="" className="h-full w-full object-cover" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {n > 1 && (
+          <>
+            <button type="button" onClick={() => go(-1)} aria-label="上一則" className="absolute left-2 top-[88px] flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow md:top-1/2 md:-translate-y-1/2" data-testid="button-carousel-prev"><ChevronLeft size={20} /></button>
+            <button type="button" onClick={() => go(1)} aria-label="下一則" className="absolute right-2 top-[88px] flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-primary shadow md:top-1/2 md:-translate-y-1/2" data-testid="button-carousel-next"><ChevronRight size={20} /></button>
+          </>
+        )}
+      </div>
+      {n > 1 && (
+        <div className="mt-4 flex justify-center gap-1" role="tablist" aria-label="選擇輪播">
+          {slides.map((s, idx) => (
+            <button key={s.key} type="button" role="tab" aria-selected={idx === i} aria-label={`第 ${idx + 1} 則`} onClick={() => setI(idx)}
+              className="flex h-6 w-6 items-center justify-center" data-testid={`button-carousel-dot-${idx}`}>
+              <span className={`block h-2 rounded-full transition-all ${idx === i ? "w-6 bg-primary" : "w-2 bg-primary/25"}`} />
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function HomePage() {
   const { isLoaded, isSignedIn, me } = useAuth();
-  const { data: cart } = useGetCart({ 
-    query: { 
-      enabled: isLoaded && !!isSignedIn,
-      queryKey: getGetCartQueryKey() 
-    } 
-  });
-  const cartCount = cart?.reduce((acc, item) => acc + item.quantity, 0) || 0;
-
+  const isInstitution = me?.tier === "hospital" || me?.tier === "clinic";
   const { data: portalSummary } = useGetPortalSummary({
-    query: {
-      enabled: isLoaded && !!isSignedIn && (me?.tier === 'hospital' || me?.tier === 'clinic'),
-      queryKey: getGetPortalSummaryQueryKey()
-    }
+    query: { enabled: isLoaded && !!isSignedIn && isInstitution, queryKey: getGetPortalSummaryQueryKey() },
   });
+  const { data: summary, isLoading, isError, refetch } = useGetHomeSummary();
+  const { add } = useStoreAddToCart(!!isSignedIn);
 
-  const { data: summary, isLoading } = useGetHomeSummary();
-  const { mutate: addToCart } = useAddCartItem();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const slides = useMemo<Slide[]>(() => {
+    const base: Slide[] = [{
+      key: "brand", image: "/images/hero-banner.jpg", eyebrow: "七期生醫採購平台",
+      title: "一站式醫療採購，依身份顯示專屬價格",
+      body: "醫院、診所藥局與一般消費者分級會員，登入後商品價格自動套用您的會員等級。",
+      href: "/shop", cta: "瀏覽商品",
+    }];
+    const ann = (summary?.announcements ?? []).slice(0, 3).map((a) => ({
+      key: `ann-${a.id}`, image: a.imageUrl || "/images/news-banner.jpg", eyebrow: a.category || "最新消息",
+      title: a.title, body: a.content?.replace(/[#*_>`]/g, "").slice(0, 90) || "查看平台最新公告。", href: "/news", cta: "閱讀公告",
+    }));
+    const art = (summary?.latestArticles ?? []).slice(0, 2).map((a) => ({
+      key: `art-${a.id}`, image: a.imageUrl || "/images/news-banner.jpg", eyebrow: "知識專區",
+      title: a.title, body: a.summary || "專業衛教知識整理。", href: `/knowledge/${a.id}`, cta: "閱讀文章",
+    }));
+    return [...base, ...ann, ...art];
+  }, [summary]);
 
-  const handleAddCart = (productId: number) => {
-    addToCart({ data: { productId, quantity: 1 } }, {
-      onSuccess: () => {
-        toast({ title: "已加入購物車", duration: 2000 });
-        queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
-      },
-      onError: () => {
-        toast({ title: "請先登入", variant: "destructive", duration: 2000 });
-      }
-    });
-  };
-
-  const features = [
-    { name: "商城", desc: "私域商城採購", icon: ShoppingBag, path: "/shop" },
-    { name: "合作醫院", desc: "院所清單", icon: Building2, path: "/hospitals" },
-    { name: "知識專區", desc: "文章・常見問題", icon: BookOpen, path: "/knowledge" },
-    { name: "最新消息", desc: "平台公告", icon: Bell, path: "/news", badge: "新" },
-    { name: "訂單查詢", desc: "出貨・追蹤", icon: Search, path: "/orders" },
-    { name: "會員分級", desc: "等級・權益", icon: Crown, path: "/member" },
+  const benefits = [
+    { icon: ShieldCheck, title: "合規正品", sub: "來源可追溯" },
+    { icon: BadgePercent, title: "分級價格", sub: "依會員身份計價" },
+    { icon: HeadphonesIcon, title: "專人客服", sub: "0800-789-188" },
   ];
 
   return (
-    <div className="flex flex-col animate-in fade-in duration-500 pb-8 bg-gray-50 min-h-screen">
-      
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-40 bg-primary px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
-        <div className="p-2 text-white/90 hover:text-white transition-colors -ml-2 cursor-pointer">
-          <Menu size={24} />
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden shadow-sm">
-            <img src="/images/brand/logo-mark.png" alt="七期生醫" className="w-full h-full object-cover" />
-          </div>
-          <span className="text-white font-bold text-lg tracking-wide">七期生醫採購平台</span>
-        </div>
-        <div className="flex items-center gap-1 -mr-2">
-          <Link href="/shop" className="p-2 text-white/90 hover:text-white transition-colors">
-            <Search size={22} />
-          </Link>
-          <Link href="/cart" className="p-2 text-white/90 hover:text-white transition-colors relative">
-            <ShoppingCart size={22} />
-            {cartCount > 0 && (
-              <span className="absolute top-1.5 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm ring-1 ring-primary">
-                {cartCount > 99 ? '99+' : cartCount}
+    <div className="animate-in fade-in duration-500">
+      {/* Benefit band + carousel overlapping */}
+      <div className="sf-band pb-28 pt-6 text-white md:pb-36">
+        <ul className="mx-auto grid max-w-4xl grid-cols-3 gap-2 px-3">
+          {benefits.map((b) => (
+            <li key={b.title} className="flex flex-col items-center gap-1.5 text-center sm:flex-row sm:justify-center sm:gap-3 sm:text-left">
+              <b.icon size={34} strokeWidth={1.4} aria-hidden />
+              <span>
+                <span className="block text-base font-bold tracking-wider sm:text-xl">{b.title}</span>
+                <span className="block text-[11px] text-white/80 sm:text-xs">{b.sub}</span>
               </span>
-            )}
-          </Link>
-        </div>
-      </div>
-
-      {/* Hero Banner */}
-      <div className="bg-primary pb-12 pt-4 relative overflow-hidden -mb-6 rounded-b-[2rem]">
-        <div className="px-4">
-          <div className="bg-[#2a7a44] rounded-2xl relative overflow-hidden flex items-center min-h-[220px] shadow-lg border border-white/10">
-            {/* Content left */}
-            <div className="flex-1 p-5 z-10 relative text-white max-w-[65%]">
-              <span className="inline-block px-2.5 py-1 bg-white/20 text-white text-[10px] font-medium rounded-full mb-3 backdrop-blur-sm shadow-sm border border-white/10">
-                專業醫療・用心守護
-              </span>
-              <h1 className="text-2xl font-bold mb-2 leading-tight drop-shadow-sm">一站式醫藥採購平台</h1>
-              <p className="text-[11px] text-white/90 mb-4 leading-relaxed whitespace-nowrap drop-shadow-sm font-medium">
-                醫院・診所・藥局・消費者<br/>共創健康價值
-              </p>
-              
-              <div className="flex flex-wrap gap-x-2 gap-y-1.5 text-[9px] text-white mb-5 max-w-[180px] font-medium">
-                <span className="flex items-center gap-0.5"><CheckCircle2 size={10} className="text-green-300"/>正品保障</span>
-                <span className="flex items-center gap-0.5"><Truck size={10} className="text-green-300"/>快速出貨</span>
-                <span className="flex items-center gap-0.5"><ShieldCheck size={10} className="text-green-300"/>合規透明</span>
-                <span className="flex items-center gap-0.5"><User size={10} className="text-green-300"/>會員專屬</span>
-              </div>
-              
-              <div className="bg-white text-primary text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-white/90 transition-colors inline-block cursor-pointer active:scale-95">
-                了解更多 →
-              </div>
-            </div>
-            
-            {/* Illustration right */}
-            <div className="absolute right-0 bottom-0 top-0 w-1/2 z-0">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#2a7a44] via-[#2a7a44]/80 to-transparent z-10 w-full"></div>
-              <img src="/images/hero-banner.jpg" alt="Hero Illustration" className="w-full h-full object-cover object-left opacity-90 mix-blend-luminosity" />
-            </div>
-          </div>
-          
-          {/* Dots */}
-          <div className="flex justify-center gap-1.5 mt-4">
-            <div className="w-5 h-1.5 rounded-full bg-white shadow-sm"></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-white/40 shadow-sm"></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-white/40 shadow-sm"></div>
-          </div>
-        </div>
-      </div>
-
-      {/* Portal Entry (for Hospital/Clinic members) */}
-      {isSignedIn && (me?.tier === 'hospital' || me?.tier === 'clinic') && portalSummary && (
-        <div className="px-4 relative z-20 mb-6">
-          <div className="bg-gradient-to-r from-primary to-[#2a7a44] rounded-2xl shadow-md p-4 text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 opacity-10 transform translate-x-1/4 -translate-y-1/4 pointer-events-none">
-              <Building2 size={120} />
-            </div>
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium mb-1.5 inline-block">
-                    {me.tier === 'hospital' ? '醫院會員' : '診所/藥局會員'}
-                  </span>
-                  <h2 className="font-bold text-lg">{portalSummary.institutionName || '尚未綁定院所'}</h2>
-                </div>
-                <div className="bg-white text-primary w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
-                  <Building2 size={20} />
-                </div>
-              </div>
-              <div className="flex items-end justify-between bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/20">
-                <div>
-                  <div className="text-[10px] text-white/80 mb-0.5 flex items-center gap-1">
-                    <TrendingUp size={10} /> 本月採購金額
-                  </div>
-                  <div className="font-bold text-xl">{formatPrice(portalSummary.monthPurchaseTotal)}</div>
-                </div>
-                <Link href="/portal" className="bg-white text-primary text-xs font-bold px-4 py-2 rounded-full shadow-sm hover:bg-gray-50 transition-colors active:scale-95 inline-flex items-center">
-                  進入機構後台 <ChevronRight size={14} className="ml-1" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Entry (for Admin/Ops/Support) */}
-      {isSignedIn && me?.role && me.role !== 'member' && (
-        <div className="px-4 relative z-20 mb-6">
-          <Link href="/admin" className="bg-gray-900 rounded-2xl shadow-md p-4 text-white overflow-hidden relative flex items-center justify-between active:scale-95 transition-transform">
-            <div>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-medium mb-1.5 inline-block">
-                內部人員
-              </span>
-              <h2 className="font-bold text-lg">進入管理後台</h2>
-            </div>
-            <div className="bg-white/10 w-10 h-10 rounded-full flex items-center justify-center">
-              <ChevronRight size={20} />
-            </div>
-          </Link>
-        </div>
-      )}
-
-      {/* Feature Grid */}
-      <div className="px-4 relative z-20 mb-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 grid grid-cols-2 gap-y-3 gap-x-2">
-          {features.map((f, i) => (
-            <Link key={i} href={f.path} className="flex items-center gap-3 p-2 rounded-xl hover:bg-[#f8faf9] transition-colors active-elevate group">
-              <div className="w-12 h-12 rounded-xl bg-[#eaf4ed] text-primary flex items-center justify-center relative flex-shrink-0 group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                <f.icon size={22} strokeWidth={2} />
-                {f.badge && (
-                  <span className="absolute -top-1 -right-1 bg-destructive text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-white shadow-sm">
-                    {f.badge}
-                  </span>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-800 text-[13px] whitespace-nowrap mb-0.5">{f.name}</h3>
-                <p className="text-[10px] text-gray-400 truncate">{f.desc}</p>
-              </div>
-            </Link>
+            </li>
           ))}
-        </div>
+        </ul>
+      </div>
+      <div className="-mt-24 px-0 md:-mt-32 md:px-6">
+        {isLoading ? <div className="mx-auto h-[420px] max-w-5xl animate-pulse bg-white/70 md:h-[320px] md:rounded-lg" /> : <Carousel slides={slides} />}
       </div>
 
-      {/* Announcements */}
-      <div className="px-4 mb-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold text-gray-900 text-base">
-              最新消息
-            </h2>
-            <Link href="/news" className="text-[11px] text-gray-400 hover:text-primary flex items-center">
-              查看全部 &gt;
+      {/* Institution / staff entries */}
+      {isSignedIn && ((isInstitution && portalSummary) || (me?.role && me.role !== "member")) && (
+        <div className="mx-auto mt-8 grid max-w-5xl gap-3 px-4 md:grid-cols-2 md:px-6">
+          {isInstitution && portalSummary && (
+            <Link href="/portal" className="flex items-center justify-between gap-4 rounded-lg border-l-4 border-[hsl(var(--sf-gold))] bg-white p-4 shadow-sm hover:shadow-md" data-testid="link-portal-entry">
+              <div className="flex items-center gap-3">
+                <Building2 className="text-primary" size={28} aria-hidden />
+                <div>
+                  <div className="text-xs text-muted-foreground">{me?.tier === "hospital" ? "醫院會員" : "診所/藥局會員"}・{portalSummary.institutionName || "尚未綁定院所"}</div>
+                  <div className="flex items-center gap-1 font-bold"><TrendingUp size={14} aria-hidden />本月採購 {formatPrice(portalSummary.monthPurchaseTotal)}</div>
+                </div>
+              </div>
+              <span className="flex items-center text-sm font-bold text-primary">機構後台 <ChevronRight size={16} /></span>
             </Link>
-          </div>
-          <div className="space-y-3.5">
-            {isLoading ? (
-              Array(3).fill(0).map((_, i) => (
-                <div key={i} className="flex justify-between items-center animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-2/3" />
-                  <div className="h-3 bg-gray-100 rounded w-16" />
-                </div>
-              ))
-            ) : summary?.announcements?.slice(0, 3).map(ann => (
-              <Link key={ann.id} href={`/news`} className="flex justify-between items-center group">
-                <div className="flex items-center gap-2.5 overflow-hidden flex-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0"></div>
-                  <span className="text-[13px] font-medium text-gray-700 truncate group-hover:text-primary transition-colors">{ann.title}</span>
-                </div>
-                <span className="text-[10px] text-gray-400 flex-shrink-0 ml-3">
-                  {new Date(ann.publishedAt).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                </span>
+          )}
+          {me?.role && me.role !== "member" && (
+            <Link href="/admin" className="flex items-center justify-between rounded-lg bg-[hsl(var(--sf-deep))] p-4 text-white shadow-sm" data-testid="link-admin-entry">
+              <span className="flex items-center gap-3"><LayoutDashboard size={26} aria-hidden /><span><span className="block text-xs text-white/70">內部人員</span><span className="font-bold">進入管理後台</span></span></span>
+              <ChevronRight size={18} />
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Category entry */}
+      <section className="mx-auto mt-10 max-w-5xl px-4 md:px-6" aria-labelledby="cat-title">
+        <h2 id="cat-title" className="sr-only">商品分類</h2>
+        <div className="grid grid-cols-4 gap-2 md:gap-4">
+          {SHOP_CATEGORIES.map((c, idx) => {
+            const Icon = CAT_ICONS[idx];
+            return (
+              <Link key={c.name} href={categoryHref(c.name)} className="group flex flex-col items-center gap-2 rounded-lg py-3 text-center hover:bg-white md:flex-row md:gap-3 md:border md:bg-white md:px-4 md:text-left" data-testid={`link-home-cat-${c.name}`}>
+                <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/20 text-primary group-hover:bg-primary group-hover:text-white"><Icon size={22} aria-hidden /></span>
+                <span><span className="block text-[13px] font-bold md:text-sm">{c.name}</span><span className="hidden text-xs text-muted-foreground md:block">{c.desc}</span></span>
               </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Featured */}
+      <section className="mx-auto mt-10 max-w-7xl px-4 md:px-6" aria-labelledby="featured-title">
+        <h2 id="featured-title" className="text-center text-2xl font-bold tracking-wider text-[hsl(var(--sf-deep))] md:text-3xl">熱門推薦商品</h2>
+        {isError ? (
+          <div className="mt-8 rounded-lg bg-white p-8 text-center">
+            <p className="text-muted-foreground">商品載入失敗</p>
+            <button type="button" onClick={() => refetch()} className="mt-3 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white">重新載入</button>
+          </div>
+        ) : (
+          <div className="mt-7 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {isLoading
+              ? Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)
+              : summary?.hotProducts.map((p) => <ProductCard key={p.id} product={p} me={me} onAdd={add} />)}
+          </div>
+        )}
+        {!isLoading && !isError && summary?.hotProducts.length === 0 && <p className="mt-8 text-center text-muted-foreground">目前沒有推薦商品，歡迎前往商城瀏覽。</p>}
+        <div className="mt-8 border-t pt-6 text-center">
+          <Link href="/shop" className="text-sm font-bold text-[hsl(var(--sf-deep))] underline underline-offset-4" data-testid="link-view-more">查看更多</Link>
+        </div>
+      </section>
+
+      {/* News + knowledge */}
+      <section className="mx-auto mt-12 grid max-w-7xl gap-6 [&>*]:min-w-0 px-4 md:grid-cols-2 md:px-6">
+        <div className="rounded-lg bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between border-b pb-3">
+            <h2 className="text-lg font-bold text-[hsl(var(--sf-deep))]">最新消息</h2>
+            <Link href="/news" className="text-xs font-bold text-primary underline underline-offset-4">全部消息</Link>
+          </div>
+          <ul className="divide-y">
+            {isLoading ? Array.from({ length: 3 }).map((_, i) => <li key={i} className="h-10 animate-pulse" />) :
+              (summary?.announcements ?? []).slice(0, 4).map((a) => (
+                <li key={a.id}>
+                  <Link href="/news" className="flex items-center gap-3 py-3 hover:text-primary">
+                    <span className="shrink-0 rounded bg-accent px-2 py-0.5 text-[11px] font-bold text-primary">{a.category}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm">{a.title}</span>
+                    <time className="shrink-0 text-xs text-muted-foreground">{new Date(a.publishedAt).toLocaleDateString("zh-TW")}</time>
+                  </Link>
+                </li>
+              ))}
+            {!isLoading && !summary?.announcements?.length && <li className="py-4 text-sm text-muted-foreground">尚無公告</li>}
+          </ul>
+        </div>
+        <div className="rounded-lg bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between border-b pb-3">
+            <h2 className="text-lg font-bold text-[hsl(var(--sf-deep))]">知識專區</h2>
+            <Link href="/knowledge" className="text-xs font-bold text-primary underline underline-offset-4">全部文章</Link>
+          </div>
+          <ul className="divide-y">
+            {(summary?.latestArticles ?? []).slice(0, 4).map((a) => (
+              <li key={a.id}>
+                <Link href={`/knowledge/${a.id}`} className="block py-3 hover:text-primary">
+                  <span className="block truncate text-sm font-medium">{a.title}</span>
+                  <span className="text-xs text-muted-foreground">{a.category}</span>
+                </Link>
+              </li>
             ))}
-          </div>
+            {!isLoading && !summary?.latestArticles?.length && <li className="py-4 text-sm text-muted-foreground">尚無文章</li>}
+          </ul>
         </div>
-      </div>
-
-      {/* Hot Products */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between px-4 mb-3">
-          <h2 className="font-bold text-gray-900 text-base">熱門商品</h2>
-          <Link href="/shop" className="text-[11px] text-gray-400 hover:text-primary flex items-center">
-            查看全部 &gt;
-          </Link>
-        </div>
-        
-        {/* Horizontal Scroll */}
-        <div className="flex overflow-x-auto gap-3 px-4 pb-4 snap-x snap-mandatory hide-scrollbar">
-          {isLoading ? (
-            Array(4).fill(0).map((_, i) => (
-              <div key={i} className="w-[140px] flex-shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 p-2 animate-pulse snap-start">
-                <div className="aspect-square bg-gray-100 rounded-lg mb-2" />
-                <div className="h-3 bg-gray-200 rounded w-full mb-1" />
-                <div className="h-3 bg-gray-200 rounded w-2/3 mb-2" />
-                <div className="mt-2 pt-2 border-t border-gray-50 flex justify-between">
-                  <div className="h-4 bg-gray-200 rounded w-1/2" />
-                  <div className="w-6 h-6 bg-gray-200 rounded-full" />
-                </div>
-              </div>
-            ))
-          ) : summary?.hotProducts.map(product => (
-            <Link key={product.id} href={`/product/${product.id}`} className="w-[140px] flex-shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 p-2 flex flex-col snap-start active-elevate group">
-              <div className="relative aspect-square rounded-lg overflow-hidden mb-2 bg-gray-50 flex items-center justify-center">
-                {product.imageUrl ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-300" />
-                ) : (
-                  <ShoppingBag className="text-gray-200" size={24} />
-                )}
-                {product.isHot && (
-                  <span className="absolute top-1.5 left-1.5 bg-destructive text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">熱銷</span>
-                )}
-              </div>
-              
-              <h3 className="text-xs font-bold text-gray-800 line-clamp-2 mb-1 leading-snug">{product.name}</h3>
-              <p className="text-[10px] text-gray-400 line-clamp-1 mb-auto">{product.description || product.category || '規格詳情'}</p>
-              
-              <div className="mt-2 pt-2 flex items-center justify-between">
-                <div>
-                  <span className="text-primary font-bold text-sm leading-none">{formatPrice(product.priceConsumer)}</span>
-                </div>
-                <div 
-                  role="button"
-                  tabIndex={0}
-                  className="h-6 w-6 rounded-full bg-primary text-white hover:bg-primary/90 flex-shrink-0 shadow-sm flex items-center justify-center transition-colors"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddCart(product.id); }}
-                >
-                  <ShoppingCart size={12} />
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Light Strip Features */}
-      <div className="px-4 mb-4">
-        <div className="bg-[#f8faf9] border border-[#edf3f0] rounded-2xl p-4 flex justify-between gap-1 shadow-sm">
-          <div className="flex-1 flex flex-col items-center text-center">
-            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
-              <ShieldCheck size={16} />
-            </div>
-            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">合規正品</span>
-            <span className="text-[9px] text-gray-500 whitespace-nowrap">原廠授權</span>
-          </div>
-          <div className="flex-1 flex flex-col items-center text-center">
-            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
-              <Crown size={16} />
-            </div>
-            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">合約價優惠</span>
-            <span className="text-[9px] text-gray-500 whitespace-nowrap">會員專屬</span>
-          </div>
-          <div className="flex-1 flex flex-col items-center text-center">
-            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
-              <CreditCard size={16} />
-            </div>
-            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">彈性付款</span>
-            <span className="text-[9px] text-gray-500 whitespace-nowrap">線上對帳</span>
-          </div>
-          <div className="flex-1 flex flex-col items-center text-center">
-            <div className="w-8 h-8 rounded-full bg-white shadow-sm border border-gray-50 flex items-center justify-center text-primary mb-2">
-              <HeadphonesIcon size={16} />
-            </div>
-            <span className="text-[11px] font-bold text-gray-800 mb-0.5 whitespace-nowrap">專業客服</span>
-            <span className="text-[9px] text-gray-500 whitespace-nowrap">即時支援</span>
-          </div>
-        </div>
-      </div>
-
-      <CompanyFooter />
+      </section>
     </div>
   );
 }
