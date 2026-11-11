@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import { db, conversations, messages, aiActionLogsTable } from "@workspace/db";
 import { requireOps, requireAdmin } from "../middlewares/requireMember";
@@ -11,6 +11,7 @@ import {
   ACTION_TOOLS,
 } from "../lib/assistantTools";
 import { backfillAll, embeddingEnabled } from "../lib/aiIndex";
+import { chargeAiCredits, INSUFFICIENT_CREDITS_MESSAGE } from "../lib/aiCredits";
 
 const router: IRouter = Router();
 
@@ -228,12 +229,17 @@ router.post("/admin/assistant/conversations/:id/messages", requireOps, async (re
     status?: "pending" | "executed";
     confirmationId?: number;
   }> = [];
+  // 每則送給 AI 的訊息扣 1 點；點數不足時不呼叫模型
+  if (!(await chargeAiCredits(1, "AI 助理對話", req.member!.id))) {
+    res.status(402).json({ error: INSUFFICIENT_CREDITS_MESSAGE });
+    return;
+  }
   const requestNonce = `${id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   try {
     let finalText = "";
     for (let round = 0; round < 6; round++) {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-5.6-terra",
+      const completion = await chatAi.chat.completions.create({
+        model: chatModel(),
         max_completion_tokens: 8192,
         messages: chatMessages,
         tools: toolDefinitions,

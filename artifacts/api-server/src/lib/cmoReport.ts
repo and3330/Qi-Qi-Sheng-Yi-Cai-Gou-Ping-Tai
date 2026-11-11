@@ -5,7 +5,7 @@
  * 並透過既有 AI 整合生成繁中摘要與建議，寫入 cmo_reports。
  */
 import { and, desc, eq } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
 import {
   db,
   cmoGoalsTable,
@@ -245,8 +245,8 @@ ${anomalies.map((a) => `- [${a.severity}] ${a.message}`).join("\n") || "（無�
 金額單位為新台幣元，數字必須來自上方資料，不可臆測。`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.6-terra",
+    const completion = await chatAi.chat.completions.create({
+      model: chatModel(),
       max_completion_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });

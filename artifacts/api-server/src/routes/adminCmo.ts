@@ -7,7 +7,7 @@
  */
 import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import {
   db,
@@ -335,8 +335,8 @@ router.post("/admin/cmo/chat", requireAdmin, async (req, res) => {
       ...history,
       { role: "user", content },
     ];
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5.6-terra",
+    const stream = await chatAi.chat.completions.create({
+      model: chatModel(),
       max_completion_tokens: 8192,
       messages: chatMessages,
       stream: true,

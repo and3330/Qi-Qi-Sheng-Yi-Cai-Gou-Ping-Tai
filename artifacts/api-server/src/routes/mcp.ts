@@ -34,6 +34,7 @@ import {
   toolDefinitions,
 } from "../lib/assistantTools";
 import { hashApiKey } from "../lib/newsletter";
+import { chargeAiCredits, INSUFFICIENT_CREDITS_MESSAGE } from "../lib/aiCredits";
 
 const router: IRouter = Router();
 
@@ -205,6 +206,12 @@ router.all("/mcp", mcpLimiter, async (req, res): Promise<void> => {
         status: expired ? "expired" : row.status,
         result: row.result,
       });
+    }
+
+    // Bot 每呼叫一次功能扣 1 點（查詢操作狀態不扣）；點數不足時不執行
+    if (READ_TOOLS.has(name) || ACTION_TOOLS.has(name)) {
+      if (!(await chargeAiCredits(1, `Bot 連線：${name}`, actorId)))
+        return asText({ error: INSUFFICIENT_CREDITS_MESSAGE }, true);
     }
 
     if (READ_TOOLS.has(name)) {

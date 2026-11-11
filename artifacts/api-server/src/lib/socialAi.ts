@@ -3,12 +3,12 @@
  * 使用專案既有的 AI 整合（平台代理模型）。
  */
 import { randomUUID } from "node:crypto";
-import { openai, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
+import { chatAi, chatModel, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import { objectStorageClient } from "./objectStorage";
 import { getPublicBaseUrl } from "./socialService";
 
-const TEXT_MODEL = "gpt-5.6-terra";
+const TEXT_MODEL = chatModel();
 
 // ---------- AI 文案 ----------
 export async function generateSocialContent(input: {
@@ -16,7 +16,7 @@ export async function generateSocialContent(input: {
   platforms: string[];
   tone?: string;
 }): Promise<{ content: string; hashtags: string }> {
-  const completion = await openai.chat.completions.create({
+  const completion = await chatAi.chat.completions.create({
     model: TEXT_MODEL,
     max_completion_tokens: 2048,
     messages: [
@@ -110,7 +110,7 @@ export async function runContentPlanner(
     { role: "system", content: `現在時間：${now.toISOString()}（UTC）` },
     ...history.map((m) => ({ role: m.role, content: m.content.slice(0, 4000) })),
   ];
-  const completion = await openai.chat.completions.create({
+  const completion = await chatAi.chat.completions.create({
     model: TEXT_MODEL,
     max_completion_tokens: 4096,
     messages,

@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import { sessionMiddleware } from "./middlewares/session";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { handleStripeWebhook } from "./lib/stripeCredits";
 
 const app: Express = express();
 
@@ -70,6 +71,26 @@ app.use(
     }
     callback(null, { origin: allowed, credentials: true });
   }),
+);
+// Stripe 付款通知：需要未解析的原始內容才能驗證簽章，所以放在 express.json 之前
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (typeof signature !== "string" || !Buffer.isBuffer(req.body)) {
+      res.status(400).json({ error: "Invalid webhook request" });
+      return;
+    }
+    try {
+      await handleStripeWebhook(req.body, signature);
+      res.json({ received: true });
+    } catch (err) {
+      // 回傳非 2xx，Stripe 會自動重送；入帳是冪等的，重送不會重複加點
+      req.log.error({ err }, "stripe webhook failed");
+      res.status(400).json({ error: "Webhook error" });
+    }
+  },
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

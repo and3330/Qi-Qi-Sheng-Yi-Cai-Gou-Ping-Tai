@@ -5330,6 +5330,57 @@ paths:
       responses:
         '204':
           description: Deleted
+  /admin/ai-credits:
+    get:
+      tags:
+        - admin-mcp
+      operationId: getAiCredits
+      summary: AI 點數餘額、價格與異動紀錄
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiCreditsStatus'
+  /admin/ai-credits/checkout:
+    post:
+      tags:
+        - admin-mcp
+      operationId: createAiCreditsCheckout
+      summary: 建立刷卡儲值結帳頁
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiCreditsCheckoutInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiCreditsCheckoutResult'
+  /admin/ai-credits/confirm:
+    post:
+      tags:
+        - admin-mcp
+      operationId: confirmAiCreditsCheckout
+      summary: 付款後確認入帳（可重複呼叫，不會重複加點）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiCreditsConfirmInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiCreditsConfirmResult'
   /admin/mcp/keys:
     get:
       tags:
@@ -14157,6 +14208,95 @@ components:
         domain:
           type: string
           minLength: 3
+    AiCreditTransaction:
+      type: object
+      required:
+        - id
+        - delta
+        - balanceAfter
+        - reason
+        - createdAt
+      properties:
+        id:
+          type: integer
+        delta:
+          type: integer
+        balanceAfter:
+          type: integer
+        reason:
+          type: string
+        createdAt:
+          type: string
+    AiCreditsStatus:
+      type: object
+      required:
+        - balance
+        - enforced
+        - stripeConfigured
+        - packPoints
+        - packAmount
+        - currency
+        - aiProvider
+        - aiModel
+        - transactions
+      properties:
+        balance:
+          type: integer
+        enforced:
+          type: boolean
+          description: 是否啟用扣點
+        stripeConfigured:
+          type: boolean
+        packPoints:
+          type: integer
+        packAmount:
+          type: integer
+          description: 一包的價格（該幣別的最小單位）
+        currency:
+          type: string
+        aiProvider:
+          type: string
+        aiModel:
+          type: string
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiCreditTransaction'
+    AiCreditsCheckoutInput:
+      type: object
+      required:
+        - packs
+      properties:
+        packs:
+          type: integer
+    AiCreditsCheckoutResult:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+    AiCreditsConfirmInput:
+      type: object
+      required:
+        - sessionId
+      properties:
+        sessionId:
+          type: string
+    AiCreditsConfirmResult:
+      type: object
+      required:
+        - status
+        - points
+        - balance
+      properties:
+        status:
+          type: string
+          description: credited / already / unpaid / ignored
+        points:
+          type: integer
+        balance:
+          type: integer
     McpApiKey:
       type: object
       required:

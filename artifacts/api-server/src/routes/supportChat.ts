@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import { db, conversations, messages, membersTable } from "@workspace/db";
 import { requireMember, requireStaff } from "../middlewares/requireMember";
@@ -141,8 +141,8 @@ router.post("/support/conversations/:id/messages", requireMember, async (req, re
         })),
     ];
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.6-terra",
+    const completion = await chatAi.chat.completions.create({
+      model: chatModel(),
       max_completion_tokens: 8192,
       messages: chatMessages,
     });

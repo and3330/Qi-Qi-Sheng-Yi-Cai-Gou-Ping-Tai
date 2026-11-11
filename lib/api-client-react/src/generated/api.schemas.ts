@@ -3572,6 +3572,47 @@ export interface NewsletterDomainInput {
   domain: string;
 }
 
+export interface AiCreditTransaction {
+  id: number;
+  delta: number;
+  balanceAfter: number;
+  reason: string;
+  createdAt: string;
+}
+
+export interface AiCreditsStatus {
+  balance: number;
+  /** 是否啟用扣點 */
+  enforced: boolean;
+  stripeConfigured: boolean;
+  packPoints: number;
+  /** 一包的價格（該幣別的最小單位） */
+  packAmount: number;
+  currency: string;
+  aiProvider: string;
+  aiModel: string;
+  transactions: AiCreditTransaction[];
+}
+
+export interface AiCreditsCheckoutInput {
+  packs: number;
+}
+
+export interface AiCreditsCheckoutResult {
+  url: string;
+}
+
+export interface AiCreditsConfirmInput {
+  sessionId: string;
+}
+
+export interface AiCreditsConfirmResult {
+  /** credited / already / unpaid / ignored */
+  status: string;
+  points: number;
+  balance: number;
+}
+
 export interface McpApiKey {
   id: number;
   name: string;

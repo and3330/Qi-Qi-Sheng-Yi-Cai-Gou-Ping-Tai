@@ -6276,6 +6276,54 @@ export const DeleteNewsletterDomainResponse = zod.void()
 
 
 /**
+ * @summary AI 點數餘額、價格與異動紀錄
+ */
+export const GetAiCreditsResponse = zod.object({
+  "balance": zod.int(),
+  "enforced": zod.boolean().describe('是否啟用扣點'),
+  "stripeConfigured": zod.boolean(),
+  "packPoints": zod.int(),
+  "packAmount": zod.int().describe('一包的價格（該幣別的最小單位）'),
+  "currency": zod.string(),
+  "aiProvider": zod.string(),
+  "aiModel": zod.string(),
+  "transactions": zod.array(zod.object({
+  "id": zod.int(),
+  "delta": zod.int(),
+  "balanceAfter": zod.int(),
+  "reason": zod.string(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary 建立刷卡儲值結帳頁
+ */
+export const CreateAiCreditsCheckoutBody = zod.object({
+  "packs": zod.int()
+})
+
+export const CreateAiCreditsCheckoutResponse = zod.object({
+  "url": zod.string()
+})
+
+
+/**
+ * @summary 付款後確認入帳（可重複呼叫，不會重複加點）
+ */
+export const ConfirmAiCreditsCheckoutBody = zod.object({
+  "sessionId": zod.string()
+})
+
+export const ConfirmAiCreditsCheckoutResponse = zod.object({
+  "status": zod.string().describe('credited \/ already \/ unpaid \/ ignored'),
+  "points": zod.int(),
+  "balance": zod.int()
+})
+
+
+/**
  * @summary Bot 連線金鑰列表
  */
 export const ListMcpApiKeysResponseItem = zod.object({

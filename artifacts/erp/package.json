@@ -76,9 +76,9 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "jspdf": "^4.2.1"
   }
 }

@@ -46,6 +46,11 @@ import type {
   AdminStats,
   AdminStockMovement,
   AdminSupportConversation,
+  AiCreditsCheckoutInput,
+  AiCreditsCheckoutResult,
+  AiCreditsConfirmInput,
+  AiCreditsConfirmResult,
+  AiCreditsStatus,
   AiIndexRebuildResult,
   Announcement,
   Article,
@@ -17994,6 +17999,225 @@ export const useDeleteNewsletterDomain = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteNewsletterDomainMutationOptions(options));
+    }
+
+export const getGetAiCreditsUrl = () => {
+
+
+
+
+  return `/api/admin/ai-credits`
+}
+
+/**
+ * @summary AI 點數餘額、價格與異動紀錄
+ */
+export const getAiCredits = async ( options?: Parameters<typeof customFetch>[1]): Promise<AiCreditsStatus> => {
+
+  return customFetch<AiCreditsStatus>(getGetAiCreditsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAiCreditsQueryKey = () => {
+    return [
+    `/api/admin/ai-credits`
+    ] as const;
+    }
+
+
+export const getGetAiCreditsQueryOptions = <TData = Awaited<ReturnType<typeof getAiCredits>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiCredits>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAiCreditsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAiCredits>>> = ({ signal }) => getAiCredits({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAiCredits>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAiCreditsQueryResult = NonNullable<Awaited<ReturnType<typeof getAiCredits>>>
+export type GetAiCreditsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary AI 點數餘額、價格與異動紀錄
+ */
+
+export function useGetAiCredits<TData = Awaited<ReturnType<typeof getAiCredits>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAiCredits>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAiCreditsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAiCreditsCheckoutUrl = () => {
+
+
+
+
+  return `/api/admin/ai-credits/checkout`
+}
+
+/**
+ * @summary 建立刷卡儲值結帳頁
+ */
+export const createAiCreditsCheckout = async (aiCreditsCheckoutInput: AiCreditsCheckoutInput, options?: Parameters<typeof customFetch>[1]): Promise<AiCreditsCheckoutResult> => {
+
+  return customFetch<AiCreditsCheckoutResult>(getCreateAiCreditsCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(aiCreditsCheckoutInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAiCreditsCheckoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAiCreditsCheckout>>, TError,{data: BodyType<AiCreditsCheckoutInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAiCreditsCheckout>>, TError,{data: BodyType<AiCreditsCheckoutInput>}, TContext> => {
+
+const mutationKey = ['createAiCreditsCheckout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAiCreditsCheckout>>, {data: BodyType<AiCreditsCheckoutInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAiCreditsCheckout(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAiCreditsCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createAiCreditsCheckout>>>
+    export type CreateAiCreditsCheckoutMutationBody = BodyType<AiCreditsCheckoutInput>
+    export type CreateAiCreditsCheckoutMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 建立刷卡儲值結帳頁
+ */
+export const useCreateAiCreditsCheckout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAiCreditsCheckout>>, TError,{data: BodyType<AiCreditsCheckoutInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAiCreditsCheckout>>,
+        TError,
+        {data: BodyType<AiCreditsCheckoutInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAiCreditsCheckoutMutationOptions(options));
+    }
+
+export const getConfirmAiCreditsCheckoutUrl = () => {
+
+
+
+
+  return `/api/admin/ai-credits/confirm`
+}
+
+/**
+ * @summary 付款後確認入帳（可重複呼叫，不會重複加點）
+ */
+export const confirmAiCreditsCheckout = async (aiCreditsConfirmInput: AiCreditsConfirmInput, options?: Parameters<typeof customFetch>[1]): Promise<AiCreditsConfirmResult> => {
+
+  return customFetch<AiCreditsConfirmResult>(getConfirmAiCreditsCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(aiCreditsConfirmInput)
+  }
+);}
+
+
+
+
+
+export const getConfirmAiCreditsCheckoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAiCreditsCheckout>>, TError,{data: BodyType<AiCreditsConfirmInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAiCreditsCheckout>>, TError,{data: BodyType<AiCreditsConfirmInput>}, TContext> => {
+
+const mutationKey = ['confirmAiCreditsCheckout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAiCreditsCheckout>>, {data: BodyType<AiCreditsConfirmInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmAiCreditsCheckout(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAiCreditsCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAiCreditsCheckout>>>
+    export type ConfirmAiCreditsCheckoutMutationBody = BodyType<AiCreditsConfirmInput>
+    export type ConfirmAiCreditsCheckoutMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 付款後確認入帳（可重複呼叫，不會重複加點）
+ */
+export const useConfirmAiCreditsCheckout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAiCreditsCheckout>>, TError,{data: BodyType<AiCreditsConfirmInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAiCreditsCheckout>>,
+        TError,
+        {data: BodyType<AiCreditsConfirmInput>},
+        TContext
+      > => {
+      return useMutation(getConfirmAiCreditsCheckoutMutationOptions(options));
     }
 
 export const getListMcpApiKeysUrl = () => {

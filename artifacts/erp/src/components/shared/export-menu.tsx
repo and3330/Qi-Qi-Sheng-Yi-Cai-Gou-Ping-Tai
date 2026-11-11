@@ -24,7 +24,7 @@ export function ExportMenu({ getExportOptions, disabled }: ExportMenuProps) {
     try {
       const opts = await getExportOptions();
       if (format === "csv") exportCSV(opts);
-      else if (format === "excel") exportExcel(opts);
+      else if (format === "excel") await exportExcel(opts);
       else await exportPDF(opts);
     } catch (e) {
       console.error("Export failed:", e);
