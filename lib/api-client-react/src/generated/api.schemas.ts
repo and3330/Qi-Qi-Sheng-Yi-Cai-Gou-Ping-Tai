@@ -3572,6 +3572,52 @@ export interface NewsletterDomainInput {
   domain: string;
 }
 
+export interface McpApiKey {
+  id: number;
+  name: string;
+  /** 金鑰末 4 碼，僅供辨識 */
+  keyLastFour: string;
+  memberId: number;
+  /** 這把金鑰代表的後台人員 */
+  memberName: string;
+  isActive: boolean;
+  lastUsedAt?: string | null;
+  createdAt?: string;
+}
+
+export type McpApiKeyCreated = McpApiKey & {
+  /** 金鑰明碼，只會出現這一次 */
+  key: string;
+};
+
+export interface McpApiKeyInput {
+  name: string;
+}
+
+export interface McpApiKeyUpdate {
+  isActive: boolean;
+}
+
+export type McpActionPayload = { [key: string]: unknown };
+
+export interface McpAction {
+  id: number;
+  action: string;
+  payload: McpActionPayload;
+  /** pending / executing / ok / error / rejected / expired */
+  status: string;
+  result?: string | null;
+  keyName: string;
+  confirmedBy?: number | null;
+  createdAt: string;
+}
+
+export interface McpActionConfirmResult {
+  ok: boolean;
+  action: string;
+  result?: unknown;
+}
+
 export interface NewsletterApiKey {
   id: number;
   name: string;
@@ -5646,6 +5692,10 @@ groupBy?: string;
 };
 
 export type ListSocialPostsParams = {
+status?: string;
+};
+
+export type ListMcpActionsParams = {
 status?: string;
 };
 

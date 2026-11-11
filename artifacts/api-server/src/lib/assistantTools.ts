@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, gte, inArray, lte, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, inArray, isNotNull, lte, lt, sql } from "drizzle-orm";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import {
   db,
@@ -953,4 +953,123 @@ export async function confirmAndExecuteAction(
       .catch(() => {});
     return { ok: false, error: message, status: 400 };
   }
+}
+
+/* ============================ Bot 連線（MCP） ============================
+ * 外部 Bot 與後台 AI 助理用同一組工具。差別只在「誰來確認」：
+ * 後台助理由同一位管理者在對話畫面按確認；Bot 送出的操作則由任一位
+ * 管理員／營運登入後台確認。模型一樣沒有任何方法可以自己確認。
+ */
+
+/** Bot 送出的操作在後台等待確認的時限 */
+export const MCP_CONFIRM_TTL_MS = 60 * 60 * 1000;
+
+/** 建立 Bot 的待確認操作（只記錄，不執行）；回傳確認碼 */
+export async function createPendingMcpAction(
+  name: string,
+  args: Record<string, unknown>,
+  ctx: { memberId: number; mcpKeyId: number; requestNonce: string },
+): Promise<number> {
+  if (!ACTION_TOOLS.has(name)) throw new Error(`非操作類工具 ${name}`);
+  const { confirmationId: _ignored, ...payload } = args ?? {};
+  const [row] = await db
+    .insert(aiActionLogsTable)
+    .values({
+      memberId: ctx.memberId,
+      action: name,
+      payload,
+      status: "pending",
+      conversationId: null,
+      requestNonce: ctx.requestNonce,
+      mcpKeyId: ctx.mcpKeyId,
+    })
+    .returning({ id: aiActionLogsTable.id });
+  return row.id;
+}
+
+/** 後台人員確認並執行 Bot 送出的操作（單次有效，以送出時保存的參數執行） */
+export async function confirmAndExecuteMcpAction(
+  actionId: number,
+  approver: { memberId: number; memberRole: string },
+): Promise<
+  | { ok: true; action: string; result: unknown }
+  | { ok: false; error: string; status: number }
+> {
+  const cutoff = new Date(Date.now() - MCP_CONFIRM_TTL_MS);
+  const [claimed] = await db
+    .update(aiActionLogsTable)
+    .set({ status: "executing", confirmedBy: approver.memberId })
+    .where(
+      and(
+        eq(aiActionLogsTable.id, actionId),
+        eq(aiActionLogsTable.status, "pending"),
+        isNotNull(aiActionLogsTable.mcpKeyId),
+        gt(aiActionLogsTable.createdAt, cutoff),
+      ),
+    )
+    .returning({
+      id: aiActionLogsTable.id,
+      action: aiActionLogsTable.action,
+      payload: aiActionLogsTable.payload,
+    });
+  if (!claimed) {
+    return { ok: false, error: "待確認操作不存在、已處理或已逾時", status: 409 };
+  }
+
+  if (ADMIN_ONLY_ACTIONS.has(claimed.action) && approver.memberRole !== "admin") {
+    // 權限不足時退回待確認，讓系統管理員仍可處理
+    await db
+      .update(aiActionLogsTable)
+      .set({ status: "pending", confirmedBy: null })
+      .where(eq(aiActionLogsTable.id, claimed.id));
+    return { ok: false, error: "此操作僅限系統管理員確認", status: 403 };
+  }
+
+  const fn = executors[claimed.action];
+  if (!fn || !ACTION_TOOLS.has(claimed.action)) {
+    await db
+      .update(aiActionLogsTable)
+      .set({ status: "error", result: "未知或非操作類工具" })
+      .where(eq(aiActionLogsTable.id, claimed.id));
+    return { ok: false, error: "未知或非操作類工具", status: 400 };
+  }
+
+  try {
+    const result = await fn(claimed.payload ?? {});
+    await db
+      .update(aiActionLogsTable)
+      .set({ status: "ok", result: JSON.stringify(result).slice(0, 2000) })
+      .where(eq(aiActionLogsTable.id, claimed.id))
+      .catch(() => {});
+    return { ok: true, action: claimed.action, result };
+  } catch (err) {
+    const message = err instanceof ToolError ? err.message : "執行失敗";
+    if (!(err instanceof ToolError))
+      console.error(`[mcp] confirmed tool ${claimed.action} failed:`, err);
+    await db
+      .update(aiActionLogsTable)
+      .set({ status: "error", result: message })
+      .where(eq(aiActionLogsTable.id, claimed.id))
+      .catch(() => {});
+    return { ok: false, error: message, status: 400 };
+  }
+}
+
+/** 後台人員拒絕 Bot 送出的操作 */
+export async function rejectMcpAction(
+  actionId: number,
+  approverId: number,
+): Promise<boolean> {
+  const rows = await db
+    .update(aiActionLogsTable)
+    .set({ status: "rejected", result: "後台人員拒絕", confirmedBy: approverId })
+    .where(
+      and(
+        eq(aiActionLogsTable.id, actionId),
+        eq(aiActionLogsTable.status, "pending"),
+        isNotNull(aiActionLogsTable.mcpKeyId),
+      ),
+    )
+    .returning({ id: aiActionLogsTable.id });
+  return rows.length > 0;
 }

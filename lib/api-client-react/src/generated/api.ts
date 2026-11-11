@@ -294,11 +294,18 @@ import type {
   ListErpVouchersParams,
   ListErpWarehouseStockParams,
   ListInstitutionsParams,
+  ListMcpActionsParams,
   ListNewsletterSubscribersParams,
   ListPortalOrdersParams,
   ListProductsParams,
   ListSocialPostsParams,
   LoginInput,
+  McpAction,
+  McpActionConfirmResult,
+  McpApiKey,
+  McpApiKeyCreated,
+  McpApiKeyInput,
+  McpApiKeyUpdate,
   Member,
   MemberLink,
   MemberUpdate,
@@ -17987,6 +17994,523 @@ export const useDeleteNewsletterDomain = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteNewsletterDomainMutationOptions(options));
+    }
+
+export const getListMcpApiKeysUrl = () => {
+
+
+
+
+  return `/api/admin/mcp/keys`
+}
+
+/**
+ * @summary Bot 連線金鑰列表
+ */
+export const listMcpApiKeys = async ( options?: Parameters<typeof customFetch>[1]): Promise<McpApiKey[]> => {
+
+  return customFetch<McpApiKey[]>(getListMcpApiKeysUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMcpApiKeysQueryKey = () => {
+    return [
+    `/api/admin/mcp/keys`
+    ] as const;
+    }
+
+
+export const getListMcpApiKeysQueryOptions = <TData = Awaited<ReturnType<typeof listMcpApiKeys>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMcpApiKeys>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMcpApiKeysQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMcpApiKeys>>> = ({ signal }) => listMcpApiKeys({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMcpApiKeys>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMcpApiKeysQueryResult = NonNullable<Awaited<ReturnType<typeof listMcpApiKeys>>>
+export type ListMcpApiKeysQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Bot 連線金鑰列表
+ */
+
+export function useListMcpApiKeys<TData = Awaited<ReturnType<typeof listMcpApiKeys>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMcpApiKeys>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMcpApiKeysQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMcpApiKeyUrl = () => {
+
+
+
+
+  return `/api/admin/mcp/keys`
+}
+
+/**
+ * @summary 新增 Bot 連線金鑰（明碼只回傳這一次）
+ */
+export const createMcpApiKey = async (mcpApiKeyInput: McpApiKeyInput, options?: Parameters<typeof customFetch>[1]): Promise<McpApiKeyCreated> => {
+
+  return customFetch<McpApiKeyCreated>(getCreateMcpApiKeyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(mcpApiKeyInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMcpApiKeyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMcpApiKey>>, TError,{data: BodyType<McpApiKeyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMcpApiKey>>, TError,{data: BodyType<McpApiKeyInput>}, TContext> => {
+
+const mutationKey = ['createMcpApiKey'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMcpApiKey>>, {data: BodyType<McpApiKeyInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMcpApiKey(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMcpApiKeyMutationResult = NonNullable<Awaited<ReturnType<typeof createMcpApiKey>>>
+    export type CreateMcpApiKeyMutationBody = BodyType<McpApiKeyInput>
+    export type CreateMcpApiKeyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 新增 Bot 連線金鑰（明碼只回傳這一次）
+ */
+export const useCreateMcpApiKey = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMcpApiKey>>, TError,{data: BodyType<McpApiKeyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMcpApiKey>>,
+        TError,
+        {data: BodyType<McpApiKeyInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMcpApiKeyMutationOptions(options));
+    }
+
+export const getUpdateMcpApiKeyUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/mcp/keys/${id}`
+}
+
+/**
+ * @summary 啟用或停用 Bot 連線金鑰
+ */
+export const updateMcpApiKey = async (id: number,
+    mcpApiKeyUpdate: McpApiKeyUpdate, options?: Parameters<typeof customFetch>[1]): Promise<McpApiKey> => {
+
+  return customFetch<McpApiKey>(getUpdateMcpApiKeyUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(mcpApiKeyUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMcpApiKeyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMcpApiKey>>, TError,{id: number;data: BodyType<McpApiKeyUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMcpApiKey>>, TError,{id: number;data: BodyType<McpApiKeyUpdate>}, TContext> => {
+
+const mutationKey = ['updateMcpApiKey'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMcpApiKey>>, {id: number;data: BodyType<McpApiKeyUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMcpApiKey(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMcpApiKeyMutationResult = NonNullable<Awaited<ReturnType<typeof updateMcpApiKey>>>
+    export type UpdateMcpApiKeyMutationBody = BodyType<McpApiKeyUpdate>
+    export type UpdateMcpApiKeyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 啟用或停用 Bot 連線金鑰
+ */
+export const useUpdateMcpApiKey = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMcpApiKey>>, TError,{id: number;data: BodyType<McpApiKeyUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMcpApiKey>>,
+        TError,
+        {id: number;data: BodyType<McpApiKeyUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMcpApiKeyMutationOptions(options));
+    }
+
+export const getDeleteMcpApiKeyUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/mcp/keys/${id}`
+}
+
+/**
+ * @summary 刪除 Bot 連線金鑰
+ */
+export const deleteMcpApiKey = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getDeleteMcpApiKeyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMcpApiKeyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMcpApiKey>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMcpApiKey>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMcpApiKey'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMcpApiKey>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMcpApiKey(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMcpApiKeyMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMcpApiKey>>>
+
+    export type DeleteMcpApiKeyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 刪除 Bot 連線金鑰
+ */
+export const useDeleteMcpApiKey = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMcpApiKey>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMcpApiKey>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMcpApiKeyMutationOptions(options));
+    }
+
+export const getListMcpActionsUrl = (params?: ListMcpActionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/mcp/actions?${stringifiedParams}` : `/api/admin/mcp/actions`
+}
+
+/**
+ * @summary Bot 送出的操作（最新 50 筆）
+ */
+export const listMcpActions = async (params?: ListMcpActionsParams, options?: Parameters<typeof customFetch>[1]): Promise<McpAction[]> => {
+
+  return customFetch<McpAction[]>(getListMcpActionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMcpActionsQueryKey = (params?: ListMcpActionsParams,) => {
+    return [
+    `/api/admin/mcp/actions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMcpActionsQueryOptions = <TData = Awaited<ReturnType<typeof listMcpActions>>, TError = ErrorType<unknown>>(params?: ListMcpActionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMcpActions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMcpActionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMcpActions>>> = ({ signal }) => listMcpActions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMcpActions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMcpActionsQueryResult = NonNullable<Awaited<ReturnType<typeof listMcpActions>>>
+export type ListMcpActionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Bot 送出的操作（最新 50 筆）
+ */
+
+export function useListMcpActions<TData = Awaited<ReturnType<typeof listMcpActions>>, TError = ErrorType<unknown>>(
+ params?: ListMcpActionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMcpActions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMcpActionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getConfirmMcpActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/mcp/actions/${id}/confirm`
+}
+
+/**
+ * @summary 確認並執行 Bot 送出的操作
+ */
+export const confirmMcpAction = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<McpActionConfirmResult> => {
+
+  return customFetch<McpActionConfirmResult>(getConfirmMcpActionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmMcpActionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMcpAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmMcpAction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['confirmMcpAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmMcpAction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmMcpAction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmMcpActionMutationResult = NonNullable<Awaited<ReturnType<typeof confirmMcpAction>>>
+
+    export type ConfirmMcpActionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 確認並執行 Bot 送出的操作
+ */
+export const useConfirmMcpAction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMcpAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmMcpAction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getConfirmMcpActionMutationOptions(options));
+    }
+
+export const getRejectMcpActionUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/mcp/actions/${id}/reject`
+}
+
+/**
+ * @summary 拒絕 Bot 送出的操作
+ */
+export const rejectMcpAction = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getRejectMcpActionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRejectMcpActionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectMcpAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectMcpAction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['rejectMcpAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectMcpAction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectMcpAction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectMcpActionMutationResult = NonNullable<Awaited<ReturnType<typeof rejectMcpAction>>>
+
+    export type RejectMcpActionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 拒絕 Bot 送出的操作
+ */
+export const useRejectMcpAction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectMcpAction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectMcpAction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRejectMcpActionMutationOptions(options));
     }
 
 export const getListNewsletterApiKeysUrl = () => {

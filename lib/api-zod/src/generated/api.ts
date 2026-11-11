@@ -6276,6 +6276,124 @@ export const DeleteNewsletterDomainResponse = zod.void()
 
 
 /**
+ * @summary Bot 連線金鑰列表
+ */
+export const ListMcpApiKeysResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "keyLastFour": zod.string().describe('金鑰末 4 碼，僅供辨識'),
+  "memberId": zod.int(),
+  "memberName": zod.string().describe('這把金鑰代表的後台人員'),
+  "isActive": zod.boolean(),
+  "lastUsedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+export const ListMcpApiKeysResponse = zod.array(ListMcpApiKeysResponseItem)
+
+
+/**
+ * @summary 新增 Bot 連線金鑰（明碼只回傳這一次）
+ */
+export const CreateMcpApiKeyBody = zod.object({
+  "name": zod.string()
+})
+
+export const CreateMcpApiKeyResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "keyLastFour": zod.string().describe('金鑰末 4 碼，僅供辨識'),
+  "memberId": zod.int(),
+  "memberName": zod.string().describe('這把金鑰代表的後台人員'),
+  "isActive": zod.boolean(),
+  "lastUsedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+}).and(zod.object({
+  "key": zod.string().describe('金鑰明碼，只會出現這一次')
+}))
+
+
+/**
+ * @summary 啟用或停用 Bot 連線金鑰
+ */
+export const UpdateMcpApiKeyParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateMcpApiKeyBody = zod.object({
+  "isActive": zod.boolean()
+})
+
+export const UpdateMcpApiKeyResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "keyLastFour": zod.string().describe('金鑰末 4 碼，僅供辨識'),
+  "memberId": zod.int(),
+  "memberName": zod.string().describe('這把金鑰代表的後台人員'),
+  "isActive": zod.boolean(),
+  "lastUsedAt": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary 刪除 Bot 連線金鑰
+ */
+export const DeleteMcpApiKeyParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const DeleteMcpApiKeyResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Bot 送出的操作（最新 50 筆）
+ */
+export const ListMcpActionsQueryParams = zod.object({
+  "status": zod.coerce.string().optional()
+})
+
+export const ListMcpActionsResponseItem = zod.object({
+  "id": zod.int(),
+  "action": zod.string(),
+  "payload": zod.record(zod.string(), zod.unknown()),
+  "status": zod.string().describe('pending \/ executing \/ ok \/ error \/ rejected \/ expired'),
+  "result": zod.string().nullish(),
+  "keyName": zod.string(),
+  "confirmedBy": zod.int().nullish(),
+  "createdAt": zod.string()
+})
+export const ListMcpActionsResponse = zod.array(ListMcpActionsResponseItem)
+
+
+/**
+ * @summary 確認並執行 Bot 送出的操作
+ */
+export const ConfirmMcpActionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ConfirmMcpActionResponse = zod.object({
+  "ok": zod.boolean(),
+  "action": zod.string(),
+  "result": zod.unknown().optional()
+})
+
+
+/**
+ * @summary 拒絕 Bot 送出的操作
+ */
+export const RejectMcpActionParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const RejectMcpActionResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
  * @summary API 金鑰列表
  */
 export const ListNewsletterApiKeysResponseItem = zod.object({

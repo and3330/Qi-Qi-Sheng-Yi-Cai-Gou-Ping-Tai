@@ -8,6 +8,7 @@ servers:
     description: Base API path
 tags:
   - name: health
+  - name: admin-mcp
   - name: me
   - name: products
   - name: cart
@@ -5329,6 +5330,141 @@ paths:
       responses:
         '204':
           description: Deleted
+  /admin/mcp/keys:
+    get:
+      tags:
+        - admin-mcp
+      operationId: listMcpApiKeys
+      summary: Bot 連線金鑰列表
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpApiKey'
+    post:
+      tags:
+        - admin-mcp
+      operationId: createMcpApiKey
+      summary: 新增 Bot 連線金鑰（明碼只回傳這一次）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/McpApiKeyInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpApiKeyCreated'
+  /admin/mcp/keys/{id}:
+    patch:
+      tags:
+        - admin-mcp
+      operationId: updateMcpApiKey
+      summary: 啟用或停用 Bot 連線金鑰
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/McpApiKeyUpdate'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpApiKey'
+    delete:
+      tags:
+        - admin-mcp
+      operationId: deleteMcpApiKey
+      summary: 刪除 Bot 連線金鑰
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResult'
+  /admin/mcp/actions:
+    get:
+      tags:
+        - admin-mcp
+      operationId: listMcpActions
+      summary: Bot 送出的操作（最新 50 筆）
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpAction'
+  /admin/mcp/actions/{id}/confirm:
+    post:
+      tags:
+        - admin-mcp
+      operationId: confirmMcpAction
+      summary: 確認並執行 Bot 送出的操作
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpActionConfirmResult'
+  /admin/mcp/actions/{id}/reject:
+    post:
+      tags:
+        - admin-mcp
+      operationId: rejectMcpAction
+      summary: 拒絕 Bot 送出的操作
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResult'
   /newsletter/api-keys:
     get:
       tags:
@@ -14021,6 +14157,100 @@ components:
         domain:
           type: string
           minLength: 3
+    McpApiKey:
+      type: object
+      required:
+        - id
+        - name
+        - keyLastFour
+        - memberId
+        - memberName
+        - isActive
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        keyLastFour:
+          type: string
+          description: 金鑰末 4 碼，僅供辨識
+        memberId:
+          type: integer
+        memberName:
+          type: string
+          description: 這把金鑰代表的後台人員
+        isActive:
+          type: boolean
+        lastUsedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+    McpApiKeyCreated:
+      allOf:
+        - $ref: '#/components/schemas/McpApiKey'
+        - type: object
+          required:
+            - key
+          properties:
+            key:
+              type: string
+              description: 金鑰明碼，只會出現這一次
+    McpApiKeyInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    McpApiKeyUpdate:
+      type: object
+      required:
+        - isActive
+      properties:
+        isActive:
+          type: boolean
+    McpAction:
+      type: object
+      required:
+        - id
+        - action
+        - payload
+        - status
+        - keyName
+        - createdAt
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        status:
+          type: string
+          description: pending / executing / ok / error / rejected / expired
+        result:
+          type: string
+          nullable: true
+        keyName:
+          type: string
+        confirmedBy:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+    McpActionConfirmResult:
+      type: object
+      required:
+        - ok
+        - action
+      properties:
+        ok:
+          type: boolean
+        action:
+          type: string
+        result: {}
     NewsletterApiKey:
       type: object
       required:

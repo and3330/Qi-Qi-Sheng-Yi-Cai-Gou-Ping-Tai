@@ -32,6 +32,7 @@ import {
   Workflow,
   Globe,
   BrainCircuit,
+  Cable,
   BookOpen,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -55,6 +56,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { name: "儀表板", path: "/admin", icon: LayoutDashboard },
       { name: "AI 助理", path: "/admin/ai-assistant", icon: Bot, roles: ["admin", "ops"] },
       { name: "AI CMO", path: "/admin/ai-cmo", icon: BrainCircuit, roles: ["admin"] },
+      { name: "Bot 連線", path: "/admin/bot", icon: Cable, roles: ["admin", "ops"] },
     ],
   },
   {

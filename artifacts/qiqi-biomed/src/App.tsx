@@ -58,6 +58,7 @@ const AdminNewsletterSequencesPage = lazy(() => import("./pages/admin/Newsletter
 const AdminSequenceFlowEditorPage = lazy(() => import("./pages/admin/SequenceFlowEditor"));
 const AdminAiCmoPage = lazy(() => import("./pages/admin/AiCmo"));
 const AdminAiKnowledgePage = lazy(() => import("./pages/admin/AiKnowledge"));
+const AdminBotConnectionPage = lazy(() => import("./pages/admin/BotConnection"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,6 +124,7 @@ function AdminArea() {
           <Route path="/admin/ai-assistant" component={AdminAiAssistantPage} />
           <Route path="/admin/ai-knowledge" component={AdminAiKnowledgePage} />
           <Route path="/admin/ai-cmo" component={AdminAiCmoPage} />
+          <Route path="/admin/bot" component={AdminBotConnectionPage} />
           <Route path="/admin/institutions" component={AdminInstitutionsPage} />
           <Route path="/admin/social-accounts" component={AdminSocialAccountsPage} />
           <Route path="/admin/social-posts" component={AdminSocialPostsPage} />

@@ -34,3 +34,4 @@ export * from "./erpAssets";
 export * from "./erpManufacturing";
 export * from "./erpQuality";
 export * from "./erpNotifications";
+export * from "./mcp";

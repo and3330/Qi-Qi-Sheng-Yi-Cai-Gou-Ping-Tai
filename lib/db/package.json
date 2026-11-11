@@ -27,6 +27,7 @@
     "migrate:erp-contracts": "node scripts/migrate-erp-contracts.mjs",
     "migrate:erp-misc": "node scripts/migrate-erp-misc.mjs",
     "migrate:erp-notifications": "node scripts/migrate-erp-notifications.mjs",
+    "migrate:mcp": "node scripts/migrate-mcp.mjs",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
   },
   "dependencies": {

@@ -55,6 +55,10 @@ export const aiActionLogsTable = pgTable("ai_action_logs", {
   conversationId: integer("conversation_id"),
   // 建立 pending 時的請求代碼（稽核用途；不可作為授權依據）
   requestNonce: text("request_nonce"),
+  // 來自 Bot 連線（MCP）時記下金鑰；後台 AI 助理的紀錄為 null
+  mcpKeyId: integer("mcp_key_id"),
+  // 確認或拒絕這筆操作的後台人員（僅 Bot 連線使用）
+  confirmedBy: integer("confirmed_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
