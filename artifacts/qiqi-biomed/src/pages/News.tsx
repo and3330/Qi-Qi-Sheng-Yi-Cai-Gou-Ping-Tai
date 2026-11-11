@@ -140,7 +140,7 @@ export default function NewsPage() {
                     {/* Thumbnail */}
                     <div className="w-[88px] h-[88px] rounded-xl bg-[#f0f7f2] flex-shrink-0 flex items-center justify-center overflow-hidden border border-[#e0f0e5]">
                       {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                        <img loading="lazy" decoding="async" src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
                       ) : (
                         <Image size={24} className="text-primary/30" />
                       )}

@@ -62,7 +62,7 @@ export default function FavoritesPage() {
             <div key={product.id} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex gap-3">
               <Link href={`/product/${product.id}`} className="w-24 h-24 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
                 {product.imageUrl ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply" />
+                  <img loading="lazy" decoding="async" src={product.imageUrl} alt={product.name} className="w-full h-full object-cover mix-blend-multiply" />
                 ) : (
                   <span className="text-xs font-bold text-gray-300">{product.code}</span>
                 )}

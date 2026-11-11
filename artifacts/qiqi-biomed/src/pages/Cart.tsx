@@ -91,7 +91,7 @@ export default function CartPage() {
           <div key={item.id} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex gap-3">
             <div className="w-20 h-20 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
               {item.product.imageUrl ? (
-                <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover mix-blend-multiply" />
+                <img loading="lazy" decoding="async" src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover mix-blend-multiply" />
               ) : (
                 <ShoppingBag className="text-gray-200" size={24} />
               )}

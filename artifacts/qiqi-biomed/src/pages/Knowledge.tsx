@@ -73,7 +73,7 @@ export default function KnowledgePage() {
               <Link key={article.id} href={`/knowledge/${article.id}`} className="block bg-white rounded-2xl p-3 shadow-sm border border-gray-100 hover-elevate">
                 <div className="flex gap-3">
                   <div className="w-24 h-24 bg-gray-100 rounded-xl overflow-hidden shrink-0">
-                    {article.imageUrl && <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" />}
+                    {article.imageUrl && <img loading="lazy" decoding="async" src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" />}
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col py-1">
                     <div className="text-[10px] text-primary font-bold mb-1">{article.category}</div>

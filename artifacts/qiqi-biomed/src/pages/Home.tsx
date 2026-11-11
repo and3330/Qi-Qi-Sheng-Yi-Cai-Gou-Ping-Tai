@@ -47,7 +47,7 @@ function Carousel({ slides }: { slides: Slide[] }) {
                   </Link>
                 </div>
                 <div className="order-1 h-44 md:order-2 md:h-auto">
-                  <img src={s.image} alt="" className="h-full w-full object-cover" />
+                  <img src={s.image} alt="" loading={idx === 0 ? "eager" : "lazy"} decoding="async" className="h-full w-full object-cover" />
                 </div>
               </div>
             </div>

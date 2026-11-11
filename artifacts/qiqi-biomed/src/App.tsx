@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense } from "react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from 'wouter';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useHealthCheck } from "@workspace/api-client-react";
@@ -12,52 +12,52 @@ import { useAuth } from "./hooks/use-auth";
 import HomePage from "./pages/Home";
 import ShopPage from "./pages/Shop";
 import ProductPage from "./pages/Product";
-import QuickOrderPage from "./pages/QuickOrder";
-import CartPage from "./pages/Cart";
-import CheckoutPage from "./pages/Checkout";
-import OrdersPage from "./pages/Orders";
-import OrderDetailPage from "./pages/OrderDetail";
-import KnowledgePage from "./pages/Knowledge";
-import ArticlePage from "./pages/Article";
-import HospitalsPage from "./pages/Hospitals";
-import NewsPage from "./pages/News";
-import FavoritesPage from "./pages/Favorites";
-import MemberPage from "./pages/Member";
-import PointsPage from "./pages/Points";
-import SupportPage from "./pages/Support";
+const QuickOrderPage = lazy(() => import("./pages/QuickOrder"));
+const CartPage = lazy(() => import("./pages/Cart"));
+const CheckoutPage = lazy(() => import("./pages/Checkout"));
+const OrdersPage = lazy(() => import("./pages/Orders"));
+const OrderDetailPage = lazy(() => import("./pages/OrderDetail"));
+const KnowledgePage = lazy(() => import("./pages/Knowledge"));
+const ArticlePage = lazy(() => import("./pages/Article"));
+const HospitalsPage = lazy(() => import("./pages/Hospitals"));
+const NewsPage = lazy(() => import("./pages/News"));
+const FavoritesPage = lazy(() => import("./pages/Favorites"));
+const MemberPage = lazy(() => import("./pages/Member"));
+const PointsPage = lazy(() => import("./pages/Points"));
+const SupportPage = lazy(() => import("./pages/Support"));
 import SignInPage from "./pages/SignIn";
-import MemberLinktreePage from "./pages/MemberLinktree";
-import LinktreePage from "./pages/Linktree";
-import AdminLinktreePage from "./pages/admin/Linktree";
-import SignUpPage from "./pages/SignUp";
+const MemberLinktreePage = lazy(() => import("./pages/MemberLinktree"));
+const LinktreePage = lazy(() => import("./pages/Linktree"));
+const AdminLinktreePage = lazy(() => import("./pages/admin/Linktree"));
+const SignUpPage = lazy(() => import("./pages/SignUp"));
 import { AdminGuard } from "./pages/admin/AdminGuard";
-import AdminDashboardPage from "./pages/admin/Dashboard";
-import AdminMembersPage from "./pages/admin/Members";
-import AdminProductsPage from "./pages/admin/Products";
-import AdminOrdersPage from "./pages/admin/Orders";
-import AdminProfitSharingPage from "./pages/admin/ProfitSharing";
-import AdminWalletsPage from "./pages/admin/Wallets";
-import AdminInstitutionWalletsPage from "./pages/admin/InstitutionWallets";
-import AdminCommissionsPage from "./pages/admin/Commissions";
-import AdminContentPage from "./pages/admin/Content";
-import AdminSupportPage from "./pages/admin/Support";
-import AdminAiAssistantPage from "./pages/admin/AiAssistant";
-import AdminInstitutionsPage from "./pages/admin/Institutions";
+const AdminDashboardPage = lazy(() => import("./pages/admin/Dashboard"));
+const AdminMembersPage = lazy(() => import("./pages/admin/Members"));
+const AdminProductsPage = lazy(() => import("./pages/admin/Products"));
+const AdminOrdersPage = lazy(() => import("./pages/admin/Orders"));
+const AdminProfitSharingPage = lazy(() => import("./pages/admin/ProfitSharing"));
+const AdminWalletsPage = lazy(() => import("./pages/admin/Wallets"));
+const AdminInstitutionWalletsPage = lazy(() => import("./pages/admin/InstitutionWallets"));
+const AdminCommissionsPage = lazy(() => import("./pages/admin/Commissions"));
+const AdminContentPage = lazy(() => import("./pages/admin/Content"));
+const AdminSupportPage = lazy(() => import("./pages/admin/Support"));
+const AdminAiAssistantPage = lazy(() => import("./pages/admin/AiAssistant"));
+const AdminInstitutionsPage = lazy(() => import("./pages/admin/Institutions"));
 import { PortalGuard } from "./pages/portal/PortalGuard";
-import PortalDashboard from "./pages/portal/Dashboard";
-import PortalOrders from "./pages/portal/Orders";
-import PortalWallet from "./pages/portal/Wallet";
-import PortalCommissions from "./pages/portal/Commissions";
-import PortalReports from "./pages/portal/Reports";
-import AdminSocialAccountsPage from "./pages/admin/SocialAccounts";
-import AdminSocialPostsPage from "./pages/admin/SocialPosts";
-import AdminNewsletterDomainsPage from "./pages/admin/NewsletterDomains";
-import AdminNewsletterSubscribersPage from "./pages/admin/NewsletterSubscribers";
-import AdminNewsletterCampaignsPage from "./pages/admin/NewsletterCampaigns";
-import AdminNewsletterSequencesPage from "./pages/admin/NewsletterSequences";
-import AdminSequenceFlowEditorPage from "./pages/admin/SequenceFlowEditor";
-import AdminAiCmoPage from "./pages/admin/AiCmo";
-import AdminAiKnowledgePage from "./pages/admin/AiKnowledge";
+const PortalDashboard = lazy(() => import("./pages/portal/Dashboard"));
+const PortalOrders = lazy(() => import("./pages/portal/Orders"));
+const PortalWallet = lazy(() => import("./pages/portal/Wallet"));
+const PortalCommissions = lazy(() => import("./pages/portal/Commissions"));
+const PortalReports = lazy(() => import("./pages/portal/Reports"));
+const AdminSocialAccountsPage = lazy(() => import("./pages/admin/SocialAccounts"));
+const AdminSocialPostsPage = lazy(() => import("./pages/admin/SocialPosts"));
+const AdminNewsletterDomainsPage = lazy(() => import("./pages/admin/NewsletterDomains"));
+const AdminNewsletterSubscribersPage = lazy(() => import("./pages/admin/NewsletterSubscribers"));
+const AdminNewsletterCampaignsPage = lazy(() => import("./pages/admin/NewsletterCampaigns"));
+const AdminNewsletterSequencesPage = lazy(() => import("./pages/admin/NewsletterSequences"));
+const AdminSequenceFlowEditorPage = lazy(() => import("./pages/admin/SequenceFlowEditor"));
+const AdminAiCmoPage = lazy(() => import("./pages/admin/AiCmo"));
+const AdminAiKnowledgePage = lazy(() => import("./pages/admin/AiKnowledge"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,6 +67,11 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// 頁面分開載入時的等待畫面
+function PageLoading() {
+  return <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">載入中...</div>;
+}
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -107,6 +112,7 @@ function AdminArea() {
   return (
     <AdminGuard>
       <ErrorBoundary resetKey={window.location.pathname}>
+        <Suspense fallback={<PageLoading />}>
         <Switch>
           <Route path="/admin" component={AdminDashboardPage} />
           <Route path="/admin/members" component={AdminMembersPage} />
@@ -134,6 +140,7 @@ function AdminArea() {
             <Redirect to="/admin" />
           </Route>
         </Switch>
+        </Suspense>
       </ErrorBoundary>
     </AdminGuard>
   );
@@ -148,7 +155,9 @@ function AppRoutes() {
     // 公開連結頁：免登入、不套用商城版型
     return (
       <QueryClientProvider client={queryClient}>
-        <Route path="/u/:memberId" component={LinktreePage} />
+        <Suspense fallback={<PageLoading />}>
+          <Route path="/u/:memberId" component={LinktreePage} />
+        </Suspense>
       </QueryClientProvider>
     );
   }
@@ -169,6 +178,7 @@ function AppRoutes() {
       <TooltipProvider>
         <AppLayoutWithHealthCheck>
           <ErrorBoundary resetKey={window.location.pathname}>
+            <Suspense fallback={<PageLoading />}>
             <Switch>
               <Route path="/" component={HomePage} />
               <Route path="/shop" component={ShopPage} />
@@ -204,6 +214,7 @@ function AppRoutes() {
                 </div>
               </Route>
             </Switch>
+            </Suspense>
           </ErrorBoundary>
         </AppLayoutWithHealthCheck>
         <Toaster />
