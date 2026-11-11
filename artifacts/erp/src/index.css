@@ -180,3 +180,244 @@
     pointer-events: none;
   }
 }
+
+/* ── 手機版：觸控尺寸、寬表格、表格轉卡片 ───────────────────────── */
+
+/* 手機上表單控制項字級至少 16px，避免 iOS Safari 聚焦時自動放大畫面 */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* 觸控目標：輸入框、下拉選單至少 44px 高，手指好點 */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  button[role="combobox"] {
+    min-height: 44px;
+  }
+  textarea {
+    min-height: 88px;
+  }
+  /* 點按有立即回饋，且不會因為雙擊而放大畫面 */
+  a, button, [role="button"], label, summary {
+    touch-action: manipulation;
+  }
+  main button:not(:disabled):active,
+  [role="dialog"] button:not(:disabled):active {
+    opacity: 0.72;
+  }
+  /* 橫向捲動的區塊（寬表格、分頁標籤）隱藏捲軸，滑動更順 */
+  main .overflow-x-auto {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  main .overflow-x-auto::-webkit-scrollbar {
+    display: none;
+  }
+  /* 寬表格左右滑動時，第一欄固定在左邊，才知道這一列是哪一筆 */
+  main .overflow-x-auto > table:not([data-m-cards]) th:first-child,
+  main .overflow-x-auto > table:not([data-m-cards]) td:first-child,
+  main .overflow-x-auto > div > table:not([data-m-cards]) th:first-child,
+  main .overflow-x-auto > div > table:not([data-m-cards]) td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: hsl(var(--card));
+    box-shadow: 1px 0 0 hsl(var(--border));
+  }
+
+  /*
+   * 表格轉卡片：use-mobile-table-cards 會在表格標上 data-m-cards，
+   * 並把表頭文字寫進每格的 data-label。這裡把每一列排成一張卡片：
+   * 標題一整列、其餘欄位兩欄「名稱＋內容」、操作按鈕在最下面。
+   */
+  table[data-m-cards] {
+    display: block;
+    width: 100% !important;
+    min-width: 0 !important;
+    border: 0;
+  }
+  table[data-m-cards] > thead {
+    display: block;
+  }
+  table[data-m-cards] > thead > tr {
+    display: block;
+    border: 0;
+    background: transparent;
+  }
+  table[data-m-cards] > thead > tr > th {
+    display: none;
+  }
+  /* 表頭只留「全選」勾選框，顯示成卡片清單上方的一列 */
+  table[data-m-cards] > thead > tr > th[data-m-role="check"] {
+    position: static;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    width: auto !important;
+    height: auto;
+    min-height: 44px;
+    padding: 0 0.875rem;
+    border-bottom: 1px solid hsl(var(--border));
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: hsl(var(--muted-foreground));
+  }
+  table[data-m-cards] > thead > tr > th[data-m-role="check"]::before {
+    content: "全選";
+  }
+  table[data-m-cards] > thead > tr > th[data-m-role="check"] > * {
+    width: auto;
+  }
+  /* 頁面大標題與頂部標題列重複時，畫面上隱藏（螢幕閱讀器仍讀得到） */
+  main h1[data-m-dup-title] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  table[data-m-cards] > tbody,
+  table[data-m-cards] > tfoot {
+    display: block;
+  }
+  table[data-m-cards] > tbody > tr,
+  table[data-m-cards] > tfoot > tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.625rem 1rem;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  table[data-m-cards] > tbody:last-child > tr:last-child,
+  table[data-m-cards] > tfoot > tr:last-child {
+    border-bottom: 0;
+  }
+  table[data-m-cards] > tfoot > tr {
+    background: hsl(var(--muted) / 0.5);
+  }
+  table[data-m-cards] > * > tr > :is(td, th) {
+    display: block;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 0.875rem;
+  }
+  /* 跨欄的儲存格（例如「尚無資料」）保留原本的置中與留白 */
+  table[data-m-cards] > * > tr > :is(td, th):not([data-m-role="full"]) {
+    padding: 0;
+    text-align: left;
+  }
+  table[data-m-cards] > * > tr > :is(td, th):empty {
+    display: none;
+  }
+  table[data-m-cards] > * > tr > [data-m-role="field"][data-label]::before,
+  table[data-m-cards] > * > tr > [data-m-role="title"][data-label]:has(:is(input, select, textarea, button[role="combobox"]))::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.3;
+    color: hsl(var(--muted-foreground));
+  }
+  table[data-m-cards] > * > tr > [data-m-role="title"] {
+    grid-column: 1 / -1;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.375;
+  }
+  /* 標題欄如果是輸入框（明細行），當成一般欄位顯示並補上欄位名稱 */
+  table[data-m-cards] > * > tr > [data-m-role="title"]:has(:is(input, select, textarea, button[role="combobox"])) {
+    font-size: 0.875rem;
+    font-weight: 400;
+  }
+  table[data-m-cards] > * > tr > [data-m-role="full"] {
+    grid-column: 1 / -1;
+  }
+  table[data-m-cards] > * > tr > [data-m-role="actions"] {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid hsl(var(--border));
+  }
+  /* 勾選框放在卡片右上角 */
+  table[data-m-cards] > * > tr > [data-m-role="check"] {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.875rem;
+    width: auto !important;
+  }
+  table[data-m-cards] > * > tr:has(> [data-m-role="check"]) > [data-m-role="title"] {
+    padding-right: 2.5rem;
+  }
+  /* 卡片裡的輸入框（明細行）撐滿欄寬 */
+  table[data-m-cards] > * > tr > :is(td, th) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea, button[role="combobox"]) {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ── 深色模式：補上各頁寫死的顏色 ─────────────────────────────────
+ * 很多頁面直接寫 bg-gray-50、text-gray-600、bg-red-100 這類固定顏色，
+ * 深色下會變成一塊亮底或看不清楚的字。這裡統一把它們對應到主題色，
+ * 不用逐頁改；之後新頁面請優先用 bg-muted、text-muted-foreground 等主題色。
+ */
+.dark :is(.bg-white, .bg-white\/50) {
+  background-color: hsl(var(--card));
+}
+.dark :is(.bg-gray-50, .bg-gray-50\/50, .bg-gray-50\/30, .bg-slate-100) {
+  background-color: hsl(var(--muted) / 0.45);
+}
+.dark :is(.bg-gray-100, .bg-gray-200) {
+  background-color: hsl(var(--muted));
+}
+.dark :is(.text-gray-900, .text-gray-800, .text-gray-700) {
+  color: hsl(var(--foreground));
+}
+.dark :is(.text-gray-600, .text-gray-500, .text-gray-400, .text-slate-600) {
+  color: hsl(var(--muted-foreground));
+}
+.dark :is(.border-gray-100, .border-gray-200, .border-gray-300) {
+  border-color: hsl(var(--border));
+}
+/* 狀態標籤與提示區塊：淺色底改成同色系的深底，字改亮 */
+.dark :is(.bg-red-50, .bg-red-100) { background-color: rgb(127 29 29 / 0.35); }
+.dark :is(.bg-green-50, .bg-green-100, .bg-emerald-50, .bg-emerald-100) { background-color: rgb(20 83 45 / 0.4); }
+.dark :is(.bg-blue-50, .bg-blue-100) { background-color: rgb(30 58 138 / 0.4); }
+.dark :is(.bg-amber-50, .bg-amber-100, .bg-yellow-50, .bg-yellow-100) { background-color: rgb(120 53 15 / 0.4); }
+.dark :is(.bg-orange-50, .bg-orange-100) { background-color: rgb(124 45 18 / 0.4); }
+.dark :is(.bg-purple-50, .bg-purple-100, .bg-violet-50, .bg-violet-100) { background-color: rgb(76 29 149 / 0.4); }
+.dark :is(.text-red-600, .text-red-700, .text-red-800) { color: rgb(252 165 165); }
+.dark :is(.text-green-600, .text-green-700, .text-green-800, .text-emerald-600, .text-emerald-700) { color: rgb(134 239 172); }
+.dark :is(.text-blue-600, .text-blue-700, .text-blue-800) { color: rgb(147 197 253); }
+.dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-yellow-700, .text-yellow-800) { color: rgb(252 211 77); }
+.dark :is(.text-orange-600, .text-orange-700, .text-orange-800) { color: rgb(253 186 116); }
+.dark :is(.text-purple-600, .text-purple-700, .text-violet-600, .text-violet-700) { color: rgb(196 181 253); }
+.dark :is(.border-red-200, .border-red-300) { border-color: rgb(127 29 29 / 0.7); }
+.dark :is(.border-green-200, .border-green-300) { border-color: rgb(20 83 45 / 0.7); }
+.dark :is(.border-blue-200, .border-blue-300) { border-color: rgb(30 58 138 / 0.7); }
+.dark :is(.border-amber-200, .border-amber-300, .border-yellow-200) { border-color: rgb(120 53 15 / 0.7); }
+/* 原生的日期、下拉選單也跟著用深色外觀 */
+.dark {
+  color-scheme: dark;
+}

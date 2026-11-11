@@ -3,6 +3,8 @@ import { Link, useLocation } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useErpAuth } from '@/hooks/use-erp-auth';
 import { NAV_CONFIG } from '@/lib/nav';
+import { useMobileTableCards } from '@/hooks/use-mobile-table-cards';
+import { PageTableExport } from '@/components/shared/page-table-export';
 import { ERP_ROLES, ErpRole } from '@/lib/roles';
 import { useGetErpMenuPermissions, getGetErpMenuPermissionsQueryKey } from '@workspace/api-client-react';
 import { 
@@ -18,6 +20,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useErpAuth();
   const [location, navigate] = useLocation();
   const queryClient = useQueryClient();
+  // 手機上把各頁的表格自動排成卡片（樣式在 index.css）
+  useMobileTableCards();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -286,6 +290,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="sm:hidden truncate">搜尋…</span>
             <kbd className="ml-auto hidden sm:inline-flex shrink-0 rounded border bg-muted px-1.5 py-0.5 text-[10px]">⌘ K</kbd>
           </button>
+          <PageTableExport title={NAV_CONFIG.slice().sort((a, b) => b.path.length - a.path.length).find(item => location === item.path || (location.startsWith(item.path + '/') && item.path !== '/'))?.label || '頁面'} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative shrink-0" aria-label="通知">
