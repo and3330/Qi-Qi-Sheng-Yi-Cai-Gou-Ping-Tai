@@ -28,6 +28,216 @@ import {
   createSalesOrderForShopOrder,
 } from "../lib/erpSync";
 
+/** 報價單轉訂單失敗時的可預期錯誤（訊息可直接顯示給使用者） */
+export class ConvertError extends Error {}
+
+/**
+ * 報價單轉訂單（列鎖交易）：檢查狀態、效期、會員、上架與分級，扣庫存，
+ * 建立商城訂單並同步產生 ERP 銷貨單。後台路由、AI 助理與 Bot 連線共用這一份。
+ * 回傳新訂單 id；不符合條件時丟出 ConvertError。
+ */
+export async function convertQuotationToOrder(id: number): Promise<number | null> {
+  let createdOrderId: number | null = null;
+  await db.transaction(async (tx) => {
+      const [q] = await tx
+        .select()
+        .from(quotationsTable)
+        .where(eq(quotationsTable.id, id))
+        .for("update")
+        .limit(1);
+      if (!q) throw new ConvertError("找不到此報價單");
+      if (q.status === "converted") throw new ConvertError("此報價單已轉為訂單");
+      if (q.status !== "accepted")
+        throw new ConvertError("僅「已接受」的報價單可轉訂單（請先將狀態改為已接受）");
+      if (q.validUntil && q.validUntil.getTime() < Date.now())
+        throw new ConvertError("報價單已過有效期限，無法轉訂單");
+      if (q.memberId == null)
+        throw new ConvertError("報價單未綁定會員，無法轉訂單（請先編輯綁定會員）");
+
+      const [member] = await tx
+        .select()
+        .from(membersTable)
+        .where(eq(membersTable.id, q.memberId))
+        .limit(1);
+      if (!member) throw new ConvertError("綁定的會員不存在");
+
+      const items = await tx
+        .select()
+        .from(quotationItemsTable)
+        .where(eq(quotationItemsTable.quotationId, id));
+      if (items.length === 0) throw new ConvertError("報價單沒有品項");
+
+      // 商品須上架、規格須啟用，且會員機構分級須符合商品授權範圍
+      const prodRows = await tx
+        .select()
+        .from(productsTable)
+        .where(inArray(productsTable.id, items.map((i) => i.productId)));
+      const prodById = new Map(prodRows.map((p) => [p.id, p]));
+      const varIds = items.map((i) => i.variantId).filter((v): v is number => v != null);
+      const varRows = varIds.length
+        ? await tx
+            .select()
+            .from(productVariantsTable)
+            .where(inArray(productVariantsTable.id, varIds))
+        : [];
+      const varById = new Map(varRows.map((v) => [v.id, v]));
+      const memberGrade = await resolveMemberGrade(member);
+      for (const item of items) {
+        const p = prodById.get(item.productId);
+        if (!p || !p.isActive)
+          throw new ConvertError(`「${item.productName}」已下架，無法轉訂單`);
+        if (!gradeAllowed(p.allowedGrades, memberGrade))
+          throw new ConvertError(
+            `「${item.productName}」未開放此會員的機構分級購買，無法轉訂單`,
+          );
+        if (item.variantId != null) {
+          const v = varById.get(item.variantId);
+          if (!v || !v.isActive)
+            throw new ConvertError(
+              `「${item.productName}（${item.variantName ?? ""}）」已停售，無法轉訂單`,
+            );
+        }
+      }
+
+      const orderNo = `QB${Date.now()}${String(member.id).padStart(3, "0")}`;
+
+      // 扣庫存（多規格扣規格、無規格扣主商品；虛擬品項不動庫存）
+      const stockAfterByItem = new Map<number, number>();
+      const allocationsByItem = new Map<number, Array<{ warehouseId: number; quantity: number }>>();
+      for (const item of items) {
+        if (prodById.get(item.productId)?.isVirtual) continue;
+        // 分倉：依可售倉分配扣減
+        try {
+          const allocations = await allocateSellableStock(tx, {
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
+          allocationsByItem.set(item.id, allocations);
+        } catch (err) {
+          if (err instanceof WarehouseStockError)
+            throw new ConvertError(
+              `庫存不足：${item.productName}${item.variantName ? `（${item.variantName}）` : ""}`,
+            );
+          throw err;
+        }
+        const mirrorTotal = await syncMirrorStock(tx, {
+          productId: item.productId,
+          variantId: item.variantId,
+        });
+        stockAfterByItem.set(item.id, mirrorTotal);
+      }
+
+      // 成本快照
+      const productRows = await tx
+        .select()
+        .from(productsTable)
+        .where(inArray(productsTable.id, items.map((i) => i.productId)));
+      const costByProduct = new Map(productRows.map((p) => [p.id, p.costPrice]));
+      const vIds = items.map((i) => i.variantId).filter((v): v is number => v != null);
+      const variantRows = vIds.length
+        ? await tx
+            .select()
+            .from(productVariantsTable)
+            .where(inArray(productVariantsTable.id, vIds))
+        : [];
+      const costByVariant = new Map(variantRows.map((v) => [v.id, v.costPrice]));
+
+      const [order] = await tx
+        .insert(ordersTable)
+        .values({
+          orderNo,
+          memberId: member.id,
+          status: "pending",
+          paymentMethod: "bank_transfer",
+          walletSource: null,
+          totalAmount: q.totalAmount,
+          shippingAddress: null,
+          receiverName: member.name,
+          receiverPhone: member.phone,
+          note: `由報價單 ${q.quoteNo} 轉入`,
+        })
+        .returning();
+      createdOrderId = order.id;
+
+      await tx.insert(orderItemsTable).values(
+        items.map((i) => ({
+          orderId: order.id,
+          productId: i.productId,
+          variantId: i.variantId,
+          variantName: i.variantName,
+          productName: i.productName,
+          productCode: i.productCode,
+          unitPrice: i.unitPrice,
+          quantity: i.quantity,
+          unitCost:
+            i.variantId != null
+              ? costByVariant.get(i.variantId) ?? 0
+              : costByProduct.get(i.productId) ?? 0,
+        })),
+      );
+
+      const stockItems = items.filter(
+        (i) => !prodById.get(i.productId)?.isVirtual,
+      );
+      if (stockItems.length > 0)
+      await tx.insert(stockMovementsTable).values(
+        stockItems.flatMap((i) => {
+          const stockAfter = stockAfterByItem.get(i.id) ?? 0;
+          const allocations = allocationsByItem.get(i.id) ?? [];
+          return allocations.map((a) => ({
+            productId: i.productId,
+            variantId: i.variantId,
+            type: "sale",
+            quantity: -a.quantity,
+            stockAfter,
+            warehouseId: a.warehouseId,
+            reason: i.variantName
+              ? `報價單轉訂單（${i.variantName}）`
+              : "報價單轉訂單",
+            refNo: orderNo,
+          }));
+        }),
+      );
+
+      // 轉單訂單同步產生 ERP 銷貨單
+      const customerId = await ensureErpCustomerForMember(tx, member);
+      await createSalesOrderForShopOrder(
+        tx,
+        order,
+        customerId,
+        member.name || member.username,
+        items.map((i) => ({
+          productId: i.productId,
+          variantId: i.variantId,
+          variantName: i.variantName,
+          productName: i.productName,
+          productCode: i.productCode,
+          unitPrice: i.unitPrice,
+          quantity: i.quantity,
+          unitCost:
+            i.variantId != null
+              ? costByVariant.get(i.variantId) ?? 0
+              : costByProduct.get(i.productId) ?? 0,
+          isVirtual: prodById.get(i.productId)?.isVirtual ?? false,
+        })),
+        "quotation",
+        q.creatorEmployeeId,
+      );
+
+      await tx
+        .update(quotationsTable)
+        .set({
+          status: "converted",
+          convertedOrderId: order.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(quotationsTable.id, id));
+    });
+  if (createdOrderId != null) reindex("order", createdOrderId);
+  return createdOrderId;
+}
+
 /**
  * 報價單路由可同時掛在 /admin/quotations（商城後台）與 /erp/quotations（ERP），
  * 共用同一套單據規則（狀態機、轉單列鎖、分級檢查）。
@@ -38,7 +248,6 @@ export function registerQuotationRoutes(
   guard: import("express").RequestHandler,
 ) {
 
-class ConvertError extends Error {}
 
 function serializeQuotation(
   q: Quotation,
@@ -388,204 +597,8 @@ router.post(`${base}/:id/convert`, guard, async (req, res) => {
     return;
   }
 
-  let createdOrderId: number | null = null;
   try {
-    await db.transaction(async (tx) => {
-      const [q] = await tx
-        .select()
-        .from(quotationsTable)
-        .where(eq(quotationsTable.id, id))
-        .for("update")
-        .limit(1);
-      if (!q) throw new ConvertError("找不到此報價單");
-      if (q.status === "converted") throw new ConvertError("此報價單已轉為訂單");
-      if (q.status !== "accepted")
-        throw new ConvertError("僅「已接受」的報價單可轉訂單（請先將狀態改為已接受）");
-      if (q.validUntil && q.validUntil.getTime() < Date.now())
-        throw new ConvertError("報價單已過有效期限，無法轉訂單");
-      if (q.memberId == null)
-        throw new ConvertError("報價單未綁定會員，無法轉訂單（請先編輯綁定會員）");
-
-      const [member] = await tx
-        .select()
-        .from(membersTable)
-        .where(eq(membersTable.id, q.memberId))
-        .limit(1);
-      if (!member) throw new ConvertError("綁定的會員不存在");
-
-      const items = await tx
-        .select()
-        .from(quotationItemsTable)
-        .where(eq(quotationItemsTable.quotationId, id));
-      if (items.length === 0) throw new ConvertError("報價單沒有品項");
-
-      // 商品須上架、規格須啟用，且會員機構分級須符合商品授權範圍
-      const prodRows = await tx
-        .select()
-        .from(productsTable)
-        .where(inArray(productsTable.id, items.map((i) => i.productId)));
-      const prodById = new Map(prodRows.map((p) => [p.id, p]));
-      const varIds = items.map((i) => i.variantId).filter((v): v is number => v != null);
-      const varRows = varIds.length
-        ? await tx
-            .select()
-            .from(productVariantsTable)
-            .where(inArray(productVariantsTable.id, varIds))
-        : [];
-      const varById = new Map(varRows.map((v) => [v.id, v]));
-      const memberGrade = await resolveMemberGrade(member);
-      for (const item of items) {
-        const p = prodById.get(item.productId);
-        if (!p || !p.isActive)
-          throw new ConvertError(`「${item.productName}」已下架，無法轉訂單`);
-        if (!gradeAllowed(p.allowedGrades, memberGrade))
-          throw new ConvertError(
-            `「${item.productName}」未開放此會員的機構分級購買，無法轉訂單`,
-          );
-        if (item.variantId != null) {
-          const v = varById.get(item.variantId);
-          if (!v || !v.isActive)
-            throw new ConvertError(
-              `「${item.productName}（${item.variantName ?? ""}）」已停售，無法轉訂單`,
-            );
-        }
-      }
-
-      const orderNo = `QB${Date.now()}${String(member.id).padStart(3, "0")}`;
-
-      // 扣庫存（多規格扣規格、無規格扣主商品；虛擬品項不動庫存）
-      const stockAfterByItem = new Map<number, number>();
-      const allocationsByItem = new Map<number, Array<{ warehouseId: number; quantity: number }>>();
-      for (const item of items) {
-        if (prodById.get(item.productId)?.isVirtual) continue;
-        // 分倉：依可售倉分配扣減
-        try {
-          const allocations = await allocateSellableStock(tx, {
-            productId: item.productId,
-            variantId: item.variantId,
-            quantity: item.quantity,
-          });
-          allocationsByItem.set(item.id, allocations);
-        } catch (err) {
-          if (err instanceof WarehouseStockError)
-            throw new ConvertError(
-              `庫存不足：${item.productName}${item.variantName ? `（${item.variantName}）` : ""}`,
-            );
-          throw err;
-        }
-        const mirrorTotal = await syncMirrorStock(tx, {
-          productId: item.productId,
-          variantId: item.variantId,
-        });
-        stockAfterByItem.set(item.id, mirrorTotal);
-      }
-
-      // 成本快照
-      const productRows = await tx
-        .select()
-        .from(productsTable)
-        .where(inArray(productsTable.id, items.map((i) => i.productId)));
-      const costByProduct = new Map(productRows.map((p) => [p.id, p.costPrice]));
-      const vIds = items.map((i) => i.variantId).filter((v): v is number => v != null);
-      const variantRows = vIds.length
-        ? await tx
-            .select()
-            .from(productVariantsTable)
-            .where(inArray(productVariantsTable.id, vIds))
-        : [];
-      const costByVariant = new Map(variantRows.map((v) => [v.id, v.costPrice]));
-
-      const [order] = await tx
-        .insert(ordersTable)
-        .values({
-          orderNo,
-          memberId: member.id,
-          status: "pending",
-          paymentMethod: "bank_transfer",
-          walletSource: null,
-          totalAmount: q.totalAmount,
-          shippingAddress: null,
-          receiverName: member.name,
-          receiverPhone: member.phone,
-          note: `由報價單 ${q.quoteNo} 轉入`,
-        })
-        .returning();
-      createdOrderId = order.id;
-
-      await tx.insert(orderItemsTable).values(
-        items.map((i) => ({
-          orderId: order.id,
-          productId: i.productId,
-          variantId: i.variantId,
-          variantName: i.variantName,
-          productName: i.productName,
-          productCode: i.productCode,
-          unitPrice: i.unitPrice,
-          quantity: i.quantity,
-          unitCost:
-            i.variantId != null
-              ? costByVariant.get(i.variantId) ?? 0
-              : costByProduct.get(i.productId) ?? 0,
-        })),
-      );
-
-      const stockItems = items.filter(
-        (i) => !prodById.get(i.productId)?.isVirtual,
-      );
-      if (stockItems.length > 0)
-      await tx.insert(stockMovementsTable).values(
-        stockItems.flatMap((i) => {
-          const stockAfter = stockAfterByItem.get(i.id) ?? 0;
-          const allocations = allocationsByItem.get(i.id) ?? [];
-          return allocations.map((a) => ({
-            productId: i.productId,
-            variantId: i.variantId,
-            type: "sale",
-            quantity: -a.quantity,
-            stockAfter,
-            warehouseId: a.warehouseId,
-            reason: i.variantName
-              ? `報價單轉訂單（${i.variantName}）`
-              : "報價單轉訂單",
-            refNo: orderNo,
-          }));
-        }),
-      );
-
-      // 轉單訂單同步產生 ERP 銷貨單
-      const customerId = await ensureErpCustomerForMember(tx, member);
-      await createSalesOrderForShopOrder(
-        tx,
-        order,
-        customerId,
-        member.name || member.username,
-        items.map((i) => ({
-          productId: i.productId,
-          variantId: i.variantId,
-          variantName: i.variantName,
-          productName: i.productName,
-          productCode: i.productCode,
-          unitPrice: i.unitPrice,
-          quantity: i.quantity,
-          unitCost:
-            i.variantId != null
-              ? costByVariant.get(i.variantId) ?? 0
-              : costByProduct.get(i.productId) ?? 0,
-          isVirtual: prodById.get(i.productId)?.isVirtual ?? false,
-        })),
-        "quotation",
-        q.creatorEmployeeId,
-      );
-
-      await tx
-        .update(quotationsTable)
-        .set({
-          status: "converted",
-          convertedOrderId: order.id,
-          updatedAt: new Date(),
-        })
-        .where(eq(quotationsTable.id, id));
-    });
+    await convertQuotationToOrder(id);
   } catch (err) {
     if (err instanceof ConvertError) {
       res.status(400).json({ error: err.message });
@@ -593,8 +606,6 @@ router.post(`${base}/:id/convert`, guard, async (req, res) => {
     }
     throw err;
   }
-
-  if (createdOrderId != null) reindex("order", createdOrderId);
   res.json(await loadQuotation(id));
 });
 

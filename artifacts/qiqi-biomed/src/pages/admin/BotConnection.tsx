@@ -40,6 +40,8 @@ const ACTION_LABEL: Record<string, string> = {
   topup_institution_wallet: "機構錢包儲值／調整",
   set_article_status: "變更文章狀態",
   create_order: "代會員下單",
+  update_sales_order_status: "變更銷貨單狀態",
+  convert_quotation_to_order: "報價單轉訂單",
 };
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {

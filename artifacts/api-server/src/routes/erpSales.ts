@@ -337,34 +337,31 @@ router.post("/erp/sales-orders", requireErpMenu("/sales/orders"), async (req, re
   res.status(201).json(serializeSO(result.so, result.items));
 });
 
-/**
- * 銷貨單狀態流轉。
- * - ERP 開立單：draft→confirmed（扣庫存，列鎖交易）、confirmed→shipped→completed、draft/confirmed→cancelled（回補庫存）
- * - 商城訂單產生的單：出貨／完成／取消一律走商城訂單狀態機（applyOrderStatusChange），
- *   由其同步回寫銷貨單，確保錢包／點數／庫存一致。
- */
-router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id)) {
-    res.status(400).json({ error: "Invalid id" });
-    return;
+/** 銷貨單狀態變更失敗時的可預期錯誤（訊息可直接顯示給使用者） */
+export class SalesOrderStatusError extends Error {
+  constructor(
+    public httpStatus: number,
+    message: string,
+  ) {
+    super(message);
   }
-  const parsed = UpdateErpSalesOrderStatusBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "狀態不正確" });
-    return;
-  }
-  const target = parsed.data.status;
+}
 
+/**
+ * 變更銷貨單狀態。後台路由、AI 助理與 Bot 連線共用這一份。
+ * 規則見下方路由說明；不符合條件時丟出 SalesOrderStatusError。
+ */
+export async function changeSalesOrderStatus(
+  id: number,
+  target: string,
+  actor: { id: number; name: string; username: string },
+): Promise<void> {
   const [so] = await db
     .select()
     .from(salesOrdersTable)
     .where(eq(salesOrdersTable.id, id))
     .limit(1);
-  if (!so) {
-    res.status(404).json({ error: "找不到此銷貨單" });
-    return;
-  }
+  if (!so) throw new SalesOrderStatusError(404, "找不到此銷貨單");
 
   // 商城訂單連動：透過商城狀態機執行（會在同一交易同步銷貨單）
   if (so.orderId != null) {
@@ -374,34 +371,29 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
       cancelled: "cancelled",
     };
     const orderTarget = mapToOrder[target];
-    if (!orderTarget) {
-      res.status(400).json({ error: "商城訂單產生的銷貨單僅支援出貨／完成／取消" });
-      return;
-    }
+    if (!orderTarget)
+      throw new SalesOrderStatusError(400, "商城訂單產生的銷貨單僅支援出貨／完成／取消");
     try {
       await applyOrderStatusChange(so.orderId, orderTarget);
     } catch (err) {
-      if (err instanceof Error && err.message === "ORDER_NOT_FOUND") {
-        res.status(404).json({ error: "對應的商城訂單不存在" });
-        return;
-      }
+      if (err instanceof Error && err.message === "ORDER_NOT_FOUND")
+        throw new SalesOrderStatusError(404, "對應的商城訂單不存在");
       if (err instanceof Error && err.message.startsWith("BAD_TRANSITION:")) {
-        res.status(400).json({
-          error: `商城訂單目前為「${err.message.split(":")[1]}」，無法變更為「${orderTarget}」`,
-        });
-        return;
+        throw new SalesOrderStatusError(
+          400,
+          `商城訂單目前為「${err.message.split(":")[1]}」，無法變更為「${orderTarget}」`,
+        );
       }
       throw err;
     }
     reindex("order", so.orderId);
-    await audit(req, {
+    await audit({ member: actor }, {
       action: target,
       module: "sales",
       documentType: "sales_order",
       documentId: String(id),
       description: `銷貨單 ${so.soNo} → ${target}（連動商城訂單 ${so.orderNo}）`,
     });
-    res.json(await loadSO(id));
     return;
   }
 
@@ -500,19 +492,45 @@ router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), as
       autoPost(`erp_so_invoice:${id}`, () => postErpSalesOrderInvoice(id));
     }
   } catch (err) {
-    if (err instanceof DocError || err instanceof WarehouseStockError) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
+    if (err instanceof DocError || err instanceof WarehouseStockError)
+      throw new SalesOrderStatusError(400, err.message);
     throw err;
   }
-  await audit(req, {
+  await audit({ member: actor }, {
     action: target,
     module: "sales",
     documentType: "sales_order",
     documentId: String(id),
     description: `銷貨單 ${so.soNo} → ${target}`,
   });
+}
+
+/**
+ * 銷貨單狀態流轉。
+ * - ERP 開立單：draft→confirmed（扣庫存，列鎖交易）、confirmed→shipped→completed、draft/confirmed→cancelled（回補庫存）
+ * - 商城訂單產生的單：出貨／完成／取消一律走商城訂單狀態機（applyOrderStatusChange），
+ *   由其同步回寫銷貨單，確保錢包／點數／庫存一致。
+ */
+router.patch("/erp/sales-orders/:id/status", requireErpMenu("/sales/orders"), async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const parsed = UpdateErpSalesOrderStatusBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "狀態不正確" });
+    return;
+  }
+  try {
+    await changeSalesOrderStatus(id, parsed.data.status, req.member!);
+  } catch (err) {
+    if (err instanceof SalesOrderStatusError) {
+      res.status(err.httpStatus).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
   res.json(await loadSO(id));
 });
 
