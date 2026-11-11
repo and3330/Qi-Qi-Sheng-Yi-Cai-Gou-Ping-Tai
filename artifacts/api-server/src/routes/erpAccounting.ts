@@ -394,6 +394,9 @@ router.delete(
         if (!entry) throw new DocError("傳票不存在");
         if (entry.isAuto)
           throw new DocError("自動傳票不可直接刪除，請刪除其來源單據");
+        // 已入帳的傳票要留下稽核軌跡：只能作廢（產生沖銷傳票），不能刪除
+        if (entry.status !== "Draft")
+          throw new DocError("已入帳的傳票不可刪除，請改用作廢");
         await assertPeriodOpen(tx, entry.entryDate, "刪除傳票");
         await tx
           .delete(erpJournalEntriesTable)
@@ -409,6 +412,71 @@ router.delete(
       res.json({ success: true });
     } catch (err: any) {
       res.status(400).json({ error: err?.message || "刪除傳票失敗" });
+    }
+  },
+);
+
+/**
+ * 作廢傳票：原傳票保留並標記為 Voided，另外產生一張借貸相反的沖銷傳票。
+ * 報表把兩張都算進去，淨額為零；沖銷傳票以來源（journal_void + 原傳票 id）防止重複產生。
+ */
+router.post(
+  "/erp/accounting/journal-entries/:id/void",
+  requireErpMenu("/accounting/journal"),
+  requireErp(...FINANCE_WRITE),
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    const reason =
+      typeof req.body?.reason === "string"
+        ? req.body.reason.trim().slice(0, 200)
+        : "";
+    try {
+      const voided = await db.transaction(async (tx) => {
+        const [entry] = await tx
+          .select()
+          .from(erpJournalEntriesTable)
+          .where(eq(erpJournalEntriesTable.id, id))
+          .for("update");
+        if (!entry) throw new DocError("傳票不存在");
+        if (entry.isAuto)
+          throw new DocError("自動傳票不可直接作廢，請作廢其來源單據");
+        if (entry.status === "Voided") throw new DocError("傳票已作廢");
+        if (entry.status === "Draft")
+          throw new DocError("草稿傳票尚未入帳，請直接刪除");
+        // 沖銷傳票記在今天，所以檢查的是今天是否已關帳
+        const today = todayISO();
+        await assertPeriodOpen(tx, today, "作廢傳票");
+        const reversed = (entry.lines as ErpJournalLine[]).map((l) => ({
+          accountId: l.accountId,
+          accountName: l.accountName,
+          debit: l.credit,
+          credit: l.debit,
+          description: l.description,
+        }));
+        const reversalId = await createAutoJournalEntry(tx, {
+          entryDate: today,
+          description: `傳票 ${entry.entryNumber} 作廢沖銷${reason ? `：${reason}` : ""}`,
+          reference: entry.entryNumber,
+          lines: reversed,
+          sourceType: "journal_void",
+          sourceId: String(entry.id),
+          createdBy: req.member?.id ?? null,
+        });
+        await tx
+          .update(erpJournalEntriesTable)
+          .set({ status: "Voided" })
+          .where(eq(erpJournalEntriesTable.id, id));
+        return { entry, reversalId };
+      });
+      await audit(req, {
+        action: "void",
+        documentType: "journal_entry",
+        documentId: String(id),
+        description: `作廢傳票 ${voided.entry.entryNumber}（沖銷傳票 id ${voided.reversalId}）${reason ? `，原因：${reason}` : ""}`,
+      });
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || "作廢傳票失敗" });
     }
   },
 );

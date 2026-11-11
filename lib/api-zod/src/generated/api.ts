@@ -5182,6 +5182,7 @@ export const ListErpJournalEntriesResponse = zod.object({
   "credit": zod.int(),
   "description": zod.string().nullish()
 })),
+  "status": zod.string().optional().describe('Draft 草稿 \/ Posted 已入帳 \/ Voided 已作廢'),
   "sourceType": zod.string().nullish(),
   "sourceId": zod.string().nullish(),
   "createdAt": zod.string().nullish()
@@ -5228,6 +5229,7 @@ export const CreateErpJournalEntryResponse = zod.object({
   "credit": zod.int(),
   "description": zod.string().nullish()
 })),
+  "status": zod.string().optional().describe('Draft 草稿 \/ Posted 已入帳 \/ Voided 已作廢'),
   "sourceType": zod.string().nullish(),
   "sourceId": zod.string().nullish(),
   "createdAt": zod.string().nullish()
@@ -5235,13 +5237,29 @@ export const CreateErpJournalEntryResponse = zod.object({
 
 
 /**
- * @summary 刪除傳票（自動傳票不可刪）
+ * @summary 刪除草稿傳票（已入帳請改用作廢；自動傳票不可刪）
  */
 export const DeleteErpJournalEntryParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
 export const DeleteErpJournalEntryResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary 作廢傳票（保留原傳票並產生沖銷傳票）
+ */
+export const VoidErpJournalEntryParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const VoidErpJournalEntryBody = zod.object({
+  "reason": zod.string().optional().describe('作廢原因')
+})
+
+export const VoidErpJournalEntryResponse = zod.object({
   "success": zod.boolean()
 })
 

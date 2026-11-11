@@ -5,10 +5,11 @@ import {
   useDeleteErpJournalEntry,
   useListErpAccounts,
   useListErpJournalEntries,
+  useVoidErpJournalEntry,
   type ErpJournalEntry,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, FileText, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { Ban, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, FileText, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -40,6 +41,19 @@ export default function JournalPage() {
     },
     onError: (err) => toast({ title: '刪除失敗', description: errorMessage(err), variant: 'destructive' }),
   } });
+  const voidEntry = useVoidErpJournalEntry({ mutation: {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getListErpJournalEntriesQueryKey() });
+      toast({ title: '傳票已作廢', description: '已自動產生一張借貸相反的沖銷傳票' });
+    },
+    onError: (err) => toast({ title: '作廢失敗', description: errorMessage(err), variant: 'destructive' }),
+  } });
+  // 已入帳的傳票只能作廢（保留紀錄並產生沖銷傳票），草稿才可以刪除
+  const askVoid = (entry: ErpJournalEntry) => {
+    const reason = window.prompt(`作廢傳票 ${entry.entryNumber}？原傳票會保留，並產生一張沖銷傳票。可填寫作廢原因（選填）：`, '');
+    if (reason === null) return;
+    voidEntry.mutate({ id: entry.id, data: { reason: reason.trim() || undefined } });
+  };
   const toggle = (id: number) => setExpanded((current) => {
     const next = new Set(current);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -83,8 +97,8 @@ export default function JournalPage() {
                 <TableRow key={entry.id}>
                   <TableCell><Button size="icon" variant="ghost" aria-label={isOpen ? '收合分錄' : '展開分錄'} onClick={() => toggle(entry.id)}>{isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></TableCell>
                   <TableCell className="font-mono font-medium">{entry.entryNumber}</TableCell><TableCell>{entry.entryDate}</TableCell><TableCell>{entry.description || '—'}</TableCell><TableCell>{entry.reference || '—'}</TableCell>
-                  <TableCell>{entry.sourceType ? <Badge variant="secondary">自動</Badge> : <Badge variant="outline">手動</Badge>}</TableCell><TableCell className="text-right font-mono">{money(debit)}</TableCell><TableCell className="text-right font-mono">{money(credit)}</TableCell>
-                  <TableCell className="text-right">{!entry.sourceType && <Button size="icon" variant="ghost" className="text-destructive" disabled={remove.isPending} onClick={() => { if (window.confirm(`確定刪除傳票 ${entry.entryNumber}？`)) remove.mutate({ id: entry.id }); }}><Trash2 className="h-4 w-4" /></Button>}</TableCell>
+                  <TableCell><span className="inline-flex flex-wrap gap-1">{entry.sourceType ? <Badge variant="secondary">自動</Badge> : <Badge variant="outline">手動</Badge>}{entry.status === 'Voided' && <Badge variant="destructive">已作廢</Badge>}{entry.status === 'Draft' && <Badge variant="outline">草稿</Badge>}</span></TableCell><TableCell className="text-right font-mono">{money(debit)}</TableCell><TableCell className="text-right font-mono">{money(credit)}</TableCell>
+                  <TableCell className="text-right">{!entry.sourceType && entry.status === 'Draft' && <Button size="icon" variant="ghost" className="text-destructive" aria-label="刪除草稿" title="刪除草稿" disabled={remove.isPending} onClick={() => { if (window.confirm(`確定刪除草稿傳票 ${entry.entryNumber}？`)) remove.mutate({ id: entry.id }); }}><Trash2 className="h-4 w-4" /></Button>}{!entry.sourceType && entry.status !== 'Draft' && entry.status !== 'Voided' && <Button size="icon" variant="ghost" className="text-destructive" aria-label="作廢傳票" title="作廢傳票" disabled={voidEntry.isPending} onClick={() => askVoid(entry)}><Ban className="h-4 w-4" /></Button>}</TableCell>
                 </TableRow>,
                 isOpen && <TableRow key={`${entry.id}-lines`}><TableCell /><TableCell colSpan={8} className="bg-muted/20 p-4"><JournalLines entry={entry} /></TableCell></TableRow>,
               ];

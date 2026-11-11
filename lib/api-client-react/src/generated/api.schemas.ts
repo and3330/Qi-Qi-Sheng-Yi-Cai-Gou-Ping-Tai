@@ -3236,6 +3236,11 @@ export interface ErpJournalLine {
   description?: string | null;
 }
 
+export interface ErpVoidInput {
+  /** 作廢原因 */
+  reason?: string;
+}
+
 export interface ErpJournalEntry {
   id: number;
   entryNumber: string;
@@ -3243,6 +3248,8 @@ export interface ErpJournalEntry {
   description?: string | null;
   reference?: string | null;
   lines: ErpJournalLine[];
+  /** Draft 草稿 / Posted 已入帳 / Voided 已作廢 */
+  status?: string;
   sourceType?: string | null;
   sourceId?: string | null;
   createdAt?: string | null;

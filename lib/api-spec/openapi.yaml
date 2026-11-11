@@ -4259,7 +4259,7 @@ paths:
       tags:
         - erp-accounting
       operationId: deleteErpJournalEntry
-      summary: 刪除傳票（自動傳票不可刪）
+      summary: 刪除草稿傳票（已入帳請改用作廢；自動傳票不可刪）
       parameters:
         - name: id
           in: path
@@ -4269,6 +4269,31 @@ paths:
       responses:
         '200':
           description: 刪除結果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResult'
+  /erp/accounting/journal-entries/{id}/void:
+    post:
+      tags:
+        - erp-accounting
+      operationId: voidErpJournalEntry
+      summary: 作廢傳票（保留原傳票並產生沖銷傳票）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErpVoidInput'
+      responses:
+        '200':
+          description: 作廢結果
           content:
             application/json:
               schema:
@@ -13341,6 +13366,12 @@ components:
         description:
           type: string
           nullable: true
+    ErpVoidInput:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: 作廢原因
     ErpJournalEntry:
       type: object
       required:
@@ -13365,6 +13396,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ErpJournalLine'
+        status:
+          type: string
+          description: Draft 草稿 / Posted 已入帳 / Voided 已作廢
         sourceType:
           type: string
           nullable: true

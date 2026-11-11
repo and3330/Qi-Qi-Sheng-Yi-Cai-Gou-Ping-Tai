@@ -310,6 +310,7 @@ export * from './erpUser';
 export * from './erpUserUpdate';
 export * from './erpUserUpdateErpRole';
 export * from './erpVatReport';
+export * from './erpVoidInput';
 export * from './erpVoucher';
 export * from './erpVoucherInput';
 export * from './erpVoucherInputSettlementsItem';

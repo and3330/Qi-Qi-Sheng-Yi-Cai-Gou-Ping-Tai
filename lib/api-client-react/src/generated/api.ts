@@ -211,6 +211,7 @@ import type {
   ErpUser,
   ErpUserUpdate,
   ErpVatReport,
+  ErpVoidInput,
   ErpVoucher,
   ErpVoucherInput,
   ErpWarehouse,
@@ -14307,7 +14308,7 @@ export const getDeleteErpJournalEntryUrl = (id: number,) => {
 }
 
 /**
- * @summary 刪除傳票（自動傳票不可刪）
+ * @summary 刪除草稿傳票（已入帳請改用作廢；自動傳票不可刪）
  */
 export const deleteErpJournalEntry = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<SuccessResult> => {
 
@@ -14356,7 +14357,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteErpJournalEntryMutationError = ErrorType<unknown>
 
     /**
- * @summary 刪除傳票（自動傳票不可刪）
+ * @summary 刪除草稿傳票（已入帳請改用作廢；自動傳票不可刪）
  */
 export const useDeleteErpJournalEntry = <TError = ErrorType<unknown>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteErpJournalEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -14367,6 +14368,78 @@ export const useDeleteErpJournalEntry = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteErpJournalEntryMutationOptions(options));
+    }
+
+export const getVoidErpJournalEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/erp/accounting/journal-entries/${id}/void`
+}
+
+/**
+ * @summary 作廢傳票（保留原傳票並產生沖銷傳票）
+ */
+export const voidErpJournalEntry = async (id: number,
+    erpVoidInput: ErpVoidInput, options?: Parameters<typeof customFetch>[1]): Promise<SuccessResult> => {
+
+  return customFetch<SuccessResult>(getVoidErpJournalEntryUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(erpVoidInput)
+  }
+);}
+
+
+
+
+
+export const getVoidErpJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidErpJournalEntry>>, TError,{id: number;data: BodyType<ErpVoidInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof voidErpJournalEntry>>, TError,{id: number;data: BodyType<ErpVoidInput>}, TContext> => {
+
+const mutationKey = ['voidErpJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof voidErpJournalEntry>>, {id: number;data: BodyType<ErpVoidInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  voidErpJournalEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VoidErpJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof voidErpJournalEntry>>>
+    export type VoidErpJournalEntryMutationBody = BodyType<ErpVoidInput>
+    export type VoidErpJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary 作廢傳票（保留原傳票並產生沖銷傳票）
+ */
+export const useVoidErpJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof voidErpJournalEntry>>, TError,{id: number;data: BodyType<ErpVoidInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof voidErpJournalEntry>>,
+        TError,
+        {id: number;data: BodyType<ErpVoidInput>},
+        TContext
+      > => {
+      return useMutation(getVoidErpJournalEntryMutationOptions(options));
     }
 
 export const getListErpVouchersUrl = (params?: ListErpVouchersParams,) => {
@@ -27793,3 +27866,4 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getUpdateErpCapaMutationOptions(options));
     }
+
