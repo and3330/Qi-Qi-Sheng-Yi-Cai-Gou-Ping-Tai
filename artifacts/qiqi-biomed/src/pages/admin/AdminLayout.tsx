@@ -35,6 +35,7 @@ import {
   Cable,
   Coins,
   BookOpen,
+  BookMarked,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -59,6 +60,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { name: "AI CMO", path: "/admin/ai-cmo", icon: BrainCircuit, roles: ["admin"] },
       { name: "Bot 連線", path: "/admin/bot", icon: Cable, roles: ["admin", "ops"] },
       { name: "AI 點數", path: "/admin/ai-credits", icon: Coins, roles: ["admin", "ops"] },
+      { name: "系統說明書", path: "/manual", icon: BookMarked },
     ],
   },
   {

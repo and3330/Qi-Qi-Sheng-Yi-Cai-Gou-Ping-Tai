@@ -9,7 +9,7 @@ import { ERP_ROLES, ErpRole } from '@/lib/roles';
 import { useGetErpMenuPermissions, getGetErpMenuPermissionsQueryKey } from '@workspace/api-client-react';
 import { 
   LogOut, LayoutDashboard, Users, Building2, Shield, Activity, 
-  Bell, ExternalLink, Search, ChevronDown, ChevronRight, Menu 
+  Bell, ExternalLink, BookOpen, Search, ChevronDown, ChevronRight, Menu 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -236,6 +236,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   >
                     <ExternalLink className="w-4 h-4 mr-3 shrink-0 opacity-70" />
                     <span className="truncate">回到管理後台</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/manual"
+                    className="flex items-center px-3 py-2 text-sm rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4 mr-3 shrink-0 opacity-70" />
+                    <span className="truncate">系統說明書</span>
                   </a>
                 </li>
               </ul>

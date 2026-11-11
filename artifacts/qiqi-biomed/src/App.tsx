@@ -60,6 +60,7 @@ const AdminAiCmoPage = lazy(() => import("./pages/admin/AiCmo"));
 const AdminAiKnowledgePage = lazy(() => import("./pages/admin/AiKnowledge"));
 const AdminBotConnectionPage = lazy(() => import("./pages/admin/BotConnection"));
 const AdminAiCreditsPage = lazy(() => import("./pages/admin/AiCredits"));
+const SystemManualPage = lazy(() => import("./pages/SystemManual"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -162,6 +163,19 @@ function AppRoutes() {
         <Suspense fallback={<PageLoading />}>
           <Route path="/u/:memberId" component={LinktreePage} />
         </Suspense>
+      </QueryClientProvider>
+    );
+  }
+
+  if (location === "/manual" || location.startsWith("/manual/")) {
+    // 系統說明書：內部人員專用，不套用商城版型
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary resetKey={window.location.pathname}>
+          <Suspense fallback={<PageLoading />}>
+            <SystemManualPage />
+          </Suspense>
+        </ErrorBoundary>
       </QueryClientProvider>
     );
   }
