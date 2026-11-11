@@ -5,6 +5,7 @@ import { useGetOrder, getGetOrderQueryKey } from "@workspace/api-client-react";
 import { formatPrice, getOrderStatusName, getPaymentMethodName, classNames } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RemittanceCard, CancelOrderButton } from "@/components/OrderSelfService";
 import {
   Dialog,
   DialogContent,
@@ -88,6 +89,8 @@ export default function OrderDetailPage() {
             </div>
           )}
         </section>
+
+        <RemittanceCard order={order} />
 
         {/* Info Cards */}
         <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4">
@@ -186,6 +189,8 @@ export default function OrderDetailPage() {
             </div>
           </section>
         )}
+
+        <CancelOrderButton order={order} />
       </div>
 
       <Dialog open={!!photoView} onOpenChange={(o) => !o && setPhotoView(null)}>

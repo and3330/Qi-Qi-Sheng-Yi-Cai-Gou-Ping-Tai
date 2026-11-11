@@ -18,6 +18,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -42,12 +43,20 @@ export default function SignUpPage() {
       setErrorMsg("請輸入姓名");
       return;
     }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMsg("Email 格式不正確");
+      return;
+    }
     
     setErrorMsg("");
     try {
-      await register({ data: { username, password, name, phone, tier: tier as any } });
+      await register({ data: { username, password, name, phone, email: email.trim() || null, tier: tier as any } });
       await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      toast({ title: "註冊成功" });
+      toast(
+        tier === "consumer"
+          ? { title: "註冊成功" }
+          : { title: "註冊成功，身份審核中", description: "審核通過前會先顯示一般價格，通過後自動切換為專屬價格。" },
+      );
       setLocation("/");
     } catch (err: any) {
       setErrorMsg(err.response?.data?.error || "註冊失敗，請確認資料格式");
@@ -151,6 +160,26 @@ export default function SignUpPage() {
               />
             </div>
           </div>
+
+          <div className="space-y-2">
+            <label htmlFor="signup-email" className="text-sm font-medium text-gray-700">Email</label>
+            <Input
+              id="signup-email"
+              type="email"
+              autoComplete="email"
+              placeholder="選填，忘記密碼時用來收重設信"
+              className="h-11 rounded-xl"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              data-testid="input-signup-email"
+            />
+          </div>
+
+          {tier !== "consumer" && (
+            <p className="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-800" data-testid="text-signup-tier-note">
+              {tier === "hospital" ? "醫院院所" : "診所／藥局"}身份需要平台審核。審核通過前會先顯示一般價格，通過後自動切換為專屬價格。
+            </p>
+          )}
           
           <Button 
             type="submit" 

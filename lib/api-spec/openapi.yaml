@@ -859,6 +859,119 @@ paths:
       responses:
         '204':
           description: Logged out
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags:
+        - me
+      summary: 會員自行變更密碼（需輸入目前密碼）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags:
+        - me
+      summary: 忘記密碼：寄出重設連結（一律回相同訊息）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags:
+        - me
+      summary: 用重設連結設定新密碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkMessage'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /shop/payment-info:
+    get:
+      operationId: getShopPaymentInfo
+      tags:
+        - orders
+      summary: 匯款帳號資訊（登入會員）
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopPaymentInfo'
+  /admin/shop/payment-info:
+    put:
+      operationId: updateShopPaymentInfo
+      tags:
+        - admin
+      summary: 設定匯款帳號資訊（系統管理員）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShopPaymentInfo'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopPaymentInfo'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
   /me:
     get:
       operationId: getMe
@@ -1069,6 +1182,62 @@ paths:
                 $ref: '#/components/schemas/Order'
         '400':
           description: Invalid order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /orders/{id}/remittance:
+    post:
+      operationId: reportOrderRemittance
+      tags:
+        - orders
+      summary: 回報匯款帳號後五碼（待付款的匯款訂單）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemittanceInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOwnOrder
+      tags:
+        - orders
+      summary: 會員自行取消待付款訂單
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Bad request
           content:
             application/json:
               schema:
@@ -8136,6 +8305,84 @@ components:
       scheme: bearer
       description: 電子報公開 v1 API 金鑰。亦接受以 x-api-key 標頭傳遞（本規格文件僅描述 Bearer 形式，兩者伺服器端皆會驗證）。
   schemas:
+    OkMessage:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+    ChangePasswordInput:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 72
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 72
+    ForgotPasswordInput:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 60
+    ResetPasswordInput:
+      type: object
+      required:
+        - token
+        - newPassword
+      properties:
+        token:
+          type: string
+          minLength: 20
+          maxLength: 200
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 72
+    RemittanceInput:
+      type: object
+      required:
+        - lastFive
+      properties:
+        lastFive:
+          type: string
+          pattern: ^[0-9]{5}$
+    ShopPaymentInfo:
+      type: object
+      required:
+        - bankName
+        - bankBranch
+        - bankAccount
+        - bankHolder
+        - bankNote
+      properties:
+        bankName:
+          type: string
+          maxLength: 100
+        bankBranch:
+          type: string
+          maxLength: 100
+        bankAccount:
+          type: string
+          maxLength: 60
+        bankHolder:
+          type: string
+          maxLength: 100
+        bankNote:
+          type: string
+          maxLength: 500
     CmoGoal:
       type: object
       required:
@@ -8788,6 +9035,11 @@ components:
           type:
             - string
             - 'null'
+        requestedTier:
+          type:
+            - string
+            - 'null'
+          description: 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
         erpRole:
           type:
             - string
@@ -8988,6 +9240,11 @@ components:
             - support
             - member
           description: 系統管理員 / 營運 / 客服 / 一般會員
+        requestedTier:
+          type:
+            - string
+            - 'null'
+          description: 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
         isActive:
           type: boolean
         points:
@@ -9048,6 +9305,11 @@ components:
             - support
             - member
           description: 系統管理員 / 營運 / 客服 / 一般會員
+        requestedTier:
+          type:
+            - string
+            - 'null'
+          description: 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
         isActive:
           type: boolean
         institutionVerified:
@@ -9105,6 +9367,11 @@ components:
       type: object
       description: 會員身份 (tier) 由平台審核後台調整，不開放自行修改
       properties:
+        email:
+          type:
+            - string
+            - 'null'
+          maxLength: 200
         name:
           type: string
           minLength: 1
@@ -9423,6 +9690,15 @@ components:
             - string
             - 'null'
         note:
+          type:
+            - string
+            - 'null'
+        remitLastFive:
+          type:
+            - string
+            - 'null'
+          description: 會員回報的匯款帳號後五碼
+        remitReportedAt:
           type:
             - string
             - 'null'
@@ -10842,6 +11118,15 @@ components:
             - string
             - 'null'
         note:
+          type:
+            - string
+            - 'null'
+        remitLastFive:
+          type:
+            - string
+            - 'null'
+          description: 會員回報的匯款帳號後五碼
+        remitReportedAt:
           type:
             - string
             - 'null'

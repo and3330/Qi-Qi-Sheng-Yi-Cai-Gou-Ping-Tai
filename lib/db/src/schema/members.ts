@@ -25,6 +25,8 @@ export const membersTable = pgTable("members", {
   phone: text("phone"),
   // hospital (A 醫院) | clinic (B 診所/藥局) | consumer (C 消費者)
   tier: text("tier").notNull().default("consumer"),
+  // 註冊時申請的身份（hospital | clinic），管理員審核通過才會寫進 tier；null = 沒有待審申請
+  requestedTier: text("requested_tier"),
   boundInstitutionId: integer("bound_institution_id"),
   // 綁定院所是否已由管理員審核（審核通過才能查看整個院所的訂單資料）
   institutionVerified: boolean("institution_verified").notNull().default(false),

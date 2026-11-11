@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./AdminLayout";
+import { PaymentInfoSettings } from "./PaymentInfoSettings";
 
 const statusLabel: Record<string, string> = {
   pending: "待付款",
@@ -399,6 +400,8 @@ export default function AdminOrdersPage() {
         </Select>
       </div>
 
+      <PaymentInfoSettings />
+
       {selectedIds.size > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 px-4 py-3">
           <span className="flex items-center gap-1.5 text-sm font-medium">
@@ -507,6 +510,11 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {paymentLabel[o.paymentMethod] ?? o.paymentMethod}
+                      {o.remitLastFive && (
+                        <p className="mt-0.5 font-mono text-emerald-700" data-testid={`text-remit-${o.id}`}>
+                          後五碼 {o.remitLastFive}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold">
                       NT${o.totalAmount.toLocaleString()}
@@ -591,6 +599,12 @@ export default function AdminOrdersPage() {
                 <p>
                   <span className="text-muted-foreground">付款方式：</span>
                   {paymentLabel[detail.paymentMethod] ?? detail.paymentMethod}
+                  {detail.remitLastFive && (
+                    <span className="ml-2 font-mono text-emerald-700">
+                      （會員回報後五碼 {detail.remitLastFive}
+                      {detail.remitReportedAt ? `，${new Date(detail.remitReportedAt).toLocaleString("zh-TW")}` : ""}）
+                    </span>
+                  )}
                 </p>
                 <p>
                   <span className="text-muted-foreground">收件人：</span>

@@ -61,6 +61,8 @@ const AdminAiKnowledgePage = lazy(() => import("./pages/admin/AiKnowledge"));
 const AdminBotConnectionPage = lazy(() => import("./pages/admin/BotConnection"));
 const AdminAiCreditsPage = lazy(() => import("./pages/admin/AiCredits"));
 const SystemManualPage = lazy(() => import("./pages/SystemManual"));
+const ForgotPasswordPage = lazy(() => import("./pages/ForgotPassword").then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import("./pages/ForgotPassword").then((m) => ({ default: m.ResetPasswordPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -225,6 +227,8 @@ function AppRoutes() {
 
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
+              <Route path="/forgot-password" component={ForgotPasswordPage} />
+              <Route path="/reset-password" component={ResetPasswordPage} />
 
               <Route>
                 <div className="flex h-full items-center justify-center p-8 text-center text-muted-foreground">

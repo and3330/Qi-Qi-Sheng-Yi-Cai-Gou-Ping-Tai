@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { db, productsTable, productVariantsTable } from "@workspace/db";
 import { ListProductsQueryParams, GetProductParams } from "@workspace/api-zod";
-import { serializeProduct } from "../lib/serialize";
+import { serializeProduct, maskTierPrices } from "../lib/serialize";
 import { getSellableStockMap } from "../lib/warehouseStock";
 import {
   optionalMember,
@@ -31,11 +31,19 @@ router.get("/products", optionalMember, async (req, res) => {
     );
   }
 
+  // 價格排序用「看的人自己那一級」的價格
+  const viewerTier = req.member?.tier ?? "consumer";
+  const priceColumn =
+    viewerTier === "hospital"
+      ? productsTable.priceHospital
+      : viewerTier === "clinic"
+        ? productsTable.priceClinic
+        : productsTable.priceConsumer;
   const orderBy =
     sort === "priceAsc"
-      ? asc(productsTable.priceConsumer)
+      ? asc(priceColumn)
       : sort === "priceDesc"
-        ? desc(productsTable.priceConsumer)
+        ? desc(priceColumn)
         : sort === "newest"
           ? desc(productsTable.createdAt)
           : [desc(productsTable.isHot), asc(productsTable.code)];
@@ -54,7 +62,7 @@ router.get("/products", optionalMember, async (req, res) => {
   const sellable = await getSellableStockMap(visible.map((p) => p.id));
   res.json(
     visible.map((p) => ({
-      ...serializeProduct(p),
+      ...maskTierPrices(serializeProduct(p), viewerTier),
       stock: p.isVirtual ? serializeProduct(p).stock : sellable.get(`${p.id}:`) ?? 0,
     })),
   );
@@ -94,19 +102,25 @@ router.get("/products/:id", optionalMember, async (req, res) => {
     .orderBy(asc(productVariantsTable.id));
   // 商城可售量 = 可售倉合計
   const sellable = await getSellableStockMap([row.id]);
+  const viewerTier = req.member?.tier ?? "consumer";
   res.json({
-    ...serializeProduct(row),
+    ...maskTierPrices(serializeProduct(row), viewerTier),
     stock: row.isVirtual ? serializeProduct(row).stock : sellable.get(`${row.id}:`) ?? 0,
-    variants: variants.map((v) => ({
-      id: v.id,
-      productId: v.productId,
-      name: v.name,
-      priceHospital: v.priceHospital,
-      priceClinic: v.priceClinic,
-      priceConsumer: v.priceConsumer,
-      stock: sellable.get(`${row.id}:${v.id}`) ?? 0,
-      isActive: v.isActive,
-    })),
+    variants: variants.map((v) =>
+      maskTierPrices(
+        {
+          id: v.id,
+          productId: v.productId,
+          name: v.name,
+          priceHospital: v.priceHospital,
+          priceClinic: v.priceClinic,
+          priceConsumer: v.priceConsumer,
+          stock: sellable.get(`${row.id}:${v.id}`) ?? 0,
+          isActive: v.isActive,
+        },
+        viewerTier,
+      ),
+    ),
   });
 });
 

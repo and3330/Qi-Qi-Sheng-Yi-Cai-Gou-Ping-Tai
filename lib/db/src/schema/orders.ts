@@ -34,6 +34,9 @@ export const ordersTable = pgTable("orders", {
   receiverName: text("receiver_name"),
   receiverPhone: text("receiver_phone"),
   note: text("note"),
+  // 匯款訂單：會員回報的匯款帳號後五碼與回報時間
+  remitLastFive: text("remit_last_five"),
+  remitReportedAt: timestamp("remit_reported_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [index("idx_orders_member_created").on(t.memberId, t.createdAt)]);
 

@@ -30,6 +30,14 @@ router.patch("/me", requireMember, async (req, res) => {
   }
   // 會員自行變更綁定院所時，重置審核狀態（需管理員重新審核才能查看院所範圍資料）
   const changes: Record<string, unknown> = { ...parsed.data };
+  if ("email" in parsed.data) {
+    const email = (parsed.data.email ?? "").trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ error: "Email 格式不正確" });
+      return;
+    }
+    changes.email = email || null;
+  }
   if (
     "boundInstitutionId" in parsed.data &&
     parsed.data.boundInstitutionId !== req.member!.boundInstitutionId

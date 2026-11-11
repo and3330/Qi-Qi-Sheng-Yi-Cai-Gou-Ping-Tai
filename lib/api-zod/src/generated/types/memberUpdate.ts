@@ -10,6 +10,11 @@
  * 會員身份 (tier) 由平台審核後台調整，不開放自行修改
  */
 export interface MemberUpdate {
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  email?: string | null;
   /** @minLength 1 */
   name?: string;
   /** @nullable */

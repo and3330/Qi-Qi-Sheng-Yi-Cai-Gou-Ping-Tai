@@ -64,6 +64,8 @@ function serializeAdminOrder(
     receiverPhone: o.receiverPhone,
     note: o.note,
     shipmentPhotos: o.shipmentPhotos ?? [],
+    remitLastFive: o.remitLastFive ?? null,
+    remitReportedAt: o.remitReportedAt ? o.remitReportedAt.toISOString() : null,
     createdAt: o.createdAt.toISOString(),
     items: items.map((i) => ({
       id: i.id,

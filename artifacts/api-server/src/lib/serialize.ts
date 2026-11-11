@@ -18,6 +18,7 @@ export function serializeMember(
     points: m.points,
     shippingAddress: m.shippingAddress,
     erpRole: m.erpRole,
+    requestedTier: m.requestedTier ?? null,
   };
 }
 
@@ -64,4 +65,23 @@ export function serializeArticle(a: Article) {
     imageUrl: a.imageUrl,
     publishedAt: a.publishedAt.toISOString(),
   };
+}
+
+type TierPrices = { priceHospital: number; priceClinic: number; priceConsumer: number };
+
+/** 這個身份實際適用的價格 */
+export function priceForTier(tier: string | null | undefined, p: TierPrices): number {
+  if (tier === "hospital") return p.priceHospital;
+  if (tier === "clinic") return p.priceClinic;
+  return p.priceConsumer;
+}
+
+/**
+ * 商城對外只給「看的人自己那一級」的價格：三個價格欄位都填成同一個數字，
+ * 其他身份的價格不會離開伺服器。未登入視同消費者。
+ * 後台與 ERP 的商品管理不走這裡，仍看得到完整三種價格。
+ */
+export function maskTierPrices<T extends TierPrices>(obj: T, tier: string | null | undefined): T {
+  const price = priceForTier(tier, obj);
+  return { ...obj, priceHospital: price, priceClinic: price, priceConsumer: price };
 }

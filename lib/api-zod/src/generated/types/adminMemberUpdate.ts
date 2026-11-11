@@ -30,6 +30,11 @@ export interface AdminMemberUpdate {
   tier?: AdminMemberUpdateTier;
   /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role?: AdminMemberUpdateRole;
+  /**
+     * 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
+     * @nullable
+     */
+  requestedTier?: string | null;
   isActive?: boolean;
   institutionVerified?: boolean;
   /** @nullable */

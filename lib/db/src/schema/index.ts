@@ -36,3 +36,4 @@ export * from "./erpQuality";
 export * from "./erpNotifications";
 export * from "./mcp";
 export * from "./aiCredits";
+export * from "./shopAccount";

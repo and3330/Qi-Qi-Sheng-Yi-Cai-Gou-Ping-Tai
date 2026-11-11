@@ -97,6 +97,12 @@ export default function SignInPage() {
             {isPending ? "登入中..." : "登入"}
           </Button>
 
+          <div className="text-center">
+            <Link href="/forgot-password" className="text-sm text-gray-500 hover:text-primary hover:underline" data-testid="link-forgot-password">
+              忘記密碼？
+            </Link>
+          </div>
+
           <div className="relative mt-8 mb-6">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-gray-200" />

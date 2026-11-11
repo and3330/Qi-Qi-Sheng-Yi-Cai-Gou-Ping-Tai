@@ -26,6 +26,13 @@ export interface Order {
   receiverPhone?: string | null;
   /** @nullable */
   note?: string | null;
+  /**
+     * 會員回報的匯款帳號後五碼
+     * @nullable
+     */
+  remitLastFive?: string | null;
+  /** @nullable */
+  remitReportedAt?: string | null;
   /** 出貨照片物件路徑 */
   shipmentPhotos?: string[];
   createdAt: string;

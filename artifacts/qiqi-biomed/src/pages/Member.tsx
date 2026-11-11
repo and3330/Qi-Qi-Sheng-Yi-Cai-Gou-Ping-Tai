@@ -1,4 +1,5 @@
 import CompanyFooter from '@/components/CompanyFooter';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useGetMe, useUpdateMe, useListInstitutions, useLogout, getGetMeQueryKey, useGetWallet } from "@workspace/api-client-react";
@@ -97,6 +98,7 @@ function EditProfileDialog({ me }: { me: any }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(me.name || "");
   const [phone, setPhone] = useState(me.phone || "");
+  const [email, setEmail] = useState(me.email || "");
   const [address, setAddress] = useState(me.shippingAddress || "");
   const [instId, setInstId] = useState(me.boundInstitutionId ? String(me.boundInstitutionId) : "none");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,6 +110,7 @@ function EditProfileDialog({ me }: { me: any }) {
         data: {
           name,
           phone,
+          email: email.trim() || null,
           shippingAddress: address,
           boundInstitutionId: instId !== "none" ? Number(instId) : null
         }
@@ -115,8 +118,8 @@ function EditProfileDialog({ me }: { me: any }) {
       queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
       toast({ title: "個人資料已更新" });
       setOpen(false);
-    } catch (e) {
-      toast({ title: "更新失敗", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: e?.data?.error || "更新失敗", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -141,6 +144,10 @@ function EditProfileDialog({ me }: { me: any }) {
           <div className="space-y-2">
             <Label>聯絡電話</Label>
             <Input value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="忘記密碼時用來收重設信" data-testid="input-profile-email" />
           </div>
           <div className="space-y-2">
             <Label>預設收件地址</Label>
@@ -223,7 +230,13 @@ export default function MemberPage() {
               <div className="inline-flex items-center bg-white text-primary text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm mb-1">
                 {getTierName(me.tier)}
               </div>
-              <p className="text-[10px] text-primary-foreground/70">會員身份由平台審核調整</p>
+              {me.requestedTier ? (
+                <p className="text-[10px] font-medium text-amber-200" data-testid="text-tier-pending">
+                  已申請{getTierName(me.requestedTier)}身份，審核中（目前顯示一般價格）
+                </p>
+              ) : (
+                <p className="text-[10px] text-primary-foreground/70">會員身份由平台審核調整</p>
+              )}
             </div>
           </div>
         </div>
@@ -306,6 +319,7 @@ export default function MemberPage() {
             <span className="font-bold text-gray-800 flex-1">常見問題</span>
             <span className="text-gray-300">›</span>
           </Link>
+          <ChangePasswordDialog />
         </div>
 
         <Button 

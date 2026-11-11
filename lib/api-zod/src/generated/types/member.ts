@@ -30,6 +30,11 @@ export interface Member {
   /** @nullable */
   shippingAddress?: string | null;
   /**
+     * 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
+     * @nullable
+     */
+  requestedTier?: string | null;
+  /**
      * ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）
      * @nullable
      */

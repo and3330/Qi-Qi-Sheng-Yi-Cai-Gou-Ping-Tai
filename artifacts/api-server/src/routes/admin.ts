@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import bcrypt from "bcryptjs";
-import { and, count, desc, eq, ilike, lte, ne, or, sum , notInArray} from "drizzle-orm";
+import { and, count, desc, eq, ilike, lte, ne, or, sum, notInArray, sql } from "drizzle-orm";
 import {
   db,
   membersTable,
@@ -24,6 +24,7 @@ function serializeAdminMember(m: Member) {
     email: m.email,
     phone: m.phone,
     tier: m.tier,
+    requestedTier: m.requestedTier ?? null,
     role: m.role,
     isActive: m.isActive,
     institutionVerified: m.institutionVerified,
@@ -196,6 +197,13 @@ router.patch("/admin/members/:id", requireAdmin, async (req, res) => {
       .update(membersTable)
       .set({
         ...memberChanges,
+        // 身份真的被改動（或設成會員申請的那個身份）時，清掉待審的申請；
+        // 只是編輯其他欄位、身份沒變時，申請保留。右邊的欄位是更新前的值。
+        ...(memberChanges.tier && !("requestedTier" in memberChanges)
+          ? {
+              requestedTier: sql<string | null>`CASE WHEN ${membersTable.tier} <> ${memberChanges.tier} OR ${membersTable.requestedTier} = ${memberChanges.tier} THEN NULL ELSE ${membersTable.requestedTier} END`,
+            }
+          : {}),
         ...(username ? { username } : {}),
         ...(password ? { passwordHash: await bcrypt.hash(password, 10) } : {}),
       })

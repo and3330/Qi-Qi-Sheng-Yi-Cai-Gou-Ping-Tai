@@ -118,6 +118,7 @@ export const CreateAdminMemberResponse = zod.object({
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']),
   "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
@@ -144,6 +145,7 @@ export const ListAdminMembersResponseItem = zod.object({
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']),
   "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
@@ -170,6 +172,7 @@ export const GetAdminMemberResponse = zod.object({
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']),
   "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
@@ -206,6 +209,7 @@ export const UpdateAdminMemberBody = zod.object({
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']).optional(),
   "role": zod.enum(['admin', 'ops', 'support', 'member']).optional().describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "isActive": zod.boolean().optional(),
   "institutionVerified": zod.boolean().optional(),
   "shippingAddress": zod.string().nullish()
@@ -219,6 +223,7 @@ export const UpdateAdminMemberResponse = zod.object({
   "phone": zod.string().nullish(),
   "tier": zod.enum(['hospital', 'clinic', 'consumer']),
   "role": zod.enum(['admin', 'ops', 'support', 'member']).describe('系統管理員 \/ 營運 \/ 客服 \/ 一般會員'),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "isActive": zod.boolean(),
   "points": zod.int(),
   "boundInstitutionId": zod.int().nullish(),
@@ -721,6 +726,8 @@ export const ListAdminOrdersResponseItem = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
@@ -757,6 +764,8 @@ export const GetAdminOrderResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
@@ -796,6 +805,8 @@ export const UpdateAdminOrderStatusResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
@@ -837,6 +848,8 @@ export const BulkUpdateAdminOrderStatusResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
@@ -953,6 +966,7 @@ export const RegisterResponse = zod.object({
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
   "shippingAddress": zod.string().nullish(),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
@@ -982,6 +996,7 @@ export const LoginResponse = zod.object({
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
   "shippingAddress": zod.string().nullish(),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
@@ -990,6 +1005,134 @@ export const LoginResponse = zod.object({
  * @summary Log out (destroys session)
  */
 export const LogoutResponse = zod.void()
+
+
+/**
+ * @summary 會員自行變更密碼（需輸入目前密碼）
+ */
+export const changePasswordBodyCurrentPasswordMax = 72;
+
+export const changePasswordBodyNewPasswordMin = 8;
+export const changePasswordBodyNewPasswordMax = 72;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string().min(1).max(changePasswordBodyCurrentPasswordMax),
+  "newPassword": zod.string().min(changePasswordBodyNewPasswordMin).max(changePasswordBodyNewPasswordMax)
+})
+
+export const ChangePasswordResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary 忘記密碼：寄出重設連結（一律回相同訊息）
+ */
+export const forgotPasswordBodyUsernameMax = 60;
+
+
+
+export const ForgotPasswordBody = zod.object({
+  "username": zod.string().min(1).max(forgotPasswordBodyUsernameMax)
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary 用重設連結設定新密碼
+ */
+export const resetPasswordBodyTokenMin = 20;
+export const resetPasswordBodyTokenMax = 200;
+
+export const resetPasswordBodyNewPasswordMin = 8;
+export const resetPasswordBodyNewPasswordMax = 72;
+
+
+
+export const ResetPasswordBody = zod.object({
+  "token": zod.string().min(resetPasswordBodyTokenMin).max(resetPasswordBodyTokenMax),
+  "newPassword": zod.string().min(resetPasswordBodyNewPasswordMin).max(resetPasswordBodyNewPasswordMax)
+})
+
+export const ResetPasswordResponse = zod.object({
+  "ok": zod.boolean(),
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary 匯款帳號資訊（登入會員）
+ */
+export const getShopPaymentInfoResponseBankNameMax = 100;
+
+export const getShopPaymentInfoResponseBankBranchMax = 100;
+
+export const getShopPaymentInfoResponseBankAccountMax = 60;
+
+export const getShopPaymentInfoResponseBankHolderMax = 100;
+
+export const getShopPaymentInfoResponseBankNoteMax = 500;
+
+
+
+export const GetShopPaymentInfoResponse = zod.object({
+  "bankName": zod.string().max(getShopPaymentInfoResponseBankNameMax),
+  "bankBranch": zod.string().max(getShopPaymentInfoResponseBankBranchMax),
+  "bankAccount": zod.string().max(getShopPaymentInfoResponseBankAccountMax),
+  "bankHolder": zod.string().max(getShopPaymentInfoResponseBankHolderMax),
+  "bankNote": zod.string().max(getShopPaymentInfoResponseBankNoteMax)
+})
+
+
+/**
+ * @summary 設定匯款帳號資訊（系統管理員）
+ */
+export const updateShopPaymentInfoBodyBankNameMax = 100;
+
+export const updateShopPaymentInfoBodyBankBranchMax = 100;
+
+export const updateShopPaymentInfoBodyBankAccountMax = 60;
+
+export const updateShopPaymentInfoBodyBankHolderMax = 100;
+
+export const updateShopPaymentInfoBodyBankNoteMax = 500;
+
+
+
+export const UpdateShopPaymentInfoBody = zod.object({
+  "bankName": zod.string().max(updateShopPaymentInfoBodyBankNameMax),
+  "bankBranch": zod.string().max(updateShopPaymentInfoBodyBankBranchMax),
+  "bankAccount": zod.string().max(updateShopPaymentInfoBodyBankAccountMax),
+  "bankHolder": zod.string().max(updateShopPaymentInfoBodyBankHolderMax),
+  "bankNote": zod.string().max(updateShopPaymentInfoBodyBankNoteMax)
+})
+
+export const updateShopPaymentInfoResponseBankNameMax = 100;
+
+export const updateShopPaymentInfoResponseBankBranchMax = 100;
+
+export const updateShopPaymentInfoResponseBankAccountMax = 60;
+
+export const updateShopPaymentInfoResponseBankHolderMax = 100;
+
+export const updateShopPaymentInfoResponseBankNoteMax = 500;
+
+
+
+export const UpdateShopPaymentInfoResponse = zod.object({
+  "bankName": zod.string().max(updateShopPaymentInfoResponseBankNameMax),
+  "bankBranch": zod.string().max(updateShopPaymentInfoResponseBankBranchMax),
+  "bankAccount": zod.string().max(updateShopPaymentInfoResponseBankAccountMax),
+  "bankHolder": zod.string().max(updateShopPaymentInfoResponseBankHolderMax),
+  "bankNote": zod.string().max(updateShopPaymentInfoResponseBankNoteMax)
+})
 
 
 /**
@@ -1008,6 +1151,7 @@ export const GetMeResponse = zod.object({
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
   "shippingAddress": zod.string().nullish(),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
@@ -1015,10 +1159,13 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Update current member profile
  */
+export const updateMeBodyEmailMax = 200;
+
 
 
 
 export const UpdateMeBody = zod.object({
+  "email": zod.string().max(updateMeBodyEmailMax).nullish(),
   "name": zod.string().min(1).optional(),
   "phone": zod.string().nullish(),
   "boundInstitutionId": zod.int().nullish(),
@@ -1039,6 +1186,7 @@ export const UpdateMeResponse = zod.object({
   "boundDepartment": zod.string().nullish(),
   "points": zod.int(),
   "shippingAddress": zod.string().nullish(),
+  "requestedTier": zod.string().nullish().describe('註冊時申請的身份（hospital \/ clinic），待管理員審核；null 表示沒有待審申請'),
   "erpRole": zod.string().nullish().describe('ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）')
 })
 
@@ -1304,6 +1452,8 @@ export const ListOrdersResponseItem = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
@@ -1359,6 +1509,87 @@ export const CreateOrderResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "createdAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "quantity": zod.int()
+}))
+})
+
+
+/**
+ * @summary 回報匯款帳號後五碼（待付款的匯款訂單）
+ */
+export const ReportOrderRemittanceParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const reportOrderRemittanceBodyLastFiveRegExp = new RegExp('^[0-9]{5}$');
+
+
+export const ReportOrderRemittanceBody = zod.object({
+  "lastFive": zod.string().regex(reportOrderRemittanceBodyLastFiveRegExp)
+})
+
+export const ReportOrderRemittanceResponse = zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled', 'returned']),
+  "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']).describe('匯款 \/ 貨到付款 \/ 錢包扣款(預留)'),
+  "totalAmount": zod.int(),
+  "pointsUsed": zod.int().optional(),
+  "pointsEarned": zod.int().optional(),
+  "shippingAddress": zod.string().nullish(),
+  "receiverName": zod.string().nullish(),
+  "receiverPhone": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "createdAt": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "quantity": zod.int()
+}))
+})
+
+
+/**
+ * @summary 會員自行取消待付款訂單
+ */
+export const CancelOwnOrderParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const CancelOwnOrderResponse = zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled', 'returned']),
+  "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']).describe('匯款 \/ 貨到付款 \/ 錢包扣款(預留)'),
+  "totalAmount": zod.int(),
+  "pointsUsed": zod.int().optional(),
+  "pointsEarned": zod.int().optional(),
+  "shippingAddress": zod.string().nullish(),
+  "receiverName": zod.string().nullish(),
+  "receiverPhone": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
@@ -1393,6 +1624,8 @@ export const GetOrderResponse = zod.object({
   "receiverName": zod.string().nullish(),
   "receiverPhone": zod.string().nullish(),
   "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({

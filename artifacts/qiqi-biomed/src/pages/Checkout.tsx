@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, CheckCircle2, Building2, Truck, CreditCard, Wallet } from "lucide-react";
 import { useGetCart, useCreateOrder, useGetMe, getGetCartQueryKey, getListOrdersQueryKey, useGetPortalWallet, getGetPortalWalletQueryKey } from "@workspace/api-client-react";
@@ -24,6 +24,16 @@ export default function CheckoutPage() {
   const [receiverPhone, setReceiverPhone] = useState(me?.phone || "");
   const [shippingAddress, setShippingAddress] = useState(me?.shippingAddress || "");
   const [note, setNote] = useState("");
+
+  // 會員資料比頁面晚載入時，補帶入預設的收件資料（只帶一次，不蓋掉使用者已經輸入的內容）
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!me || prefilled.current) return;
+    prefilled.current = true;
+    setReceiverName((v) => v || me.name || "");
+    setReceiverPhone((v) => v || me.phone || "");
+    setShippingAddress((v) => v || me.shippingAddress || "");
+  }, [me]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successOrderNo, setSuccessOrderNo] = useState<string | null>(null);
 
@@ -150,7 +160,7 @@ export default function CheckoutPage() {
               <Building2 size={20} className="text-gray-500 mr-3" />
               <div className="flex-1">
                 <div className="font-bold text-sm">銀行匯款</div>
-                <div className="text-xs text-gray-500 mt-0.5">匯款後請至訂單回報後五碼</div>
+                <div className="text-xs text-gray-500 mt-0.5">下單後在訂單頁顯示匯款帳號，匯款後回報後五碼</div>
               </div>
               <input type="radio" className="hidden" checked={paymentMethod === 'bank_transfer'} onChange={() => setPaymentMethod('bank_transfer')} />
             </label>

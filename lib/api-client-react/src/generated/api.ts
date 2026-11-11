@@ -63,6 +63,7 @@ import type {
   CartItem,
   CartItemInput,
   CartItemUpdate,
+  ChangePasswordInput,
   ChatMessage,
   ChatMessageInput,
   CloseSupportConversation200,
@@ -231,6 +232,7 @@ import type {
   Expense,
   ExpenseInput,
   FavoriteInput,
+  ForgotPasswordInput,
   GetAdminCommissionReportParams,
   GetAdminFinanceLedgerParams,
   GetAdminInventoryReportParams,
@@ -343,6 +345,7 @@ import type {
   NewsletterV1SubscribeInput,
   NewsletterV1SubscriberResult,
   NewsletterV1UnsubscribeInput,
+  OkMessage,
   Order,
   OrderInput,
   OrderStatusUpdate,
@@ -364,9 +367,12 @@ import type {
   QuotationInput,
   QuotationStatusUpdate,
   RegisterInput,
+  RemittanceInput,
+  ResetPasswordInput,
   SearchErpParams,
   ShipmentPhotosInput,
   ShipmentPhotosResult,
+  ShopPaymentInfo,
   SocialAccount,
   SocialAccountsResponse,
   SocialBatchCreateInput,
@@ -2779,6 +2785,367 @@ export const useLogout = <TError = ErrorType<unknown>,
       return useMutation(getLogoutMutationOptions(options));
     }
 
+export const getChangePasswordUrl = () => {
+
+
+
+
+  return `/api/auth/change-password`
+}
+
+/**
+ * @summary 會員自行變更密碼（需輸入目前密碼）
+ */
+export const changePassword = async (changePasswordInput: ChangePasswordInput, options?: Parameters<typeof customFetch>[1]): Promise<OkMessage> => {
+
+  return customFetch<OkMessage>(getChangePasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(changePasswordInput)
+  }
+);}
+
+
+
+
+
+export const getChangePasswordMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,{data: BodyType<ChangePasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,{data: BodyType<ChangePasswordInput>}, TContext> => {
+
+const mutationKey = ['changePassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof changePassword>>, {data: BodyType<ChangePasswordInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  changePassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChangePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changePassword>>>
+    export type ChangePasswordMutationBody = BodyType<ChangePasswordInput>
+    export type ChangePasswordMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 會員自行變更密碼（需輸入目前密碼）
+ */
+export const useChangePassword = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof changePassword>>, TError,{data: BodyType<ChangePasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof changePassword>>,
+        TError,
+        {data: BodyType<ChangePasswordInput>},
+        TContext
+      > => {
+      return useMutation(getChangePasswordMutationOptions(options));
+    }
+
+export const getForgotPasswordUrl = () => {
+
+
+
+
+  return `/api/auth/forgot-password`
+}
+
+/**
+ * @summary 忘記密碼：寄出重設連結（一律回相同訊息）
+ */
+export const forgotPassword = async (forgotPasswordInput: ForgotPasswordInput, options?: Parameters<typeof customFetch>[1]): Promise<OkMessage> => {
+
+  return customFetch<OkMessage>(getForgotPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(forgotPasswordInput)
+  }
+);}
+
+
+
+
+
+export const getForgotPasswordMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forgotPassword>>, TError,{data: BodyType<ForgotPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof forgotPassword>>, TError,{data: BodyType<ForgotPasswordInput>}, TContext> => {
+
+const mutationKey = ['forgotPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof forgotPassword>>, {data: BodyType<ForgotPasswordInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  forgotPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ForgotPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof forgotPassword>>>
+    export type ForgotPasswordMutationBody = BodyType<ForgotPasswordInput>
+    export type ForgotPasswordMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 忘記密碼：寄出重設連結（一律回相同訊息）
+ */
+export const useForgotPassword = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof forgotPassword>>, TError,{data: BodyType<ForgotPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof forgotPassword>>,
+        TError,
+        {data: BodyType<ForgotPasswordInput>},
+        TContext
+      > => {
+      return useMutation(getForgotPasswordMutationOptions(options));
+    }
+
+export const getResetPasswordUrl = () => {
+
+
+
+
+  return `/api/auth/reset-password`
+}
+
+/**
+ * @summary 用重設連結設定新密碼
+ */
+export const resetPassword = async (resetPasswordInput: ResetPasswordInput, options?: Parameters<typeof customFetch>[1]): Promise<OkMessage> => {
+
+  return customFetch<OkMessage>(getResetPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resetPasswordInput)
+  }
+);}
+
+
+
+
+
+export const getResetPasswordMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,{data: BodyType<ResetPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,{data: BodyType<ResetPasswordInput>}, TContext> => {
+
+const mutationKey = ['resetPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetPassword>>, {data: BodyType<ResetPasswordInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  resetPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof resetPassword>>>
+    export type ResetPasswordMutationBody = BodyType<ResetPasswordInput>
+    export type ResetPasswordMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 用重設連結設定新密碼
+ */
+export const useResetPassword = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetPassword>>, TError,{data: BodyType<ResetPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetPassword>>,
+        TError,
+        {data: BodyType<ResetPasswordInput>},
+        TContext
+      > => {
+      return useMutation(getResetPasswordMutationOptions(options));
+    }
+
+export const getGetShopPaymentInfoUrl = () => {
+
+
+
+
+  return `/api/shop/payment-info`
+}
+
+/**
+ * @summary 匯款帳號資訊（登入會員）
+ */
+export const getShopPaymentInfo = async ( options?: Parameters<typeof customFetch>[1]): Promise<ShopPaymentInfo> => {
+
+  return customFetch<ShopPaymentInfo>(getGetShopPaymentInfoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetShopPaymentInfoQueryKey = () => {
+    return [
+    `/api/shop/payment-info`
+    ] as const;
+    }
+
+
+export const getGetShopPaymentInfoQueryOptions = <TData = Awaited<ReturnType<typeof getShopPaymentInfo>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShopPaymentInfo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetShopPaymentInfoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getShopPaymentInfo>>> = ({ signal }) => getShopPaymentInfo({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getShopPaymentInfo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetShopPaymentInfoQueryResult = NonNullable<Awaited<ReturnType<typeof getShopPaymentInfo>>>
+export type GetShopPaymentInfoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary 匯款帳號資訊（登入會員）
+ */
+
+export function useGetShopPaymentInfo<TData = Awaited<ReturnType<typeof getShopPaymentInfo>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getShopPaymentInfo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetShopPaymentInfoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateShopPaymentInfoUrl = () => {
+
+
+
+
+  return `/api/admin/shop/payment-info`
+}
+
+/**
+ * @summary 設定匯款帳號資訊（系統管理員）
+ */
+export const updateShopPaymentInfo = async (shopPaymentInfo: ShopPaymentInfo, options?: Parameters<typeof customFetch>[1]): Promise<ShopPaymentInfo> => {
+
+  return customFetch<ShopPaymentInfo>(getUpdateShopPaymentInfoUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(shopPaymentInfo)
+  }
+);}
+
+
+
+
+
+export const getUpdateShopPaymentInfoMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShopPaymentInfo>>, TError,{data: BodyType<ShopPaymentInfo>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateShopPaymentInfo>>, TError,{data: BodyType<ShopPaymentInfo>}, TContext> => {
+
+const mutationKey = ['updateShopPaymentInfo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateShopPaymentInfo>>, {data: BodyType<ShopPaymentInfo>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateShopPaymentInfo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateShopPaymentInfoMutationResult = NonNullable<Awaited<ReturnType<typeof updateShopPaymentInfo>>>
+    export type UpdateShopPaymentInfoMutationBody = BodyType<ShopPaymentInfo>
+    export type UpdateShopPaymentInfoMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 設定匯款帳號資訊（系統管理員）
+ */
+export const useUpdateShopPaymentInfo = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateShopPaymentInfo>>, TError,{data: BodyType<ShopPaymentInfo>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateShopPaymentInfo>>,
+        TError,
+        {data: BodyType<ShopPaymentInfo>},
+        TContext
+      > => {
+      return useMutation(getUpdateShopPaymentInfoMutationOptions(options));
+    }
+
 export const getGetMeUrl = () => {
 
 
@@ -3596,6 +3963,149 @@ export const useCreateOrder = <TError = ErrorType<ErrorMessage>,
         TContext
       > => {
       return useMutation(getCreateOrderMutationOptions(options));
+    }
+
+export const getReportOrderRemittanceUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/remittance`
+}
+
+/**
+ * @summary 回報匯款帳號後五碼（待付款的匯款訂單）
+ */
+export const reportOrderRemittance = async (id: number,
+    remittanceInput: RemittanceInput, options?: Parameters<typeof customFetch>[1]): Promise<Order> => {
+
+  return customFetch<Order>(getReportOrderRemittanceUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(remittanceInput)
+  }
+);}
+
+
+
+
+
+export const getReportOrderRemittanceMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportOrderRemittance>>, TError,{id: number;data: BodyType<RemittanceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportOrderRemittance>>, TError,{id: number;data: BodyType<RemittanceInput>}, TContext> => {
+
+const mutationKey = ['reportOrderRemittance'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportOrderRemittance>>, {id: number;data: BodyType<RemittanceInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reportOrderRemittance(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportOrderRemittanceMutationResult = NonNullable<Awaited<ReturnType<typeof reportOrderRemittance>>>
+    export type ReportOrderRemittanceMutationBody = BodyType<RemittanceInput>
+    export type ReportOrderRemittanceMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 回報匯款帳號後五碼（待付款的匯款訂單）
+ */
+export const useReportOrderRemittance = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportOrderRemittance>>, TError,{id: number;data: BodyType<RemittanceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportOrderRemittance>>,
+        TError,
+        {id: number;data: BodyType<RemittanceInput>},
+        TContext
+      > => {
+      return useMutation(getReportOrderRemittanceMutationOptions(options));
+    }
+
+export const getCancelOwnOrderUrl = (id: number,) => {
+
+
+
+
+  return `/api/orders/${id}/cancel`
+}
+
+/**
+ * @summary 會員自行取消待付款訂單
+ */
+export const cancelOwnOrder = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Order> => {
+
+  return customFetch<Order>(getCancelOwnOrderUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelOwnOrderMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelOwnOrder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelOwnOrder>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['cancelOwnOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelOwnOrder>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelOwnOrder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelOwnOrderMutationResult = NonNullable<Awaited<ReturnType<typeof cancelOwnOrder>>>
+
+    export type CancelOwnOrderMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 會員自行取消待付款訂單
+ */
+export const useCancelOwnOrder = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelOwnOrder>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelOwnOrder>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getCancelOwnOrderMutationOptions(options));
     }
 
 export const getGetOrderUrl = (id: number,) => {

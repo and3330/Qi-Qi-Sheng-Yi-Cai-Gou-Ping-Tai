@@ -8,7 +8,7 @@ import {
   RemoveCartItemParams,
 } from "@workspace/api-zod";
 import { requireMember } from "../middlewares/requireMember";
-import { serializeProduct } from "../lib/serialize";
+import { serializeProduct, maskTierPrices } from "../lib/serialize";
 import { getSellableStockMap } from "../lib/warehouseStock";
 
 const router: IRouter = Router();
@@ -17,9 +17,10 @@ router.use("/cart", requireMember);
 
 function serializeVariant(
   v: typeof productVariantsTable.$inferSelect,
-  sellable?: Map<string, number>,
+  sellable: Map<string, number> | undefined,
+  tier: string,
 ) {
-  return {
+  return maskTierPrices({
     id: v.id,
     productId: v.productId,
     name: v.name,
@@ -28,10 +29,10 @@ function serializeVariant(
     priceConsumer: v.priceConsumer,
     stock: sellable ? sellable.get(`${v.productId}:${v.id}`) ?? 0 : v.stock,
     isActive: v.isActive,
-  };
+  }, tier);
 }
 
-async function cartItemWithProduct(id: number) {
+async function cartItemWithProduct(id: number, tier: string) {
   const [row] = await db
     .select()
     .from(cartItemsTable)
@@ -50,13 +51,13 @@ async function cartItemWithProduct(id: number) {
     variantId: row.cart_items.variantId,
     quantity: row.cart_items.quantity,
     product: {
-      ...serializeProduct(row.products),
+      ...maskTierPrices(serializeProduct(row.products), tier),
       stock: row.products.isVirtual
         ? serializeProduct(row.products).stock
         : sellable.get(`${row.products.id}:`) ?? 0,
     },
     variant: row.product_variants
-      ? serializeVariant(row.product_variants, sellable)
+      ? serializeVariant(row.product_variants, sellable, tier)
       : null,
   };
 }
@@ -80,13 +81,13 @@ router.get("/cart", async (req, res) => {
       variantId: row.cart_items.variantId,
       quantity: row.cart_items.quantity,
       product: {
-        ...serializeProduct(row.products),
+        ...maskTierPrices(serializeProduct(row.products), req.member!.tier),
         stock: row.products.isVirtual
           ? serializeProduct(row.products).stock
           : sellable.get(`${row.products.id}:`) ?? 0,
       },
       variant: row.product_variants
-        ? serializeVariant(row.product_variants, sellable)
+        ? serializeVariant(row.product_variants, sellable, req.member!.tier)
         : null,
     })),
   );
@@ -179,7 +180,7 @@ router.post("/cart", async (req, res) => {
       .returning();
     itemId = inserted.id;
   }
-  res.json(await cartItemWithProduct(itemId));
+  res.json(await cartItemWithProduct(itemId, req.member!.tier));
 });
 
 router.delete("/cart", async (req, res) => {
@@ -210,7 +211,7 @@ router.patch("/cart/:id", async (req, res) => {
     res.status(404).json({ error: "Cart item not found" });
     return;
   }
-  res.json(await cartItemWithProduct(updated.id));
+  res.json(await cartItemWithProduct(updated.id, req.member!.tier));
 });
 
 router.delete("/cart/:id", async (req, res) => {

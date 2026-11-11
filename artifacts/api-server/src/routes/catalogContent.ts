@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { optionalMember, resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import { and, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import {
   db,
@@ -16,6 +17,7 @@ import {
   serializeInstitution,
   serializeArticle,
   serializeProduct,
+  maskTierPrices,
 } from "../lib/serialize";
 
 const router: IRouter = Router();
@@ -103,12 +105,12 @@ router.get("/announcements", async (_req, res) => {
   res.json(rows.map(serializeAnnouncement));
 });
 
-router.get("/home/summary", async (_req, res) => {
+router.get("/home/summary", optionalMember, async (req, res) => {
   const [hot, announcements, latest] = await Promise.all([
     db
       .select()
       .from(productsTable)
-      .where(eq(productsTable.isHot, true))
+      .where(and(eq(productsTable.isHot, true), eq(productsTable.isActive, true)))
       .orderBy(productsTable.code)
       .limit(8),
     db
@@ -124,8 +126,12 @@ router.get("/home/summary", async (_req, res) => {
       .orderBy(desc(articlesTable.publishedAt))
       .limit(4),
   ]);
+  // 下架或未開放此分級的商品不出現在首頁
+  const grade = await resolveMemberGrade(req.member);
   res.json({
-    hotProducts: hot.map(serializeProduct),
+    hotProducts: hot
+      .filter((p) => gradeAllowed(p.allowedGrades, grade))
+      .map((p) => maskTierPrices(serializeProduct(p), req.member?.tier ?? "consumer")),
     announcements: announcements.map(serializeAnnouncement),
     latestArticles: latest.map(serializeArticle),
   });

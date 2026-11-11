@@ -5,6 +5,63 @@
  * 七期生醫採購平台 API
  * OpenAPI spec version: 0.1.0
  */
+export interface OkMessage {
+  ok: boolean;
+  message?: string;
+}
+
+export interface ChangePasswordInput {
+  /**
+     * @minLength 1
+     * @maxLength 72
+     */
+  currentPassword: string;
+  /**
+     * @minLength 8
+     * @maxLength 72
+     */
+  newPassword: string;
+}
+
+export interface ForgotPasswordInput {
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  username: string;
+}
+
+export interface ResetPasswordInput {
+  /**
+     * @minLength 20
+     * @maxLength 200
+     */
+  token: string;
+  /**
+     * @minLength 8
+     * @maxLength 72
+     */
+  newPassword: string;
+}
+
+export interface RemittanceInput {
+  /** @pattern ^[0-9]{5}$ */
+  lastFive: string;
+}
+
+export interface ShopPaymentInfo {
+  /** @maxLength 100 */
+  bankName: string;
+  /** @maxLength 100 */
+  bankBranch: string;
+  /** @maxLength 60 */
+  bankAccount: string;
+  /** @maxLength 100 */
+  bankHolder: string;
+  /** @maxLength 500 */
+  bankNote: string;
+}
+
 export interface CmoGoal {
   id: string;
   /** daily_revenue | paid_revenue | orders_count | new_members | published_posts | points_issued | new_articles */
@@ -385,6 +442,11 @@ export interface Member {
   /** @nullable */
   shippingAddress?: string | null;
   /**
+     * 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
+     * @nullable
+     */
+  requestedTier?: string | null;
+  /**
      * ERP 角色（null 表示無 ERP 權限；平台 admin 視同 super_admin）
      * @nullable
      */
@@ -523,6 +585,11 @@ export interface AdminMember {
   tier: AdminMemberTier;
   /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role: AdminMemberRole;
+  /**
+     * 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
+     * @nullable
+     */
+  requestedTier?: string | null;
   isActive: boolean;
   points: number;
   /** @nullable */
@@ -580,6 +647,11 @@ export interface AdminMemberUpdate {
   tier?: AdminMemberUpdateTier;
   /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role?: AdminMemberUpdateRole;
+  /**
+     * 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
+     * @nullable
+     */
+  requestedTier?: string | null;
   isActive?: boolean;
   institutionVerified?: boolean;
   /** @nullable */
@@ -637,6 +709,11 @@ export interface AdminMemberCreate {
  * 會員身份 (tier) 由平台審核後台調整，不開放自行修改
  */
 export interface MemberUpdate {
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  email?: string | null;
   /** @minLength 1 */
   name?: string;
   /** @nullable */
@@ -819,6 +896,13 @@ export interface Order {
   receiverPhone?: string | null;
   /** @nullable */
   note?: string | null;
+  /**
+     * 會員回報的匯款帳號後五碼
+     * @nullable
+     */
+  remitLastFive?: string | null;
+  /** @nullable */
+  remitReportedAt?: string | null;
   /** 出貨照片物件路徑 */
   shipmentPhotos?: string[];
   createdAt: string;
@@ -1817,6 +1901,13 @@ export interface AdminOrder {
   receiverPhone?: string | null;
   /** @nullable */
   note?: string | null;
+  /**
+     * 會員回報的匯款帳號後五碼
+     * @nullable
+     */
+  remitLastFive?: string | null;
+  /** @nullable */
+  remitReportedAt?: string | null;
   /** 出貨照片物件路徑 */
   shipmentPhotos?: string[];
   createdAt: string;

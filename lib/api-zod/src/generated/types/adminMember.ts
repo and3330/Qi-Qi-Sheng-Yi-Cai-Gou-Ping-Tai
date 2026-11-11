@@ -19,6 +19,11 @@ export interface AdminMember {
   tier: AdminMemberTier;
   /** 系統管理員 / 營運 / 客服 / 一般會員 */
   role: AdminMemberRole;
+  /**
+     * 註冊時申請的身份（hospital / clinic），待管理員審核；null 表示沒有待審申請
+     * @nullable
+     */
+  requestedTier?: string | null;
   isActive: boolean;
   points: number;
   /** @nullable */

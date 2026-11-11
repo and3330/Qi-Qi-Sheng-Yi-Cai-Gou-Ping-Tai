@@ -277,6 +277,32 @@ export default function AdminMembersPage() {
                           >
                             {tierLabels[m.tier] ?? m.tier}
                           </Badge>
+                          {(m as any).requestedTier && (
+                            <div className="flex flex-wrap items-center gap-1" data-testid={`tier-request-${m.id}`}>
+                              <Badge variant="secondary" className="bg-amber-50 text-amber-700 hover:bg-amber-100">
+                                申請：{tierLabels[(m as any).requestedTier] ?? (m as any).requestedTier}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                disabled={updateMutation.isPending}
+                                onClick={() => quickUpdate(m, { tier: (m as any).requestedTier } as any)}
+                                data-testid={`button-approve-tier-${m.id}`}
+                              >
+                                核准
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-xs"
+                                disabled={updateMutation.isPending}
+                                onClick={() => quickUpdate(m, { requestedTier: null } as any)}
+                                data-testid={`button-reject-tier-${m.id}`}
+                              >
+                                退回
+                              </Button>
+                            </div>
+                          )}
                           {m.boundInstitutionId && (
                             <Badge
                               variant="secondary"

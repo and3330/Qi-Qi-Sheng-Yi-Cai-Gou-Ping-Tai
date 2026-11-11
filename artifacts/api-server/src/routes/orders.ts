@@ -43,7 +43,7 @@ const router: IRouter = Router();
 
 router.use("/orders", requireMember);
 
-function serializeOrder(o: Order, items: OrderItem[]) {
+export function serializeOrder(o: Order, items: OrderItem[]) {
   return {
     id: o.id,
     orderNo: o.orderNo,
@@ -57,6 +57,8 @@ function serializeOrder(o: Order, items: OrderItem[]) {
     pointsUsed: o.pointsUsed ?? 0,
     pointsEarned: o.pointsEarned ?? 0,
     shipmentPhotos: o.shipmentPhotos ?? [],
+    remitLastFive: o.remitLastFive ?? null,
+    remitReportedAt: o.remitReportedAt ? o.remitReportedAt.toISOString() : null,
     createdAt: o.createdAt.toISOString(),
     items: items.map((i) => ({
       id: i.id,

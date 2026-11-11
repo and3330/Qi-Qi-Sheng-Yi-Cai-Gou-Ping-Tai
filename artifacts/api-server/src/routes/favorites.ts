@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db, favoritesTable, productsTable } from "@workspace/db";
 import { AddFavoriteBody, RemoveFavoriteParams } from "@workspace/api-zod";
 import { requireMember } from "../middlewares/requireMember";
-import { serializeProduct } from "../lib/serialize";
+import { serializeProduct, maskTierPrices } from "../lib/serialize";
 
 const router: IRouter = Router();
 
@@ -16,7 +16,7 @@ router.get("/favorites", async (req, res) => {
     .innerJoin(productsTable, eq(favoritesTable.productId, productsTable.id))
     .where(eq(favoritesTable.memberId, req.member!.id))
     .orderBy(favoritesTable.id);
-  res.json(rows.map((r) => serializeProduct(r.products)));
+  res.json(rows.map((r) => maskTierPrices(serializeProduct(r.products), req.member!.tier)));
 });
 
 router.post("/favorites", async (req, res) => {

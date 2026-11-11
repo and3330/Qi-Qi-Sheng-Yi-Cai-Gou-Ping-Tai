@@ -63,7 +63,9 @@ router.post("/auth/register", authLimiter, async (req, res) => {
       name,
       phone: phone ?? null,
       email: email ?? null,
-      tier: tier ?? "consumer",
+      // 身份要管理員審核：先以消費者身份建立，申請的身份記在 requestedTier
+      tier: "consumer",
+      requestedTier: tier === "hospital" || tier === "clinic" ? tier : null,
     })
     .returning();
 
