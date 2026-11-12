@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startSocialScheduler } from "./lib/socialScheduler";
 import { startNewsletterScheduler } from "./lib/newsletter";
 import { startCmoScheduler } from "./lib/cmoScheduler";
+import { runStartupMigrations } from "./lib/startupMigrations";
 
 const rawPort = process.env["PORT"];
 
@@ -16,6 +17,13 @@ const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+try {
+  await runStartupMigrations();
+} catch (err) {
+  logger.error({ err }, "啟動時的資料庫遷移失敗，伺服器不啟動");
+  process.exit(1);
 }
 
 app.listen(port, (err) => {

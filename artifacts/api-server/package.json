@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
-    "start": "pnpm --filter @workspace/db run migrate:erp-hr && pnpm --filter @workspace/db run migrate:erp-document-creators && pnpm --filter @workspace/db run migrate:social-marketing && pnpm --filter @workspace/db run migrate:newsletter && pnpm --filter @workspace/db run migrate:cmo && pnpm --filter @workspace/db run migrate:content-revision-images && pnpm --filter @workspace/db run migrate:ai-knowledge && pnpm --filter @workspace/db run migrate:mcp && pnpm --filter @workspace/db run migrate:ai-credits && pnpm --filter @workspace/db run migrate:shop-account && node --enable-source-maps ./dist/index.mjs",
+    "start": "node --enable-source-maps ./dist/index.mjs",
     "pretypecheck": "cd ../.. && pnpm run typecheck:libs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:admin-content": "env -u OPENAI_API_KEY tsx --test src/routes/adminContent.integration.test.ts src/routes/adminContent.ui-contract.test.ts src/routes/adminContent.comparison.test.ts",
