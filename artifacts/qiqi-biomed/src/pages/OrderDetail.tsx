@@ -41,7 +41,7 @@ export default function OrderDetailPage() {
   
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-24 animate-in fade-in">
-      <div className="bg-white px-4 pt-safe pb-3 shadow-sm sticky top-0 z-30 flex items-center gap-3">
+      <div className="bg-white px-4 pt-safe pb-3 shadow-sm sticky top-[var(--sf-header-h,0px)] z-30 flex items-center gap-3">
         <Button asChild variant="ghost" size="icon" className="-ml-2"><Link href="/orders"><ArrowLeft size={20} /></Link></Button>
         <h1 className="font-bold text-lg text-gray-900">訂單詳情</h1>
       </div>

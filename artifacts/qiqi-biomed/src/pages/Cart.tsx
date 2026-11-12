@@ -79,7 +79,7 @@ export default function CartPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-40 animate-in fade-in">
-      <div className="bg-white px-4 pt-safe pb-4 shadow-sm sticky top-0 z-30 flex justify-between items-center">
+      <div className="bg-white px-4 pt-safe pb-4 shadow-sm sticky top-[var(--sf-header-h,0px)] z-30 flex justify-between items-center">
         <h1 className="font-bold text-xl text-gray-900 pt-2">購物車 ({cart.length})</h1>
         <Button variant="ghost" size="sm" className="text-gray-400 hover:text-destructive mt-2" onClick={handleClearCart}>
           清空

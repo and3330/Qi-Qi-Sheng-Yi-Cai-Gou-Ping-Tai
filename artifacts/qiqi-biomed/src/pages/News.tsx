@@ -36,7 +36,7 @@ export default function NewsPage() {
     <div className="flex flex-col min-h-screen bg-gray-50 pb-safe animate-in fade-in bottom-nav-offset mb-16">
       
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-primary px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
+      <div className="sticky top-[var(--sf-header-h,0px)] z-30 bg-primary px-4 pt-safe pb-3 shadow-sm flex items-center justify-between">
         <Link href="/" className="p-2 text-white/90 hover:text-white transition-colors -ml-2 cursor-pointer">
           <ArrowLeft size={24} />
         </Link>
@@ -52,7 +52,7 @@ export default function NewsPage() {
       </div>
 
       {/* Category Chips */}
-      <div className="sticky top-[env(safe-area-inset-top,0)+60px] z-30 bg-gray-50/95 backdrop-blur-sm shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
+      <div className="sticky top-[calc(var(--sf-header-h,0px)+60px)] z-30 bg-gray-50/95 backdrop-blur-sm shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
         <div className="flex overflow-x-auto gap-2 px-4 py-3 hide-scrollbar">
           {NEWS_CATEGORIES.map(cat => (
             <button

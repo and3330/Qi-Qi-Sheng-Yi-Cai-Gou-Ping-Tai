@@ -41,6 +41,22 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const [catOpen, setCatOpen] = useState(false);
   const [q, setQ] = useState("");
   const catRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // 頂部品牌列固定在畫面上方；把它的高度給各頁自己的固定列使用，避免被蓋住
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const apply = () => root.style.setProperty("--sf-header-h", `${el.offsetHeight}px`);
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty("--sf-header-h");
+    };
+  }, []);
 
   const { data: cart } = useGetCart({
     query: { enabled: isLoaded && !!isSignedIn, queryKey: getGetCartQueryKey() },
@@ -80,7 +96,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="storefront flex min-h-[100dvh] flex-col overflow-x-clip">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[60] focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:text-primary">跳至主要內容</a>
 
-      <header className="sf-band text-white">
+      <header ref={headerRef} className="sf-band sticky top-0 z-40 text-white">
         <div className="bg-[hsl(var(--sf-deep))] px-4 py-1.5 text-center text-xs font-medium tracking-wide">
           {isSignedIn ? (
             <span>歡迎回來，{me?.name}　訂購／客服專線 0800-789-188</span>

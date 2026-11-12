@@ -122,7 +122,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-36 animate-in fade-in">
-      <div className="bg-white px-4 pt-safe pb-3 shadow-sm sticky top-0 z-30 flex items-center gap-3">
+      <div className="bg-white px-4 pt-safe pb-3 shadow-sm sticky top-[var(--sf-header-h,0px)] z-30 flex items-center gap-3">
         <Button variant="ghost" size="icon" className="-ml-2" onClick={() => window.history.back()}>
           <ArrowLeft size={20} />
         </Button>

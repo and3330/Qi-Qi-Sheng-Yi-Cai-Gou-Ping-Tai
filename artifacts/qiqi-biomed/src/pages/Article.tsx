@@ -30,7 +30,7 @@ export default function ArticlePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white animate-in fade-in pb-20">
-      <div className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-md">
+      <div className="sticky top-[var(--sf-header-h,0px)] z-30 flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-md">
         <Button variant="ghost" size="icon" className="rounded-full bg-white shadow-sm" onClick={() => window.history.back()}>
           <ArrowLeft size={20} />
         </Button>

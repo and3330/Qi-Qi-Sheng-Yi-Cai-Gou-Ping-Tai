@@ -91,7 +91,7 @@ export default function QuickOrderPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <div className="sticky top-0 z-30 bg-primary px-4 pt-safe pb-4 shadow-md flex flex-col gap-3">
+      <div className="sticky top-[var(--sf-header-h,0px)] z-30 bg-primary px-4 pt-safe pb-4 shadow-md flex flex-col gap-3">
         <div className="flex items-center text-white">
           <Button asChild variant="ghost" size="icon" className="text-white hover:bg-white/20 -ml-2"><Link href="/"><ArrowLeft size={20}/></Link></Button>
           <h1 className="font-bold flex-1 text-center pr-8 text-lg">快速訂購</h1>
@@ -109,7 +109,7 @@ export default function QuickOrderPage() {
       </div>
 
       <div className="flex-1 bg-white">
-        <div className="flex bg-gray-50 border-b p-3 text-xs font-medium text-gray-500 sticky top-[108px] z-30">
+        <div className="flex bg-gray-50 border-b p-3 text-xs font-medium text-gray-500 sticky top-[calc(var(--sf-header-h,0px)+108px)] z-30">
           <div className="flex items-center pl-1 pr-3">
             <Checkbox checked={isAllSelected} onCheckedChange={toggleAll} />
           </div>

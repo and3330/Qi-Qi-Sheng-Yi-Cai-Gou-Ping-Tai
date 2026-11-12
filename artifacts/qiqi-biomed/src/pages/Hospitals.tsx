@@ -26,7 +26,7 @@ export default function HospitalsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 pb-20 animate-in fade-in">
-      <div className="sticky top-0 z-30 bg-primary px-4 pt-safe pb-4 shadow-md">
+      <div className="sticky top-[var(--sf-header-h,0px)] z-30 bg-primary px-4 pt-safe pb-4 shadow-md">
         <h1 className="text-white font-bold text-center text-lg mb-4">合作醫院</h1>
         <div className="flex gap-2">
           <Select value={city} onValueChange={setCity}>
@@ -50,7 +50,7 @@ export default function HospitalsPage() {
         </div>
       </div>
 
-      <div className="px-4 py-3 bg-white border-b shadow-sm sticky top-[108px] z-30 flex">
+      <div className="px-4 py-3 bg-white border-b shadow-sm sticky top-[calc(var(--sf-header-h,0px)+100px)] z-30 flex">
         {TYPES.map(t => (
           <button
             key={t.id}
