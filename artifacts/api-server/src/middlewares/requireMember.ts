@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, membersTable, type Member } from "@workspace/db";
+import { bridgeMemberId } from "../lib/adminBridge";
 
 declare global {
   namespace Express {
@@ -17,7 +18,9 @@ export async function requireMember(
   next: NextFunction,
 ) {
   try {
-    const memberId = req.session?.memberId;
+    // 伺服器自己替某位後台人員發的內部呼叫（AI 助理／Bot 的後台通用工具），見 lib/adminBridge.ts
+    const bridged = bridgeMemberId(req);
+    const memberId = bridged ?? req.session?.memberId;
     if (!memberId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -28,7 +31,7 @@ export async function requireMember(
       .where(eq(membersTable.id, memberId))
       .limit(1);
     if (!member) {
-      req.session.destroy(() => {});
+      if (!bridged) req.session.destroy(() => {});
       res.status(401).json({ error: "Unauthorized" });
       return;
     }

@@ -75,3 +75,4 @@ Mobile-first B2B2C 醫藥採購 WebApp：三種會員身份（A 醫院 / B 診�
 - **不連外**：公司 ERP 專用的 CM生活+、AI 大學、講師平台（ICTA）、資料同步、訂閱收費在這裡都沒有載入，請勿加回。
 - **AI 代理**：商城 `/api/mcp`（金鑰在後台「Bot 連線」）、ERP `/erp-mcp`（Secrets：`ERP_AI_KEY_ADMIN` 等，至少 24 字元）。說明見 `docs/AI代理連線安裝說明.md`。
 - 之後要再跟上公司 ERP 的更新：把公司 ERP 的 `artifacts/erp`、`artifacts/api-server`、`lib/{db,api-zod,api-client-react,api-spec}` 覆蓋到這裡對應的 `erp-` 目錄，重新套用上面列的七期專屬修改（搜尋註解「七期網站」），再產生遷移檔。
+- **商城後台通用工具**（AI 助理與 `/api/mcp` 共用）：`admin_list_endpoints`、`admin_describe_endpoint`、`admin_get`、`admin_write`。實作在 `artifacts/api-server/src/lib/adminBridge.ts`：伺服器帶著只存在記憶體的隨機密碼呼叫自己的 `/api/admin/*`、`/api/newsletter/*`，由 `requireMember` 認出是替哪位後台人員執行。寫入一律走既有的「待確認 → 後台人員確認」流程，不可改成直接執行。功能清單 `adminApiCatalog.generated.ts` 由 `node scripts/build-admin-api-catalog.mjs` 產生，後台 API 有增減時要重跑。

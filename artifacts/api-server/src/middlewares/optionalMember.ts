@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { db, membersTable, institutionsTable } from "@workspace/db";
+import { bridgeMemberId } from "../lib/adminBridge";
 
 /** 若已登入則載入會員（不強制登入）。 */
 export async function optionalMember(
@@ -9,7 +10,7 @@ export async function optionalMember(
   next: NextFunction,
 ) {
   try {
-    const memberId = req.session?.memberId;
+    const memberId = bridgeMemberId(req) ?? req.session?.memberId;
     if (memberId) {
       const [member] = await db
         .select()
