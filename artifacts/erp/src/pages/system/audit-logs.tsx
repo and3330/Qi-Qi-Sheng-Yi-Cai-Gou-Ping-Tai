@@ -1,144 +1,91 @@
-import React, { useState } from 'react';
-import { useListErpAuditLogs, getListErpAuditLogsQueryKey } from '@workspace/api-client-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Loader2, Activity, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
+import { Badge } from "@/components/ui/badge";
 
-export default function AuditLogsPage() {
-  const [q, setQ] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const pageSize = 20;
+const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
+const api = (path: string) => `/erp-api/${path}`;
 
-  const { data: logsPage, isLoading } = useListErpAuditLogs(
-    { q: search, page },
-    { query: { queryKey: getListErpAuditLogsQueryKey({ q: search, page }) } }
-  );
+const actionColors: Record<string, string> = { create: "default", update: "outline", delete: "destructive", login: "secondary" };
+const actionLabels: Record<string, string> = { create: "新增", update: "修改", delete: "刪除", login: "登入", approve: "核准", reject: "駁回" };
+const moduleLabels: Record<string, string> = {
+  HR: "人事", "HR Contracts": "人事合約", Sales: "銷售", Purchasing: "採購", Accounting: "會計", Inventory: "庫存",
+  Manufacturing: "製造", Quality: "品質", Projects: "專案", Assets: "資產", CRM: "客戶關係", Helpdesk: "客服",
+  Contracts: "合約", Admin: "帳號與權限", System: "系統設定", AI: "AI 助理",
+};
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSearch(q);
-    setPage(1);
-  };
+export default function AuditLogs() {
+  const [module, setModule] = useState("");
+  const [action, setAction] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  const totalPages = logsPage ? Math.ceil(logsPage.total / pageSize) : 1;
+  const query = new URLSearchParams();
+  if (module) query.set("module", module);
+  if (action) query.set("action", action);
+  if (startDate) query.set("startDate", startDate);
+  if (endDate) query.set("endDate", endDate);
+
+  const { data: logs = [] } = useQuery({ queryKey: ["audit-logs", module, action, startDate, endDate], queryFn: () => fetch(api(`audit-logs?${query}`)).then(r => r.json()) });
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Activity className="w-5 h-5 text-primary" />
-          審計日誌
-        </h2>
-        
-        <form onSubmit={handleSearch} className="flex flex-1 max-w-md items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="搜尋使用者、模組、描述..."
-              className="pl-9 bg-card shadow-sm"
-            />
-          </div>
-          <Button type="submit" variant="secondary">搜尋</Button>
-        </form>
+      <h1 className="text-2xl font-bold">稽核紀錄</h1>
+
+      <div className="flex flex-wrap gap-3">
+        <Select value={module} onValueChange={v => setModule(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="全部模組" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部模組</SelectItem>
+            {Object.entries(moduleLabels).map(([m, label]) => <SelectItem key={m} value={m}>{label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={action} onValueChange={v => setAction(v === "all" ? "" : v)}>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="全部動作" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部動作</SelectItem>
+            {["create", "update", "delete", "login", "approve", "reject"].map(a => <SelectItem key={a} value={a}>{actionLabels[a] || a}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-[160px]" placeholder="開始日期" />
+        <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-[160px]" placeholder="結束日期" />
       </div>
 
-      <Card className="shadow-sm border-t-2 border-t-primary">
-        <div className="rounded-md border-0">
+      <Card>
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-secondary/50">
+            <TableHeader>
               <TableRow>
-                <TableHead className="w-[180px] font-semibold">時間</TableHead>
-                <TableHead className="w-[150px] font-semibold">操作人</TableHead>
-                <TableHead className="w-[120px] font-semibold">模組</TableHead>
-                <TableHead className="w-[120px] font-semibold">動作</TableHead>
-                <TableHead className="font-semibold">描述</TableHead>
+                <TableHead>時間</TableHead>
+                <TableHead>動作</TableHead>
+                <TableHead>模組</TableHead>
+                <TableHead>文件類型</TableHead>
+                <TableHead>文件編號</TableHead>
+                <TableHead>使用者</TableHead>
+                <TableHead>IP</TableHead>
+                <TableHead>說明</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                  </TableCell>
+              {logs.map((log: any) => (
+                <TableRow key={log.id}>
+                  <TableCell className="text-xs whitespace-nowrap">{new Date(log.createdAt).toLocaleString("zh-TW")}</TableCell>
+                  <TableCell><Badge variant={actionColors[log.action] as any}>{actionLabels[log.action] || log.action}</Badge></TableCell>
+                  <TableCell>{moduleLabels[log.module] || log.module}</TableCell>
+                  <TableCell>{log.documentType || "-"}</TableCell>
+                  <TableCell className="font-mono text-sm">{log.documentNumber || "-"}</TableCell>
+                  <TableCell>{log.userName || "-"}</TableCell>
+                  <TableCell className="font-mono text-xs whitespace-nowrap">{log.ipAddress || "-"}</TableCell>
+                  <TableCell className="max-w-xs truncate">{log.description || "-"}</TableCell>
                 </TableRow>
-              ) : logsPage?.items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                    查無操作紀錄
-                  </TableCell>
-                </TableRow>
-              ) : (
-                logsPage?.items.map(log => (
-                  <TableRow key={log.id} className="hover:bg-muted/30">
-                    <TableCell className="text-sm font-mono text-muted-foreground whitespace-nowrap">
-                      {format(new Date(log.createdAt), 'yyyy-MM-dd HH:mm:ss')}
-                    </TableCell>
-                    <TableCell className="font-medium text-foreground">
-                      {log.userName || log.userId}
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border">
-                        {log.module}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
-                        log.action.includes('CREATE') || log.action.includes('ADD') ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                        log.action.includes('UPDATE') || log.action.includes('EDIT') ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                        log.action.includes('DELETE') || log.action.includes('REMOVE') ? 'bg-destructive/10 text-destructive' :
-                        'bg-secondary text-secondary-foreground'
-                      }`}>
-                        {log.action}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-sm text-foreground/80">
-                      {log.description}
-                      {log.documentId && <span className="ml-2 text-xs text-muted-foreground font-mono">ID: {log.documentId}</span>}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
+              {logs.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">尚無稽核紀錄</TableCell></TableRow>}
             </TableBody>
           </Table>
-        </div>
-
-        {/* Pagination */}
-        {logsPage && logsPage.total > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t">
-            <div className="text-sm text-muted-foreground">
-              顯示 {(page - 1) * pageSize + 1} 至 {Math.min(page * pageSize, logsPage.total)} 筆，共 <span className="font-medium text-foreground">{logsPage.total}</span> 筆
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                上一頁
-              </Button>
-              <div className="text-sm font-medium px-2 text-foreground">
-                {page} / {totalPages}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
-                下一頁
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        )}
+        </CardContent>
       </Card>
     </div>
   );

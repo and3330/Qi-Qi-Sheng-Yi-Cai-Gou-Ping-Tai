@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
@@ -33,28 +34,28 @@ export function exportCSV(opts: ExportOptions) {
   saveAs(blob, `${opts.fileName}.csv`);
 }
 
-export async function exportExcel(opts: ExportOptions) {
-  // 用到才載入，避免拖慢一般頁面
-  const { Workbook } = await import("exceljs");
-  const wb = new Workbook();
-  // 工作表名稱最長 31 字，且不可含 \ / ? * [ ] :
-  const sheetName = opts.title.replace(/[\\/?*[\]:]/g, " ").slice(0, 31) || "Sheet1";
-  const ws = wb.addWorksheet(sheetName);
-  ws.addRow([opts.title]);
-  if (opts.subtitle) ws.addRow([opts.subtitle]);
-  ws.addRow([]);
-  ws.addRow(opts.headers).font = { bold: true };
-  for (const row of opts.rows) ws.addRow(opts.columnKeys.map((key) => row[key] ?? ""));
+export function exportExcel(opts: ExportOptions) {
+  const wb = XLSX.utils.book_new();
+  const wsData = [
+    [opts.title],
+    opts.subtitle ? [opts.subtitle] : [],
+    [],
+    opts.headers,
+    ...opts.rows.map(row => opts.columnKeys.map(key => row[key] ?? ""))
+  ].filter(r => r.length > 0);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
 
   const colWidths = opts.columnWidths || opts.headers.map((h, i) => {
     const headerLen = h.length * 2.5;
     const maxDataLen = Math.max(...opts.rows.map(r => String(r[opts.columnKeys[i]] ?? "").length), 0);
-    return Math.min(60, Math.max(headerLen, maxDataLen * 1.5, 10));
+    return Math.max(headerLen, maxDataLen * 1.5, 10);
   });
-  colWidths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+  ws["!cols"] = colWidths.map(w => ({ wch: w }));
 
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  XLSX.utils.book_append_sheet(wb, ws, opts.title.slice(0, 31));
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
   saveAs(blob, `${opts.fileName}.xlsx`);
 }
 

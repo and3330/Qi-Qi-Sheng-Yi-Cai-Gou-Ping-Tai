@@ -1,167 +1,517 @@
-import { useEffect, useState } from 'react';
-import {
-  getListErpItemsQueryKey,
-  getListErpStockMovementsQueryKey,
-  getListErpWarehousesQueryKey,
-  getListErpWarehouseStockQueryKey,
-  useErpAdjustStock,
-  useListErpItems,
-  useListErpWarehouses,
-  useListErpWarehouseStock,
-  useUpdateErpItem,
-  type ErpItem,
-} from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Loader2, Package, Search } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
+import { useState, useMemo } from "react";
+import { TablePagination } from "@/components/shared/table-pagination";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { PageHeader } from "@/components/shared/page-header";
+import { ExportMenu } from "@/components/shared/export-menu";
+import { PageHint } from "@/components/page-hint";
+import { useBatchSelection } from "@/hooks/use-batch-selection";
+import { BatchActionBar, type BatchField } from "@/components/shared/batch-action-bar";
+import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/searchable-select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Package, Eye } from "lucide-react";
+import type { ExportOptions } from "@/lib/export-utils";
+import { MasterLookup } from "@/components/shared/master-lookup";
 
-const money = (value: number) => new Intl.NumberFormat('zh-TW').format(value);
-const errorMessage = (err: any) => err?.response?.data?.error || err?.message || '請稍後再試';
+const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
+const api = (path: string) => `/erp-api/${path}`;
+
+const FALLBACK_TYPE_COLORS: Record<string, string> = {
+  "商品": "bg-blue-100 text-blue-800",
+  "無形商品": "bg-purple-100 text-purple-800",
+  "產品": "bg-green-100 text-green-800",
+  "原料": "bg-orange-100 text-orange-800",
+  "半成品": "bg-yellow-100 text-yellow-800",
+  "輔助材料": "bg-gray-100 text-gray-800",
+};
+
 
 export default function ItemsPage() {
-  const [q, setQ] = useState('');
-  const [search, setSearch] = useState('');
-  const [includeInactive, setIncludeInactive] = useState(false);
-  const [editing, setEditing] = useState<ErpItem | null>(null);
-  const [adjusting, setAdjusting] = useState<ErpItem | null>(null);
-  const [breakdown, setBreakdown] = useState<ErpItem | null>(null);
-  const { data: items, isLoading } = useListErpItems({ search, includeInactive: String(includeInactive) });
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get("q") || "");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [groupFilter, setGroupFilter] = useState("all");
+  // 停用的品項資料都還在，只是開單時選不到；這裡可以切換著看
+  const [activeFilter, setActiveFilter] = useState("active");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [detailItem, setDetailItem] = useState<any>(null);
+  const [form, setForm] = useState<Record<string, string>>({});
+
+  const { data: allItems = [], isLoading } = useQuery({
+    // 品項管理要看得到停用的；用不同的快取名稱，才不會跟開單選單（只有啟用中的）混在一起
+    queryKey: ["items", "all"],
+    queryFn: () => fetch(api("items?includeInactive=1")).then(r => r.json()),
+  });
+
+
+  const { data: categories = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["item-categories"],
+    queryFn: () => fetch(api("item-categories"), { credentials: "include" }).then(r => r.json()),
+  });
+  const groups = useMemo(() => categories.map((c) => c.name), [categories]);
+
+  const { data: itemTypes = [] } = useQuery<{ id: number; name: string; label: string | null; colorClass: string | null }[]>({
+    queryKey: ["item-types"],
+    queryFn: () => fetch(api("item-types"), { credentials: "include" }).then(r => r.json()),
+  });
+  const TYPE_LABELS = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const t of itemTypes) m[t.name] = t.label || t.name;
+    return m;
+  }, [itemTypes]);
+  const TYPE_COLORS = useMemo(() => {
+    const m: Record<string, string> = { ...FALLBACK_TYPE_COLORS };
+    for (const t of itemTypes) if (t.colorClass) m[t.name] = t.colorClass;
+    return m;
+  }, [itemTypes]);
+
+  const itemsBatchFields: BatchField[] = useMemo(() => [
+    { key: "status", label: "狀態", type: "select", options: [{ value: "Active", label: "啟用" }, { value: "Inactive", label: "停用" }] },
+    { key: "itemGroup", label: "分類", type: "select", options: [{ value: "__none__", label: "（未分類）" }, ...categories.map((c) => ({ value: c.name, label: c.name }))] },
+    { key: "itemType", label: "類型", type: "select", options: [{ value: "__none__", label: "（未分類）" }, ...itemTypes.map((t) => ({ value: t.name, label: t.label || t.name }))] },
+    { key: "unit", label: "單位", type: "text" },
+    { key: "supplierName", label: "供應商", type: "text" },
+  ], [categories, itemTypes]);
+
+  const { data: types = [] } = useQuery({
+    queryKey: ["items-distinct-types"],
+    queryFn: () => fetch(api("items/types")).then(r => r.json()),
+  });
+
+  const filtered = useMemo(() => {
+    let items = allItems;
+    if (search) {
+      const s = search.toLowerCase();
+      items = items.filter((i: any) =>
+        i.itemCode?.toLowerCase().includes(s) ||
+        i.itemName?.toLowerCase().includes(s) ||
+        i.supplierName?.toLowerCase().includes(s)
+      );
+    }
+    if (typeFilter !== "all") items = items.filter((i: any) => i.itemType === typeFilter);
+    if (groupFilter !== "all") items = items.filter((i: any) => i.itemGroup === groupFilter);
+    if (activeFilter !== "all") items = items.filter((i: any) => (i.status === "Inactive") === (activeFilter === "inactive"));
+    return items;
+  }, [allItems, search, typeFilter, groupFilter, activeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const batch = useBatchSelection(paged);
+
+  const createMut = useMutation({
+    mutationFn: (data: any) => fetch(api("items"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(r => { if (!r.ok) throw new Error("Failed"); return r.json(); }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["items"] }),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => fetch(api(`items/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then(r => { if (!r.ok) throw new Error("Failed"); return r.json(); }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["items"] }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => fetch(api(`items/${id}`), { method: "DELETE" }).then(r => { if (!r.ok) throw new Error("Failed"); }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["items"] }),
+  });
+
+  const emptyForm = () => ({
+    itemCode: "", itemName: "", itemGroup: "", itemType: "", specification: "", description: "",
+    unit: "Nos", sellingPrice: "0", buyingPrice: "0", totalCost: "0",
+    materialCost: "0", expenseCost: "0", outsourcingCost: "0", laborCost: "0",
+    internalPrice: "0", wholesalePrice: "0", retailPrice: "0",
+    svipPrice: "0", peerPrice: "0", dealerPrice: "0",
+    supplierName: "", summary: "", currentStock: "0", reorderLevel: "0",
+    isVirtual: "false",
+  });
+
+  const openCreate = () => { setEditing(null); setForm({ ...emptyForm(), itemCode: `ITM-${Date.now().toString().slice(-6)}` }); setOpen(true); };
+  const openEdit = (item: any) => {
+    setEditing(item);
+    const f: Record<string, string> = {};
+    for (const key of Object.keys(emptyForm())) {
+      f[key] = String(item[key] ?? emptyForm()[key as keyof ReturnType<typeof emptyForm>] ?? "");
+    }
+    setForm(f);
+    setOpen(true);
+  };
+
+  const openDetail = (item: any) => { setDetailItem(item); setDetailOpen(true); };
+
+  const handleSave = async () => {
+    if (!form.itemCode || !form.itemName) {
+      toast({ title: "請填寫品項代碼與名稱", variant: "destructive" }); return;
+    }
+    try {
+      const payload: any = { ...form, isVirtual: form.isVirtual === "true" };
+      if (editing) {
+        await updateMut.mutateAsync({ id: editing.id, data: payload });
+        toast({ title: "品項已更新" });
+      } else {
+        await createMut.mutateAsync(payload);
+        toast({ title: "品項已建立" });
+      }
+      setOpen(false);
+    } catch (err: any) {
+      toast({ title: "操作失敗", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (item: any) => {
+    if (!confirm(`確定刪除品項「${item.itemName}」？`)) return;
+    try {
+      await deleteMut.mutateAsync(item.id);
+      toast({ title: "品項已刪除" });
+    } catch (err: any) {
+      toast({ title: "刪除失敗", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const F = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm(p => ({ ...p, [key]: e.target.value }));
+
+  const fmtPrice = (v: number) => v ? `$${v.toLocaleString()}` : "-";
+
+  const buildExport = (): ExportOptions => ({
+    title: "品項清單",
+    fileName: "品項清單",
+    headers: ["品項編碼", "品項名稱", "分類", "類型", "單位", "庫存量", "移動平均成本", "批發價", "終端售價", "供應商"],
+    columnKeys: ["code", "name", "group", "type", "unit", "stock", "cost", "wholesalePrice", "retailPrice", "supplier"],
+    rows: filtered.map((item: any) => ({
+      code: item.itemCode || "-",
+      name: item.itemName || "-",
+      group: item.itemGroup || "-",
+      type: item.itemType ? TYPE_LABELS[item.itemType] || item.itemType : "-",
+      unit: item.unit || "-",
+      stock: item.currentStock ?? "-",
+      cost: fmtPrice(Number(item.movingAvgCost)),
+      wholesalePrice: fmtPrice(item.wholesalePrice),
+      retailPrice: fmtPrice(item.retailPrice),
+      supplier: item.supplierName || "-",
+    })),
+  });
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allItems.forEach((i: any) => { counts[i.itemType || "未分類"] = (counts[i.itemType || "未分類"] || 0) + 1; });
+    return counts;
+  }, [allItems]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="flex items-center gap-2 text-xl font-bold"><Package className="h-5 w-5 text-primary" />品項清單</h2>
-        <div className="flex flex-wrap items-center gap-4">
-          <form className="flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); setSearch(q); }}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="w-64 pl-9" value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜尋編號或名稱..." />
-            </div>
-            <Button type="submit" variant="secondary">搜尋</Button>
-          </form>
-          <div className="flex items-center gap-2"><Switch id="inactive" checked={includeInactive} onCheckedChange={setIncludeInactive} /><Label htmlFor="inactive">顯示停用</Label></div>
+      <PageHeader title="品項管理" description={`共 ${allItems.length} 筆品項`} hint={<PageHint hintKey="inventory-items">這裡維護商品、材料與服務的基本資料，供報價、訂單與庫存共用。新增後請填妥名稱、單位、售價及適用的庫存設定。小提醒：重複建立同一品項會讓庫存與報表被拆開，請先搜尋再新增。</PageHint>}>
+        <ExportMenu getExportOptions={buildExport} />
+        <Button onClick={openCreate}><Plus size={16} className="mr-1" />新增品項</Button>
+      </PageHeader>
+
+      {batch.count > 0 && (
+        <BatchActionBar
+          count={batch.count}
+          entityName="品項"
+          entityEndpoint="items"
+          ids={batch.ids}
+          batchFields={itemsBatchFields}
+          onClear={batch.clearSelection}
+          onComplete={() => queryClient.invalidateQueries({ queryKey: ["items"] })}
+        />
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+          <Card key={type} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setTypeFilter(type === "未分類" ? "all" : type); setPage(1); }}>
+            <CardContent className="p-3 text-center">
+              <div className="text-2xl font-bold">{count}</div>
+              <div className="text-xs text-muted-foreground">{TYPE_LABELS[type] || type}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="搜尋品項代碼、名稱、供應商..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-10" />
+          </div>
+        </div>
+        <div className="w-[120px]">
+          <Select value={activeFilter} onValueChange={v => { setActiveFilter(v); setPage(1); }}>
+            <SelectTrigger aria-label="啟用狀態" data-testid="select-item-active-filter"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">啟用中</SelectItem>
+              <SelectItem value="inactive">已停用</SelectItem>
+              <SelectItem value="all">全部</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[160px]">
+          <Select value={typeFilter} onValueChange={v => { setTypeFilter(v); setPage(1); }}>
+            <SelectTrigger><SelectValue placeholder="品項類型" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部類型</SelectItem>
+              {types.map((t: string) => <SelectItem key={t} value={t}>{TYPE_LABELS[t] || t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[220px]">
+          <SearchableSelect
+            value={groupFilter}
+            onValueChange={(v) => { setGroupFilter(v); setPage(1); }}
+            placeholder="分類"
+            searchPlaceholder="搜尋分類..."
+            options={[{ value: "all", label: "全部分類" }, ...groups.map((g: string) => ({ value: g, label: g }))]}
+            data-testid="select-group-filter"
+          />
         </div>
       </div>
-      <Card className="overflow-x-auto border-t-2 border-t-primary shadow-sm">
-        <Table>
-          <TableHeader className="bg-secondary/50"><TableRow>
-            {['編號', '名稱', '分類', '單位', '庫存／規格', '安全庫存', '成本', '售價', '虛擬', '狀態', '操作'].map((h) => <TableHead key={h} className="whitespace-nowrap font-semibold">{h}</TableHead>)}
-          </TableRow></TableHeader>
-          <TableBody>
-            {isLoading ? <TableRow><TableCell colSpan={11} className="h-32"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
-              : !items?.length ? <TableRow><TableCell colSpan={11} className="h-32 text-center text-muted-foreground">查無品項</TableCell></TableRow>
-              : items.map((item) => {
-                const low = !item.isVirtual && item.stock < item.safetyStock;
-                return <TableRow key={item.id} className={low ? 'bg-destructive/5 hover:bg-destructive/10' : 'hover:bg-muted/30'}>
-                  <TableCell className="font-mono">{item.code}</TableCell>
-                  <TableCell className="font-medium">{item.name}{item.spec && <div className="text-xs text-muted-foreground">{item.spec}</div>}</TableCell>
-                  <TableCell>{item.category}</TableCell><TableCell>{item.unit || '—'}</TableCell>
-                  <TableCell>
-                    <div className={low ? 'font-bold text-destructive' : 'font-medium'}>{item.isVirtual ? '不管理' : item.stock}{low && <AlertTriangle className="ml-1 inline h-4 w-4" />}</div>
-                    {item.variants.map((v) => <div key={v.id} className="mt-1 text-xs text-muted-foreground">{v.name}：<span className={v.stock < item.safetyStock ? 'text-destructive' : ''}>{v.stock}</span>{!v.isActive && '（停用）'}</div>)}
-                  </TableCell>
-                  <TableCell>{item.safetyStock}</TableCell><TableCell>NT$ {money(item.costPrice)}</TableCell><TableCell>NT$ {money(item.priceConsumer)}</TableCell>
-                  <TableCell>{item.isVirtual ? <Badge variant="secondary">虛擬</Badge> : '否'}</TableCell>
-                  <TableCell><Badge variant={item.isActive ? 'default' : 'secondary'}>{item.isActive ? '啟用' : '停用'}</Badge></TableCell>
-                  <TableCell><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setEditing(item)}>編輯</Button><Button size="sm" variant="outline" disabled={item.isVirtual} title={item.isVirtual ? '虛擬品項不動庫存' : undefined} onClick={() => setAdjusting(item)}>{item.isVirtual ? '虛擬品項不動庫存' : '庫存調整'}</Button><Button size="sm" variant="outline" disabled={item.isVirtual} onClick={() => setBreakdown(item)}>分倉</Button></div></TableCell>
-                </TableRow>;
-              })}
-          </TableBody>
-        </Table>
+
+      <Card>
+        <CardContent className="p-0 overflow-x-auto">
+          <div className="overflow-x-auto">
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow className="bg-muted/40">
+                  <TableHead className="w-10 px-2"><CheckboxHeader checked={batch.allSelected} indeterminate={batch.someSelected} onChange={batch.toggleAll} /></TableHead>
+                  <TableHead className="w-[120px]">品項編碼</TableHead>
+                  <TableHead>品項名稱</TableHead>
+                  <TableHead className="hidden lg:table-cell">分類</TableHead>
+                  <TableHead className="w-[80px]">類型</TableHead>
+                   <TableHead className="text-right hidden md:table-cell">移動平均成本</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">批發價</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">終端售價</TableHead>
+                  <TableHead className="hidden xl:table-cell">供應商</TableHead>
+                  <TableHead className="w-[100px]">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 10 }).map((_, i) => (
+                    <TableRow key={i}>{Array.from({ length: 10 }).map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}</TableRow>
+                  ))
+                ) : paged.length > 0 ? (
+                  paged.map((item: any) => (
+                    <TableRow key={item.id} className="hover:bg-muted/30">
+                      <TableCell className="px-2"><CheckboxCell checked={batch.selectedIds.has(item.id)} onChange={() => batch.toggle(item.id)} /></TableCell>
+                      <TableCell className="font-mono text-xs">{item.itemCode}</TableCell>
+                      <TableCell className="max-w-[300px] truncate">
+                        {item.itemName}
+                        {item.status === "Inactive" && <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">已停用</span>}
+                        {item.isVirtual && <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700 align-middle">虛擬服務</span>}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground max-w-[150px] truncate">{item.itemGroup || "-"}</TableCell>
+                      <TableCell>
+                        {item.itemType ? (
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[item.itemType] || "bg-gray-100 text-gray-800"}`}>
+                            {TYPE_LABELS[item.itemType] || item.itemType}
+                          </span>
+                        ) : "-"}
+                      </TableCell>
+                      <TableCell className="text-right hidden md:table-cell">{fmtPrice(Number(item.movingAvgCost))}</TableCell>
+                      <TableCell className="text-right hidden md:table-cell">{fmtPrice(item.wholesalePrice)}</TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">{fmtPrice(item.retailPrice)}</TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs text-muted-foreground">{item.supplierName || "-"}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDetail(item)}><Eye size={14} /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}><Pencil size={14} /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(item)}><Trash2 size={14} className="text-destructive" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">尚無資料</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          <TablePagination
+            total={filtered.length}
+            page={safePage}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(n) => { setPageSize(n); setPage(1); }}
+          />
+        </CardContent>
       </Card>
-      <EditDialog item={editing} onClose={() => setEditing(null)} />
-      <AdjustDialog item={adjusting} onClose={() => setAdjusting(null)} />
-      <WarehouseStockDialog item={breakdown} onClose={() => setBreakdown(null)} />
+
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Package size={18} />{detailItem?.itemName}</DialogTitle></DialogHeader>
+          {detailItem && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label className="text-muted-foreground text-xs">品項編碼</Label><div className="font-mono">{detailItem.itemCode}</div></div>
+                <div><Label className="text-muted-foreground text-xs">品項類型</Label><div>{detailItem.itemType ? <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[detailItem.itemType] || ""}`}>{detailItem.itemType}</span> : "-"}</div></div>
+                <div><Label className="text-muted-foreground text-xs">分類</Label><div>{detailItem.itemGroup || "-"}</div></div>
+                <div><Label className="text-muted-foreground text-xs">規格資訊</Label><div>{detailItem.specification || "-"}</div></div>
+                <div className="col-span-2"><Label className="text-muted-foreground text-xs">供應商</Label><div>{detailItem.supplierName || "-"}</div></div>
+                {detailItem.summary && <div className="col-span-2"><Label className="text-muted-foreground text-xs">摘要</Label><div className="text-sm">{detailItem.summary}</div></div>}
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs mb-2 block">成本結構</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {[
+                    ["總成本", detailItem.totalCost],
+                    ["材料費", detailItem.materialCost],
+                    ["經費", detailItem.expenseCost],
+                    ["外包費", detailItem.outsourcingCost],
+                    ["勞務費", detailItem.laborCost],
+                  ].map(([label, val]) => (
+                    <div key={label as string} className="text-center p-2 bg-muted/30 rounded">
+                      <div className="text-xs text-muted-foreground">{label}</div>
+                      <div className="font-medium">{fmtPrice(val as number)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground text-xs mb-2 block">價格方案</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {[
+                    ["內部轉撥價", detailItem.internalPrice],
+                    ["批發價/員工價", detailItem.wholesalePrice],
+                    ["B端終端售價", detailItem.retailPrice],
+                    ["大盤價(SVIP)", detailItem.svipPrice],
+                    ["同行價(中盤)", detailItem.peerPrice],
+                    ["經銷價(小盤)", detailItem.dealerPrice],
+                  ].map(([label, val]) => (
+                    <div key={label as string} className="text-center p-2 bg-blue-50/50 rounded border border-blue-100">
+                      <div className="text-xs text-muted-foreground">{label}</div>
+                      <div className="font-medium text-blue-700">{fmtPrice(val as number)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label className="text-muted-foreground text-xs">庫存</Label><div>{detailItem.currentStock}</div></div>
+                <div><Label className="text-muted-foreground text-xs">安全庫存</Label><div>{detailItem.reorderLevel}</div></div>
+                 <div><Label className="text-muted-foreground text-xs">移動平均成本</Label><div>{fmtPrice(Number(detailItem.movingAvgCost))}</div></div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailOpen(false)}>關閉</Button>
+            <Button onClick={() => { setDetailOpen(false); openEdit(detailItem); }}>編輯</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing ? "編輯品項" : "新增品項"}</DialogTitle></DialogHeader>
+          <Tabs defaultValue="basic">
+            <TabsList className="w-full">
+              <TabsTrigger value="basic" className="flex-1">基本資訊</TabsTrigger>
+              <TabsTrigger value="cost" className="flex-1">成本</TabsTrigger>
+              <TabsTrigger value="price" className="flex-1">價格</TabsTrigger>
+            </TabsList>
+            <TabsContent value="basic" className="space-y-3 mt-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>品項代碼 *</Label><Input value={form.itemCode || ""} onChange={F("itemCode")} /></div>
+                <div><Label>品項名稱 *</Label><Input value={form.itemName || ""} onChange={F("itemName")} /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>分類</Label>
+                  <SearchableSelect
+                    value={form.itemGroup || ""}
+                    onValueChange={(v) => setForm((p) => ({ ...p, itemGroup: v === "__none__" ? "" : v }))}
+                    placeholder="請選擇分類"
+                    searchPlaceholder="搜尋分類..."
+                    emptyText="找不到此分類，請先到「品項分類」新增"
+                    options={[{ value: "__none__", label: "（未分類）" }, ...groups.map((g: string) => ({ value: g, label: g }))]}
+                    data-testid="select-form-group"
+                  />
+                </div>
+                <div>
+                  <Label>品項類型</Label>
+                  <SearchableSelect
+                    value={form.itemType || ""}
+                    onValueChange={(v) => setForm((p) => ({ ...p, itemType: v === "__none__" ? "" : v }))}
+                    placeholder="請選擇類型"
+                    searchPlaceholder="搜尋類型..."
+                    emptyText="找不到此類型，請先到「品項類型」新增"
+                    options={[
+                      { value: "__none__", label: "（未指定）" },
+                      ...itemTypes.map((t) => ({ value: t.name, label: t.label || t.name })),
+                    ]}
+                    data-testid="select-form-type"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>規格資訊</Label><Input value={form.specification || ""} onChange={F("specification")} /></div>
+                <div><Label>單位</Label><Input value={form.unit || "Nos"} onChange={F("unit")} /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>供應商</Label><MasterLookup source="suppliers" valueKey="name" value={form.supplierName || ""} onValueChange={v => setForm(p => ({ ...p, supplierName: v }))} placeholder="選擇供應商" /></div>
+                <div><Label>庫存</Label><Input type="number" value={form.currentStock || "0"} onChange={F("currentStock")} /></div>
+              </div>
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300"
+                  checked={form.isVirtual === "true"}
+                  onChange={e => setForm(p => ({ ...p, isVirtual: e.target.checked ? "true" : "false" }))}
+                  data-testid="checkbox-is-virtual"
+                />
+                是虛擬服務（不需出貨、不追蹤庫存，如課程、顧問服務）
+              </label>
+              <div><Label>摘要</Label><textarea className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]" value={form.summary || ""} onChange={F("summary")} /></div>
+            </TabsContent>
+            <TabsContent value="cost" className="space-y-3 mt-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>總成本</Label><Input type="number" value={form.totalCost || "0"} onChange={F("totalCost")} /></div>
+                <div><Label>材料費標準成本</Label><Input type="number" value={form.materialCost || "0"} onChange={F("materialCost")} /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>經費標準成本</Label><Input type="number" value={form.expenseCost || "0"} onChange={F("expenseCost")} /></div>
+                <div><Label>外包費標準成本</Label><Input type="number" value={form.outsourcingCost || "0"} onChange={F("outsourcingCost")} /></div>
+              </div>
+              <div><Label>勞務費標準成本</Label><Input type="number" value={form.laborCost || "0"} onChange={F("laborCost")} /></div>
+            </TabsContent>
+            <TabsContent value="price" className="space-y-3 mt-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>內部轉撥價格</Label><Input type="number" value={form.internalPrice || "0"} onChange={F("internalPrice")} /></div>
+                <div><Label>總批發價/員工價</Label><Input type="number" value={form.wholesalePrice || "0"} onChange={F("wholesalePrice")} /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>B端終端售價</Label><Input type="number" value={form.retailPrice || "0"} onChange={F("retailPrice")} /></div>
+                <div><Label>大盤價(SVIP)</Label><Input type="number" value={form.svipPrice || "0"} onChange={F("svipPrice")} /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>同行價格(中盤)</Label><Input type="number" value={form.peerPrice || "0"} onChange={F("peerPrice")} /></div>
+                <div><Label>經銷價格(小盤)</Label><Input type="number" value={form.dealerPrice || "0"} onChange={F("dealerPrice")} /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label>售價</Label><Input type="number" value={form.sellingPrice || "0"} onChange={F("sellingPrice")} /></div>
+                <div><Label>進價</Label><Input type="number" value={form.buyingPrice || "0"} onChange={F("buyingPrice")} /></div>
+              </div>
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
+              {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
-
-function EditDialog({ item, onClose }: { item: ErpItem | null; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [unit, setUnit] = useState('');
-  const [barcode, setBarcode] = useState('');
-  const [safetyStock, setSafetyStock] = useState('0');
-  const [isVirtual, setIsVirtual] = useState(false);
-  useEffect(() => {
-    if (item) {
-      setUnit(item.unit || '');
-      setBarcode(item.barcode || '');
-      setSafetyStock(String(item.safetyStock));
-      setIsVirtual(item.isVirtual);
-    }
-  }, [item]);
-  const mutation = useUpdateErpItem({ mutation: {
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListErpItemsQueryKey() }); toast({ title: '更新成功', description: '品項 ERP 欄位已儲存' }); onClose(); },
-    onError: (err) => toast({ title: '更新失敗', description: errorMessage(err), variant: 'destructive' }),
-  } });
-  const open = !!item;
-  return <Dialog open={open} onOpenChange={(openNow) => !openNow && onClose()}><DialogContent>
-    <DialogHeader><DialogTitle>編輯 ERP 欄位－{item?.name}</DialogTitle></DialogHeader>
-    <div className="grid gap-4 py-2">
-      <div className="flex items-center justify-between"><Label htmlFor="virtual">虛擬品項</Label><Switch id="virtual" checked={isVirtual} onCheckedChange={setIsVirtual} /></div>
-      <div className="space-y-2"><Label>單位</Label><Input value={unit} onChange={(e) => setUnit(e.target.value)} /></div>
-      <div className="space-y-2"><Label>條碼</Label><Input value={barcode} onChange={(e) => setBarcode(e.target.value)} /></div>
-      <div className="space-y-2"><Label>安全庫存</Label><Input type="number" min="0" step="1" value={safetyStock} onChange={(e) => setSafetyStock(e.target.value)} /></div>
-    </div>
-    <DialogFooter><Button variant="outline" onClick={onClose}>取消</Button><Button disabled={mutation.isPending || !item} onClick={() => item && mutation.mutate({ id: item.id, data: { unit: unit || null, barcode: barcode || null, safetyStock: Number(safetyStock), isVirtual } })}>{mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}儲存</Button></DialogFooter>
-  </DialogContent></Dialog>;
-}
-
-function AdjustDialog({ item, onClose }: { item: ErpItem | null; onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const activeVariants = item?.variants.filter((v) => v.isActive) || [];
-  const [variantId, setVariantId] = useState('');
-  const [warehouseId, setWarehouseId] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [reason, setReason] = useState('盤點');
-  const [note, setNote] = useState('');
-  const { data: warehouses } = useListErpWarehouses({ query: { queryKey: getListErpWarehousesQueryKey(), enabled: !!item } });
-  useEffect(() => { setVariantId(''); setQuantity(''); setReason('盤點'); setNote(''); setWarehouseId(''); }, [item]);
-  useEffect(() => {
-    if (item && !warehouseId && warehouses?.length) setWarehouseId(String(warehouses.find((w) => w.isDefault)?.id ?? warehouses[0].id));
-  }, [item, warehouseId, warehouses]);
-  const mutation = useErpAdjustStock({ mutation: {
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListErpItemsQueryKey() }); queryClient.invalidateQueries({ queryKey: getListErpStockMovementsQueryKey() }); toast({ title: '調整成功', description: '庫存已更新' }); onClose(); },
-    onError: (err) => toast({ title: '調整失敗', description: errorMessage(err), variant: 'destructive' }),
-  } });
-  const valid = !!item && !!warehouseId && Number.isInteger(Number(quantity)) && Number(quantity) !== 0 && (!activeVariants.length || !!variantId);
-  return <Dialog open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent>
-    <DialogHeader><DialogTitle>庫存調整－{item?.name}</DialogTitle></DialogHeader>
-    <div className="grid gap-4 py-2">
-      <div className="space-y-2"><Label>倉庫</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue placeholder="選擇倉庫" /></SelectTrigger><SelectContent>{warehouses?.filter((w) => w.isActive).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}{w.isDefault ? '（預設）' : ''}</SelectItem>)}</SelectContent></Select></div>
-      {activeVariants.length > 0 && <div className="space-y-2"><Label>規格（必填）</Label><Select value={variantId} onValueChange={setVariantId}><SelectTrigger><SelectValue placeholder="選擇規格" /></SelectTrigger><SelectContent>{activeVariants.map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.name}（目前 {v.stock}）</SelectItem>)}</SelectContent></Select></div>}
-      <div className="space-y-2"><Label>調整數量（正數增加、負數減少）</Label><Input type="number" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="例如：10 或 -3" /></div>
-      <div className="space-y-2"><Label>原因</Label><Select value={reason} onValueChange={setReason}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['盤點', '報廢', '其他'].map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
-      <div className="space-y-2"><Label>備註</Label><Textarea value={note} onChange={(e) => setNote(e.target.value)} /></div>
-    </div>
-    <DialogFooter><Button variant="outline" onClick={onClose}>取消</Button><Button disabled={!valid || mutation.isPending} onClick={() => item && mutation.mutate({ data: { productId: item.id, variantId: variantId ? Number(variantId) : null, warehouseId: Number(warehouseId), quantity: Number(quantity), reason, note: note || null } })}>確認調整</Button></DialogFooter>
-  </DialogContent></Dialog>;
-}
-
-function WarehouseStockDialog({ item, onClose }: { item: ErpItem | null; onClose: () => void }) {
-  const { data, isLoading } = useListErpWarehouseStock(
-    { productId: item?.id },
-    { query: { queryKey: getListErpWarehouseStockQueryKey({ productId: item?.id }), enabled: !!item } },
-  );
-  return <Dialog open={!!item} onOpenChange={(open) => !open && onClose()}><DialogContent className="max-w-2xl">
-    <DialogHeader><DialogTitle>分倉庫存－{item?.name}</DialogTitle></DialogHeader>
-    <Table><TableHeader><TableRow><TableHead>倉庫</TableHead><TableHead>規格</TableHead><TableHead className="text-right">數量</TableHead></TableRow></TableHeader><TableBody>
-      {isLoading ? <TableRow><TableCell colSpan={3} className="h-24"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></TableCell></TableRow>
-        : !data?.length ? <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted-foreground">尚無分倉庫存</TableCell></TableRow>
-        : data.map((row) => <TableRow key={row.id}><TableCell>{row.warehouseCode}－{row.warehouseName}</TableCell><TableCell>{row.variantName || '—'}</TableCell><TableCell className="text-right font-medium">{row.quantity}</TableCell></TableRow>)}
-    </TableBody></Table>
-    <DialogFooter><Button variant="outline" onClick={onClose}>關閉</Button></DialogFooter>
-  </DialogContent></Dialog>;
 }

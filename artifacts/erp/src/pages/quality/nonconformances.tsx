@@ -1,1 +1,0 @@
-import { useCreateErpNonconformance,useListErpNonconformances } from '@workspace/api-client-react'; import { QualityPage } from './simple-page'; export default function Page(){return <QualityPage title="不符合事項" kind="nc" useList={useListErpNonconformances} useCreate={useCreateErpNonconformance}/>}

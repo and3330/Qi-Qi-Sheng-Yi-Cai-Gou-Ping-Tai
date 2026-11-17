@@ -1,104 +1,131 @@
-import { useState } from 'react';
-import { useGetErpVatReport } from '@workspace/api-client-react';
-import { AlertTriangle, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
+import { PageHeader } from "@/components/shared/page-header";
+import { PageHint } from "@/components/page-hint";
+import { DataTable } from "@/components/shared/data-table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-const dateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-const defaultPeriod = () => {
+const BASE_URL = import.meta.env.BASE_URL;
+const api = (path: string) => `/erp-api/${path}`;
+const money = (value: number) => `NT$ ${Number(value || 0).toLocaleString()}`;
+
+function initialPeriod() {
   const now = new Date();
-  const startMonth = Math.floor(now.getMonth() / 2) * 2;
+  const firstMonth = Math.floor(now.getMonth() / 2) * 2;
+  const year = now.getFullYear();
+  const end = new Date(year, firstMonth + 2, 0);
   return {
-    startDate: dateValue(new Date(now.getFullYear(), startMonth, 1)),
-    endDate: dateValue(new Date(now.getFullYear(), startMonth + 2, 0)),
+    startDate: `${year}-${String(firstMonth + 1).padStart(2, "0")}-01`,
+    endDate: `${year}-${String(firstMonth + 2).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`,
   };
-};
-const money = (value?: number | null) => (value ?? 0).toLocaleString('zh-TW');
-
-export default function VatReportPage() {
-  const initial = defaultPeriod();
-  const [dates, setDates] = useState(initial);
-  const [period, setPeriod] = useState(initial);
-  const { data: report, isLoading, isFetching, error } = useGetErpVatReport(period);
-
-  const exportCsv = () => {
-    if (!report) return;
-    const rows = [
-      ['營業稅 401 申報彙總', `${report.startDate} 至 ${report.endDate}`],
-      ['類別', '項目', '金額（新台幣元）'],
-      ['銷項', '應稅銷售淨額', report.outputNet],
-      ['銷項', '銷項稅額', report.outputTax],
-      ['銷項', '零稅率銷售額', report.zeroRatedSales ?? 0],
-      ['銷項', '免稅銷售額', report.exemptSales ?? 0],
-      ['進項', '進貨及費用淨額', report.inputNet],
-      ['進項', '可扣抵進項稅額', report.inputTax],
-      ['稅額計算', report.payableTax >= 0 ? '應納稅額' : '應退稅額', Math.abs(report.payableTax)],
-      ['資料檢核', '未分類稅別發票筆數', report.unclassifiedCount ?? 0],
-    ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `營業稅申報_${report.startDate}_${report.endDate}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return <div className="space-y-6">
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <h2 className="flex items-center gap-2 text-xl font-bold"><FileSpreadsheet className="h-5 w-5 text-primary" />營業稅申報</h2>
-      <Button variant="outline" disabled={!report || isFetching} onClick={exportCsv}><Download className="mr-2 h-4 w-4" />匯出 CSV</Button>
-    </div>
-    <Card className="border-t-2 border-t-primary p-4 shadow-sm">
-      <form className="flex flex-col gap-4 sm:flex-row sm:items-end" onSubmit={(event) => { event.preventDefault(); setPeriod(dates); }}>
-        <div className="space-y-2"><Label>申報起始日</Label><Input type="date" value={dates.startDate} onChange={(event) => setDates((current) => ({ ...current, startDate: event.target.value }))} /></div>
-        <div className="space-y-2"><Label>申報結束日</Label><Input type="date" value={dates.endDate} onChange={(event) => setDates((current) => ({ ...current, endDate: event.target.value }))} /></div>
-        <Button disabled={!dates.startDate || !dates.endDate || dates.startDate > dates.endDate || isFetching}>{isFetching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}產生報表</Button>
-        <span className="pb-2 text-xs text-muted-foreground">預設期間為目前雙月申報期</span>
-      </form>
-    </Card>
-    {isLoading ? <Card className="p-20"><Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" /></Card> : error ? <Card className="border-destructive p-10 text-center text-destructive">報表載入失敗，請稍後再試</Card> : report && <>
-      {(report.unclassifiedCount ?? 0) > 0 && <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div><div className="font-semibold">發票稅別尚未分類</div><div className="text-sm">本期共有 {report.unclassifiedCount} 筆發票未分類稅別，未納入本報表計算，請先完成分類後再申報。</div></div>
-      </div>}
-      <Card className="overflow-hidden border-2 border-slate-700 shadow-sm">
-        <div className="border-b-2 border-slate-700 bg-slate-50 p-5 text-center">
-          <div className="text-2xl font-bold tracking-[0.2em]">營業人銷售額與稅額申報書</div>
-          <div className="mt-1 text-sm font-medium">（401 彙總預覽）</div>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-sm"><Badge variant="outline">申報期間</Badge><span className="font-mono">{report.startDate} ～ {report.endDate}</span></div>
-        </div>
-        <Table>
-          <TableHeader><TableRow className="border-b-2 border-slate-700 bg-secondary/60"><TableHead className="w-24 border-r font-bold">區分</TableHead><TableHead className="border-r font-bold">申報項目</TableHead><TableHead className="w-56 text-right font-bold">金額（新台幣元）</TableHead></TableRow></TableHeader>
-          <TableBody>
-            <ReportRow section="銷項" label="應稅銷售淨額" value={report.outputNet} first />
-            <ReportRow label="銷項稅額" value={report.outputTax} />
-            <ReportRow label="零稅率銷售額" value={report.zeroRatedSales ?? 0} />
-            <ReportRow label="免稅銷售額" value={report.exemptSales ?? 0} last />
-            <ReportRow section="進項" label="進貨及費用淨額" value={report.inputNet} first />
-            <ReportRow label="可扣抵進項稅額" value={report.inputTax} last />
-          </TableBody>
-        </Table>
-        <div className="grid border-t-2 border-slate-700 bg-slate-50 sm:grid-cols-[1fr_320px]">
-          <div className="flex items-center p-5"><div><div className="font-bold">本期應納（退）稅額</div><div className="mt-1 text-xs text-muted-foreground">銷項稅額 − 可扣抵進項稅額</div></div></div>
-          <div className={`border-t-2 border-slate-700 p-5 text-right sm:border-l-2 sm:border-t-0 ${report.payableTax < 0 ? 'text-emerald-700' : 'text-primary'}`}>
-            <div className="text-sm font-semibold">{report.payableTax < 0 ? '應退稅額' : '應納稅額'}</div>
-            <div className="mt-1 font-mono text-3xl font-bold">NT$ {money(Math.abs(report.payableTax))}</div>
-          </div>
-        </div>
-      </Card>
-      <p className="text-center text-xs text-muted-foreground">本頁為申報資料彙總，正式申報前請依財政部規定核對憑證及稅額。</p>
-    </>}
-  </div>;
 }
 
-function ReportRow({ section, label, value, first, last }: { section?: string; label: string; value: number; first?: boolean; last?: boolean }) {
-  return <TableRow className={last ? 'border-b-2 border-slate-700' : ''}>
-    <TableCell className="border-r text-center font-bold">{first ? section : ''}</TableCell>
-    <TableCell className="border-r">{label}</TableCell>
-    <TableCell className="text-right font-mono text-base font-medium">{money(value)}</TableCell>
-  </TableRow>;
+export default function VatReportPage() {
+  const initial = useMemo(initialPeriod, []);
+  const [startDate, setStartDate] = useState(initial.startDate);
+  const [endDate, setEndDate] = useState(initial.endDate);
+  const queryClient = useQueryClient();
+  const { data, isLoading, error } = useQuery<any>({
+    queryKey: ["/erp-api/vat-report", startDate, endDate],
+    queryFn: async () => {
+      const response = await fetch(api(`vat-report?startDate=${startDate}&endDate=${endDate}`));
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "載入營業稅報表失敗");
+      return body;
+    },
+  });
+  const ensureAccounts = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(api("vat-report/ensure-accounts"), { method: "POST" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "營業稅科目建立失敗");
+      return body;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/erp-api/vat-report", startDate, endDate] }),
+  });
+
+  const choosePeriod = (month: number) => {
+    const year = Number(startDate.slice(0, 4)) || new Date().getFullYear();
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month + 1, 0);
+    setStartDate(`${year}-${String(month).padStart(2, "0")}-01`);
+    setEndDate(`${year}-${String(month + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`);
+  };
+  const columns = [
+    { header: "發票號碼", accessor: (row: any) => row.displayInvoiceNumber },
+    { header: "日期", accessor: "invoiceDate" },
+    { header: "對象", accessor: (row: any) => row.partyName },
+    { header: "未稅金額", accessor: (row: any) => money(row.netAmount), className: "text-right" },
+    { header: "稅額", accessor: (row: any) => money(row.taxAmount), className: "text-right" },
+  ];
+
+  return <div className="space-y-6">
+    <PageHeader title="營業稅申報" description="銷項與進項稅額彙總" hint={<PageHint hintKey="vat-report">這裡彙總指定期間的銷項與進項發票，協助估算應繳營業稅。先選申報期間，再核對異常或缺漏發票，最後交由會計確認。小提醒：此頁是依系統資料試算，不能取代正式申報前的憑證查核。</PageHint>} />
+    <Card><CardContent className="pt-6 space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div><Label>起始日期</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
+        <div><Label>結束日期</Label><Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} /></div>
+        {[1, 3, 5, 7, 9, 11].map(month =>
+          <Button key={month} variant="outline" onClick={() => choosePeriod(month)}>{month}-{month + 1}月</Button>
+        )}
+      </div>
+    </CardContent></Card>
+    {data?.unclassifiedCount > 0 && <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <AlertTriangle className="h-5 w-5" />提示有 {data.unclassifiedCount} 張發票尚未分類稅別
+    </div>}
+    {data?.taxAccounts && !data.taxAccounts.ready && <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+        <div>
+          <div className="font-medium">總帳缺少營業稅專用科目</div>
+          <div className="text-sm">
+            {data.taxAccounts.statuses.filter((status: any) => status.issue).map((status: any) => status.issue).join("；")}。
+            請先建立標準科目，或至科目表選擇正確的資產／負債明細科目。
+          </div>
+        </div>
+      </div>
+      <Button variant="outline" onClick={() => ensureAccounts.mutate()} disabled={ensureAccounts.isPending}>
+        {ensureAccounts.isPending ? "建立中…" : "建立預設科目"}
+      </Button>
+      <Button variant="outline" asChild><a href={`${BASE_URL}accounting/accounts`}>前往會計科目</a></Button>
+    </div>}
+    {ensureAccounts.error && <div className="rounded-md bg-destructive/10 p-4 text-destructive">{(ensureAccounts.error as Error).message}</div>}
+    {error && <div className="rounded-md bg-destructive/10 p-4 text-destructive">{(error as Error).message}</div>}
+    <div className="grid gap-4 md:grid-cols-3">
+      {[["銷項稅額", data?.outputTax], ["進項稅額", data?.inputTax], ["應繳(退)稅額", data?.payableTax]].map(([title, value]) =>
+        <Card key={String(title)}><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">{title}</CardTitle></CardHeader>
+          <CardContent className="text-2xl font-bold">{money(Number(value))}</CardContent></Card>
+      )}
+    </div>
+    {data?.taxReconciliation && <Card>
+      <CardHeader><CardTitle>總帳核對</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">總帳金額取指定期間已過帳的「銷項稅額／進項稅額」科目借貸淨額；差異為發票稅額減總帳金額。折讓單會從當期扣掉；代墊款與直接付掉的運費如果有稅額，也算進進項。</p>
+        {[
+          ["銷項稅額", data.taxReconciliation.output],
+          ["進項稅額", data.taxReconciliation.input],
+        ].map(([label, item]: [string, any]) => (
+          <div key={label} className="grid grid-cols-2 gap-3 rounded-md border p-3 text-sm md:grid-cols-4">
+            <span className="font-medium">{label}</span>
+            <span>發票：{money(item.invoiceTax)}</span>
+            <span>總帳：{money(item.ledgerTax)}</span>
+            <span className={Math.abs(item.difference) > 0.01 ? "font-medium text-amber-700" : "text-green-700"}>
+              差異：{money(item.difference)}
+            </span>
+          </div>
+        ))}
+        <div className={data.taxReconciliation.isReconciled ? "text-sm text-green-700" : "text-sm text-amber-700"}>
+          {data.taxReconciliation.isReconciled ? "發票稅額與總帳已核對相符" : "發票稅額與總帳尚有差異，請確認發票自動分錄是否已完成過帳。"}
+        </div>
+      </CardContent>
+    </Card>}
+    <Card><CardHeader><CardTitle>銷項發票與折讓（未稅銷售額 {money(data?.salesTotal)}）</CardTitle></CardHeader>
+      <CardContent className="p-0 overflow-x-auto"><DataTable data={data?.outputInvoices || []} columns={columns} isLoading={isLoading} /></CardContent></Card>
+    <Card><CardHeader><CardTitle>進項發票、折讓與代墊（未稅進貨額 {money(data?.purchasesTotal)}）</CardTitle></CardHeader>
+      <CardContent className="p-0 overflow-x-auto"><DataTable data={data?.inputInvoices || []} columns={columns} isLoading={isLoading} /></CardContent></Card>
+  </div>;
 }

@@ -1,1 +1,0 @@
-import { useCreateErpBom,useListErpBoms } from '@workspace/api-client-react'; import { ManufacturingPage } from './simple-page'; export default function Page(){return <ManufacturingPage title="物料清單（BOM）" kind="bom" useList={useListErpBoms} useCreate={useCreateErpBom}/>}

@@ -1,209 +1,258 @@
-import { useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  getGetErpPurchaseOrderQueryKey,
-  getListErpPurchaseOrdersQueryKey,
-  useCreateErpPurchaseOrder,
-  useGetErpPurchaseOrder,
-  useListErpItems,
-  useListErpHrEmployees,
-  useListErpPurchaseOrders,
-  useListErpSuppliers,
-  useListErpWarehouses,
-  useUpdateErpPurchaseOrderStatus,
-  type AdminPurchaseOrder,
-} from '@workspace/api-client-react';
-import { Eye, Loader2, Plus, Send, Trash2, XCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation, useSearch } from "wouter";
+import { DataTable } from "@/components/shared/data-table";
+import { PageHeader } from "@/components/shared/page-header";
+import { PageHint } from "@/components/page-hint";
+import { PrintButton } from "@/components/shared/print-button";
+import { ExportMenu } from "@/components/shared/export-menu";
+import { BatchActionBar, type BatchField } from "@/components/shared/batch-action-bar";
+import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
+import { useBatchSelection } from "@/hooks/use-batch-selection";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Plus, Search, Pencil } from "lucide-react";
+import { PurchaseOrderFormDialog } from "@/components/purchasing/purchase-order-edit-dialog";
+import type { ExportOptions } from "@/lib/export-utils";
+import { useAutoReloadKey } from "@/lib/auto-refresh";
 
-const statusLabel: Record<string, string> = {
-  draft: '草稿',
-  ordered: '已下單',
-  received: '已收貨',
-  cancelled: '已取消',
-};
-const statusClass: Record<string, string> = {
-  draft: 'border-slate-200 bg-slate-50 text-slate-700',
-  ordered: 'border-blue-200 bg-blue-50 text-blue-700',
-  received: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  cancelled: 'border-red-200 bg-red-50 text-red-700',
-};
-type Line = { productId: string; variantId: string; unitCost: string; quantity: string };
-const emptyLine = (): Line => ({ productId: '', variantId: '', unitCost: '', quantity: '' });
-const errorMessage = (err: any) => err?.response?.data?.error ?? err?.data?.error ?? err?.message ?? '請稍後再試';
+import { DateRangePresets } from "@/components/shared/date-range-presets";
+const BASE_URL = import.meta.env.BASE_URL;
+const BASE = BASE_URL.endsWith("/") ? BASE_URL : BASE_URL + "/";
 
-function OrderItems({ order }: { order: AdminPurchaseOrder }) {
-  return (
-    <div className="overflow-hidden rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>品項</TableHead><TableHead>規格</TableHead>
-            <TableHead className="text-right">進價</TableHead><TableHead className="text-right">數量</TableHead>
-            <TableHead className="text-right">小計</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {order.items.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell><div className="font-medium">{item.productName}</div><div className="text-xs text-muted-foreground">{item.productCode}</div></TableCell>
-              <TableCell>{item.variantName || '—'}</TableCell>
-              <TableCell className="text-right">NT$ {item.unitCost.toLocaleString()}</TableCell>
-              <TableCell className="text-right">{item.quantity}</TableCell>
-              <TableCell className="text-right font-medium">NT$ {(item.unitCost * item.quantity).toLocaleString()}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
+const statusMap: Record<string, string> = { Draft: "草稿", "To Receive": "待收貨", Completed: "已完成", Cancelled: "已取消" };
+const statusOptions = ["Draft", "To Receive", "Completed", "Cancelled"];
+const purchaseStatusActions: Record<string, string[]> = {
+  Draft: ["To Receive", "Cancelled"],
+  "To Receive": ["Cancelled"],
+  Completed: [],
+  Cancelled: [],
+};
+const statusColor = (s: string) => s === "Completed" ? "default" as const : s === "Cancelled" ? "destructive" as const : "secondary" as const;
+
+function getMonthRange() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  return { from: `${y}-${m}-01`, to: `${y}-${m}-${new Date(y, now.getMonth() + 1, 0).getDate()}` };
 }
 
 export default function PurchaseOrdersPage() {
-  const [status, setStatus] = useState('all');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [supplierId, setSupplierId] = useState('');
-  const [warehouseId, setWarehouseId] = useState('default');
-  const [note, setNote] = useState('');
-  const [creatorEmployeeId, setCreatorEmployeeId] = useState('');
-  const [lines, setLines] = useState<Line[]>([emptyLine()]);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const params = status === 'all' ? {} : { status };
-  const { data: orders, isLoading } = useListErpPurchaseOrders(params);
-  const { data: suppliers } = useListErpSuppliers({});
-  const { data: items } = useListErpItems({});
-  const { data: warehouses } = useListErpWarehouses();
-  const { data: employees, isLoading: employeesLoading } = useListErpHrEmployees();
-  const activeEmployees = employees?.filter((employee) => employee.status === 'active') ?? [];
-  const creatorName = (id?: number | null) => employees?.find((employee) => employee.id === id)?.name || '—';
-  const { data: detail, isLoading: detailLoading } = useGetErpPurchaseOrder(selectedId ?? 0, {
-    query: { enabled: selectedId !== null, queryKey: getGetErpPurchaseOrderQueryKey(selectedId ?? 0) },
-  });
-  const physicalItems = useMemo(() => (items ?? []).filter((item) => !item.isVirtual && item.isActive), [items]);
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: getListErpPurchaseOrdersQueryKey() });
-  const resetCreate = () => {
-    setCreateOpen(false); setSupplierId(''); setWarehouseId('default'); setNote(''); setCreatorEmployeeId(''); setLines([emptyLine()]);
-  };
-  const createOrder = useCreateErpPurchaseOrder({
-    mutation: {
-      onSuccess: () => { invalidate(); toast({ title: '已建立採購單', description: '採購單目前為草稿' }); resetCreate(); },
-      onError: (err) => toast({ title: '建立失敗', description: errorMessage(err), variant: 'destructive' }),
-    },
-  });
-  const updateStatus = useUpdateErpPurchaseOrderStatus({
-    mutation: {
-      onSuccess: (order) => {
-        invalidate();
-        queryClient.invalidateQueries({ queryKey: getGetErpPurchaseOrderQueryKey(order.id) });
-        toast({ title: order.status === 'ordered' ? '已確認下單' : '已取消採購單' });
-      },
-      onError: (err) => toast({ title: '更新失敗', description: errorMessage(err), variant: 'destructive' }),
-    },
-  });
-  const total = lines.reduce((sum, line) => sum + (Number(line.unitCost) || 0) * (Number(line.quantity) || 0), 0);
-  const submit = () => {
-    if (!supplierId) { toast({ title: '請選擇供應商', variant: 'destructive' }); return; }
-    const chosen = lines.filter((line) => line.productId);
-    if (!chosen.length) { toast({ title: '請至少新增一個品項', variant: 'destructive' }); return; }
-    for (const line of chosen) {
-      const item = physicalItems.find((row) => row.id === Number(line.productId));
-      if (!item || !Number.isInteger(Number(line.unitCost)) || Number(line.unitCost) < 0 || !Number.isInteger(Number(line.quantity)) || Number(line.quantity) < 1) {
-        toast({ title: '請確認採購明細', description: '進價須為非負整數，數量須為正整數', variant: 'destructive' }); return;
+  const reloadKey = useAutoReloadKey();
+  const [, navigate] = useLocation();
+  const searchParams = useSearch();
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [initialSupplierId, setInitialSupplierId] = useState("");
+
+  const { from: defaultFrom, to: defaultTo } = useMemo(() => getMonthRange(), []);
+  const [dateFrom, setDateFrom] = useState(defaultFrom);
+  const [dateTo, setDateTo] = useState(defaultTo);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    const ordRes = await fetch(`/erp-api/purchase-orders`);
+    setOrders(await ordRes.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll, reloadKey]);
+
+  // 網址帶著 supplierId 過來：直接打開新增視窗並帶入供應商
+  useEffect(() => {
+    const supplierId = new URLSearchParams(searchParams).get("supplierId");
+    if (!supplierId) return;
+    setEditing(null);
+    setInitialSupplierId(supplierId);
+    setOpen(true);
+  }, [searchParams]);
+
+  const filtered = useMemo(() => {
+    return (orders || []).filter((o: any) => {
+      if (dateFrom && o.orderDate < dateFrom) return false;
+      if (dateTo && o.orderDate > dateTo) return false;
+      if (statusFilter && o.status !== statusFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const match = (o.orderNumber || "").toLowerCase().includes(q)
+          || (o.supplierName || "").toLowerCase().includes(q)
+          || String(o.totalAmount || "").includes(q);
+        if (!match) return false;
       }
-      if (item.variants.length && !line.variantId) { toast({ title: `請選擇「${item.name}」的規格`, variant: 'destructive' }); return; }
-    }
-    createOrder.mutate({
-      data: {
-        supplierId: Number(supplierId), warehouseId: warehouseId === 'default' ? null : Number(warehouseId), creatorEmployeeId: creatorEmployeeId ? Number(creatorEmployeeId) : null, note: note.trim() || null,
-        items: chosen.map((line) => ({ productId: Number(line.productId), variantId: line.variantId ? Number(line.variantId) : null, unitCost: Number(line.unitCost), quantity: Number(line.quantity) })),
-      },
+      return true;
     });
+  }, [orders, dateFrom, dateTo, search, statusFilter]);
+
+  const statusEditableOrders = filtered.filter((order: any) => purchaseStatusActions[order.status]?.length > 0);
+  const batch = useBatchSelection(statusEditableOrders);
+  const selectedOrders = filtered.filter((order: any) => batch.selectedIds.has(order.id));
+  const commonStatusActions = selectedOrders.length === 0
+    ? []
+    : purchaseStatusActions[selectedOrders[0].status].filter(status =>
+        selectedOrders.every((order: any) => purchaseStatusActions[order.status].includes(status)),
+      );
+  const batchFields: BatchField[] = commonStatusActions.length > 0 ? [{
+    key: "status",
+    label: "推進狀態",
+    type: "select",
+    options: commonStatusActions.map(value => ({
+      value,
+      label: value === "Cancelled" ? "取消（須先取消進貨單與發票）" : statusMap[value],
+    })),
+  }] : [];
+  const openEdit = (o: any) => {
+    setEditing(o);
+    setOpen(true);
   };
-  const changeLine = (index: number, patch: Partial<Line>) => setLines((current) => current.map((line, i) => i === index ? { ...line, ...patch } : line));
+
+  const buildExport = (): ExportOptions => ({
+    title: "採購訂單清單",
+    subtitle: `期間：${dateFrom || "不限"} 至 ${dateTo || "不限"}`,
+    fileName: `採購訂單清單_${dateFrom || "不限"}_${dateTo || "不限"}`,
+    headers: ["訂單編號", "供應商", "日期", "狀態", "幣別", "總額"],
+    columnKeys: ["orderNumber", "supplier", "date", "status", "currency", "total"],
+    rows: filtered.map((order: any) => {
+      const currency = order.currency || "TWD";
+      const total = `${currency === "TWD" ? "NT$" : currency} ${Number(order.totalAmount).toLocaleString()}`;
+      return {
+        orderNumber: order.orderNumber || "-",
+        supplier: order.supplierName || "-",
+        date: order.orderDate || "-",
+        status: statusMap[order.status] || order.status || "-",
+        currency,
+        total: currency !== "TWD"
+          ? `${total}（折合 NT$${Number(order.totalAmountTWD).toLocaleString()}）`
+          : total,
+      };
+    }),
+  });
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="text-xl font-bold">採購單</h2><p className="text-sm text-muted-foreground">建立採購需求並追蹤下單狀態</p></div>
+      <div className="flex items-center justify-between">
+        <PageHeader title="採購訂單" description="管理採購流程" hint={<PageHint hintKey="purchasing-orders">這裡記錄向供應商下單的內容與進度。一般流程：建立採購單 → 確認 → 收到貨時建立進貨單 → 核對請款。小提醒：確認前先檢查供應商、交期與數量，避免後續庫存不符。</PageHint>} />
         <div className="flex gap-2">
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-36 bg-card"><SelectValue /></SelectTrigger>
-            <SelectContent><SelectItem value="all">全部狀態</SelectItem>{Object.entries(statusLabel).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent>
-          </Select>
-          <Button onClick={() => setCreateOpen(true)}><Plus className="mr-1 h-4 w-4" />建立採購單</Button>
+          <PrintButton title="採購訂單清單" contentId="po-table" />
+          <ExportMenu getExportOptions={buildExport} />
+          <Button onClick={() => { setEditing(null); setInitialSupplierId(""); setOpen(true); }}><Plus className="h-4 w-4 mr-1" />新增採購訂單</Button>
+          {/* 新增和編輯開的都是同一個採購單視窗（和採購單明細頁的編輯是同一個） */}
+          <PurchaseOrderFormDialog
+            open={open}
+            onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setInitialSupplierId(""); } }}
+            order={editing}
+            initialSupplierId={initialSupplierId}
+            onSaved={fetchAll}
+          />
         </div>
       </div>
-      <Card className="overflow-hidden border-t-2 border-t-primary shadow-sm">
-        <Table>
-          <TableHeader className="bg-secondary/50"><TableRow><TableHead>單號</TableHead><TableHead>供應商</TableHead><TableHead>品項數</TableHead><TableHead className="text-right">金額</TableHead><TableHead>狀態</TableHead><TableHead>製單人</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {isLoading ? <TableRow><TableCell colSpan={8} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow>
-              : !orders?.length ? <TableRow><TableCell colSpan={8} className="h-32 text-center text-muted-foreground">尚無採購單</TableCell></TableRow>
-              : orders.map((order) => <TableRow key={order.id}>
-                <TableCell className="font-mono text-xs">{order.poNo}</TableCell><TableCell>{order.supplierName}</TableCell><TableCell>{order.items.length}</TableCell>
-                <TableCell className="text-right font-medium">NT$ {order.totalAmount.toLocaleString()}</TableCell>
-                <TableCell><Badge variant="outline" className={statusClass[order.status]}>{statusLabel[order.status]}</Badge></TableCell><TableCell>{creatorName(order.creatorEmployeeId)}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleString('zh-TW')}</TableCell>
-                <TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => setSelectedId(order.id)}><Eye className="mr-1 h-4 w-4" />詳情</Button></TableCell>
-              </TableRow>)}
-          </TableBody>
-        </Table>
+
+      {batch.count > 0 && (
+        <BatchActionBar
+          count={batch.count}
+          entityName="採購訂單"
+          entityEndpoint="purchase-orders"
+          ids={batch.ids}
+          batchFields={batchFields}
+          allowDelete={false}
+          onClear={batch.clearSelection}
+          onComplete={fetchAll}
+        />
+      )}
+
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div>
+              <Label className="text-xs text-muted-foreground">起始日期</Label>
+              <Input type="date" className="w-40" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">結束日期</Label>
+              <Input type="date" className="w-40" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+            </div>
+            <DateRangePresets from={dateFrom} to={dateTo} onChange={(r) => { setDateFrom(r.from); setDateTo(r.to); }} />
+            <div>
+              <Label className="text-xs text-muted-foreground">狀態</Label>
+              <select className="flex h-10 w-32 rounded-md border border-input bg-background px-3 py-2 text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="">全部</option>
+                {statusOptions.map(s => <option key={s} value={s}>{statusMap[s]}</option>)}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <Label className="text-xs text-muted-foreground">搜尋</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input className="pl-9" placeholder="訂單編號、供應商名稱..." value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+            </div>
+            <div className="text-sm text-muted-foreground pb-2">共 {filtered.length} 筆</div>
+          </div>
+        </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onOpenChange={(open) => !open && resetCreate()}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader><DialogTitle>建立採購單</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2"><Label>供應商 *</Label><Select value={supplierId} onValueChange={setSupplierId}><SelectTrigger><SelectValue placeholder="選擇供應商" /></SelectTrigger><SelectContent>{(suppliers ?? []).filter((row) => row.isActive).map((row) => <SelectItem key={row.id} value={String(row.id)}>{row.name}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-2"><Label>收貨倉</Label><Select value={warehouseId} onValueChange={setWarehouseId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">預設倉</SelectItem>{warehouses?.filter((w) => w.isActive).map((w) => <SelectItem key={w.id} value={String(w.id)}>{w.name}</SelectItem>)}</SelectContent></Select></div>
-               <div className="space-y-2"><Label>製單人（選填）</Label><Select value={creatorEmployeeId} onValueChange={setCreatorEmployeeId} disabled={employeesLoading || !activeEmployees.length}><SelectTrigger><SelectValue placeholder={employeesLoading ? '載入員工中…' : activeEmployees.length ? '選擇製單人' : '無在職員工'} /></SelectTrigger><SelectContent>{activeEmployees.map((employee) => <SelectItem key={employee.id} value={String(employee.id)}>{employee.employeeNo}－{employee.name}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-2"><Label>備註</Label><Input value={note} onChange={(e) => setNote(e.target.value)} /></div>
-            </div>
-            <div className="space-y-3">
-              <Label>採購明細 *</Label>
-              {lines.map((line, index) => {
-                const item = physicalItems.find((row) => row.id === Number(line.productId));
-                return <div key={index} className="grid gap-2 rounded-md border p-3 sm:grid-cols-[2fr_1.5fr_1fr_1fr_auto]">
-                  <Select value={line.productId} onValueChange={(value) => changeLine(index, { productId: value, variantId: '' })}><SelectTrigger><SelectValue placeholder="選擇品項" /></SelectTrigger><SelectContent>{physicalItems.map((row) => <SelectItem key={row.id} value={String(row.id)}>{row.code} {row.name}</SelectItem>)}</SelectContent></Select>
-                  <Select value={line.variantId} onValueChange={(value) => changeLine(index, { variantId: value })} disabled={!item?.variants.length}><SelectTrigger><SelectValue placeholder={item?.variants.length ? '選擇規格 *' : '無規格'} /></SelectTrigger><SelectContent>{item?.variants.filter((row) => row.isActive).map((row) => <SelectItem key={row.id} value={String(row.id)}>{row.name}</SelectItem>)}</SelectContent></Select>
-                  <Input type="number" min={0} step={1} placeholder="進價" value={line.unitCost} onChange={(e) => changeLine(index, { unitCost: e.target.value })} />
-                  <Input type="number" min={1} step={1} placeholder="數量" value={line.quantity} onChange={(e) => changeLine(index, { quantity: e.target.value })} />
-                  <Button size="icon" variant="ghost" disabled={lines.length === 1} onClick={() => setLines((current) => current.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
-                </div>;
-              })}
-              <Button size="sm" variant="outline" onClick={() => setLines((current) => [...current, emptyLine()])}><Plus className="mr-1 h-4 w-4" />新增品項</Button>
-            </div>
-            <p className="text-right font-semibold">合計：NT$ {total.toLocaleString()}</p>
-          </div>
-          <DialogFooter><Button variant="outline" onClick={resetCreate}>取消</Button><Button onClick={submit} disabled={createOrder.isPending}>{createOrder.isPending ? '建立中…' : '建立草稿'}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={selectedId !== null} onOpenChange={(open) => !open && setSelectedId(null)}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader><DialogTitle className="flex items-center gap-2">採購單 {detail?.poNo}{detail && <Badge variant="outline" className={statusClass[detail.status]}>{statusLabel[detail.status]}</Badge>}</DialogTitle></DialogHeader>
-          {detailLoading ? <Loader2 className="mx-auto my-10 h-6 w-6 animate-spin" /> : detail && <div className="space-y-4">
-            <div className="grid gap-2 text-sm sm:grid-cols-2"><p><span className="text-muted-foreground">供應商：</span>{detail.supplierName}</p><p><span className="text-muted-foreground">製單人：</span>{creatorName(detail.creatorEmployeeId)}</p><p><span className="text-muted-foreground">建立時間：</span>{new Date(detail.createdAt).toLocaleString('zh-TW')}</p>{detail.note && <p className="sm:col-span-2"><span className="text-muted-foreground">備註：</span>{detail.note}</p>}</div>
-            <OrderItems order={detail} /><p className="text-right font-bold">合計：NT$ {detail.totalAmount.toLocaleString()}</p>
-          </div>}
-          <DialogFooter>
-            {detail?.status === 'draft' && <Button variant="outline" className="text-destructive" disabled={updateStatus.isPending} onClick={() => updateStatus.mutate({ id: detail.id, data: { status: 'cancelled' } })}><XCircle className="mr-1 h-4 w-4" />取消</Button>}
-            {detail?.status === 'draft' && <Button disabled={updateStatus.isPending} onClick={() => updateStatus.mutate({ id: detail.id, data: { status: 'ordered' } })}><Send className="mr-1 h-4 w-4" />下單</Button>}
-            {detail?.status === 'ordered' && <Button variant="destructive" disabled={updateStatus.isPending} onClick={() => updateStatus.mutate({ id: detail.id, data: { status: 'cancelled' } })}><XCircle className="mr-1 h-4 w-4" />取消採購單</Button>}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Card>
+        <CardContent className="p-0 overflow-x-auto" id="po-table">
+          <DataTable
+            isLoading={loading}
+            data={filtered}
+            onRowClick={(r: any) => navigate(`/purchasing/orders/${r.id}`)}
+            columns={[
+              {
+                header: () => <CheckboxHeader checked={batch.allSelected} indeterminate={batch.someSelected} onChange={batch.toggleAll} />,
+                accessor: (r: any) => purchaseStatusActions[r.status]?.length > 0
+                  ? <CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} />
+                  : null,
+                className: "w-10",
+              },
+              { header: "訂單編號", accessor: (r: any) => <span className="whitespace-nowrap">{r.orderNumber}{r.extraFields?.legacy === true && <span className="ml-1.5 inline-block rounded border px-1 text-[10px] font-normal text-muted-foreground align-middle" title="從舊系統 Ecount 搬過來的歷史單，只能查看">歷史</span>}</span> },
+              { header: "供應商", accessor: "supplierName", className: "hidden sm:table-cell" },
+              { header: "日期", accessor: "orderDate" },
+              {
+                header: "狀態",
+                accessor: (r: any) => (
+                  <Badge variant={statusColor(r.status)}>
+                    {statusMap[r.status] || r.status}
+                  </Badge>
+                ),
+              },
+              { header: "幣別", accessor: (r: any) => r.currency || "TWD", className: "hidden sm:table-cell" },
+              {
+                header: "總額",
+                accessor: (r: any) => (
+                  <div>
+                    <div>{r.currency === "TWD" || !r.currency ? "NT$" : r.currency} {Number(r.totalAmount).toLocaleString()}</div>
+                    {r.currency && r.currency !== "TWD" && (
+                      <div className="text-xs text-muted-foreground">折合 NT${Number(r.totalAmountTWD).toLocaleString()}</div>
+                    )}
+                    {r.status !== "Draft" && r.status !== "Cancelled" && Number(r.paidAmount) > 0 && (
+                      <div className={`text-xs ${Number(r.outstandingAmount) > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                        {Number(r.outstandingAmount) > 0 ? `已付 NT$${Number(r.paidAmount).toLocaleString()}，未付 NT$${Number(r.outstandingAmount).toLocaleString()}` : "已付清"}
+                      </div>
+                    )}
+                  </div>
+                ),
+                className: "text-right",
+              },
+              {
+                header: "操作",
+                // 每一張單都開同一個編輯視窗；能改哪些欄位由視窗依狀態決定
+                accessor: (r: any) => (
+                  <Button size="sm" variant="outline" title={r.extraFields?.legacy === true ? "編輯專案、部門、到貨日與備註" : r.status === "Draft" ? "編輯" : "編輯預計到貨日"} onClick={(e) => { e.stopPropagation(); openEdit(r); }}>
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                ),
+                className: "text-center w-16",
+              },
+            ]}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

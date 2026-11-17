@@ -1,61 +1,152 @@
-import { useEffect, useState } from 'react';
-import {
-  getListErpWarehousesQueryKey,
-  useCreateErpWarehouse,
-  useListErpWarehouses,
-  useUpdateErpWarehouse,
-  type ErpWarehouse,
-} from '@workspace/api-client-react';
-import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, Plus, Warehouse } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DataTable } from "@/components/shared/data-table";
+import { PageHeader } from "@/components/shared/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { call, post, selectClass } from "@/lib/call";
+import { Pencil, Plus } from "lucide-react";
 
-const message = (err: any) => err?.response?.data?.error || err?.message || '請稍後再試';
+interface Warehouse { id: number; name: string; location: string | null; isActive: boolean }
+const emptyForm = { name: "", location: "", isActive: true };
 
+/**
+ * 倉庫管理：可以新增、編輯、停用。
+ * 停用的倉庫開單時不會出現在選單裡，但原本的庫存紀錄與單據都還在；這一頁可以用「狀態」篩出已停用的。
+ */
 export default function WarehousesPage() {
-  const { data, isLoading } = useListErpWarehouses();
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<ErpWarehouse | null>(null);
-  return <div className="space-y-6">
-    <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-xl font-bold"><Warehouse className="h-5 w-5 text-primary" />倉庫</h2><Button onClick={() => setCreating(true)}><Plus className="mr-2 h-4 w-4" />新增倉庫</Button></div>
-    <Card className="border-t-2 border-t-primary shadow-sm"><Table><TableHeader className="bg-secondary/50"><TableRow><TableHead>代碼</TableHead><TableHead>名稱</TableHead><TableHead>地址</TableHead><TableHead>備註</TableHead><TableHead>可售</TableHead><TableHead>狀態</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader><TableBody>
-      {isLoading ? <TableRow><TableCell colSpan={7} className="h-32"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></TableCell></TableRow> : !data?.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground">尚無倉庫</TableCell></TableRow> : data.map((w) => <TableRow key={w.id}><TableCell className="font-mono">{w.code}</TableCell><TableCell className="font-medium">{w.name} {w.isDefault && <Badge className="ml-2">預設</Badge>}</TableCell><TableCell>{w.address || '—'}</TableCell><TableCell className="max-w-xs truncate">{w.note || '—'}</TableCell><TableCell>{w.isSellable ? '是' : '否'}</TableCell><TableCell><Badge variant={w.isActive ? 'default' : 'secondary'}>{w.isActive ? '啟用' : '停用'}</Badge></TableCell><TableCell className="text-right"><Button size="sm" variant="outline" onClick={() => setEditing(w)}>編輯</Button></TableCell></TableRow>)}
-    </TableBody></Table></Card>
-    <WarehouseDialog open={creating} onClose={() => setCreating(false)} />
-    <WarehouseDialog open={!!editing} warehouse={editing} onClose={() => setEditing(null)} />
-  </div>;
-}
-
-function WarehouseDialog({ open, warehouse, onClose }: { open: boolean; warehouse?: ErpWarehouse | null; onClose: () => void }) {
-  const [code, setCode] = useState('');
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
-  const [note, setNote] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [isSellable, setIsSellable] = useState(true);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  useEffect(() => { if (open) { setCode(warehouse?.code || ''); setName(warehouse?.name || ''); setAddress(warehouse?.address || ''); setNote(warehouse?.note || ''); setIsActive(warehouse?.isActive ?? true); setIsSellable(warehouse?.isSellable ?? true); } }, [open, warehouse]);
-  const done = (description: string) => { queryClient.invalidateQueries({ queryKey: getListErpWarehousesQueryKey() }); toast({ title: '儲存成功', description }); onClose(); };
-  const create = useCreateErpWarehouse({ mutation: { onSuccess: () => done('倉庫已新增'), onError: (e) => toast({ title: '新增失敗', description: message(e), variant: 'destructive' }) } });
-  const update = useUpdateErpWarehouse({ mutation: { onSuccess: () => done('倉庫資料已更新'), onError: (e) => toast({ title: '更新失敗', description: message(e), variant: 'destructive' }) } });
-  const pending = create.isPending || update.isPending;
-  const save = () => warehouse ? update.mutate({ id: warehouse.id, data: { name, address: address || null, note: note || null, isSellable, isActive } }) : create.mutate({ data: { code, name, address: address || null, note: note || null, isSellable } });
-  return <Dialog open={open} onOpenChange={(v) => !v && onClose()}><DialogContent><DialogHeader><DialogTitle>{warehouse ? '編輯倉庫' : '新增倉庫'}</DialogTitle></DialogHeader><div className="grid gap-4 py-2">
-    <div className="space-y-2"><Label>代碼</Label><Input value={code} disabled={!!warehouse} onChange={(e) => setCode(e.target.value)} /></div>
-    <div className="space-y-2"><Label>名稱</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
-    <div className="space-y-2"><Label>地址</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} /></div>
-    <div className="space-y-2"><Label>備註</Label><Textarea value={note} onChange={(e) => setNote(e.target.value)} /></div>
-    <div className="flex items-center justify-between"><Label>可售</Label><Switch checked={isSellable} onCheckedChange={setIsSellable} /></div>
-    {warehouse && <div className="flex items-center justify-between"><div><Label>啟用</Label>{warehouse.isDefault && <p className="text-xs text-muted-foreground">預設倉不可停用</p>}</div><Switch checked={isActive} disabled={warehouse.isDefault} onCheckedChange={setIsActive} /></div>}
-  </div><DialogFooter><Button variant="outline" onClick={onClose}>取消</Button><Button disabled={pending || !name.trim() || (!warehouse && !code.trim())} onClick={save}>{pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}儲存</Button></DialogFooter></DialogContent></Dialog>;
+  const { data: warehouses, isLoading } = useQuery({ queryKey: ["/warehouses", "all"], queryFn: () => call<Warehouse[]>("warehouses?includeInactive=1") });
+  const [scope, setScope] = useState("active");
+  const [keyword, setKeyword] = useState("");
+  const [editing, setEditing] = useState<Warehouse | null>(null);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  const term = keyword.trim().toLowerCase();
+  const rows = (warehouses ?? []).filter(w =>
+    (scope === "all" || (scope === "active" ? w.isActive : !w.isActive))
+    && (!term || w.name.toLowerCase().includes(term) || (w.location || "").toLowerCase().includes(term)));
+  const inactiveCount = (warehouses ?? []).filter(w => !w.isActive).length;
+
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/warehouses"] }),
+      queryClient.invalidateQueries({ queryKey: ["/erp-api/warehouses"] }),
+      queryClient.invalidateQueries({ queryKey: ["master-lookup", "warehouses"] }),
+    ]);
+  };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setOpen(true); };
+  const openEdit = (w: Warehouse) => { setEditing(w); setForm({ name: w.name, location: w.location || "", isActive: w.isActive }); setOpen(true); };
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (editing) await post(`warehouses/${editing.id}`, form, "PATCH");
+      else await post("warehouses", form);
+      toast({ title: editing ? "已更新倉庫" : "已新增倉庫" });
+      setOpen(false);
+      await refresh();
+    } catch (e) {
+      toast({ title: "沒有成功", description: e instanceof Error ? e.message : "請稍後再試", variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+  const setActive = async (ids: number[], isActive: boolean) => {
+    try {
+      for (const id of ids) await post(`warehouses/${id}`, { isActive }, "PATCH");
+      toast({ title: isActive ? `已啟用 ${ids.length} 個倉庫` : `已停用 ${ids.length} 個倉庫` });
+      setSelected(new Set());
+      await refresh();
+    } catch (e) {
+      toast({ title: "沒有成功", description: e instanceof Error ? e.message : "請稍後再試", variant: "destructive" });
+    }
+  };
+  const toggle = (id: number) => setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const allSelected = rows.length > 0 && rows.every(w => selected.has(w.id));
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      <PageHeader title="倉庫管理" description="倉庫可以新增、編輯、停用。停用的倉庫開單時不會出現，原本的紀錄都還在。"
+        action={<Button onClick={openCreate} data-testid="button-new-warehouse"><Plus className="h-4 w-4 mr-1" />新增倉庫</Button>} />
+
+      <Card><CardContent className="flex flex-wrap items-end gap-3 p-4">
+        <div className="min-w-[200px] flex-1 space-y-1">
+          <Label htmlFor="wh-search">搜尋</Label>
+          <Input id="wh-search" value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="倉庫名稱、地點…" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="wh-scope">狀態</Label>
+          <select id="wh-scope" className={selectClass} value={scope} onChange={e => { setScope(e.target.value); setSelected(new Set()); }} data-testid="select-warehouse-scope">
+            <option value="active">啟用中</option>
+            <option value="inactive">已停用（{inactiveCount}）</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        {selected.size > 0 && (
+          <div className="flex basis-full flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+            <span>已選 {selected.size} 個</span>
+            <Button size="sm" variant="outline" onClick={() => setActive([...selected], false)}>批次停用</Button>
+            <Button size="sm" variant="outline" onClick={() => setActive([...selected], true)}>批次啟用</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>取消選取</Button>
+          </div>
+        )}
+      </CardContent></Card>
+
+      <Card>
+        <CardContent className="p-0 overflow-x-auto">
+          <DataTable
+            isLoading={isLoading}
+            data={rows}
+            onRowClick={(w: Warehouse) => openEdit(w)}
+            emptyMessage={scope === "inactive" ? "沒有已停用的倉庫" : "沒有符合的倉庫"}
+            columns={[
+              {
+                header: () => <input type="checkbox" aria-label="全選" checked={allSelected} onChange={() => setSelected(allSelected ? new Set() : new Set(rows.map(w => w.id)))} />,
+                accessor: (w: Warehouse) => <span onClick={e => e.stopPropagation()}><input type="checkbox" aria-label={`選取 ${w.name}`} checked={selected.has(w.id)} onChange={() => toggle(w.id)} /></span>,
+                className: "w-10 px-2",
+              },
+              { header: "倉庫名稱", accessor: (w: Warehouse) => <span className="font-medium">{w.name}</span> },
+              { header: "地點／說明", accessor: (w: Warehouse) => w.location || "-" },
+              { header: "狀態", accessor: (w: Warehouse) => <Badge variant={w.isActive ? "default" : "secondary"}>{w.isActive ? "啟用" : "已停用"}</Badge> },
+              {
+                header: "操作",
+                accessor: (w: Warehouse) => (
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                    <Button size="sm" variant="outline" className="h-8" onClick={() => openEdit(w)}><Pencil className="h-3.5 w-3.5 mr-1" />編輯</Button>
+                    <Button size="sm" variant="ghost" className="h-8" onClick={() => setActive([w.id], !w.isActive)}>{w.isActive ? "停用" : "啟用"}</Button>
+                  </div>
+                ),
+                className: "w-40",
+              },
+            ]}
+          />
+        </CardContent>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="md:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editing ? `編輯倉庫：${editing.name}` : "新增倉庫"}</DialogTitle>
+            <DialogDescription>停用後，開單時的倉庫選單不會再出現這個倉庫；原本的庫存紀錄與單據不受影響。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5"><Label htmlFor="wh-name">倉庫名稱</Label><Input id="wh-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1.5"><Label htmlFor="wh-location">地點／說明</Label><Input id="wh-location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} /></div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />啟用（取消勾選就是停用）</label>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={save} disabled={saving || !form.name.trim()} data-testid="button-save-warehouse">{saving ? "儲存中…" : "儲存"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

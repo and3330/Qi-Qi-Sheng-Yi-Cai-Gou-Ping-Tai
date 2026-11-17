@@ -1,8 +1,8 @@
 kind = "web"
 previewPath = "/erp/"
 title = "七期生醫 ERP"
-description = "獨立版面的企業內部 ERP 後台，與七期生醫採購平台共用同一組帳號與資料庫。此階段包含 ERP 殼層（側欄、儀表板）、角色群組權限體制、選單權限管理，以及使用者/部門/選單權限/審計日誌等系統管理基礎頁。"
-version = "1.0.0"
+description = "企業內部 ERP（與公司 ERP 同一套系統），資料存在獨立的 erp 資料庫分區，與商城資料分開。"
+version = "2.0.0"
 id = "artifacts/erp"
 router = "path"
 

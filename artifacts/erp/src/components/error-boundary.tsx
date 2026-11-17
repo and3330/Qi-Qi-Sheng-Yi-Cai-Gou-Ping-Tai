@@ -1,106 +1,67 @@
-import {
-  Component,
-  type ComponentType,
-  type ErrorInfo,
-  type ReactNode,
-} from 'react';
+import React from "react";
 
-export interface ErrorFallbackProps {
-  error: Error;
-  resetError: () => void;
+type Props = { children: React.ReactNode };
+type State = { error: Error | null };
+
+const RELOAD_FLAG = "chunk_reload_at";
+
+/** 判斷是否為「發布新版後瀏覽器還拿舊檔案」造成的載入失敗 */
+function isChunkLoadError(error: Error): boolean {
+  const msg = String(error?.message || "");
+  return /Failed to fetch dynamically imported module|Importing a module script failed|Loading chunk|error loading dynamically imported module|Unable to preload CSS/i.test(msg);
 }
 
-interface ErrorBoundaryProps {
-  children: ReactNode;
-  FallbackComponent?: ComponentType<ErrorFallbackProps>;
-  /** Changing this clears a caught error. Pass the route to recover on navigation. */
-  resetKey?: unknown;
-}
+/**
+ * 全域錯誤防護罩：
+ * 1. 頁面載入失敗（多半是發布新版後的暫時現象）→ 自動重新載入一次
+ * 2. 其他錯誤 → 顯示中文說明與「重新整理」按鈕，不再整頁白屏
+ */
+export class ErrorBoundary extends React.Component<Props, State> {
+  state: State = { error: null };
 
-interface ErrorBoundaryState {
-  error: Error | null;
-}
-
-function toError(value: unknown): Error {
-  if (value instanceof Error) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    return new Error(value);
-  }
-  try {
-    return new Error(JSON.stringify(value));
-  } catch {
-    return new Error(String(value));
-  }
-}
-
-function DefaultFallback({ error, resetError }: ErrorFallbackProps) {
-  return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 p-6">
-      <div className="max-w-lg w-full text-center">
-        <h1 className="text-xl font-semibold text-gray-900">
-          Something went wrong
-        </h1>
-        <p className="mt-2 text-sm text-gray-600">
-          This part of the app hit an error. The rest of the app is still
-          running.
-        </p>
-        {/* Dev only: messages can carry API responses and other internals. */}
-        {import.meta.env.DEV ? (
-          <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-3 text-left text-xs text-gray-800">
-            {error.message || String(error)}
-          </pre>
-        ) : null}
-        <button
-          type="button"
-          onClick={resetError}
-          className="mt-4 rounded bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-700"
-        >
-          Try again
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export class ErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  state: ErrorBoundaryState = { error: null };
-
-  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
-    return { error: toError(error) };
+  static getDerivedStateFromError(error: Error): State {
+    return { error };
   }
 
-  componentDidCatch(error: unknown, info: ErrorInfo): void {
-    console.error(
-      'ErrorBoundary caught an error:',
-      toError(error),
-      info.componentStack,
-    );
-  }
-
-  componentDidUpdate(prevProps: ErrorBoundaryProps): void {
-    if (
-      this.state.error !== null &&
-      prevProps.resetKey !== this.props.resetKey
-    ) {
-      this.resetError();
+  componentDidCatch(error: Error) {
+    if (isChunkLoadError(error)) {
+      const last = Number(sessionStorage.getItem(RELOAD_FLAG) || 0);
+      // 60 秒內只自動重載一次，避免無限重載
+      if (Date.now() - last > 60_000) {
+        sessionStorage.setItem(RELOAD_FLAG, String(Date.now()));
+        window.location.reload();
+      }
     }
   }
 
-  resetError = (): void => {
-    this.setState({ error: null });
-  };
-
-  render(): ReactNode {
-    const { error } = this.state;
-    if (error === null) {
-      return this.props.children;
+  render() {
+    if (this.state.error) {
+      const chunkError = isChunkLoadError(this.state.error);
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+          <div className="max-w-md w-full text-center space-y-4">
+            <div className="text-5xl">⚠️</div>
+            <h1 className="text-xl font-semibold">
+              {chunkError ? "系統已更新，請重新整理" : "頁面載入發生問題"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {chunkError
+                ? "系統剛發布了新版本，需要重新載入才能繼續使用。"
+                : "很抱歉，這個頁面發生錯誤。請重新整理後再試一次；若持續發生，請聯絡系統管理員。"}
+            </p>
+            {!chunkError && (
+              <p className="text-xs text-muted-foreground break-all">{String(this.state.error.message || this.state.error)}</p>
+            )}
+            <button
+              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
+              onClick={() => window.location.reload()}
+            >
+              重新整理
+            </button>
+          </div>
+        </div>
+      );
     }
-    const Fallback = this.props.FallbackComponent ?? DefaultFallback;
-    return <Fallback error={error} resetError={this.resetError} />;
+    return this.props.children;
   }
 }

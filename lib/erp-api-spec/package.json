@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/erp-api-spec",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "codegen": "orval --config ./orval.config.ts && node ./fix-zod-index.mjs && prettier --write ../erp-api-client-react/src/generated ../erp-api-zod/src/generated"
+  },
+  "devDependencies": {
+    "orval": "^8.35.0"
+  }
+}

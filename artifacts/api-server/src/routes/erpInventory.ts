@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { and, asc, count, desc, eq, gte, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 import {
   db,
@@ -201,7 +201,11 @@ router.patch("/erp/items/:id", requireErpMenu("/inventory/items"), async (req, r
 
 /* ---------- 庫存調整（盤點／報廢等） ---------- */
 
-router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (req, res) => {
+/**
+ * 庫存調整（入庫、出庫、盤點）。同時更新分倉數量、商品庫存與異動紀錄。
+ * 商城後台的「調整庫存」（/admin/inventory/adjust）也用這一段。
+ */
+export async function handleStockAdjust(req: Request, res: Response): Promise<void> {
   const parsed = ErpAdjustStockBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "資料格式不正確" });
@@ -316,7 +320,9 @@ router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), async (
     }
     throw err;
   }
-});
+}
+
+router.post("/erp/inventory/adjust", requireErpMenu("/inventory/items"), handleStockAdjust);
 
 /* ---------- 庫存異動 ---------- */
 
