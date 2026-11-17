@@ -30,6 +30,7 @@ import {
   MCP_CONFIRM_TTL_MS,
   READ_TOOLS,
   createPendingMcpAction,
+  precheckAction,
   executeTool,
   toolDefinitions,
 } from "../lib/assistantTools";
@@ -162,6 +163,7 @@ router.all("/mcp", mcpLimiter, async (req, res): Promise<void> => {
 
   const keyId = key.id;
   const actorId = actor.id;
+  const actorRole = actor.role;
   const baseUrl = publicBaseUrl(req);
 
   const server = new Server(
@@ -218,7 +220,7 @@ router.all("/mcp", mcpLimiter, async (req, res): Promise<void> => {
       // 查詢類：與後台 AI 助理走同一個執行函式
       const { result, isError } = await executeTool(name, args, {
         memberId: actorId,
-        memberRole: "ops",
+        memberRole: actorRole,
         conversationId: 0,
         requestNonce: `mcp:${keyId}`,
       });
@@ -232,6 +234,8 @@ router.all("/mcp", mcpLimiter, async (req, res): Promise<void> => {
           true,
         );
       }
+      const invalid = precheckAction(name, args);
+      if (invalid) return asText({ error: invalid }, true);
       const confirmationId = await createPendingMcpAction(name, args, {
         memberId: actorId,
         mcpKeyId: keyId,

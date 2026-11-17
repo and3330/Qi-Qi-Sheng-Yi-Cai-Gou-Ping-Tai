@@ -1,4 +1,5 @@
 import { and, desc, eq, gt, gte, ilike, inArray, isNotNull, lte, lt, ne, or, sql } from "drizzle-orm";
+import { BridgeError, callAdminApi, describeEndpoint, listEndpoints, validateRequest } from "./adminBridge";
 import { resolveMemberGrade, gradeAllowed } from "../middlewares/optionalMember";
 import {
   db,
@@ -936,6 +937,14 @@ export const RETIRED_ERP_TOOLS = new Set([
 ]);
 for (const name of RETIRED_ERP_TOOLS) { READ_TOOLS.delete(name); ACTION_TOOLS.delete(name); }
 
+/**
+ * 後台通用工具：讓 AI 助理與 Bot 可以使用後台的全部功能（商品、會員、機構、分潤、內容、電子報、社群…）。
+ * 查詢（admin_list_endpoints、admin_describe_endpoint、admin_get）直接回傳；
+ * admin_write 與其他操作類工具一樣，只建立待確認操作，後台人員按確認後才用那個人的身份執行。
+ */
+for (const name of ["admin_list_endpoints", "admin_describe_endpoint", "admin_get"]) READ_TOOLS.add(name);
+ACTION_TOOLS.add("admin_write");
+
 const allToolDefinitions = [
   {
     type: "function" as const,
@@ -1274,11 +1283,115 @@ const allToolDefinitions = [
       },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "admin_list_endpoints",
+      description:
+        "列出後台所有可用的功能（商品、規格、會員與身份審核、機構、訂單、分潤規則、錢包、內容文章與公告、電子報、社群貼文、連結頁、客服、報表、匯款帳號設定等）。上面的專用工具做不到的事，先用這個找到對應的功能，再用 admin_get 查詢或 admin_write 送出操作。",
+      parameters: {
+        type: "object",
+        properties: { keyword: { type: "string", description: "關鍵字（中文說明或路徑片段，例如「商品」「members」「電子報」）；省略則列出全部" } },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "admin_describe_endpoint",
+      description: "查看某一個後台功能要帶哪些查詢條件與欄位（欄位名稱、型別、必填、可選的值）。送出 admin_write 之前請先查清楚欄位。",
+      parameters: {
+        type: "object",
+        properties: {
+          method: { type: "string", enum: ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+          path: { type: "string", description: "admin_list_endpoints 回傳的路徑，例如 /admin/products/:id" },
+        },
+        required: ["method", "path"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "admin_get",
+      description: "查詢後台資料（只能讀，不會改任何東西）。path 用 admin_list_endpoints 列出的 GET 路徑，把 :id 換成實際編號。",
+      parameters: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: "例如 /admin/members 或 /admin/products/12/variants" },
+          query: { type: "object", description: "查詢條件，例如 {\"search\":\"王\",\"status\":\"pending\"}", additionalProperties: true },
+        },
+        required: ["path"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "admin_write",
+      description:
+        "對後台送出一個會改動資料的操作（新增、修改、刪除）：例如新增或修改商品與價格、上下架、審核會員身份、修改機構、設定分潤規則、新增或編輯文章公告、建立電子報、排程社群貼文。不能用來設定密碼或金鑰。",
+      parameters: {
+        type: "object",
+        properties: {
+          method: { type: "string", enum: ["POST", "PUT", "PATCH", "DELETE"] },
+          path: { type: "string", description: "admin_list_endpoints 列出的路徑，把 :id 換成實際編號" },
+          body: { type: "object", description: "要送出的欄位（先用 admin_describe_endpoint 確認欄位）", additionalProperties: true },
+          summary: { type: "string", description: "用一句白話說明這個操作在做什麼、對象是誰、改成什麼，給按確認的人看。例如「把商品 10011 七期益生菌的消費者價從 980 改成 950」" },
+          confirmationId: { type: "integer", description: "系統使用，請勿填寫" },
+        },
+        required: ["method", "path", "summary"],
+      },
+    },
+  },
 ];
 
 export const toolDefinitions = allToolDefinitions.filter((def) => !RETIRED_ERP_TOOLS.has(def.function.name));
 
+async function adminListEndpoints(args: { keyword?: string }) {
+  return listEndpoints(args.keyword);
+}
+
+async function adminDescribeEndpoint(args: { method: string; path: string }) {
+  try { return describeEndpoint(args.method, String(args.path ?? "")); }
+  catch (err) { throw new ToolError(err instanceof BridgeError ? err.message : "查詢失敗"); }
+}
+
+async function adminGet(args: { path: string; query?: Record<string, unknown> }, actor?: ToolActor) {
+  if (!actor) throw new ToolError("缺少執行者身份");
+  try {
+    const request = validateRequest({ method: "GET", path: args.path, query: args.query }, "read");
+    const reply = await callAdminApi(request, actor.memberId);
+    if (!reply.ok) throw new ToolError(`後台回應 ${reply.status}：${JSON.stringify(reply.data).slice(0, 300)}`);
+    return reply.data;
+  } catch (err) {
+    if (err instanceof ToolError) throw err;
+    throw new ToolError(err instanceof BridgeError ? err.message : "查詢失敗");
+  }
+}
+
+/** 只在後台人員按下確認之後才會被呼叫；用按確認的那個人的身份執行 */
+async function adminWrite(args: { method: string; path: string; body?: unknown; query?: Record<string, unknown> }, actor?: ToolActor) {
+  if (!actor) throw new ToolError("缺少執行者身份");
+  try {
+    const request = validateRequest(args, "write");
+    const reply = await callAdminApi(request, actor.memberId);
+    if (!reply.ok) {
+      const detail = (reply.data as { error?: string } | null)?.error ?? JSON.stringify(reply.data).slice(0, 300);
+      throw new ToolError(reply.status === 403 ? `按確認的人沒有這個功能的權限（${detail}）` : `後台拒絕這個操作（${reply.status}）：${detail}`);
+    }
+    return { ok: true, status: reply.status, data: reply.data };
+  } catch (err) {
+    if (err instanceof ToolError) throw err;
+    throw new ToolError(err instanceof BridgeError ? err.message : "執行失敗");
+  }
+}
+
 const executors: Record<string, (args: any, actor?: ToolActor) => Promise<unknown>> = {
+  admin_list_endpoints: adminListEndpoints,
+  admin_describe_endpoint: adminDescribeEndpoint,
+  admin_get: adminGet,
+  admin_write: adminWrite,
   search_knowledge: searchKnowledge,
   sales_report: salesReport,
   commission_report: commissionReport,
@@ -1328,7 +1441,7 @@ export async function executeTool(
 
   if (!isAction) {
     try {
-      return { result: await fn(args ?? {}), isError: false };
+      return { result: await fn(args ?? {}, { memberId: ctx.memberId }), isError: false };
     } catch (err) {
       const message = err instanceof ToolError ? err.message : "執行失敗";
       if (!(err instanceof ToolError)) console.error(`[assistant] tool ${name} failed:`, err);
@@ -1342,6 +1455,9 @@ export async function executeTool(
   }
 
   const { confirmationId, ...payloadArgs } = args ?? {};
+
+  const invalid = precheckAction(name, payloadArgs);
+  if (invalid) return { result: { error: invalid }, isError: true };
 
   if (confirmationId) {
     return {
@@ -1463,6 +1579,18 @@ export async function confirmAndExecuteAction(
 
 /** Bot 送出的操作在後台等待確認的時限 */
 export const MCP_CONFIRM_TTL_MS = 60 * 60 * 1000;
+
+/** 操作送出前的檢查；有問題回傳錯誤訊息（給模型看），沒問題回 null */
+export function precheckAction(name: string, payload: Record<string, unknown>): string | null {
+  if (name !== "admin_write") return null;
+  try {
+    validateRequest(payload, "write");
+    if (typeof payload.summary !== "string" || payload.summary.trim().length < 4) return "請在 summary 用一句白話說明這個操作，給按確認的人看";
+    return null;
+  } catch (err) {
+    return err instanceof BridgeError ? err.message : "操作內容不正確";
+  }
+}
 
 /** 建立 Bot 的待確認操作（只記錄，不執行）；回傳確認碼 */
 export async function createPendingMcpAction(

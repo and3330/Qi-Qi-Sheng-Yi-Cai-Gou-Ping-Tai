@@ -42,6 +42,7 @@ const ACTION_LABEL: Record<string, string> = {
   create_order: "代會員下單",
   update_sales_order_status: "變更銷貨單狀態",
   convert_quotation_to_order: "報價單轉訂單",
+  admin_write: "後台操作",
 };
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
@@ -81,6 +82,16 @@ function ActionCard({
           #{action.id}・{action.keyName}・{formatTime(action.createdAt)}
         </span>
       </div>
+      {action.action === "admin_write" && typeof (action.payload as { summary?: unknown })?.summary === "string" && (
+        <p className="mt-3 text-sm font-medium" data-testid={`bot-action-summary-${action.id}`}>
+          {(action.payload as { summary: string }).summary}
+        </p>
+      )}
+      {action.action === "admin_write" && (
+        <p className="mt-1 text-xs text-amber-700">
+          上面的說明是 Bot 自己寫的，實際會執行的內容以下方為準，請核對後再確認。
+        </p>
+      )}
       <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/50 p-3 text-xs">
         {JSON.stringify(action.payload, null, 2)}
       </pre>
