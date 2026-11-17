@@ -17,6 +17,15 @@
     },
     {
       "path": "./lib/integrations-openai-ai-server"
+    },
+    {
+      "path": "./lib/erp-db"
+    },
+    {
+      "path": "./lib/erp-api-client-react"
+    },
+    {
+      "path": "./lib/erp-api-zod"
     }
   ]
 }

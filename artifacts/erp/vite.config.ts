@@ -1,47 +1,31 @@
-import path from 'path';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { appVersion } from "../../erp-app-version.mjs";
 
-import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
-
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    'PORT environment variable is required but was not provided.',
-  );
-}
-
+const rawPort = process.env.PORT || "3000";
 const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
-
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    'BASE_PATH environment variable is required but was not provided.',
-  );
-}
+const basePath = process.env.BASE_PATH || "/";
 
 export default defineConfig({
   base: basePath,
+  // 版本號在打包時寫進程式，畫面上顯示用
+  define: { __APP_VERSION__: JSON.stringify(appVersion()) },
   plugins: [
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== 'production' &&
+    ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
-          await import('@replit/vite-plugin-cartographer').then((m) =>
+          await import("@replit/vite-plugin-cartographer").then((m) =>
             m.cartographer({
-              root: path.resolve(import.meta.dirname, '..'),
+              root: path.resolve(import.meta.dirname, ".."),
             }),
           ),
-          await import('@replit/vite-plugin-dev-banner').then((m) =>
+          await import("@replit/vite-plugin-dev-banner").then((m) =>
             m.devBanner(),
           ),
         ]
@@ -49,33 +33,43 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(import.meta.dirname, 'src'),
-      '@assets': path.resolve(
-        import.meta.dirname,
-        '..',
-        '..',
-        'attached_assets',
-      ),
+      "@": path.resolve(import.meta.dirname, "src"),
+      "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
     },
-    dedupe: ['react', 'react-dom'],
+    // The generated React client is a linked workspace package. Keep both its
+    // hooks and the app's providers on the app's single runtime instances.
+    dedupe: ["react", "react-dom", "@tanstack/react-query"],
+  },
+  optimizeDeps: {
+    // Vite does not pre-bundle linked packages by default. Some of those hooks
+    // are first reached through lazy routes, which can otherwise trigger a
+    // second dependency optimization after React has already mounted.
+    include: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@workspace/erp-api-client-react",
+    ],
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, 'dist/public'),
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
   },
   server: {
     port,
-    strictPort: true,
-    host: '0.0.0.0',
+    host: "0.0.0.0",
     allowedHosts: true,
     fs: {
       strict: true,
+      deny: ["**/.*"],
     },
   },
   preview: {
     port,
-    host: '0.0.0.0',
+    host: "0.0.0.0",
     allowedHosts: true,
   },
 });

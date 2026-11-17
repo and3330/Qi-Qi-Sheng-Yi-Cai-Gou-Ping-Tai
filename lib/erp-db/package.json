@@ -1,0 +1,32 @@
+{
+  "name": "@workspace/erp-db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./diagnostics": "./src/diagnostics.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "check:schema:read-only": "tsx ./scripts/schema-rls-audit.ts",
+    "test:schema-audit": "node --import tsx --test ./scripts/schema-rls-audit.test.ts ./scripts/connection.test.mjs",
+    "test:supabase-preparation": "node --test ./scripts/runtime-connection.test.mjs ./scripts/supabase-bootstrap-plan.test.mjs",
+    "test:schema-audit:postgres-isolated": "node ./scripts/schema-rls-audit-postgres-smoke.runner.mjs",
+    "check:schema-source-match:read-only": "node ./scripts/schema-push-guard.mjs --check-only",
+    "push": "echo 'ERP 的資料表由伺服器啟動時套用 lib/erp-db/drizzle 的遷移檔，不使用 push（見 replit.md）' && exit 1",
+    "push-force": "echo 'ERP 的資料表由伺服器啟動時套用 lib/erp-db/drizzle 的遷移檔，不使用 push（見 replit.md）' && exit 1",
+    "generate": "drizzle-kit generate --config ./drizzle.generate.config.ts && node ./scripts/unqualify-migrations.mjs"
+  },
+  "dependencies": {
+    "drizzle-orm": "catalog:",
+    "drizzle-zod": "^0.8.3",
+    "pg": "^8.23.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.10"
+  }
+}

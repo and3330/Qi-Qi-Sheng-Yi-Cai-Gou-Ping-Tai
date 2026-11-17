@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { handleStockAdjust } from "./erpInventory";
 import { and, asc, desc, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   db,
@@ -192,9 +193,8 @@ router.patch("/admin/products/:id", requireOps, async (req, res) => {
   res.json(serializeAdminProduct(updated));
 });
 
-router.post("/admin/inventory/adjust", requireOps, async (_req, res) => {
-  res.status(410).json({ error: "庫存調整已移至 ERP（庫存 › 品項）" });
-});
+// 商品庫存在商城後台管理（新版 ERP 的庫存是獨立的，不會動到商城庫存）
+router.post("/admin/inventory/adjust", requireOps, handleStockAdjust);
 
 // ---------- 商品多規格 ----------
 

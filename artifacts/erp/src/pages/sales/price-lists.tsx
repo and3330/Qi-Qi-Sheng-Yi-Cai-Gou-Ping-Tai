@@ -1,75 +1,267 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  getListErpPriceListsQueryKey, useCreateErpPriceList, useListErpItems,
-  useListErpPriceLists, usePutErpPriceListItems, useUpdateErpPriceList, type ErpPriceList,
-} from "@workspace/api-client-react";
-import { Loader2, Pencil, Plus, Tags, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect, useCallback } from "react";
+import { PageHeader } from "@/components/shared/page-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Plus, Trash2, Eye, X } from "lucide-react";
+import { useBatchSelection } from "@/hooks/use-batch-selection";
+import { BatchActionBar, type BatchField } from "@/components/shared/batch-action-bar";
+import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
+import { useAutoReloadKey } from "@/lib/auto-refresh";
 
-const errorMessage = (e: any) => e?.response?.data?.error || e?.data?.error || e?.message || "發生未知錯誤";
-type PriceLine = { productId: string; variantId: string; price: string };
-const emptyLine = (): PriceLine => ({ productId: "", variantId: "", price: "" });
+import { LookupSelect } from "@/components/shared/lookup-select";
+const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
+
+interface PriceList {
+  id: number; name: string; currency: string; customerGroup: string | null;
+  isActive: string; remarks: string | null; createdAt: string;
+}
+interface PriceListDetail extends PriceList {
+  items: PriceListItemEntry[];
+}
+interface PriceListItemEntry {
+  id: number; priceListId: number; itemId: number; itemName: string; itemCode: string;
+  price: number; minQuantity: number; validFrom: string | null; validTo: string | null;
+}
+interface Item { id: number; itemName: string; itemCode: string; sellingPrice: string }
 
 export default function PriceListsPage() {
-  const queryClient = useQueryClient(); const { toast } = useToast();
-  const { data: lists, isLoading } = useListErpPriceLists(); const { data: products } = useListErpItems();
-  const [formOpen, setFormOpen] = useState(false); const [editing, setEditing] = useState<ErpPriceList | null>(null);
-  const [name, setName] = useState(""); const [description, setDescription] = useState(""); const [isActive, setIsActive] = useState(true);
-  const [itemsList, setItemsList] = useState<ErpPriceList | null>(null); const [lines, setLines] = useState<PriceLine[]>([emptyLine()]);
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: getListErpPriceListsQueryKey() });
-  const openCreate = () => { setEditing(null); setName(""); setDescription(""); setIsActive(true); setFormOpen(true); };
-  const openEdit = (list: ErpPriceList) => { setEditing(list); setName(list.name); setDescription(list.description || ""); setIsActive(list.isActive); setFormOpen(true); };
-  const openItems = (list: ErpPriceList) => { setItemsList(list); setLines(list.items.length ? list.items.map((i) => ({ productId: String(i.productId), variantId: i.variantId ? String(i.variantId) : "", price: String(i.price) })) : [emptyLine()]); };
-  const create = useCreateErpPriceList({ mutation: { onSuccess: () => { invalidate(); toast({ title: "已建立價格表" }); setFormOpen(false); }, onError: (e: any) => toast({ title: "建立失敗", description: errorMessage(e), variant: "destructive" }) } });
-  const update = useUpdateErpPriceList({ mutation: { onSuccess: () => { invalidate(); toast({ title: "價格表已更新" }); setFormOpen(false); }, onError: (e: any) => toast({ title: "更新失敗", description: errorMessage(e), variant: "destructive" }) } });
-  const putItems = usePutErpPriceListItems({ mutation: { onSuccess: () => { invalidate(); toast({ title: "品項價格已儲存" }); setItemsList(null); }, onError: (e: any) => toast({ title: "儲存失敗", description: errorMessage(e), variant: "destructive" }) } });
-  const submitForm = () => {
-    if (!name.trim()) { toast({ title: "請填寫價格表名稱", variant: "destructive" }); return; }
-    if (editing) update.mutate({ id: editing.id, data: { name: name.trim(), description: description || null, isActive } });
-    else create.mutate({ data: { name: name.trim(), description: description || null } });
+  const reloadKey = useAutoReloadKey();
+  const [lists, setLists] = useState<PriceList[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detail, setDetail] = useState<PriceListDetail | null>(null);
+  const { toast } = useToast();
+
+  const batch = useBatchSelection(lists);
+  const plBatchFields: BatchField[] = [
+    {key:"status",label:"狀態",type:"select",options:[{value:"Active",label:"啟用"},{value:"Inactive",label:"停用"}]},
+  ];
+
+  const [form, setForm] = useState({ name: "", currency: "TWD", customerGroup: "", remarks: "" });
+  const [itemForm, setItemForm] = useState({ itemId: "", price: "", minQuantity: "1" });
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    const [listsRes, itemsRes] = await Promise.all([
+      fetch(`/erp-api/price-lists`), fetch(`/erp-api/items`),
+    ]);
+    setLists(await listsRes.json());
+    setItems(await itemsRes.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchAll(); }, [fetchAll, reloadKey]);
+
+  const handleCreate = async () => {
+    const res = await fetch(`/erp-api/price-lists`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: form.name, currency: form.currency, customerGroup: form.customerGroup || null, remarks: form.remarks || null }),
+    });
+    if (res.ok) {
+      toast({ title: "價目表已建立" });
+      setOpen(false);
+      setForm({ name: "", currency: "TWD", customerGroup: "", remarks: "" });
+      fetchAll();
+    } else {
+      toast({ title: "建立失敗", variant: "destructive" });
+    }
   };
-  const submitItems = () => {
-    if (!itemsList) return;
-    const items = lines.filter((x) => x.productId).map((x) => ({ productId: Number(x.productId), variantId: x.variantId ? Number(x.variantId) : null, price: Number(x.price) }));
-    if (items.some((x) => !Number.isFinite(x.price) || x.price < 0)) { toast({ title: "價格需為大於等於 0 的整數", variant: "destructive" }); return; }
-    const duplicate = new Set(items.map((x) => `${x.productId}-${x.variantId || 0}`)).size !== items.length;
-    if (duplicate) { toast({ title: "同一品項與規格不可重複", variant: "destructive" }); return; }
-    putItems.mutate({ id: itemsList.id, data: { items } });
+
+  const viewDetail = async (id: number) => {
+    const res = await fetch(`/erp-api/price-lists/${id}`);
+    if (res.ok) {
+      setDetail(await res.json());
+      setDetailOpen(true);
+    }
   };
 
-  return <div className="space-y-6">
-    <div className="flex justify-end"><Button onClick={openCreate}><Plus className="mr-1 h-4 w-4" />建立價格表</Button></div>
-    <Card className="overflow-hidden border-t-2 border-t-primary"><Table><TableHeader className="bg-secondary/50"><TableRow><TableHead>名稱</TableHead><TableHead>說明</TableHead><TableHead className="text-right">設價品項</TableHead><TableHead>狀態</TableHead><TableHead>建立時間</TableHead><TableHead className="text-right">操作</TableHead></TableRow></TableHeader>
-      <TableBody>{isLoading ? <TableRow><TableCell colSpan={6} className="h-32 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow> : !lists?.length ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground">尚無價格表</TableCell></TableRow> : lists.map((list) => <TableRow key={list.id}><TableCell className="font-medium">{list.name}</TableCell><TableCell className="max-w-sm text-muted-foreground">{list.description || "—"}</TableCell><TableCell className="text-right">{list.items.length}</TableCell><TableCell><Badge variant={list.isActive ? "default" : "secondary"}>{list.isActive ? "啟用" : "停用"}</Badge></TableCell><TableCell>{new Date(list.createdAt).toLocaleDateString("zh-TW")}</TableCell><TableCell className="space-x-1 text-right"><Button size="sm" variant="ghost" onClick={() => openItems(list)}><Tags className="mr-1 h-4 w-4" />品項設價</Button><Button size="sm" variant="ghost" onClick={() => openEdit(list)}><Pencil className="mr-1 h-4 w-4" />編輯</Button></TableCell></TableRow>)}</TableBody>
-    </Table></Card>
+  const addItemToList = async () => {
+    if (!detail) return;
+    const res = await fetch(`/erp-api/price-lists/${detail.id}/items`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: Number(itemForm.itemId), price: Number(itemForm.price), minQuantity: Number(itemForm.minQuantity) }),
+    });
+    if (res.ok) {
+      toast({ title: "品項已加入" });
+      setItemForm({ itemId: "", price: "", minQuantity: "1" });
+      viewDetail(detail.id);
+    }
+  };
 
-    <Dialog open={formOpen} onOpenChange={setFormOpen}><DialogContent><DialogHeader><DialogTitle>{editing ? "編輯價格表" : "建立價格表"}</DialogTitle></DialogHeader>
-      <div className="space-y-4"><div className="space-y-2"><Label>名稱 *</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div><div className="space-y-2"><Label>說明</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-        {editing && <div className="flex items-center justify-between"><Label>啟用價格表</Label><Switch checked={isActive} onCheckedChange={setIsActive} /></div>}</div>
-      <DialogFooter><Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button><Button disabled={create.isPending || update.isPending} onClick={submitForm}>儲存</Button></DialogFooter>
-    </DialogContent></Dialog>
+  const removeItemFromList = async (itemEntryId: number) => {
+    if (!detail) return;
+    await fetch(`/erp-api/price-lists/${detail.id}/items/${itemEntryId}`, { method: "DELETE" });
+    toast({ title: "品項已移除" });
+    viewDetail(detail.id);
+  };
 
-    <Dialog open={!!itemsList} onOpenChange={(open) => !open && setItemsList(null)}><DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>品項設價－{itemsList?.name}</DialogTitle></DialogHeader>
-      <div className="space-y-2"><div className="grid grid-cols-12 gap-2 px-1 text-sm text-muted-foreground"><span className="col-span-5">品項</span><span className="col-span-3">規格</span><span className="col-span-3">價格（NT$）</span></div>
-        {lines.map((line, index) => { const product = products?.find((p) => p.id === Number(line.productId)); return <div key={index} className="grid grid-cols-12 gap-2">
-          <Select value={line.productId} onValueChange={(v) => setLines(lines.map((x,i) => i === index ? {...x,productId:v,variantId:""}:x))}><SelectTrigger className="col-span-5"><SelectValue placeholder="選擇品項" /></SelectTrigger><SelectContent>{products?.filter((p) => p.isActive).map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.code}－{p.name}</SelectItem>)}</SelectContent></Select>
-          <Select value={line.variantId || "none"} onValueChange={(v) => setLines(lines.map((x,i) => i === index ? {...x,variantId:v === "none" ? "" : v}:x))}><SelectTrigger className="col-span-3"><SelectValue placeholder="規格" /></SelectTrigger><SelectContent><SelectItem value="none">無規格</SelectItem>{product?.variants.filter((v) => v.isActive).map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.name}</SelectItem>)}</SelectContent></Select>
-          <Input className="col-span-3" type="number" min="0" step="1" value={line.price} onChange={(e) => setLines(lines.map((x,i) => i === index ? {...x,price:e.target.value}:x))} />
-          <Button className="col-span-1" size="icon" variant="ghost" onClick={() => setLines(lines.filter((_,i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
-        </div>;})}
-        <Button variant="outline" size="sm" onClick={() => setLines([...lines, emptyLine()])}><Plus className="mr-1 h-4 w-4" />新增品項</Button>
-      </div><DialogFooter><Button variant="outline" onClick={() => setItemsList(null)}>取消</Button><Button disabled={putItems.isPending} onClick={submitItems}>儲存全部設價</Button></DialogFooter>
-    </DialogContent></Dialog>
-  </div>;
+  const deleteList = async (id: number) => {
+    await fetch(`/erp-api/price-lists/${id}`, { method: "DELETE" });
+    toast({ title: "價目表已刪除" });
+    fetchAll();
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title="價目表" description="管理不同客群或幣別的產品定價" />
+
+      {batch.count > 0 && (
+        <BatchActionBar
+          count={batch.count}
+          entityName="價目表"
+          entityEndpoint="price-lists"
+          ids={batch.ids}
+          batchFields={plBatchFields}
+          onClear={batch.clearSelection}
+          onComplete={() => fetchAll()}
+        />
+      )}
+      <div className="flex justify-end">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button><Plus className="h-4 w-4 mr-1" />新增價目表</Button>
+          </DialogTrigger>
+          <DialogContent className="md:max-w-md">
+            <DialogHeader><DialogTitle>新增價目表</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">名稱 *</label>
+                <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="例：VIP客戶價目表" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">幣別</label>
+                  <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
+                    <option value="TWD">TWD 新台幣</option>
+                    <option value="USD">USD 美元</option>
+                    <option value="CNY">CNY 人民幣</option>
+                    <option value="JPY">JPY 日圓</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">客群</label>
+                  <Input value={form.customerGroup} onChange={e => setForm(p => ({ ...p, customerGroup: e.target.value }))} placeholder="VIP / 一般" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">備註</label>
+                <Input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+              <Button onClick={handleCreate} disabled={!form.name}>建立</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card>
+        <CardHeader className="py-3 border-b"><CardTitle>價目表列表</CardTitle></CardHeader>
+        <CardContent className="p-0 overflow-x-auto">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50/50">
+                  <th className="w-10 px-2"><CheckboxHeader checked={batch.allSelected} indeterminate={batch.someSelected} onChange={batch.toggleAll} /></th>
+                  <th className="text-left px-4 py-2.5 font-semibold">名稱</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">幣別</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">客群</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">狀態</th>
+                  <th className="text-center px-4 py-2.5 font-semibold">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">載入中...</td></tr>
+                ) : lists.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
+                ) : lists.map(l => (
+                  <tr key={l.id} className="border-b hover:bg-gray-50">
+                    <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(l.id)} onChange={() => batch.toggle(l.id)} /></td>
+                    <td className="px-4 py-2 font-medium">{l.name}</td>
+                    <td className="px-4 py-2">{l.currency}</td>
+                    <td className="px-4 py-2">{l.customerGroup || "-"}</td>
+                    <td className="px-4 py-2"><Badge variant={l.isActive === "Y" ? "default" : "secondary"}>{l.isActive === "Y" ? "啟用" : "停用"}</Badge></td>
+                    <td className="px-4 py-2 text-center">
+                      <div className="flex gap-1 justify-center">
+                        <Button size="sm" variant="outline" onClick={() => viewDetail(l.id)} title="檢視明細"><Eye className="h-3 w-3" /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => deleteList(l.id)} title="刪除"><Trash2 className="h-3 w-3" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{detail?.name} - 品項明細</DialogTitle>
+          </DialogHeader>
+          {detail && (
+            <div className="space-y-4">
+              <div className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <label className="text-sm font-medium">品項</label>
+                  <LookupSelect className="w-full border rounded-md px-2 py-1.5 text-sm" value={itemForm.itemId} onChange={e => {
+                    const found = items.find(it => it.id === Number(e.target.value));
+                    setItemForm(p => ({ ...p, itemId: e.target.value, price: found ? String(found.sellingPrice) : "" }));
+                  }}>
+                    <option value="">選擇品項</option>
+                    {items.map(it => <option key={it.id} value={it.id}>{it.itemCode} - {it.itemName}</option>)}
+                  </LookupSelect>
+                </div>
+                <div className="w-28">
+                  <label className="text-sm font-medium">價格</label>
+                  <Input type="number" value={itemForm.price} onChange={e => setItemForm(p => ({ ...p, price: e.target.value }))} />
+                </div>
+                <div className="w-20">
+                  <label className="text-sm font-medium">最低量</label>
+                  <Input type="number" value={itemForm.minQuantity} onChange={e => setItemForm(p => ({ ...p, minQuantity: e.target.value }))} />
+                </div>
+                <Button size="sm" onClick={addItemToList} disabled={!itemForm.itemId || !itemForm.price}><Plus className="h-3 w-3" /></Button>
+              </div>
+
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50/50">
+                    <th className="text-left px-3 py-2 font-semibold">品項代碼</th>
+                    <th className="text-left px-3 py-2 font-semibold">品名</th>
+                    <th className="text-right px-3 py-2 font-semibold">價格</th>
+                    <th className="text-right px-3 py-2 font-semibold">最低量</th>
+                    <th className="text-center px-3 py-2 font-semibold">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {detail.items.length === 0 ? (
+                    <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-400">尚未設定品項</td></tr>
+                  ) : detail.items.map(item => (
+                    <tr key={item.id} className="border-b">
+                      <td className="px-3 py-2 font-mono text-xs">{item.itemCode}</td>
+                      <td className="px-3 py-2">{item.itemName}</td>
+                      <td className="px-3 py-2 text-right font-mono">${item.price.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right">{item.minQuantity}</td>
+                      <td className="px-3 py-2 text-center">
+                        <Button size="sm" variant="ghost" onClick={() => removeItemFromList(item.id)}><X className="h-3 w-3" /></Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

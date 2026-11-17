@@ -3,15 +3,13 @@ import { Printer } from "lucide-react";
 
 interface PrintButtonProps {
   title: string;
-  /** 印在頁首的公司名稱；不給就不印頁首 */
-  companyName?: string;
   contentId?: string;
   className?: string;
   variant?: "default" | "outline" | "ghost" | "secondary";
   size?: "default" | "sm" | "lg" | "icon";
 }
 
-export function PrintButton({ title, companyName, contentId, className, variant = "outline", size = "sm" }: PrintButtonProps) {
+export function PrintButton({ title, contentId, className, variant = "outline", size = "sm" }: PrintButtonProps) {
   const handlePrint = () => {
     const content = contentId ? document.getElementById(contentId) : null;
     const printWindow = window.open("", "_blank", "width=800,height=600");
@@ -39,7 +37,10 @@ export function PrintButton({ title, companyName, contentId, className, variant 
         </style>
       </head>
       <body>
-        ${companyName ? `<div class="company-header"><h1>${companyName}</h1></div>` : ""}
+        <div class="company-header">
+          <h1>七期生醫</h1>
+          <p>Yu-Bang Cultural Education Technology Co., Ltd.</p>
+        </div>
         <div class="print-title">${title}</div>
         <div class="print-date">列印日期：${new Date().toLocaleDateString("zh-TW")}</div>
         ${html}

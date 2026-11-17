@@ -20,7 +20,8 @@ export function sessionMiddleware() {
   return session({
     // Table is managed by the drizzle schema (lib/db/src/schema/sessions.ts);
     // createTableIfMissing breaks under the esbuild bundle (table.sql not bundled).
-    store: new PgStore({ pool, createTableIfMissing: false }),
+    // pool 轉型：專案裡同時有兩個版本的 pg 型別定義（connect-pg-simple 帶的較舊），執行時是同一個類別
+    store: new PgStore({ pool: pool as any, createTableIfMissing: false }),
     secret: secret || "dev-only-secret",
     resave: false,
     saveUninitialized: false,

@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { AdminLayout } from "./AdminLayout";
+import { StockAdjustDialog } from "./StockAdjustDialog";
 
 const CATEGORIES = ["保健食品", "醫療耗材", "保養清潔", "院所專區"];
 
@@ -221,7 +222,7 @@ function VariantsManager({ productId }: { productId: number }) {
             </div>
             {adding && (
               <p className="col-span-2 text-xs text-muted-foreground">
-                庫存由 ERP 倉庫管理；新增規格的初始庫存為 0，請至 ERP 系統調整。
+                新增規格的初始庫存為 0，儲存後在該規格右邊按「調整」入庫。
               </p>
             )}
           </div>
@@ -247,10 +248,17 @@ function VariantsManager({ productId }: { productId: number }) {
                   <span>C: ${v.priceConsumer}</span>
                   <span>Cl: ${v.priceClinic}</span>
                   <span>H: ${v.priceHospital}</span>
-                  <span className="font-medium text-foreground ml-2 border-l pl-3">ERP 庫存: {v.stock}</span>
+                  <span className="font-medium text-foreground ml-2 border-l pl-3">庫存: {v.stock}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                <StockAdjustDialog
+                  compact productId={productId} variantId={v.id} label={v.name} currentStock={v.stock}
+                  onDone={() => {
+                    queryClient.invalidateQueries({ queryKey: getListAdminProductVariantsQueryKey(productId) });
+                    queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0] ?? "").includes("/api/admin/products") });
+                  }}
+                />
                 <Switch checked={v.isActive} onCheckedChange={() => toggleActive(v.id, v.isActive)} title="上架狀態" />
                 <div className="w-1" />
                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fillEdit(v)}><Pencil size={14} /></Button>
@@ -543,9 +551,12 @@ export default function AdminProductsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className={p.stock <= 10 ? "font-semibold text-red-600" : ""}>
-                        {p.stock}
-                      </span>
+                      <div className="flex items-center justify-end gap-2">
+                        <span className={p.stock <= 10 ? "font-semibold text-red-600" : ""}>
+                          {p.stock}
+                        </span>
+                        <StockAdjustDialog compact productId={p.id} label={p.name} currentStock={p.stock} onDone={invalidate} />
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {p.isActive ? (
@@ -713,14 +724,14 @@ export default function AdminProductsPage() {
                   data-testid="text-cost-zero-hint"
                 >
                   <AlertTriangle size={13} className="shrink-0" />
-                  成本價為 0 會使損益報表的毛利失真，建議填寫實際進貨成本（ERP 採購收貨也會同步更新）
+                  成本價為 0 會使損益報表的毛利失真，建議填寫實際進貨成本
                 </p>
               )}
               <div className="space-y-1.5">
                 <Label>目前庫存</Label>
                 <Input value={form.stock} readOnly disabled data-testid="input-product-stock" />
                 <p className="text-xs text-muted-foreground">
-                  庫存由 ERP 倉庫管理，請至 ERP 系統調整。
+                  要入庫、出庫或盤點，請在商品列表的庫存欄按「調整」；有多種規格的商品在各規格那一列調整。
                 </p>
               </div>
               <div className="space-y-2">

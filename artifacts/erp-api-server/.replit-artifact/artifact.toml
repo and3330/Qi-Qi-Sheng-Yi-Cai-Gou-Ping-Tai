@@ -1,0 +1,36 @@
+kind = "api"
+previewPath = "/erp-api/healthz"
+title = "ERP API Server"
+version = "2.0.0"
+id = "artifacts/erp-api-server"
+
+[[services]]
+localPort = 8090
+name = "ERP API Server"
+paths = ["/erp-api", "/erp-mcp"]
+
+[services.development]
+run = "pnpm --filter @workspace/erp-api-server run dev"
+
+[services.production]
+
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/erp-api-server", "run", "build"]
+
+[services.production.build.env]
+NODE_ENV = "production"
+
+[services.production.run]
+args = ["node", "--enable-source-maps", "artifacts/erp-api-server/dist/index.mjs"]
+
+[services.production.run.env]
+PORT = "8090"
+NODE_ENV = "production"
+DISABLE_STRIPE_SYNC = "true"
+
+[services.production.health.startup]
+path = "/erp-api/healthz"
+
+[services.env]
+PORT = "8090"
+DISABLE_STRIPE_SYNC = "true"

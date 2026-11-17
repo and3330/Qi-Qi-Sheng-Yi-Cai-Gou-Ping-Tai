@@ -925,7 +925,18 @@ export const ACTION_TOOLS = new Set([
   "convert_quotation_to_order",
 ]);
 
-export const toolDefinitions = [
+/**
+ * 舊版 ERP 的工具（銷貨單、報價單、採購單、倉庫庫存、未收發票）。
+ * ERP 已經換成新版（/erp/，資料在獨立的 erp 資料庫分區），這些工具讀的是舊資料，
+ * 所以不再提供給 AI 助理與 Bot；ERP 的事請走 ERP 自己的連線入口（/erp-mcp）。
+ */
+export const RETIRED_ERP_TOOLS = new Set([
+  "list_sales_orders", "get_sales_order", "list_quotations", "get_quotation", "list_purchase_orders",
+  "warehouse_stock", "list_unpaid_invoices", "update_sales_order_status", "convert_quotation_to_order",
+]);
+for (const name of RETIRED_ERP_TOOLS) { READ_TOOLS.delete(name); ACTION_TOOLS.delete(name); }
+
+const allToolDefinitions = [
   {
     type: "function" as const,
     function: {
@@ -1264,6 +1275,8 @@ export const toolDefinitions = [
     },
   },
 ];
+
+export const toolDefinitions = allToolDefinitions.filter((def) => !RETIRED_ERP_TOOLS.has(def.function.name));
 
 const executors: Record<string, (args: any, actor?: ToolActor) => Promise<unknown>> = {
   search_knowledge: searchKnowledge,

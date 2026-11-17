@@ -1,1 +1,0 @@
-import { useCreateErpCapa,useListErpCapas } from '@workspace/api-client-react'; import { QualityPage } from './simple-page'; export default function Page(){return <QualityPage title="矯正與預防措施（CAPA）" kind="capa" useList={useListErpCapas} useCreate={useCreateErpCapa}/>}
