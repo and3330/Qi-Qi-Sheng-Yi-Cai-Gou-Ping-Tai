@@ -12,7 +12,8 @@ export const KIND_LABEL: Record<EventKind, string> = {
   order: "訂單", stored_value: "儲值", refund: "退款", expense: "費用", payout: "人員報酬", asset_movement: "資產異動",
 };
 
-export interface Party { externalId?: string; name: string; email?: string; phone?: string; taxId?: string }
+/** category：客戶分類（例如商城的會員等級）；有帶就會寫進 ERP 客戶的「分類」，會員等級變了也會跟著更新 */
+export interface Party { externalId?: string; name: string; email?: string; phone?: string; taxId?: string; category?: string }
 export interface OrderLine { sku?: string; name: string; quantity: number; unitPrice: number; amount: number }
 export interface OrderPayment { method: string; amount: number }
 export interface OrderData {
@@ -72,7 +73,7 @@ function party(raw: any, label: string): Party | string {
   if (!name) return `${label}的姓名（name）必填`;
   const email = text(raw?.email, 200).toLowerCase();
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return `${label}的 Email 格式不正確`;
-  return { name, ...(email ? { email } : {}), ...(text(raw?.phone, 40) ? { phone: text(raw.phone, 40) } : {}), ...(text(raw?.externalId, 100) ? { externalId: text(raw.externalId, 100) } : {}), ...(text(raw?.taxId, 20) ? { taxId: text(raw.taxId, 20) } : {}) };
+  return { name, ...(email ? { email } : {}), ...(text(raw?.phone, 40) ? { phone: text(raw.phone, 40) } : {}), ...(text(raw?.externalId, 100) ? { externalId: text(raw.externalId, 100) } : {}), ...(text(raw?.taxId, 20) ? { taxId: text(raw.taxId, 20) } : {}), ...(text(raw?.category, 30) ? { category: text(raw.category, 30) } : {}) };
 }
 
 function orderData(raw: any): OrderData | string {

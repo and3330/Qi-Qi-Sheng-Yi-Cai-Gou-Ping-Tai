@@ -2007,6 +2007,74 @@ paths:
         "204":
           description: Deleted
 
+  /invoices/{id}/ecpay-print:
+    post:
+      operationId: getEcpayInvoicePrint
+      tags: [invoices]
+      summary: Get an official ECPay print URL without issuing an invoice
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EcpayPrintOptions"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Official print page, usable for one hour
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, expiresInSeconds]
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                  expiresInSeconds:
+                    type: integer
+        "409":
+          description: Invoice is not issued or has been cancelled
+        "502":
+          description: ECPay print service failed
+
+  /invoices/{id}/ecpay-pdf:
+    post:
+      operationId: downloadEcpayInvoicePdf
+      tags: [invoices]
+      summary: Download the official ECPay print page as PDF without issuing an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EcpayPrintOptions"
+      responses:
+        "200":
+          description: Official invoice PDF attachment
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "409":
+          description: Invoice is not issued or has been cancelled
+        "502":
+          description: Official print page could not be rendered
+        "503":
+          description: PDF renderer is busy
+
   /invoices/{id}/ecpay-sync:
     post:
       operationId: syncEcpayInvoice
@@ -2218,6 +2286,14 @@ paths:
 
 components:
   schemas:
+    EcpayPrintOptions:
+      type: object
+      properties:
+        printStyle:
+          type: integer
+          enum: [1, 4]
+          default: 1
+          description: General format or B2B A4, which requires the original buyer tax ID
     AccountConfigurationRow:
       type: object
       additionalProperties: false

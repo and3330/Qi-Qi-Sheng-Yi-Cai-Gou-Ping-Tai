@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { ReportHeader } from "@/components/shared/report-header";
 import { fmtMoney } from "@/lib/report-format";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
@@ -11,6 +11,8 @@ import { ExportMenu } from "@/components/shared/export-menu";
 import { MobileCard, MobileCardHeader, MobileCardGrid, MobileCardItem } from "@/components/shared/mobile-card";
 import type { ExportOptions } from "@/lib/export-utils";
 import type { SalesAnalysisData } from "./types";
+import { DrillAmount } from "@/components/shared/account-drill";
+import { DocListDrillDialog, type DocListTarget } from "@/components/shared/doc-list-drill";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
@@ -18,6 +20,7 @@ const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL :
 const CHART_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 
 interface SalesRow {
+  id?: number;
   name?: string;
   month?: string;
   itemName?: string;
@@ -33,6 +36,7 @@ export default function SalesAnalysisPage() {
   const [groupBy, setGroupBy] = useState("customer");
   const [data, setData] = useState<SalesAnalysisData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
 
   const fetchReport = async () => {
     setLoading(true);
@@ -50,6 +54,17 @@ export default function SalesAnalysisPage() {
   useEffect(() => { fetchReport(); }, [reloadKey]);
 
   const fmt = (n: number) => fmtMoney(n);
+  // 點數字看算進去的單：條件用「查出這份報表時」的期間和分組（data 裡的），不是畫面上還沒按查詢的選項
+  const drill = (n: number | undefined, shown: ReactNode, r?: SalesRow, label?: string) => {
+    if (!data || !n) return shown;
+    const dim = data.dimension;
+    if (r && (dim === "customer" || dim === "salesperson" ? r.id : dim === "month" ? r.month : r.itemName) === undefined) return shown;
+    return (
+      <DrillAmount onClick={() => setDocs({ kind: "sales-orders", title: r ? (label || "未指定") : "全部銷貨單", startDate: data.startDate || undefined, endDate: data.endDate || undefined, ...(r ? (dim === "customer" ? { customerId: r.id } : dim === "salesperson" ? { salespersonId: r.id } : dim === "month" ? { month: r.month } : { itemName: r.itemName }) : {}) })}>
+        {shown}
+      </DrillAmount>
+    );
+  };
 
   const buildExport = (): ExportOptions => {
     if (!data) return { title: "", subtitle: "", fileName: "", headers: [], columnKeys: [], rows: [] };
@@ -109,13 +124,13 @@ export default function SalesAnalysisPage() {
             <Card>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><ShoppingCart className="h-5 w-5 text-blue-600" /></div>
-                <div><div className="text-sm text-gray-500">總訂單數</div><div className="text-2xl font-bold">{data.totalOrders}</div></div>
+                <div><div className="text-sm text-gray-500">總訂單數</div><div className="text-2xl font-bold">{drill(data.totalOrders, data.totalOrders)}</div></div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center"><DollarSign className="h-5 w-5 text-green-600" /></div>
-                <div><div className="text-sm text-gray-500">總銷售額</div><div className="text-2xl font-bold text-green-600">{fmt(data.totalAmount)}</div></div>
+                <div><div className="text-sm text-gray-500">總銷售額</div><div className="text-2xl font-bold text-green-600">{drill(data.totalAmount, fmt(data.totalAmount))}</div></div>
               </CardContent>
             </Card>
           </div>
@@ -154,12 +169,12 @@ export default function SalesAnalysisPage() {
                     <MobileCard key={idx}>
                       <MobileCardHeader 
                         title={label}
-                        value={fmt(r.totalAmount)}
+                        value={drill(r.totalAmount, fmt(r.totalAmount), r, label)}
                         titleClass="text-gray-900"
                         valueClass="text-green-700 font-mono"
                       />
                       <MobileCardGrid>
-                        <MobileCardItem label={groupBy === "item" ? "數量" : "訂單數"} value={count} valueClass="font-mono text-gray-600" />
+                        <MobileCardItem label={groupBy === "item" ? "數量" : "訂單數"} value={drill(count, count, r, label)} valueClass="font-mono text-gray-600" />
                         <MobileCardItem label="佔比" value={`${pct}%`} valueClass="font-mono text-gray-500" />
                       </MobileCardGrid>
                     </MobileCard>
@@ -187,8 +202,8 @@ export default function SalesAnalysisPage() {
                       return (
                         <tr key={idx} className="border-b hover:bg-gray-50">
                           <td className="px-4 py-2 font-medium">{label}</td>
-                          <td className="px-4 py-2 text-right">{count}</td>
-                          <td className="px-4 py-2 text-right font-mono">{fmt(r.totalAmount)}</td>
+                          <td className="px-4 py-2 text-right">{drill(count, count, r, label)}</td>
+                          <td className="px-4 py-2 text-right font-mono">{drill(r.totalAmount, fmt(r.totalAmount), r, label)}</td>
                           <td className="px-4 py-2 text-right text-gray-500">{pct}%</td>
                         </tr>
                       );
@@ -203,6 +218,7 @@ export default function SalesAnalysisPage() {
       )}
 
       {!data && !loading && <Card><CardContent className="py-12 text-center text-gray-400">點擊查詢以產生銷售分析</CardContent></Card>}
+      <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
     </div>
   );
 }

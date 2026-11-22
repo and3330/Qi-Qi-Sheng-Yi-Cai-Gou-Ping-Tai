@@ -25,7 +25,6 @@ import {
   erpInvoicesTable,
 } from "@workspace/db";
 import { applyOrderStatusChange } from "../routes/adminOrders";
-import { changeSalesOrderStatus, SalesOrderStatusError } from "../routes/erpSales";
 import { convertQuotationToOrder, ConvertError } from "../routes/adminQuotations";
 import { reindex, searchDocuments } from "./aiIndex";
 import {
@@ -641,259 +640,9 @@ async function getOrder(args: { orderId?: number; orderNo?: string }) {
   };
 }
 
-async function listSalesOrders(args: { status?: string; source?: string; limit?: number }) {
-  const conds = [];
-  if (args.status) conds.push(eq(salesOrdersTable.status, args.status));
-  if (args.source) conds.push(eq(salesOrdersTable.source, args.source));
-  const rows = await db
-    .select({
-      id: salesOrdersTable.id,
-      soNo: salesOrdersTable.soNo,
-      source: salesOrdersTable.source,
-      customerName: salesOrdersTable.customerName,
-      orderNo: salesOrdersTable.orderNo,
-      status: salesOrdersTable.status,
-      totalAmount: salesOrdersTable.totalAmount,
-      createdAt: salesOrdersTable.createdAt,
-    })
-    .from(salesOrdersTable)
-    .where(conds.length ? and(...conds) : undefined)
-    .orderBy(desc(salesOrdersTable.createdAt))
-    .limit(cap(args.limit));
-  return rows.map((r) => ({ ...r, createdAt: iso(r.createdAt) }));
-}
-
-async function getSalesOrder(args: { salesOrderId?: number; soNo?: string }) {
-  if (args.salesOrderId == null && !args.soNo)
-    throw new ToolError("請提供銷貨單號（soNo）或銷貨單 id（salesOrderId）");
-  const [so] = await db
-    .select()
-    .from(salesOrdersTable)
-    .where(
-      args.salesOrderId != null
-        ? eq(salesOrdersTable.id, Number(args.salesOrderId))
-        : eq(salesOrdersTable.soNo, String(args.soNo)),
-    )
-    .limit(1);
-  if (!so) throw new ToolError("找不到此銷貨單");
-  const items = await db
-    .select()
-    .from(salesOrderItemsTable)
-    .where(eq(salesOrderItemsTable.salesOrderId, so.id));
-  return {
-    id: so.id,
-    soNo: so.soNo,
-    source: so.source,
-    linkedShopOrderNo: so.orderNo,
-    customerName: so.customerName,
-    status: so.status,
-    totalAmount: so.totalAmount,
-    note: so.note,
-    createdAt: iso(so.createdAt),
-    confirmedAt: iso(so.confirmedAt),
-    shippedAt: iso(so.shippedAt),
-    completedAt: iso(so.completedAt),
-    items: items.map((i) => ({
-      productCode: i.productCode,
-      productName: i.productName,
-      variantName: i.variantName,
-      unitPrice: i.unitPrice,
-      quantity: i.quantity,
-    })),
-  };
-}
-
-async function listQuotations(args: { status?: string; limit?: number }) {
-  const rows = await db
-    .select({
-      id: quotationsTable.id,
-      quoteNo: quotationsTable.quoteNo,
-      customerName: quotationsTable.customerName,
-      status: quotationsTable.status,
-      totalAmount: quotationsTable.totalAmount,
-      validUntil: quotationsTable.validUntil,
-      convertedOrderId: quotationsTable.convertedOrderId,
-      createdAt: quotationsTable.createdAt,
-    })
-    .from(quotationsTable)
-    .where(args.status ? eq(quotationsTable.status, args.status) : undefined)
-    .orderBy(desc(quotationsTable.createdAt))
-    .limit(cap(args.limit));
-  return rows.map((r) => ({
-    ...r,
-    validUntil: r.validUntil ? r.validUntil.toISOString().slice(0, 10) : null,
-    createdAt: iso(r.createdAt),
-  }));
-}
-
-async function getQuotation(args: { quotationId?: number; quoteNo?: string }) {
-  if (args.quotationId == null && !args.quoteNo)
-    throw new ToolError("請提供報價單號（quoteNo）或報價單 id（quotationId）");
-  const [q] = await db
-    .select()
-    .from(quotationsTable)
-    .where(
-      args.quotationId != null
-        ? eq(quotationsTable.id, Number(args.quotationId))
-        : eq(quotationsTable.quoteNo, String(args.quoteNo)),
-    )
-    .limit(1);
-  if (!q) throw new ToolError("找不到此報價單");
-  const items = await db
-    .select()
-    .from(quotationItemsTable)
-    .where(eq(quotationItemsTable.quotationId, q.id));
-  return {
-    id: q.id,
-    quoteNo: q.quoteNo,
-    customerName: q.customerName,
-    status: q.status,
-    totalAmount: q.totalAmount,
-    validUntil: q.validUntil ? q.validUntil.toISOString().slice(0, 10) : null,
-    note: q.note,
-    convertedOrderId: q.convertedOrderId,
-    items: items.map((i) => ({
-      productCode: i.productCode,
-      productName: i.productName,
-      variantName: i.variantName,
-      unitPrice: i.unitPrice,
-      quantity: i.quantity,
-    })),
-  };
-}
-
-async function listPurchaseOrders(args: { status?: string; limit?: number }) {
-  const rows = await db
-    .select({
-      id: purchaseOrdersTable.id,
-      poNo: purchaseOrdersTable.poNo,
-      supplierName: suppliersTable.name,
-      status: purchaseOrdersTable.status,
-      totalAmount: purchaseOrdersTable.totalAmount,
-      createdAt: purchaseOrdersTable.createdAt,
-      orderedAt: purchaseOrdersTable.orderedAt,
-      receivedAt: purchaseOrdersTable.receivedAt,
-    })
-    .from(purchaseOrdersTable)
-    .leftJoin(suppliersTable, eq(purchaseOrdersTable.supplierId, suppliersTable.id))
-    .where(args.status ? eq(purchaseOrdersTable.status, args.status) : undefined)
-    .orderBy(desc(purchaseOrdersTable.createdAt))
-    .limit(cap(args.limit));
-  return rows.map((r) => ({
-    ...r,
-    createdAt: iso(r.createdAt),
-    orderedAt: iso(r.orderedAt),
-    receivedAt: iso(r.receivedAt),
-  }));
-}
-
-async function warehouseStockReport(args: { keyword?: string; productId?: number }) {
-  if (!args.keyword && args.productId == null)
-    throw new ToolError("請提供商品關鍵字（keyword）或商品 id（productId）");
-  const conds = [ne(warehouseStockTable.quantity, 0)];
-  if (args.productId != null) conds.push(eq(productsTable.id, Number(args.productId)));
-  if (args.keyword) {
-    const kw = `%${String(args.keyword).trim()}%`;
-    conds.push(or(ilike(productsTable.name, kw), ilike(productsTable.code, kw))!);
-  }
-  const rows = await db
-    .select({
-      productId: productsTable.id,
-      productCode: productsTable.code,
-      productName: productsTable.name,
-      variantName: productVariantsTable.name,
-      warehouseCode: erpWarehousesTable.code,
-      warehouseName: erpWarehousesTable.name,
-      isSellable: erpWarehousesTable.isSellable,
-      quantity: warehouseStockTable.quantity,
-    })
-    .from(warehouseStockTable)
-    .innerJoin(productsTable, eq(warehouseStockTable.productId, productsTable.id))
-    .innerJoin(erpWarehousesTable, eq(warehouseStockTable.warehouseId, erpWarehousesTable.id))
-    .leftJoin(productVariantsTable, eq(warehouseStockTable.variantId, productVariantsTable.id))
-    .where(and(...conds))
-    .orderBy(productsTable.code, erpWarehousesTable.code)
-    .limit(100);
-  return rows;
-}
-
-async function listUnpaidInvoices(args: { invoiceType?: string; limit?: number }) {
-  const conds = [
-    gt(erpInvoicesTable.outstandingAmount, 0),
-    ne(erpInvoicesTable.status, "Cancelled"),
-    ne(erpInvoicesTable.status, "Draft"),
-  ];
-  if (args.invoiceType === "Sales" || args.invoiceType === "Purchase")
-    conds.push(eq(erpInvoicesTable.invoiceType, args.invoiceType));
-  const rows = await db
-    .select({
-      id: erpInvoicesTable.id,
-      invoiceNumber: erpInvoicesTable.invoiceNumber,
-      invoiceType: erpInvoicesTable.invoiceType,
-      invoiceDate: erpInvoicesTable.invoiceDate,
-      dueDate: erpInvoicesTable.dueDate,
-      totalAmount: erpInvoicesTable.totalAmount,
-      outstandingAmount: erpInvoicesTable.outstandingAmount,
-      status: erpInvoicesTable.status,
-    })
-    .from(erpInvoicesTable)
-    .where(and(...conds))
-    .orderBy(erpInvoicesTable.dueDate)
-    .limit(cap(args.limit));
-  return rows;
-}
-
 /** 操作類工具執行時的操作人（按下確認的後台人員） */
 interface ToolActor {
   memberId: number;
-}
-
-async function updateSalesOrderStatus(
-  args: { salesOrderId: number; status: string },
-  actor?: ToolActor,
-) {
-  if (!["confirmed", "shipped", "completed", "cancelled"].includes(args.status))
-    throw new ToolError("狀態只能是 confirmed / shipped / completed / cancelled");
-  const id = Number(args.salesOrderId);
-  if (!Number.isInteger(id)) throw new ToolError("salesOrderId 無效");
-  if (!actor) throw new ToolError("缺少操作人資訊");
-  const [member] = await db
-    .select({ id: membersTable.id, name: membersTable.name, username: membersTable.username })
-    .from(membersTable)
-    .where(eq(membersTable.id, actor.memberId))
-    .limit(1);
-  if (!member) throw new ToolError("找不到操作人");
-  try {
-    await changeSalesOrderStatus(id, args.status, member);
-  } catch (err) {
-    if (err instanceof SalesOrderStatusError) throw new ToolError(err.message);
-    throw err;
-  }
-  const [so] = await db
-    .select({ soNo: salesOrdersTable.soNo, status: salesOrdersTable.status })
-    .from(salesOrdersTable)
-    .where(eq(salesOrdersTable.id, id))
-    .limit(1);
-  return { success: true, soNo: so?.soNo, status: so?.status };
-}
-
-async function convertQuotation(args: { quotationId: number }) {
-  const id = Number(args.quotationId);
-  if (!Number.isInteger(id)) throw new ToolError("quotationId 無效");
-  let orderId: number | null;
-  try {
-    orderId = await convertQuotationToOrder(id);
-  } catch (err) {
-    if (err instanceof ConvertError) throw new ToolError(err.message);
-    throw err;
-  }
-  if (orderId == null) return { success: true };
-  const [order] = await db
-    .select({ orderNo: ordersTable.orderNo })
-    .from(ordersTable)
-    .where(eq(ordersTable.id, orderId))
-    .limit(1);
-  return { success: true, orderId, orderNo: order?.orderNo };
 }
 
 // ---------- 工具註冊表 ----------
@@ -907,13 +656,6 @@ export const READ_TOOLS = new Set([
   "finance_summary",
   "pending_tasks",
   "get_order",
-  "list_sales_orders",
-  "get_sales_order",
-  "list_quotations",
-  "get_quotation",
-  "list_purchase_orders",
-  "warehouse_stock",
-  "list_unpaid_invoices",
 ]);
 
 export const ACTION_TOOLS = new Set([
@@ -922,20 +664,8 @@ export const ACTION_TOOLS = new Set([
   "topup_institution_wallet",
   "set_article_status",
   "create_order",
-  "update_sales_order_status",
-  "convert_quotation_to_order",
 ]);
 
-/**
- * 舊版 ERP 的工具（銷貨單、報價單、採購單、倉庫庫存、未收發票）。
- * ERP 已經換成新版（/erp/，資料在獨立的 erp 資料庫分區），這些工具讀的是舊資料，
- * 所以不再提供給 AI 助理與 Bot；ERP 的事請走 ERP 自己的連線入口（/erp-mcp）。
- */
-export const RETIRED_ERP_TOOLS = new Set([
-  "list_sales_orders", "get_sales_order", "list_quotations", "get_quotation", "list_purchase_orders",
-  "warehouse_stock", "list_unpaid_invoices", "update_sales_order_status", "convert_quotation_to_order",
-]);
-for (const name of RETIRED_ERP_TOOLS) { READ_TOOLS.delete(name); ACTION_TOOLS.delete(name); }
 
 /**
  * 後台通用工具：讓 AI 助理與 Bot 可以使用後台的全部功能（商品、會員、機構、分潤、內容、電子報、社群…）。
@@ -1156,136 +886,6 @@ const allToolDefinitions = [
   {
     type: "function" as const,
     function: {
-      name: "list_sales_orders",
-      description: "查詢 ERP 銷貨單列表。status: draft / confirmed / shipped / completed / cancelled / returned。source: erp（ERP 自行開立）/ shop（商城訂單自動轉入）/ quotation（報價單轉入）。",
-      parameters: {
-        type: "object",
-        properties: {
-          status: { type: "string", description: "狀態（可省略）" },
-          source: { type: "string", description: "來源（可省略）" },
-          limit: { type: "integer", description: "筆數，預設 20，最多 50" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_sales_order",
-      description: "查詢單筆 ERP 銷貨單明細與品項。soNo 與 salesOrderId 擇一提供。",
-      parameters: {
-        type: "object",
-        properties: {
-          soNo: { type: "string", description: "銷貨單號" },
-          salesOrderId: { type: "integer", description: "銷貨單 id" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_quotations",
-      description: "查詢報價單列表。status: draft / sent / accepted / converted / cancelled。",
-      parameters: {
-        type: "object",
-        properties: {
-          status: { type: "string", description: "狀態（可省略）" },
-          limit: { type: "integer", description: "筆數，預設 20，最多 50" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "get_quotation",
-      description: "查詢單筆報價單明細與品項。quoteNo 與 quotationId 擇一提供。",
-      parameters: {
-        type: "object",
-        properties: {
-          quoteNo: { type: "string", description: "報價單號" },
-          quotationId: { type: "integer", description: "報價單 id" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_purchase_orders",
-      description: "查詢採購單列表（含供應商、狀態、金額、下單與收貨時間）。",
-      parameters: {
-        type: "object",
-        properties: {
-          status: { type: "string", description: "狀態（可省略）" },
-          limit: { type: "integer", description: "筆數，預設 20，最多 50" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "warehouse_stock",
-      description: "查詢商品在各倉庫的庫存數量。keyword（商品名稱或代碼）與 productId 擇一提供。",
-      parameters: {
-        type: "object",
-        properties: {
-          keyword: { type: "string", description: "商品名稱或代碼關鍵字" },
-          productId: { type: "integer", description: "商品 id" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "list_unpaid_invoices",
-      description: "查詢尚未結清的發票，依到期日排序。invoiceType: Sales（應收）/ Purchase（應付），省略則全部。",
-      parameters: {
-        type: "object",
-        properties: {
-          invoiceType: { type: "string", description: "Sales 或 Purchase（可省略）" },
-          limit: { type: "integer", description: "筆數，預設 20，最多 50" },
-        },
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "update_sales_order_status",
-      description: "變更 ERP 銷貨單狀態（confirmed / shipped / completed / cancelled）。ERP 自行開立的單：確認時扣庫存並自動開立應收發票，取消已確認的單會回補庫存。商城訂單轉入的單：只能出貨、完成、取消，並會連動商城訂單。執行前必須先向管理者確認。",
-      parameters: {
-        type: "object",
-        properties: {
-          confirmationId: { type: "integer", description: "第二階段執行時帶入第一階段回傳的確認碼；首次呼叫請勿帶" },
-          salesOrderId: { type: "integer", description: "銷貨單 id" },
-          status: { type: "string", description: "confirmed / shipped / completed / cancelled" },
-        },
-        required: ["salesOrderId", "status"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
-      name: "convert_quotation_to_order",
-      description: "將「已接受」且未過期的報價單轉成商城訂單：會扣庫存，並自動產生 ERP 銷貨單。執行前必須先向管理者確認。",
-      parameters: {
-        type: "object",
-        properties: {
-          confirmationId: { type: "integer", description: "第二階段執行時帶入第一階段回傳的確認碼；首次呼叫請勿帶" },
-          quotationId: { type: "integer", description: "報價單 id" },
-        },
-        required: ["quotationId"],
-      },
-    },
-  },
-  {
-    type: "function" as const,
-    function: {
       name: "admin_list_endpoints",
       description:
         "列出後台所有可用的功能（商品、規格、會員與身份審核、機構、訂單、分潤規則、錢包、內容文章與公告、電子報、社群貼文、連結頁、客服、報表、匯款帳號設定等）。上面的專用工具做不到的事，先用這個找到對應的功能，再用 admin_get 查詢或 admin_write 送出操作。",
@@ -1346,7 +946,7 @@ const allToolDefinitions = [
   },
 ];
 
-export const toolDefinitions = allToolDefinitions.filter((def) => !RETIRED_ERP_TOOLS.has(def.function.name));
+export const toolDefinitions = allToolDefinitions;
 
 async function adminListEndpoints(args: { keyword?: string }) {
   return listEndpoints(args.keyword);
@@ -1405,15 +1005,6 @@ const executors: Record<string, (args: any, actor?: ToolActor) => Promise<unknow
   set_article_status: setArticleStatus,
   create_order: createOrder,
   get_order: getOrder,
-  list_sales_orders: listSalesOrders,
-  get_sales_order: getSalesOrder,
-  list_quotations: listQuotations,
-  get_quotation: getQuotation,
-  list_purchase_orders: listPurchaseOrders,
-  warehouse_stock: warehouseStockReport,
-  list_unpaid_invoices: listUnpaidInvoices,
-  update_sales_order_status: updateSalesOrderStatus,
-  convert_quotation_to_order: convertQuotation,
 };
 
 /** 執行工具；操作類寫入稽核紀錄 */

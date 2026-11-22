@@ -2,10 +2,11 @@ import { Router, type IRouter } from "express";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import { db, calendarEventsTable, tasksTable, leavesTable, contractsTable, assetMaintenanceTable, employeesTable } from "@workspace/erp-db";
 import { requireAuth } from "../middleware/require-auth";
+import { machineOnly } from "../lib/api-key-user";
 
 const HOLIDAY_ROLES = ["owner", "admin", "hr_admin"];
 function canManageHolidays(req: any): boolean {
-  if (req.apiKeyAuth) return req.apiKey?.permissions === "admin";
+  if (machineOnly(req)) return req.apiKey?.permissions === "admin";
   const role = req.session?.user?.role;
   return role === "super_admin" || HOLIDAY_ROLES.includes(role);
 }

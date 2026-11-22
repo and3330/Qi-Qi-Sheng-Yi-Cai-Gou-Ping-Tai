@@ -1,17 +1,24 @@
 import { useEffect, useRef, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, X, Settings2 } from "lucide-react";
+import { Printer, Download, Settings2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { fetchDefaultLayout, renderPrintHtml, defaultLayout, PRINT_DOC_TYPES, type PrintData, type PrintDocType, type PrintLayout } from "@/lib/print-layout";
 
-export const COMPANY_INFO = {
-  name: "詠勝教育文化事業有限公司",
-  taxId: "",
-  address: "新北市板橋區南亞東路8號9樓之32",
-  contact: "蘇秉浤",
-  tel: "02-23680623",
-};
+/**
+ * 單據上「我方公司」的資料一律來自系統設定裡的「品牌／公司」，程式裡不寫死任何公司。
+ * 單據有指定就用指定的；沒指定用預設的那一家（啟用中、最早建立的）。
+ */
+export interface CompanyInfo { name: string; taxId: string; address: string; contact: string; tel: string }
+export const COMPANY_INFO: CompanyInfo = { name: "", taxId: "", address: "", contact: "", tel: "" };
+
+export function defaultBrand(brands: any[] | null | undefined): any | null {
+  const list = (Array.isArray(brands) ? brands : []).filter(b => b && b.isActive !== false);
+  return list.length ? [...list].sort((a, b) => Number(a.id) - Number(b.id))[0] : null;
+}
+export function companyOf(brand: any | null | undefined): CompanyInfo {
+  return { name: brand?.name || "", taxId: brand?.taxId || "", address: brand?.address || "", contact: brand?.contactPerson || "", tel: brand?.tel || "" };
+}
 
 const parseItems = (raw: unknown): any[] => Array.isArray(raw) ? raw : (() => { try { return JSON.parse(String(raw || "[]")); } catch { return []; } })();
 
@@ -49,20 +56,18 @@ export function DocumentPrintDialog({ open, onClose, docType, data }: { open: bo
   const handlePrint = () => { const win = iframeRef.current?.contentWindow; if (win) { win.focus(); win.print(); } };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="md:max-w-4xl h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b flex-row flex-wrap items-center justify-between gap-2 space-y-0">
-          <DialogTitle className="text-base">{label}預覽 — {data.docNumber}</DialogTitle>
-          <div className="flex flex-wrap gap-2 mr-8">
-            <Button size="sm" variant="ghost" onClick={() => { onClose(); navigate("/system/print-templates"); }} title="調整印出來的樣子"><Settings2 className="h-4 w-4 mr-1" />調整版面</Button>
-            <Button size="sm" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />列印</Button>
-            <Button size="sm" variant="outline" onClick={handlePrint} title="在列印視窗選「另存為 PDF」"><Download className="h-4 w-4 mr-1" />下載 PDF</Button>
-            <Button size="sm" variant="ghost" onClick={onClose} aria-label="關閉"><X className="h-4 w-4" /></Button>
-          </div>
-        </DialogHeader>
-        <iframe ref={iframeRef} title={`${label}預覽`} srcDoc={html} className="flex-1 w-full bg-white" />
-      </DialogContent>
-    </Dialog>
+    // 印的是 iframe 裡的那一頁（自己帶列印樣式），外框換成共用的單據視窗不影響印出來的樣子
+    <DocWindow
+      open={open} onClose={onClose} wide name={`${label}預覽`} number={data.docNumber}
+      footer={<>
+        <Button variant="ghost" className="mr-auto" onClick={() => { onClose(); navigate("/system/print-templates"); }} title="調整印出來的樣子"><Settings2 className="h-4 w-4 mr-1" />調整版面</Button>
+        <Button variant="outline" onClick={handlePrint} title="在列印視窗選「另存為 PDF」"><Download className="h-4 w-4 mr-1" />下載 PDF</Button>
+        <Button onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />列印</Button>
+        <Button variant="outline" onClick={onClose}>關閉</Button>
+      </>}
+    >
+      <iframe ref={iframeRef} title={`${label}預覽`} srcDoc={html} className="h-[64dvh] w-full rounded-md border bg-white" />
+    </DocWindow>
   );
 }
 

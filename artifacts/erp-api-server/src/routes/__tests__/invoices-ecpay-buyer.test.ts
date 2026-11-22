@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   dbSelect: vi.fn(),
   dbUpdate: vi.fn(),
   issueInvoice: vi.fn(),
+  printInvoice: vi.fn(),
+  renderEcpayPdf: vi.fn(),
   assertVatAccountsReady: vi.fn(),
   assertPeriodOpen: vi.fn(),
   createInvoiceJournalEntry: vi.fn(),
@@ -51,7 +53,12 @@ vi.mock("../../middleware/require-auth", () => ({
   requireRole: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 vi.mock("../../middleware/tenant-context", () => ({ reqTenantId: () => 1 }));
+vi.mock("../../middleware/invoice-permission", () => ({
+  requireInvoicePermission: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+}));
+vi.mock("../../lib/ecpay-pdf", () => ({ renderEcpayPdf: mocks.renderEcpayPdf }));
 vi.mock("../../lib/ecpay-invoice", () => ({
+  printInvoice: mocks.printInvoice,
   issueInvoice: mocks.issueInvoice,
   voidInvoice: vi.fn(),
   queryInvoice: vi.fn(),
@@ -170,6 +177,94 @@ describe("ECPay issue route buyer preflight", () => {
     salesOrderId: null,
   };
 
+  it("refuses internal-only or voided invoice printing without calling ECPay", async () => {
+    for (const invoice of [accountingInvoice, { ...accountingInvoice, ecpayInvoiceNumber: "AB12345678", ecpayInvoiceDate: "2026-11-19", ecpayVoidedAt: new Date() }]) {
+      mocks.dbSelect.mockReturnValueOnce(queryResult([invoice]));
+      const response = await fetch(`${baseUrl}/invoices/44/ecpay-print`, { method: "POST" });
+      expect(response.status).toBe(409);
+    }
+    expect(mocks.printInvoice).not.toHaveBeenCalled();
+    expect(mocks.issueInvoice).not.toHaveBeenCalled();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("gets print URL for a visible issued invoice without accounting writes", async () => {
+    mocks.dbSelect.mockReturnValueOnce(queryResult([{ ...accountingInvoice, ecpayInvoiceNumber: "AB12345678", ecpayInvoiceDate: "2026-11-19 12:00:00" }]));
+    mocks.printInvoice.mockResolvedValueOnce({ success: true, url: "https://einvoice.ecpay.com.tw/print/example" });
+    const response = await fetch(`${baseUrl}/invoices/44/ecpay-print`, { method: "POST" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(mocks.printInvoice).toHaveBeenCalledWith("AB12345678", "2026-11-19", undefined, 1);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.issueInvoice).not.toHaveBeenCalled();
+  });
+
+  it("downloads a PDF attachment without issuing or updating accounting", async () => {
+    mocks.dbSelect.mockReturnValueOnce(queryResult([{ ...accountingInvoice, ecpayInvoiceNumber: "AB12345678", ecpayInvoiceDate: "2026-11-19", ecpayTaxId: "12345678" }]));
+    mocks.printInvoice.mockResolvedValueOnce({ success: true, url: "https://einvoice.ecpay.com.tw/print/example" });
+    mocks.renderEcpayPdf.mockResolvedValueOnce(Buffer.from("%PDF-1.7\nfixture"));
+    const response = await fetch(`${baseUrl}/invoices/44/ecpay-pdf`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printStyle: 4 }) });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/pdf");
+    expect(response.headers.get("content-disposition")).toBe('attachment; filename="AB12345678.pdf"');
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.text()).toMatch(/^%PDF-/);
+    expect(mocks.printInvoice).toHaveBeenCalledWith("AB12345678", "2026-11-19", undefined, 4);
+    expect(mocks.renderEcpayPdf).toHaveBeenCalledWith("https://einvoice.ecpay.com.tw/print/example", "AB12345678");
+    expect(mocks.transaction).not.toHaveBeenCalled();
+    expect(mocks.dbUpdate).not.toHaveBeenCalled();
+    expect(mocks.issueInvoice).not.toHaveBeenCalled();
+  });
+
+  it("does not render invisible, unissued or cancelled invoices", async () => {
+    for (const [rows, status] of [
+      [[], 404],
+      [[accountingInvoice], 409],
+      [[{ ...accountingInvoice, ecpayInvoiceNumber: "AB12345678", ecpayInvoiceDate: "2026-11-19", status: "Cancelled" }], 409],
+    ] as const) {
+      mocks.dbSelect.mockReturnValueOnce(queryResult([...rows]));
+      const response = await fetch(`${baseUrl}/invoices/44/ecpay-pdf`, { method: "POST" });
+      expect(response.status).toBe(status);
+    }
+    expect(mocks.renderEcpayPdf).not.toHaveBeenCalled();
+    expect(mocks.printInvoice).not.toHaveBeenCalled();
+  });
+
+  it("returns a safe error rather than a broken PDF on rendering failure", async () => {
+    mocks.dbSelect.mockReturnValueOnce(queryResult([{ ...accountingInvoice, ecpayInvoiceNumber: "AB12345678", ecpayInvoiceDate: "2026-11-19" }]));
+    mocks.printInvoice.mockResolvedValueOnce({ success: true, url: "https://einvoice.ecpay.com.tw/print/example" });
+    mocks.renderEcpayPdf.mockRejectedValueOnce(new Error("sensitive browser diagnostic"));
+    const response = await fetch(`${baseUrl}/invoices/44/ecpay-pdf`, { method: "POST" });
+    expect(response.status).toBe(502);
+    expect(await response.text()).not.toContain("sensitive");
+  });
+
+  it("returns 404 for invoices outside the tenant-scoped query result", async () => {
+    mocks.dbSelect.mockReturnValueOnce(queryResult([]));
+    const response = await fetch(`${baseUrl}/invoices/44/ecpay-print`, { method: "POST" });
+    expect(response.status).toBe(404);
+    expect(mocks.printInvoice).not.toHaveBeenCalled();
+  });
+
+  it("only allows A4 for invoices originally issued with a buyer tax ID", async () => {
+    const issued = { ...accountingInvoice, ecpayInvoiceNumber: "AB12345678", ecpayInvoiceDate: "2026-11-19" };
+    mocks.dbSelect.mockReturnValueOnce(queryResult([issued]));
+    const noTaxId = await fetch(`${baseUrl}/invoices/44/ecpay-print`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printStyle: 4 }) });
+    expect(noTaxId.status).toBe(409);
+    expect(mocks.printInvoice).not.toHaveBeenCalled();
+    mocks.dbSelect.mockReturnValueOnce(queryResult([{ ...issued, ecpayTaxId: "04174495" }]));
+    mocks.printInvoice.mockResolvedValueOnce({ success: true, url: "https://einvoice.ecpay.com.tw/print/example" });
+    const a4 = await fetch(`${baseUrl}/invoices/44/ecpay-print`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printStyle: 4 }) });
+    expect(a4.status).toBe(200);
+    expect(mocks.printInvoice).toHaveBeenCalledWith("AB12345678", "2026-11-19", undefined, 4);
+    expect(mocks.issueInvoice).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported print styles before querying invoices", async () => {
+    const response = await fetch(`${baseUrl}/invoices/44/ecpay-print`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printStyle: 99 }) });
+    expect(response.status).toBe(400);
+    expect(mocks.dbSelect).not.toHaveBeenCalled();
+  });
   it("rejects status-only Paid without creating settlement-derived amounts", async () => {
     mocks.dbSelect.mockReturnValueOnce(queryResult([accountingInvoice]));
 

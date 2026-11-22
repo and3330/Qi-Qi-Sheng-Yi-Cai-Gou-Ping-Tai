@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { SearchableSelect } from "@/components/shared/searchable-select";
 
 interface AccountOption { id: number; accountNumber: string; accountName: string }
 
@@ -53,20 +54,36 @@ export function CashAccountSelect({ value, onChange, placeholder = "請選擇帳
   );
 }
 
-/** 某一類的明細科目（例如費用科目），給「這筆錢記到哪個科目」用 */
-export function LedgerAccountSelect({ value, onChange, types, placeholder = "請選擇科目", id }: {
+/**
+ * 某一類的明細科目（例如費用科目），給「這筆錢記到哪個科目」用。
+ * 老闆 2026-11-18：科目很多，要跟「客戶」一樣可以打關鍵字（科目代號或名稱）找。
+ */
+export function LedgerAccountSelect({ value, onChange, types, placeholder = "請選擇科目", id, ariaLabel }: {
   value: string; onChange: (value: string) => void; types: string[]; placeholder?: string; id?: string;
+  /** 放在表格裡、旁邊沒有欄位名稱時，給螢幕閱讀器念的名稱 */ ariaLabel?: string;
 }) {
-  const { data: accounts = [] } = useQuery({
+  const { data: accounts = [], isLoading, isError } = useQuery({
     queryKey: ["/accounts"],
     queryFn: () => getJson<Array<AccountOption & { accountType: string; isGroup: boolean }>>("accounts"),
     staleTime: 60_000,
   });
-  const options = accounts.filter(a => !a.isGroup && types.includes(a.accountType));
+  const options = [
+    // 第一項是空值：選回它就是「不指定」（例如「不選＝應收帳款」）
+    { value: "", label: placeholder },
+    ...accounts.filter(a => !a.isGroup && types.includes(a.accountType)).map(a => ({ value: String(a.id), label: `${a.accountNumber} ${a.accountName}` })),
+  ];
   return (
-    <select id={id} className={selectClass} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">{placeholder}</option>
-      {options.map(a => <option key={a.id} value={a.id}>{a.accountNumber} {a.accountName}</option>)}
-    </select>
+    <div id={id} aria-label={ariaLabel}>
+      <SearchableSelect
+        value={value}
+        onValueChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        searchPlaceholder="輸入科目代號或名稱…"
+        emptyText={isLoading ? "載入中…" : isError ? "科目讀取失敗，請關掉再開一次" : "找不到這個科目"}
+        triggerClassName="bg-background"
+        title={ariaLabel}
+      />
+    </div>
   );
 }

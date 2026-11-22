@@ -22,10 +22,11 @@ import {
 } from "@workspace/erp-db";
 import { requireAuth } from "../middleware/require-auth";
 import { batchDeleteRule, batchRoleError, batchUpdateError, isDraftStatus } from "../lib/batch-policy";
+import { machineOnly } from "../lib/api-key-user";
 
 const actorOf = (req: any) => ({
   role: req.session?.user?.role ?? null,
-  apiKey: !!req.apiKeyAuth,
+  apiKey: machineOnly(req),
   apiKeyPermissions: req.apiKey?.permissions ?? null,
 });
 
@@ -58,11 +59,11 @@ const entityMap: Record<string, { table: any; label: string; allowedFields?: str
   "salary-slips": { table: salarySlipsTable, label: "薪資單", allowedFields: ["status"] },
   vouchers: { table: vouchersTable, label: "傳票", allowedFields: ["status"] },
   quotations: { table: quotationsTable, label: "報價單", allowedFields: ["status"] },
-  "delivery-notes": { table: deliveryNotesTable, label: "送貨單", allowedFields: ["status"] },
+  "delivery-notes": { table: deliveryNotesTable, label: "出貨單", allowedFields: ["status"] },
   "purchase-receipts": { table: purchaseReceiptsTable, label: "進貨單", allowedFields: ["status"] },
   // 退貨單狀態流轉會連動庫存/折讓單/分錄，禁止批次修改狀態，僅允許批次刪除草稿（delete 端點另有狀態檢查）
-  "sales-returns": { table: salesReturnsTable, label: "銷售退貨", allowedFields: [] },
-  "purchase-returns": { table: purchaseReturnsTable, label: "採購退貨", allowedFields: [] },
+  "sales-returns": { table: salesReturnsTable, label: "銷貨退回", allowedFields: [] },
+  "purchase-returns": { table: purchaseReturnsTable, label: "進貨退出", allowedFields: [] },
   "payment-requests": { table: paymentRequestsTable, label: "付款申請", allowedFields: ["status"] },
   "price-lists": { table: priceListsTable, label: "價目表", allowedFields: ["status", "currency"] },
   "order-templates": { table: orderTemplatesTable, label: "訂單模板", allowedFields: ["businessType", "isActive"] },

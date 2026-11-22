@@ -21,6 +21,7 @@ import { createApprovalRequest } from "../utils/approval-helper";
 import { resolveAiProvider, temperatureParam } from "../lib/ai-provider";
 import { aiFetch } from "../lib/ai-client";
 import { entrySummary, partyLineText } from "../lib/voucher-entry-text";
+import { machineOnly } from "../lib/api-key-user";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
@@ -158,8 +159,8 @@ export async function postReimbursementLedger(tx: any, meta: ReimbursementLedger
 router.get("/reimbursement/masters", async (_req, res): Promise<void> => {
   try {
     const [departments, projects, suppliers] = await Promise.all([
-      db.select({ id: departmentsTable.id, name: departmentsTable.name }).from(departmentsTable),
-      db.select({ id: projectsTable.id, name: projectsTable.name, isActive: projectsTable.isActive }).from(projectsTable),
+      db.select({ id: departmentsTable.id, name: departmentsTable.name, isActive: departmentsTable.isActive }).from(departmentsTable),
+      db.select({ id: projectsTable.id, name: projectsTable.name, isActive: projectsTable.isActive, startDate: projectsTable.startDate, endDate: projectsTable.endDate }).from(projectsTable),
       db.select({ id: suppliersTable.id, name: suppliersTable.name, taxId: suppliersTable.taxId }).from(suppliersTable),
     ]);
     res.json({ departments, projects, suppliers });
@@ -210,7 +211,7 @@ router.post("/reimbursement/confirm", async (req, res): Promise<void> => {
   // 只有會計相關角色（session 登入）可以「直接過帳」；
   // 其他登入者（員工自助、API key）走延後過帳：簽核通過時才建立分錄與發票。
   const sessionRole = String((req as any).session?.user?.role || "");
-  const directPost = !((req as any).apiKeyAuth) &&
+  const directPost = !machineOnly(req) &&
     ["owner", "admin", "accountant", "super_admin"].includes(sessionRole);
 
   try {
@@ -366,7 +367,7 @@ ${categoriesForPrompt()}
     }
 
     const result = !ai ? { text: await readReceiptWithVisionModel(prompt, files) } : await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash-lite",
       contents: [{ role: "user", parts }],
       config: {
         responseMimeType: "application/json",

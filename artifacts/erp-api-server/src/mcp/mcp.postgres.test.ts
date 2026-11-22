@@ -36,10 +36,11 @@ describe("MCP boundary unit checks", () => {
   it("redacts all arguments including key names and sensitive nested payloads", () => {
     expect(JSON.stringify(auditArgs({ password: "private", payload: { bankAccount: "secret" } }))).not.toMatch(/private|secret|password|bankAccount/);
   });
-  it("exposes exactly twenty-one tools (legacy key still sees ten) and rejects tenant injection, SQL and excessive limits", () => {
+  it("exposes exactly twenty-two tools (legacy key still sees ten) and rejects tenant injection, SQL and excessive limits", () => {
     // 2026-11-11：新增 5 個依身分開放的工具；原有共用金鑰仍只看得到原本的 10 個（identity.test.ts）
     // 2026-11-13：新增 4 個只給全權身分的工具（通用操作、報價單 PDF）
-    expect(Object.keys(toolSchemas)).toHaveLength(21);
+    // 2026-11-19：新增 erp_whoami（ERP 金鑰回答「代表誰、能做什麼」）
+    expect(Object.keys(toolSchemas)).toHaveLength(22);
     expect(toolSchemas.search_documents.safeParse({ type:"invoices",limit:51 }).success).toBe(false);
     expect(toolSchemas.get_finance_summary.safeParse({ tenantId:2 }).success).toBe(false);
     expect(toolSchemas.get_document.safeParse({ type:"employees",id:1 }).success).toBe(false);

@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocStatus, DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
-import { call, money, post, selectClass } from "@/lib/call";
+import { call, money, post, selectClass, todayText } from "@/lib/call";
+import { CashAccountSelect, LedgerAccountSelect } from "@/components/shared/ledger-account-select";
+import { DocListDrillDialog, type DocListTarget } from "@/components/shared/doc-list-drill";
 
 interface Row {
   id?: number;
@@ -21,7 +23,8 @@ interface Row {
   lastReceiptDate: string | null;
   legacyOutstanding: number; legacyCount: number; legacyOldestDate: string | null;
 }
-interface OpenOrder { id: number; orderNumber: string; orderDate: string; label: string | null; legacy: boolean; totalAmount: number; paidAmount: number; outstanding: number; days: number }
+interface OpenOrder { id: number; orderNumber: string; orderDate: string; label: string | null; legacy: boolean; projectId: number | null; totalAmount: number; paidAmount: number; outstanding: number; days: number }
+interface OpenItem { id: number; orderNumber: string; orderDate: string; label: string | null; legacy: boolean; projectId: number | null; customerId: number; customerCode: string | null; customerName: string; outstanding: number; days: number }
 interface Overview {
   asOfDate: string;
   summary: { outstanding: number; overdue: number; customers: number; overdueCustomers: number; overLimitCustomers: number; legacyOutstanding: number; legacyCount: number; legacyCustomers: number };
@@ -38,6 +41,19 @@ export default function ReceivablesPage() {
   const [viewing, setViewing] = useState<Row | null>(null);
   const [limit, setLimit] = useState("");
   const [saving, setSaving] = useState(false);
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
+  // 應收沖帳：勾選要收的銷貨單（值是這次要收多少），按一下建立收款單
+  const [picked, setPicked] = useState<Record<number, string>>({});
+  const [payDate, setPayDate] = useState(todayText());
+  const [cashAccountId, setCashAccountId] = useState("");
+  const [memo, setMemo] = useState("");
+  const [settling, setSettling] = useState(false);
+  // 手續費：客戶欠 100、銀行只進 70，另外 30 是手續費時，整張 100 一樣沖掉，30 記成手續費
+  const [fees, setFees] = useState<Record<number, string>>({});
+  const [feeAccountId, setFeeAccountId] = useState("");
+  // 兩種看法：依客戶彙總，或像舊系統的「應收沖帳」一張單一列
+  const [mode, setMode] = useState<"customers" | "items">("customers");
+  const [ticked, setTicked] = useState<Record<number, true>>({});
 
   const { data, isLoading } = useQuery({ queryKey: ["/receivables/overview"], queryFn: () => call<Overview>("receivables/overview") });
   // 點開某個客戶時，把還沒收清的銷貨單一張一張列出來
@@ -45,12 +61,77 @@ export default function ReceivablesPage() {
     queryKey: ["/receivables/open-orders", viewing?.customerId], enabled: viewing !== null,
     queryFn: () => call<OpenOrder[]>(`receivables/customers/${viewing!.customerId}/open-orders`),
   });
+  const { data: ledgerAccounts = [] } = useQuery({ queryKey: ["/accounts"], queryFn: () => call<Array<{ id: number; accountName: string; accountType: string; isGroup: boolean }>>("accounts"), staleTime: 60_000, enabled: viewing !== null });
+  const { data: openItems, isLoading: loadingItems } = useQuery({
+    queryKey: ["/receivables/open-items"], enabled: mode === "items",
+    queryFn: () => call<{ count: number; total: number; rows: OpenItem[] }>("receivables/open-items"),
+  });
   const keyword = search.trim().toLowerCase();
+  const items = (openItems?.rows || []).filter(item => !keyword || item.customerName.toLowerCase().includes(keyword) || (item.customerCode || "").toLowerCase().includes(keyword) || item.orderNumber.toLowerCase().includes(keyword));
+  const tickedItems = (openItems?.rows || []).filter(item => ticked[item.id]);
+  const tickedTotal = tickedItems.reduce((sum, item) => sum + item.outstanding, 0);
+  const tick = (item: OpenItem, on: boolean) => {
+    if (on && tickedItems.length > 0 && tickedItems[0].customerId !== item.customerId) {
+      toast({ title: "一張收款單只能收一個客戶", description: `已經勾了「${tickedItems[0].customerName}」的單。要收別的客戶，請先取消勾選或先把這張收款單建好。`, variant: "destructive" });
+      return;
+    }
+    setTicked(prev => { const next = { ...prev }; if (on) next[item.id] = true; else delete next[item.id]; return next; });
+  };
+  /** 勾好之後按「輸入收款單」：開那個客戶的視窗，剛剛勾的單已經選好、金額帶好 */
+  const startReceipt = () => {
+    if (tickedItems.length === 0) return;
+    const first = tickedItems[0];
+    const row = (data?.rows || []).find(r => r.customerId === first.customerId)
+      ?? { customerId: first.customerId, customerName: first.customerName, customerCode: first.customerCode, contactPerson: null, phone: null, outstanding: tickedTotal, fromOrders: tickedTotal, fromInvoices: 0, overdueAmount: 0, overdueCount: 0, oldestOverdueDays: 0, creditLimit: null, creditUsedPct: null, overLimit: false, available: null, lastReceiptDate: null, legacyOutstanding: 0, legacyCount: 0, legacyOldestDate: null };
+    open(row);
+    setPicked(Object.fromEntries(tickedItems.map(item => [item.id, String(item.outstanding)])));
+  };
   const rows = (data?.rows || []).filter(row =>
     (filter === "all" || (filter === "owing" && row.outstanding > 0) || (filter === "overdue" && row.overdueAmount > 0) || (filter === "over" && row.overLimit))
     && (!keyword || row.customerName.toLowerCase().includes(keyword) || (row.customerCode || "").toLowerCase().includes(keyword)));
 
-  const open = (row: Row) => { setLimit(row.creditLimit ? String(row.creditLimit) : ""); setViewing(row); };
+  const open = (row: Row) => { setLimit(row.creditLimit ? String(row.creditLimit) : ""); setPicked({}); setFees({}); setMemo(""); setPayDate(todayText()); setViewing(row); };
+  const pickedOrders = (openOrders || []).filter(order => picked[order.id] !== undefined);
+  const pickedTotal = pickedOrders.reduce((sum, order) => sum + (Number(picked[order.id]) || 0), 0);
+  const feeOf = (id: number) => Number(fees[id]) || 0;
+  const feeTotal = pickedOrders.reduce((sum, order) => sum + feeOf(order.id), 0);
+  const feeProblem = pickedOrders.find(order => feeOf(order.id) < 0 || (feeOf(order.id) > 0 && feeOf(order.id) >= (Number(picked[order.id]) || 0)));
+  const feeAccountValue = feeAccountId || String(ledgerAccounts.find(a => !a.isGroup && a.accountType === "Expense" && /手續費/.test(a.accountName))?.id ?? "");
+  const pickedProblem = pickedOrders.find(order => !(Number(picked[order.id]) > 0) || Number(picked[order.id]) > order.outstanding + 0.005);
+  const togglePick = (order: OpenOrder, on: boolean) => setPicked(prev => {
+    const next = { ...prev };
+    if (on) next[order.id] = String(order.outstanding); else delete next[order.id];
+    return next;
+  });
+  const settle = async () => {
+    if (!viewing || pickedOrders.length === 0) return;
+    if (pickedProblem) { toast({ title: `${pickedProblem.orderNumber} 的金額不對`, description: `這次收的金額要大於 0，而且不能超過還欠的 ${money(pickedProblem.outstanding)}`, variant: "destructive" }); return; }
+    if (feeProblem) { toast({ title: `${feeProblem.orderNumber} 的手續費不對`, description: "手續費要小於這次沖的金額，而且不能是負數", variant: "destructive" }); return; }
+    if (feeTotal > 0 && !feeAccountValue) { toast({ title: "請選擇手續費科目", description: "手續費要記到哪個費用科目", variant: "destructive" }); return; }
+    if (!cashAccountId) { toast({ title: "請選擇收款帳戶", description: "要知道錢進了哪個帳戶，銀行存款的帳才會對", variant: "destructive" }); return; }
+    const projectId = pickedOrders.find(order => order.projectId)?.projectId;
+    setSettling(true);
+    try {
+      const voucher = await post<{ voucherNumber: string }>("vouchers", {
+        voucherType: "收款單", voucherDate: payDate, customerId: viewing.customerId, cashAccountId: Number(cashAccountId),
+        ...(feeTotal > 0 ? { feeAccountId: Number(feeAccountValue) } : {}),
+        description: memo.trim() || `${viewing.customerName} 收款（${pickedOrders.map(order => order.orderNumber).join("、")}）`.slice(0, 300),
+        ...(projectId ? { projectId } : {}),
+        items: pickedOrders.map(order => ({ description: `收款 ${order.orderNumber}${order.label ? ` ${order.label}` : ""}`.slice(0, 200), amount: Number(picked[order.id]), ...(feeOf(order.id) > 0 ? { fee: feeOf(order.id) } : {}), salesOrderId: order.id })),
+      });
+      toast({ title: `已建立收款單 ${voucher.voucherNumber}`, description: `沖掉 ${pickedOrders.length} 張銷貨單，共 ${money(pickedTotal)}${feeTotal > 0 ? `（帳戶實收 ${money(pickedTotal - feeTotal)}、手續費 ${money(feeTotal)}）` : ""}` });
+      setPicked({}); setFees({}); setMemo("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/receivables/overview"] }),
+        queryClient.invalidateQueries({ queryKey: ["/receivables/open-orders", viewing.customerId] }),
+        queryClient.invalidateQueries({ queryKey: ["/receivables/open-items"] }),
+      ]);
+      setTicked({});
+      setViewing(prev => prev ? { ...prev, outstanding: Math.max(0, prev.outstanding - pickedTotal), fromOrders: Math.max(0, prev.fromOrders - pickedTotal), lastReceiptDate: payDate } : prev);
+    } catch (err) {
+      toast({ title: "收款單建立失敗", description: err instanceof Error ? err.message : "請再試一次", variant: "destructive" });
+    } finally { setSettling(false); }
+  };
   const saveLimit = async () => {
     if (!viewing) return;
     setSaving(true);
@@ -88,13 +169,64 @@ export default function ReceivablesPage() {
           <Input id="ar-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="客戶名稱或代號" />
         </div>
         <div className="flex items-end gap-2 md:ml-auto">
+          <div className="flex rounded-md border p-0.5" role="tablist" aria-label="檢視方式">
+            <button type="button" role="tab" aria-selected={mode === "customers"} onClick={() => setMode("customers")} className={`min-h-9 rounded px-3 text-sm ${mode === "customers" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`} data-testid="tab-ar-customers">依客戶</button>
+            <button type="button" role="tab" aria-selected={mode === "items"} onClick={() => setMode("items")} className={`min-h-9 rounded px-3 text-sm ${mode === "items" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`} data-testid="tab-ar-items">應收沖帳</button>
+          </div>
           <Button variant="outline" asChild><Link href="/reports/ar-aging">帳齡分析</Link></Button>
           <Button variant="outline" asChild><Link href="/accounting/dunning">催款</Link></Button>
           <Button asChild><Link href="/accounting/receipts">收款</Link></Button>
         </div>
       </div>
 
-      <Card><CardContent className="p-0 overflow-x-auto">
+      {mode === "items" && (
+        <Card><CardContent className="p-0" data-testid="ar-settle-list">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+            <p className="text-sm text-muted-foreground">還沒收清的銷貨單一張一列（含舊系統帶過來的）。勾選同一個客戶的單，按「輸入收款單」沖帳。</p>
+            <Button onClick={startReceipt} disabled={tickedItems.length === 0} data-testid="button-start-receipt">輸入收款單{tickedItems.length > 0 ? `（${tickedItems.length} 張・${money(tickedTotal)}）` : ""}</Button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-xs text-muted-foreground">
+                <tr>
+                  <th className="w-10 px-3 py-2"><span className="sr-only">勾選</span></th>
+                  <th className="px-3 py-2 text-left font-medium">單號</th>
+                  <th className="px-3 py-2 text-left font-medium">發生日期</th>
+                  <th className="hidden px-3 py-2 text-left font-medium md:table-cell">客戶編碼</th>
+                  <th className="px-3 py-2 text-left font-medium">客戶名稱</th>
+                  <th className="px-3 py-2 text-right font-medium">餘額</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingItems ? <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">讀取中…</td></tr>
+                  : items.length === 0 ? <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">沒有還沒收清的單</td></tr>
+                  : items.slice(0, 300).map(item => (
+                    <tr key={item.id} className={`border-t ${ticked[item.id] ? "bg-primary/5" : ""}`}>
+                      <td className="px-3 py-2"><input type="checkbox" className="h-4 w-4" checked={!!ticked[item.id]} onChange={e => tick(item, e.target.checked)} aria-label={`勾選 ${item.orderNumber}`} data-testid={`ar-tick-${item.id}`} /></td>
+                      <td className="px-3 py-2">
+                        <Link href={`/sales/orders/${item.id}`} className="font-mono text-primary hover:underline">{item.orderNumber}</Link>
+                        {item.legacy && <span className="ml-1.5 inline-block rounded border px-1 align-middle text-[10px] text-muted-foreground" title="從舊系統 Ecount 帶過來的">歷史</span>}
+                        {item.label && <span className="block max-w-[16rem] truncate text-xs text-muted-foreground">{item.label}</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2 tabular-nums">{item.orderDate}<span className="block text-xs text-muted-foreground">{item.days} 天前</span></td>
+                      <td className="hidden px-3 py-2 md:table-cell">{item.customerCode || "—"}</td>
+                      <td className="px-3 py-2">{item.customerName}</td>
+                      <td className="px-3 py-2 text-right font-medium tabular-nums">{money(item.outstanding)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+              {items.length > 0 && (
+                <tfoot><tr className="border-t bg-muted/40 font-medium">
+                  <td colSpan={5} className="px-3 py-2 text-right text-xs text-muted-foreground">{items.length} 張合計{items.length > 300 ? "（只列出前 300 張，請用上面的搜尋縮小範圍）" : ""}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{money(items.reduce((sum, item) => sum + item.outstanding, 0))}</td>
+                </tr></tfoot>
+              )}
+            </table>
+          </div>
+        </CardContent></Card>
+      )}
+
+      {mode === "customers" && <Card><CardContent className="p-0 overflow-x-auto">
         <DataTable
           isLoading={isLoading} data={rows.map((row): Row => ({ ...row, id: row.customerId }))} emptyMessage="沒有符合的客戶"
           onRowClick={(row: Row) => open(row)}
@@ -111,14 +243,22 @@ export default function ReceivablesPage() {
             { header: "狀況", accessor: (row: Row) => row.overLimit ? <Badge variant="destructive">超過額度</Badge> : row.overdueAmount > 0 ? <Badge variant="secondary">有逾期</Badge> : row.outstanding > 0 ? <Badge variant="outline">正常</Badge> : <Badge variant="outline">沒有欠款</Badge> },
           ]}
         />
-      </CardContent></Card>
+      </CardContent></Card>}
 
-      <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) setViewing(null); }}>
-        <DialogContent className="md:max-w-2xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{viewing?.customerName}</DialogTitle>
-            <DialogDescription>{viewing ? [viewing.customerCode, viewing.contactPerson, viewing.phone].filter(Boolean).join("・") || "應收帳款明細" : ""}</DialogDescription>
-          </DialogHeader>
+      <DocWindow
+        open={viewing !== null}
+        onClose={() => setViewing(null)}
+        name={viewing?.customerName ?? "客戶應收"} layoutKey="客戶應收"
+        number={viewing?.customerCode}
+        status={viewing ? (viewing.overLimit ? <DocStatus label="超過額度" tone="destructive" /> : viewing.overdueAmount > 0 ? <DocStatus label="有逾期" tone="secondary" /> : viewing.outstanding > 0 ? <DocStatus label="正常" tone="outline" /> : <DocStatus label="沒有欠款" tone="outline" />) : undefined}
+        description={viewing ? [viewing.contactPerson, viewing.phone].filter(Boolean).join("・") || "應收帳款明細" : ""}
+        footer={<>
+          {viewing && <Button variant="outline" asChild className="mr-auto"><Link href={`/accounting/customer-statement/${viewing.customerId}`}>看對帳單</Link></Button>}
+          {viewing && <Button variant="outline" onClick={() => setDocs({ kind: "open-invoices", type: "Sales", partyId: viewing.customerId, title: `${viewing.customerName} 未收發票` })} data-testid="button-open-invoices">看未收發票</Button>}
+          <Button variant="outline" onClick={() => setViewing(null)}>關閉</Button>
+          <Button onClick={saveLimit} disabled={saving || (limit !== "" && !(Number(limit) >= 0))}>{saving ? "處理中…" : "儲存額度"}</Button>
+        </>}
+      >
           {viewing && (
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
@@ -132,10 +272,21 @@ export default function ReceivablesPage() {
               <div className="rounded-md border">
                 <p className="border-b px-3 py-2 font-medium">還沒收清的銷貨單{openOrders ? `（${openOrders.length} 張）` : ""}</p>
                 {loadingOrders ? <p className="px-3 py-3 text-muted-foreground">讀取中…</p> : !openOrders || openOrders.length === 0 ? <p className="px-3 py-3 text-muted-foreground">沒有還沒收清的銷貨單{viewing.fromInvoices > 0 ? "（欠款來自直接開的發票，請看對帳單）" : ""}</p> : (
+                  <>
+                  <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+                    <label className="flex min-h-8 items-center gap-2">
+                      <input type="checkbox" className="h-4 w-4" checked={pickedOrders.length === openOrders.length} onChange={e => setPicked(e.target.checked ? Object.fromEntries(openOrders.map(order => [order.id, String(order.outstanding)])) : {})} data-testid="settle-pick-all" />
+                      全選
+                    </label>
+                    <span>勾選要收的單，下面按「建立收款單」</span>
+                  </div>
                   <ul className="divide-y">
-                    {openOrders.map(order => (
-                      <li key={order.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2">
-                        <div className="min-w-0">
+                    {openOrders.map(order => {
+                      const on = picked[order.id] !== undefined;
+                      return (
+                      <li key={order.id} className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 ${on ? "bg-primary/5" : ""}`}>
+                        <input type="checkbox" className="h-4 w-4 shrink-0" checked={on} onChange={e => togglePick(order, e.target.checked)} aria-label={`收 ${order.orderNumber}`} data-testid={`settle-pick-${order.id}`} />
+                        <div className="min-w-0 flex-1">
                           <Link href={`/sales/orders/${order.id}`} className="font-mono text-primary hover:underline">{order.orderNumber}</Link>
                           {order.legacy && <span className="ml-1.5 inline-block rounded border px-1 text-[10px] text-muted-foreground align-middle" title="從舊系統 Ecount 帶過來的">歷史</span>}
                           <span className="ml-2 text-xs text-muted-foreground">{order.orderDate}・{order.days} 天前</span>
@@ -145,11 +296,42 @@ export default function ReceivablesPage() {
                           <span className="font-medium">{money(order.outstanding)}</span>
                           {order.paidAmount > 0 && <span className="block text-xs text-muted-foreground">總額 {money(order.totalAmount)}・已收 {money(order.paidAmount)}</span>}
                         </div>
+                        {on && (
+                          <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+                            <span className="text-xs text-muted-foreground">這次沖</span>
+                            <Input type="number" inputMode="decimal" min="0" max={order.outstanding} className="h-9 w-32 text-right" value={picked[order.id]} onChange={e => setPicked(prev => ({ ...prev, [order.id]: e.target.value }))} aria-label={`${order.orderNumber} 這次沖多少`} data-testid={`settle-amount-${order.id}`} />
+                            <span className="text-xs text-muted-foreground">其中手續費</span>
+                            <Input type="number" inputMode="decimal" min="0" className="h-9 w-24 text-right" value={fees[order.id] ?? ""} placeholder="0" onChange={e => setFees(prev => ({ ...prev, [order.id]: e.target.value }))} aria-label={`${order.orderNumber} 手續費`} data-testid={`settle-fee-${order.id}`} />
+                          </div>
+                        )}
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
+                  {pickedOrders.length > 0 && (
+                    <div className="space-y-3 border-t bg-muted/30 p-3" data-testid="settle-form">
+                      <p className="font-medium">應收沖帳：{pickedOrders.length} 張，沖掉 {money(pickedTotal)}{feeTotal > 0 ? `，其中手續費 ${money(feeTotal)}，帳戶實收 ${money(pickedTotal - feeTotal)}` : ""}</p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5"><Label htmlFor="settle-date">收款日期</Label><Input id="settle-date" type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
+                        <div className="space-y-1.5"><Label htmlFor="settle-account">收款帳戶</Label><CashAccountSelect id="settle-account" value={cashAccountId} onChange={setCashAccountId} /></div>
+                      </div>
+                      {feeTotal > 0 && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="settle-fee-account">手續費科目</Label>
+                          <LedgerAccountSelect id="settle-fee-account" value={feeAccountValue} onChange={setFeeAccountId} types={["Expense"]} placeholder="請選擇費用科目" />
+                          <p className="text-xs text-muted-foreground">例如客戶欠 100、銀行只進 70：「這次沖」填 100、「其中手續費」填 30。這張單會整張沖掉，帳戶進 70，手續費 30 記到這個科目。</p>
+                        </div>
+                      )}
+                      <div className="space-y-1.5"><Label htmlFor="settle-memo">說明（可不填）</Label><Input id="settle-memo" value={memo} onChange={e => setMemo(e.target.value)} placeholder="例如：11 月匯款" /></div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">會開一張收款單並自動入帳，收款單上每一行都綁著對應的銷貨單；沒收完的金額會繼續留在這裡。</p>
+                        <Button onClick={settle} disabled={settling} data-testid="button-settle">{settling ? "處理中…" : "建立收款單"}</Button>
+                      </div>
+                    </div>
+                  )}
+                  </>
                 )}
-                {viewing.legacyOutstanding > 0 && <p className="border-t px-3 py-2 text-xs text-amber-700">標「歷史」的是舊系統帶過來的欠款，共 {money(viewing.legacyOutstanding)}。收到錢時，到收款單選這張銷貨單沖帳就可以。</p>}
+                {viewing.legacyOutstanding > 0 && <p className="border-t px-3 py-2 text-xs text-amber-700">標「歷史」的是舊系統帶過來的欠款，共 {money(viewing.legacyOutstanding)}。收到錢時，在上面勾選那張銷貨單、按「建立收款單」就可以。</p>}
               </div>
               <div className="space-y-1.5 rounded-md border p-3">
                 <Label htmlFor="ar-limit">信用額度</Label>
@@ -158,13 +340,8 @@ export default function ReceivablesPage() {
               </div>
             </div>
           )}
-          <DialogFooter className="gap-2">
-            {viewing && <Button variant="outline" asChild className="md:mr-auto"><Link href={`/accounting/customer-statement/${viewing.customerId}`}>看對帳單</Link></Button>}
-            <Button variant="outline" onClick={() => setViewing(null)}>關閉</Button>
-            <Button onClick={saveLimit} disabled={saving || (limit !== "" && !(Number(limit) >= 0))}>{saving ? "處理中…" : "儲存額度"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
+      <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
     </div>
   );
 }

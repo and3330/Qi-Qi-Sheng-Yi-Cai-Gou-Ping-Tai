@@ -1,5 +1,5 @@
-import { pool, integrationEventsTable, type IntegrationSource } from "@workspace/erp-db";
-import { and, eq } from "drizzle-orm";
+import { pool, customersTable, integrationEventsTable, integrationItemMapsTable, itemsTable, type IntegrationSource } from "@workspace/erp-db";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { ingestEvents, type LegacyRef } from "./integration-ingest";
 
 /**
@@ -158,6 +158,60 @@ const ncaiAdapter: Adapter = {
  */
 export const QIQI_SHOP_SOURCE_CODE = "qiqi-shop";
 const QIQI_PAYMENT_LABEL: Record<string, string> = { bank_transfer: "bank_transfer", cod: "cod", wallet: "member_wallet" };
+/** 商城會員等級 → ERP 客戶分類 */
+export const QIQI_TIER_CATEGORY: Record<string, string> = { hospital: "醫院會員", clinic: "診所藥局會員", consumer: "一般消費者" };
+
+/**
+ * 商城商品自動對到 ERP 品項：每個商品編號在 ERP 有一個同編號的品項，訂單進來就記在那個品項上，
+ * 報表才看得出每個商品各賣多少。新上架的商品會自動補建，不用人去「品項對應」設定。
+ * 自動建的品項不扣 ERP 庫存（庫存仍由商城後台管理）；已經有人手動對應過的商品不會動。
+ */
+export async function syncQiqiShopItems(database: any, sourceId: number): Promise<number> {
+  const { rows: products } = await pool.query(
+    `SELECT DISTINCT ON (code) code AS product_code, name FROM public.products WHERE code IS NOT NULL AND code <> '' ORDER BY code, id`);
+  if (products.length === 0) return 0;
+  const mapped = new Set<string>((await database.select({ sku: integrationItemMapsTable.externalSku }).from(integrationItemMapsTable)
+    .where(eq(integrationItemMapsTable.sourceId, sourceId))).map((r: { sku: string }) => r.sku));
+  const missing = products.filter((p: any) => !mapped.has(String(p.product_code)));
+  if (missing.length === 0) return 0;
+  const codes = missing.map((p: any) => String(p.product_code));
+  const existing = new Map<string, number>((await database.select({ id: itemsTable.id, itemCode: itemsTable.itemCode }).from(itemsTable)
+    .where(inArray(itemsTable.itemCode, codes))).map((r: { id: number; itemCode: string }) => [r.itemCode, r.id]));
+  let created = 0;
+  for (const p of missing) {
+    const code = String(p.product_code);
+    let itemId = existing.get(code);
+    if (!itemId) {
+      const [item] = await database.insert(itemsTable).values({
+        itemCode: code, itemName: String(p.name).slice(0, 200), itemGroup: "七期商城", itemType: "Product",
+        unit: "個", isVirtual: true, status: "Active",
+      } as typeof itemsTable.$inferInsert).returning({ id: itemsTable.id });
+      itemId = item.id;
+    }
+    await database.insert(integrationItemMapsTable).values({ sourceId, externalSku: code, externalName: String(p.name).slice(0, 200), itemId })
+      .onConflictDoNothing();
+    created++;
+  }
+  return created;
+}
+
+/** 商城會員等級同步到 ERP 客戶分類（用 Email 對人）：會員升級為醫院或診所後，不用等下一張訂單 */
+export async function syncQiqiMemberTiers(database: any): Promise<number> {
+  const { rows: members } = await pool.query(`SELECT lower(email) AS email, tier FROM public.members WHERE email IS NOT NULL AND email <> ''`);
+  if (members.length === 0) return 0;
+  const tierByEmail = new Map<string, string>(members.map((m: any) => [String(m.email), QIQI_TIER_CATEGORY[m.tier] ?? ""]));
+  const customers = await database.select({ id: customersTable.id, email: customersTable.email, category: customersTable.category }).from(customersTable)
+    .where(sql`${customersTable.email} IS NOT NULL`);
+  let updated = 0;
+  for (const c of customers as Array<{ id: number; email: string | null; category: string | null }>) {
+    const category = tierByEmail.get(String(c.email ?? "").toLowerCase());
+    if (!category || category === c.category) continue;
+    await database.update(customersTable).set({ category }).where(eq(customersTable.id, c.id));
+    updated++;
+  }
+  return updated;
+}
+
 const taipeiDate = (d: unknown): string => {
   const t = new Date(d as string);
   return Number.isNaN(t.getTime()) ? "" : new Date(t.getTime() + 8 * 3600_000).toISOString().slice(0, 10);
@@ -181,7 +235,7 @@ export function qiqiOrderToEvent(o: any, items: any[]): RawEvent | null {
     source: QIQI_SHOP_SOURCE_CODE, kind: "order", externalId: String(o.id), occurredAt: taipeiDate(o.created_at),
     data: {
       orderNumber: o.order_no, type: "product",
-      buyer: { externalId: String(o.member_id), name: o.member_name || o.receiver_name || "七期商城會員", email: o.member_email || undefined, phone: o.member_phone || o.receiver_phone || undefined },
+      buyer: { externalId: String(o.member_id), name: o.member_name || o.receiver_name || "七期商城會員", email: o.member_email || undefined, phone: o.member_phone || o.receiver_phone || undefined, category: QIQI_TIER_CATEGORY[o.member_tier] },
       lines, shippingFee, discount, total, taxType: "taxable",
       payments: [{ method: QIQI_PAYMENT_LABEL[o.payment_method] ?? String(o.payment_method || "other"), amount: total }],
       note: [o.points_used > 0 ? `點數折抵 ${o.points_used}` : "", o.remit_last_five ? `匯款後五碼 ${o.remit_last_five}` : ""].filter(Boolean).join("；") || undefined,
@@ -192,9 +246,14 @@ export function qiqiOrderToEvent(o: any, items: any[]): RawEvent | null {
 const qiqiShopAdapter: Adapter = {
   label: "七期商城",
   async fetch(range, { database, source }) {
+    // 先把商品對到 ERP 品項、會員等級對到客戶分類，訂單進來才記得對；這兩步失敗不擋訂單入帳
+    try { await syncQiqiShopItems(database, source.id); }
+    catch (e: any) { console.error("七期商城：商品對應 ERP 品項失敗：", e?.message); }
+    try { await syncQiqiMemberTiers(database); }
+    catch (e: any) { console.error("七期商城：會員等級同步失敗：", e?.message); }
     const since = range.from ? new Date(Date.now() - 120 * 86_400_000).toISOString() : "1970-01-01";
     const { rows: orders } = await pool.query(
-      `SELECT o.*, m.name AS member_name, m.email AS member_email, m.phone AS member_phone
+      `SELECT o.*, m.name AS member_name, m.email AS member_email, m.phone AS member_phone, m.tier AS member_tier
          FROM public.orders o LEFT JOIN public.members m ON m.id = o.member_id
         WHERE o.created_at >= $1 ORDER BY o.id`, [since]);
     if (orders.length === 0) return { events: [], skipped: 0 };

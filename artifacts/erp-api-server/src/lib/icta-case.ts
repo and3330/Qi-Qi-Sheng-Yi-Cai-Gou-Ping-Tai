@@ -69,6 +69,20 @@ export function ictaCaseRecord(remote: any, previous: IctaCaseRecord | null, act
   };
 }
 
+/**
+ * 對方的回覆是不是真的「收到案件」。
+ * 講師平台還沒更新到有接收入口時，任何網址都會回首頁網頁（代碼 200），不能當成送件成功（2026-11-18 正式站實際發生）。
+ */
+export function ictaReplyProblem(contentType: string | null, data: unknown, expectCase: boolean): string | null {
+  const notJson = !(contentType || "").toLowerCase().includes("json") || data == null || typeof data !== "object";
+  if (notJson) return "講師平台回的是一般網頁，不是送件結果。對方可能還沒更新到能接收 ERP 送件的版本，請先請講師平台發布更新後再送";
+  if (expectCase) {
+    const id = Number((data as { case?: { id?: unknown } }).case?.id);
+    if (!Number.isInteger(id) || id <= 0) return "講師平台沒有回傳案件編號，這次送件沒有成功，請稍後再試";
+  }
+  return null;
+}
+
 /** 連線網址：正式一定要 https；本機測試可以用 http://localhost */
 export function ictaBaseUrlError(url: string): string | null {
   let parsed: URL;

@@ -5,6 +5,22 @@
  * ERP System API specification
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * General format or B2B A4, which requires the original buyer tax ID
+ */
+export type EcpayPrintOptionsPrintStyle =
+  (typeof EcpayPrintOptionsPrintStyle)[keyof typeof EcpayPrintOptionsPrintStyle];
+
+export const EcpayPrintOptionsPrintStyle = {
+  NUMBER_1: 1,
+  NUMBER_4: 4,
+} as const;
+
+export interface EcpayPrintOptions {
+  /** General format or B2B A4, which requires the original buyer tax ID */
+  printStyle?: EcpayPrintOptionsPrintStyle;
+}
+
 export type AccountConfigurationRowAccountType =
   (typeof AccountConfigurationRowAccountType)[keyof typeof AccountConfigurationRowAccountType];
 
@@ -1348,4 +1364,9 @@ export type ListAccountsParams = {
 export type ListInvoicesParams = {
   type?: string;
   status?: string;
+};
+
+export type GetEcpayInvoicePrint200 = {
+  url: string;
+  expiresInSeconds: number;
 };

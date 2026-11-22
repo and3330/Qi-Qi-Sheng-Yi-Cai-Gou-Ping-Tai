@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectLabel, projectPickerLabel } from "@/lib/select-options";
 import { DataTable } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -373,14 +374,14 @@ export default function JournalEntriesPage() {
               <Label className="text-xs text-muted-foreground">部門</Label>
               <select className="h-9 w-40 rounded-md border border-input bg-background px-2 text-sm" value={filterDept} onChange={e => { setPage(1); setFilterDept(e.target.value); }} aria-label="依部門篩選">
                 <option value="">全部部門</option>
-                {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {departments.map((d: any) => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
               </select>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">專案</Label>
               <select className="h-9 w-48 rounded-md border border-input bg-background px-2 text-sm" value={filterProject} onChange={e => { setPage(1); setFilterProject(e.target.value); }} aria-label="依專案篩選">
                 <option value="">全部專案</option>
-                {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {projects.map((p: any) => <option key={p.id} value={p.id}>{projectLabel(p)}</option>)}
               </select>
             </div>
             <div className="text-sm text-muted-foreground pb-2">共 {totalCount} 筆</div>
@@ -469,7 +470,7 @@ export default function JournalEntriesPage() {
       <DocWindow
         open={open}
         onClose={() => setOpen(false)}
-        name={editing ? "修改分錄" : copiedFrom ? `複製分錄（來源 ${copiedFrom}）` : "新增日記帳分錄"}
+        name={editing ? "修改分錄" : copiedFrom ? `複製分錄（來源 ${copiedFrom}）` : "新增日記帳分錄"} layoutKey="日記帳分錄表單"
         number={editing?.entryNumber}
         extraWide
         footer={<>
@@ -488,13 +489,13 @@ export default function JournalEntriesPage() {
               <div><Label>專案 <span className="text-xs font-normal text-muted-foreground">（分錄含收入或費用科目時必填）</span></Label>
                 <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.projectId} onChange={e => setForm(p => ({ ...p, projectId: e.target.value }))}>
                   <option value="">無</option>
-                  {(projects || []).filter((p: any) => p.isActive !== false || String(p.id) === String(form.projectId)).map((p: any) => <option key={p.id} value={p.id}>{p.name}{p.isActive === false ? "（已停用）" : ""}</option>)}
+                  {selectableProjects(projects, form.projectId).map((p: any) => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
                 </select>
               </div>
               <div><Label>部門</Label>
                 <LookupSelect className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.departmentId} onChange={e => setForm(p => ({ ...p, departmentId: e.target.value }))}>
                   <option value="">無</option>
-                  {(departments || []).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  {selectableDepartments(departments, form.departmentId).map((d: any) => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                 </LookupSelect>
               </div>
             </div>
@@ -513,13 +514,13 @@ export default function JournalEntriesPage() {
                   <div><Label>轉出部門 *</Label>
                     <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.transferFromDepartmentId} onChange={e => setForm(p => ({ ...p, transferFromDepartmentId: e.target.value }))}>
                       <option value="">請選擇</option>
-                      {departments.filter((d: any) => d.isActive !== false).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      {selectableDepartments(departments, form.transferFromDepartmentId).map((d: any) => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                     </select>
                   </div>
                   <div><Label>轉入部門 *</Label>
                     <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.transferToDepartmentId} onChange={e => setForm(p => ({ ...p, transferToDepartmentId: e.target.value }))}>
                       <option value="">請選擇</option>
-                      {departments.filter((d: any) => d.isActive !== false).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      {selectableDepartments(departments, form.transferToDepartmentId).map((d: any) => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                     </select>
                   </div>
                 </div>

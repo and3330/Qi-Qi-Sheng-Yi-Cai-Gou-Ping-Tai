@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Plus } from "lucide-react";
 import { call, money, post, selectClass } from "@/lib/call";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 
 interface Row {
   id: number; accountNumber: string; accountName: string; accountType: "Income" | "Expense";
@@ -25,6 +26,17 @@ export default function BudgetsPage() {
   const [editing, setEditing] = useState<{ accountId: string; months: string[]; annual: string; locked: boolean } | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  // 實際金額點下去看分錄明細：整年，或某一個月（month 從 0 起算）
+  const drillActual = (row: Row, month?: number) => {
+    const y = data?.year ?? year;
+    const mm = String((month ?? 0) + 1).padStart(2, "0");
+    setDrill({
+      title: `${row.accountNumber} ${row.accountName}`, accountIds: [row.id],
+      startDate: month === undefined ? `${y}-01-01` : `${y}-${mm}-01`,
+      endDate: month === undefined ? `${y}-12-31` : `${y}-${mm}-${String(new Date(y, month + 1, 0).getDate()).padStart(2, "0")}`,
+    });
+  };
 
   const { data, isLoading } = useQuery({ queryKey: ["/budgets", year], queryFn: () => call<Budgets>(`budgets?year=${year}`) });
   const { data: accounts = [] } = useQuery({ queryKey: ["/budgets/accounts"], queryFn: () => call<Account[]>("budgets/accounts"), enabled: !!editing, staleTime: 60_000 });
@@ -75,7 +87,7 @@ export default function BudgetsPage() {
           <CardContent className="p-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
               <span className="font-semibold">{group.label}</span>
-              <span className="text-sm text-muted-foreground">年度預算 {money(group.totals?.annualBudget)}・累計預算 {money(group.totals?.ytdBudget)}・累計實際 <span className="font-semibold text-foreground">{money(group.totals?.ytdActual)}</span></span>
+              <span className="text-sm text-muted-foreground">年度預算 {money(group.totals?.annualBudget)}・累計預算 {money(group.totals?.ytdBudget)}・累計實際 <span className="font-semibold text-foreground"><DrillAmount onClick={() => setDrill({ title: `${data?.year ?? year} 年${group.label}實際`, accountTypes: [group.key], startDate: `${data?.year ?? year}-01-01`, endDate: `${data?.year ?? year}-12-31` })}>{money(group.totals?.ytdActual)}</DrillAmount></span></span>
             </div>
             <ul className="divide-y">
               {group.rows.map(row => {
@@ -88,7 +100,7 @@ export default function BudgetsPage() {
                         <span className="font-medium">{row.accountName}</span><span className="ml-2 text-xs text-muted-foreground">{row.accountNumber}</span>
                       </button>
                       <span className="flex items-center gap-3 text-sm">
-                        <span className={warn ? "font-semibold text-red-600 dark:text-red-400" : ""}>{money(row.ytdActual)}</span>
+                        <span className={warn ? "font-semibold text-red-600 dark:text-red-400" : ""}><DrillAmount onClick={() => drillActual(row)}>{money(row.ytdActual)}</DrillAmount></span>
                         <span className="text-muted-foreground">／{row.ytdBudget > 0 ? money(row.ytdBudget) : "未設預算"}</span>
                         <Button size="icon" variant="ghost" className="h-8 w-8" aria-label={`設定 ${row.accountName} 的預算`} onClick={() => openEdit(row)}><Pencil className="h-4 w-4" /></Button>
                       </span>
@@ -106,7 +118,7 @@ export default function BudgetsPage() {
                         {row.budget.map((b, index) => (
                           <div key={index} className="rounded-md bg-muted/50 p-2">
                             <div className="text-muted-foreground">{index + 1} 月</div>
-                            <div className={row.accountType === "Expense" && b > 0 && row.actual[index] > b ? "font-semibold text-red-600 dark:text-red-400" : "font-semibold"}>{money(row.actual[index])}</div>
+                            <div className={row.accountType === "Expense" && b > 0 && row.actual[index] > b ? "font-semibold text-red-600 dark:text-red-400" : "font-semibold"}><DrillAmount onClick={() => drillActual(row, index)}>{money(row.actual[index])}</DrillAmount></div>
                             <div className="text-muted-foreground">預算 {money(b)}</div>
                           </div>
                         ))}
@@ -120,9 +132,11 @@ export default function BudgetsPage() {
         </Card>
       ))}
 
-      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
-        <DialogContent className="md:max-w-lg max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{year} 年科目預算</DialogTitle></DialogHeader>
+      <DocWindow open={!!editing} onClose={() => setEditing(null)} name="科目預算" number={`${year} 年`}
+        footer={<>
+          <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
+          <Button onClick={save} disabled={saving || !editing?.accountId}>{saving ? "處理中…" : "儲存"}</Button>
+        </>}>
           {editing && (
             <div className="space-y-4">
               <div className="space-y-1.5">
@@ -147,12 +161,8 @@ export default function BudgetsPage() {
               <p className="text-sm text-muted-foreground">12 個月合計 {money(monthsTotal)}。實際金額取自已過帳的分錄。</p>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
-            <Button onClick={save} disabled={saving || !editing?.accountId}>{saving ? "處理中…" : "儲存"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

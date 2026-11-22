@@ -81,10 +81,11 @@ export default function PurchaseInvoicesPage() {
           <DataTable
             isLoading={isLoading}
             data={invoices}
+            onRowClick={(row: any) => openEdit(row)}
             columns={[
               {
                 header: () => <CheckboxHeader checked={batch.allSelected} indeterminate={batch.someSelected} onChange={batch.toggleAll} />,
-                accessor: (r: any) => <CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} />,
+                accessor: (r: any) => <span onClick={(e) => e.stopPropagation()}><CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} /></span>,
                 className: "w-10",
               },
               { header: "發票編號", accessor: "invoiceNumber" },
@@ -103,7 +104,7 @@ export default function PurchaseInvoicesPage() {
               {
                 header: "操作",
                 accessor: (r) => (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Pencil size={14} /></Button>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(r)}><Trash2 size={14} className="text-destructive" /></Button>
                   </div>

@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import { DrillAmount } from "@/components/shared/account-drill";
+import { DocListDrillDialog, type AttendanceMetric, type DocListTarget } from "@/components/shared/doc-list-drill";
 import { ReportHeader } from "@/components/shared/report-header";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import { PageHeader } from "@/components/shared/page-header";
@@ -11,6 +13,9 @@ import type { ExportOptions } from "@/lib/export-utils";
 import type { AttendanceSummaryData, AttendanceRow } from "./types";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
+
+/** 報表的一列：後端另外帶員工的資料編號（id），點數字看明細用；employeeId 是畫面上的員工編號 */
+type Row = AttendanceRow & { id?: number };
 
 export default function AttendanceSummaryPage() {
   const reloadKey = useAutoReloadKey();
@@ -32,6 +37,18 @@ export default function AttendanceSummaryPage() {
   };
 
   useEffect(() => { fetchReport(); }, [reloadKey]);
+
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
+  // 點數字看算進去的打卡紀錄：年月用「查出這份報表時」的（data 裡的），不是畫面上還沒按查詢的選項。
+  // 出勤率是算出來的比例，不是加總，所以不能點。
+  const drill = (n: number | undefined, shown: ReactNode, metric: AttendanceMetric, label: string, r?: Row) => {
+    if (!data || !n || (r && !r.id)) return shown;
+    return (
+      <DrillAmount onClick={() => setDocs({ kind: "attendance", title: r ? `${r.employeeName} ${label}` : label, year: data.year, month: data.month, metric, ...(r ? { employeeId: r.id } : {}) })}>
+        {shown}
+      </DrillAmount>
+    );
+  };
 
   const buildExport = (): ExportOptions => ({
     title: "出勤彙總表",
@@ -90,7 +107,7 @@ export default function AttendanceSummaryPage() {
             <Card>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><Users className="h-5 w-5 text-blue-600" /></div>
-                <div><div className="text-sm text-gray-500">員工數</div><div className="text-2xl font-bold">{data.summary.totalEmployees}</div></div>
+                <div><div className="text-sm text-gray-500">員工數</div><div className="text-2xl font-bold">{drill(data.summary.totalEmployees, data.summary.totalEmployees, "employees", "員工")}</div></div>
               </CardContent>
             </Card>
             <Card>
@@ -102,13 +119,13 @@ export default function AttendanceSummaryPage() {
             <Card>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"><AlertCircle className="h-5 w-5 text-orange-600" /></div>
-                <div><div className="text-sm text-gray-500">遲到總次數</div><div className="text-2xl font-bold text-orange-600">{data.summary.totalLate}</div></div>
+                <div><div className="text-sm text-gray-500">遲到總次數</div><div className="text-2xl font-bold text-orange-600">{drill(data.summary.totalLate, data.summary.totalLate, "late", "遲到")}</div></div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center"><AlertCircle className="h-5 w-5 text-yellow-600" /></div>
-                <div><div className="text-sm text-gray-500">早退總次數</div><div className="text-2xl font-bold text-yellow-600">{data.summary.totalEarlyLeave || 0}</div></div>
+                <div><div className="text-sm text-gray-500">早退總次數</div><div className="text-2xl font-bold text-yellow-600">{drill(data.summary.totalEarlyLeave, data.summary.totalEarlyLeave || 0, "earlyLeave", "早退")}</div></div>
               </CardContent>
             </Card>
           </div>
@@ -118,7 +135,7 @@ export default function AttendanceSummaryPage() {
             <CardContent className="p-0 sm:p-0">
               {/* Mobile View */}
               <div className="block md:hidden p-4 bg-gray-50/50">
-                {(data.rows || []).map((r: AttendanceRow, idx: number) => (
+                {(data.rows || []).map((r: Row, idx: number) => (
                   <MobileCard key={idx}>
                     <MobileCardHeader 
                       title={`${r.employeeName} (${r.employeeId})`}
@@ -127,12 +144,12 @@ export default function AttendanceSummaryPage() {
                       valueClass={r.attendanceRate >= 90 ? "text-green-600" : r.attendanceRate >= 70 ? "text-orange-600" : "text-red-600"}
                     />
                     <MobileCardGrid>
-                      <MobileCardItem label="出勤天數" value={r.present} valueClass="text-green-600" />
-                      <MobileCardItem label="缺勤天數" value={r.absent} valueClass="text-red-600" />
-                      <MobileCardItem label="遲到" value={`${r.late}次 (${r.totalLateMinutes}分)`} valueClass="text-orange-600" />
-                      <MobileCardItem label="早退" value={`${r.earlyLeave || 0}次`} valueClass="text-yellow-600" />
-                      <MobileCardItem label="工作時數" value={r.totalHours} valueClass="font-mono" />
-                      <MobileCardItem label="加班時數" value={r.totalOvertimeHours || 0} valueClass="font-mono" />
+                      <MobileCardItem label="出勤天數" value={drill(r.present, r.present, "present", "出勤", r)} valueClass="text-green-600" />
+                      <MobileCardItem label="缺勤天數" value={drill(r.absent, r.absent, "absent", "缺勤", r)} valueClass="text-red-600" />
+                      <MobileCardItem label="遲到" value={drill(r.late, `${r.late}次 (${r.totalLateMinutes}分)`, "lateMinutes", "遲到", r)} valueClass="text-orange-600" />
+                      <MobileCardItem label="早退" value={drill(r.earlyLeave, `${r.earlyLeave || 0}次`, "earlyLeave", "早退", r)} valueClass="text-yellow-600" />
+                      <MobileCardItem label="工作時數" value={drill(r.totalHours, r.totalHours, "hours", "工作時數", r)} valueClass="font-mono" />
+                      <MobileCardItem label="加班時數" value={drill(r.totalOvertimeHours, r.totalOvertimeHours || 0, "overtime", "加班時數", r)} valueClass="font-mono" />
                     </MobileCardGrid>
                   </MobileCard>
                 ))}
@@ -157,17 +174,17 @@ export default function AttendanceSummaryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(data.rows || []).map((r: AttendanceRow, idx: number) => (
+                    {(data.rows || []).map((r: Row, idx: number) => (
                       <tr key={idx} className="border-b hover:bg-gray-50">
                         <td className="px-4 py-1.5 font-mono text-xs">{r.employeeId}</td>
                         <td className="px-4 py-1.5 font-medium">{r.employeeName}</td>
-                        <td className="px-3 py-1.5 text-right text-green-600">{r.present}</td>
-                        <td className="px-3 py-1.5 text-right text-red-600">{r.absent}</td>
-                        <td className="px-3 py-1.5 text-right text-orange-600">{r.late}</td>
-                        <td className="px-3 py-1.5 text-right text-orange-600">{r.totalLateMinutes || 0}</td>
-                        <td className="px-3 py-1.5 text-right text-yellow-600">{r.earlyLeave || 0}</td>
-                        <td className="px-3 py-1.5 text-right font-mono">{r.totalHours}</td>
-                        <td className="px-3 py-1.5 text-right font-mono">{r.totalOvertimeHours || 0}</td>
+                        <td className="px-3 py-1.5 text-right text-green-600">{drill(r.present, r.present, "present", "出勤", r)}</td>
+                        <td className="px-3 py-1.5 text-right text-red-600">{drill(r.absent, r.absent, "absent", "缺勤", r)}</td>
+                        <td className="px-3 py-1.5 text-right text-orange-600">{drill(r.late, r.late, "late", "遲到", r)}</td>
+                        <td className="px-3 py-1.5 text-right text-orange-600">{drill(r.totalLateMinutes, r.totalLateMinutes || 0, "lateMinutes", "遲到分鐘", r)}</td>
+                        <td className="px-3 py-1.5 text-right text-yellow-600">{drill(r.earlyLeave, r.earlyLeave || 0, "earlyLeave", "早退", r)}</td>
+                        <td className="px-3 py-1.5 text-right font-mono">{drill(r.totalHours, r.totalHours, "hours", "工作時數", r)}</td>
+                        <td className="px-3 py-1.5 text-right font-mono">{drill(r.totalOvertimeHours, r.totalOvertimeHours || 0, "overtime", "加班時數", r)}</td>
                         <td className={`px-4 py-1.5 text-right font-bold ${r.attendanceRate >= 90 ? "text-green-600" : r.attendanceRate >= 70 ? "text-orange-600" : "text-red-600"}`}>{r.attendanceRate}%</td>
                       </tr>
                     ))}
@@ -181,6 +198,7 @@ export default function AttendanceSummaryPage() {
       )}
 
       {!data && !loading && <Card><CardContent className="py-12 text-center text-gray-400">點擊查詢以產生出勤彙總</CardContent></Card>}
+      <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
     </div>
   );
 }

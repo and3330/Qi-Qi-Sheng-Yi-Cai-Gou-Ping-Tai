@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, DocFields, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, Trash2, Play, CheckCircle } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -83,10 +83,14 @@ export default function JobCardsPage() {
         />
       )}
       <div className="flex justify-end">
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />新增作業卡</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>新增作業卡</DialogTitle></DialogHeader>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增作業卡</Button>
+        <DocWindow
+          open={open} onClose={() => setOpen(false)} name="新增作業卡"
+          footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} disabled={!form.workOrderId || !form.operationName}>建立</Button>
+          </>}
+        >
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">工單 *</label>
@@ -108,12 +112,7 @@ export default function JobCardsPage() {
               </div>
               <div><label className="text-sm font-medium">計畫數量</label><Input type="number" min="1" value={form.plannedQuantity} onChange={e => setForm(p => ({ ...p, plannedQuantity: e.target.value }))} /></div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-              <Button onClick={handleCreate} disabled={!form.workOrderId || !form.operationName}>建立</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </DocWindow>
       </div>
 
       <Card>
@@ -134,8 +133,8 @@ export default function JobCardsPage() {
               {loading ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">載入中...</td></tr>
               : cards.length === 0 ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
               : cards.map(c => (
-                <tr key={c.id} className="border-b hover:bg-gray-50">
-                  <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(c.id)} onChange={() => batch.toggle(c.id)} /></td>
+                <tr key={c.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(c.id); }} data-testid={`job-card-row-${c.id}`}>
+                  <td className="px-2" onClick={e => e.stopPropagation()}><CheckboxCell checked={batch.selectedIds.has(c.id)} onChange={() => batch.toggle(c.id)} /></td>
                   <td className="px-4 py-2 font-mono">{c.jobCardNumber}</td>
                   <td className="px-4 py-2">{c.workOrderNumber}</td>
                   <td className="px-4 py-2">{c.operationName}</td>
@@ -156,41 +155,32 @@ export default function JobCardsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!detail} onOpenChange={v => { if (!v) setDetail(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>作業卡 - {detail?.jobCardNumber}</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div><span className="text-gray-500">工單：</span>{detail.workOrderNumber}</div>
-                <div><span className="text-gray-500">工作站：</span>{detail.workstationName || "-"}</div>
-                <div><span className="text-gray-500">作業：</span>{detail.operationName}</div>
-                <div><span className="text-gray-500">順序：</span>{detail.sequenceNo}</div>
-                <div><span className="text-gray-500">計畫數量：</span>{detail.plannedQuantity}</div>
-                <div><span className="text-gray-500">完成數量：</span>{detail.completedQuantity}</div>
-                <div><span className="text-gray-500">狀態：</span><Badge variant={statusColor(detail.status)}>{statusMap[detail.status]}</Badge></div>
-                <div><span className="text-gray-500">工時：</span>{detail.totalHours}h</div>
-                {detail.startTime && <div><span className="text-gray-500">開始：</span>{new Date(detail.startTime).toLocaleString()}</div>}
-                {detail.endTime && <div><span className="text-gray-500">結束：</span>{new Date(detail.endTime).toLocaleString()}</div>}
-              </div>
-              <div className="flex gap-2 justify-end">
-                {detail.status === "Open" && (
-                  <>
-                    <Button onClick={() => updateStatus(detail.id, "Work In Progress")}><Play className="h-3 w-3 mr-1" />開始作業</Button>
-                    <Button variant="destructive" onClick={() => handleDelete(detail.id)}>刪除</Button>
-                  </>
-                )}
-                {detail.status === "Work In Progress" && (
-                  <>
-                    <Button onClick={() => updateStatus(detail.id, "Completed", { completedQuantity: detail.plannedQuantity })}><CheckCircle className="h-3 w-3 mr-1" />完成</Button>
-                    <Button variant="destructive" onClick={() => updateStatus(detail.id, "Cancelled")}>取消</Button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <DocWindow
+        open={!!detail} onClose={() => setDetail(null)}
+        name="作業卡" number={detail?.jobCardNumber}
+        status={detail ? <DocStatus label={statusMap[detail.status] || detail.status} tone={statusTone(detail.status)} /> : undefined}
+        footer={detail && <>
+          {detail.status === "Open" && <Button variant="destructive" className="mr-auto" onClick={() => handleDelete(detail.id)}>刪除</Button>}
+          {detail.status === "Work In Progress" && <Button variant="destructive" className="mr-auto" onClick={() => updateStatus(detail.id, "Cancelled")}>取消</Button>}
+          <Button variant="outline" onClick={() => setDetail(null)}>關閉</Button>
+          {detail.status === "Open" && <Button onClick={() => updateStatus(detail.id, "Work In Progress")}><Play className="h-3 w-3 mr-1" />開始作業</Button>}
+          {detail.status === "Work In Progress" && <Button onClick={() => updateStatus(detail.id, "Completed", { completedQuantity: detail.plannedQuantity })}><CheckCircle className="h-3 w-3 mr-1" />完成</Button>}
+        </>}
+      >
+        {detail && (
+          <DocFields items={[
+            ["工單", detail.workOrderNumber],
+            ["工作站", detail.workstationName || "-"],
+            ["作業", detail.operationName],
+            ["順序", detail.sequenceNo],
+            ["計畫數量", detail.plannedQuantity],
+            ["完成數量", detail.completedQuantity],
+            ["工時", `${detail.totalHours}h`],
+            ["開始", detail.startTime && new Date(detail.startTime).toLocaleString()],
+            ["結束", detail.endTime && new Date(detail.endTime).toLocaleString()],
+          ]} />
+        )}
+      </DocWindow>
     </div>
   );
 }

@@ -9,8 +9,9 @@ import {
 } from "../lib/account-books";
 import {
   accountDailyChanges, accountingSummary, accountPartyBalances, partyTransactions, accountMovements, balanceAging, cashFlowSummary, fundMovements, fundStatus,
-  isFundAccount, isPayable, isReceivable, monthlyPartyTotals, monthlyProfitLoss, vatBook, voucherTotals, type SumKey,
+  isFundAccount, isPayable, isReceivable, isSalesTax, monthlyPartyTotals, monthlyProfitLoss, vatBook, voucherTotals, type SumKey,
 } from "../lib/business-reports";
+import { isDebitNature } from "../lib/account-books";
 
 /** 會計帳簿（照 Ecount 會計 > 報表 > 帳簿）。計算在 lib/account-books.ts。 */
 const router: IRouter = Router();
@@ -150,6 +151,23 @@ const shiftRange = (start: string, end: string, mode: string) => {
   return [shift(start), shift(end)] as const;
 };
 
+/**
+ * 「點合計看分錄」用：報表上某個合計是哪幾個科目算出來的、增加記在借方還是貸方。只是多回一個欄位，不影響報表數字。
+ * 分錄明細會把上層科目換成它底下的科目，所以期間內如果有分錄直接記在上層科目，或這幾個科目的借貸方向不一致，
+ * 明細就會和報表對不起來——這種情況回 null，前端那個數字就不給點。
+ */
+function drillAccounts(list: BookAccount[], entries: BookEntry[], startDate: string, pick: (a: BookAccount) => boolean): { accountIds: number[]; side: "debit" | "credit" } | null {
+  const parents = new Set(list.map(a => a.parentAccountId).filter((id): id is number => !!id));
+  const hit = list.filter(pick);
+  const leaves = hit.filter(a => !parents.has(a.id));
+  if (leaves.length === 0) return null;
+  const upper = new Set(hit.filter(a => parents.has(a.id)).map(a => a.id));
+  if (upper.size > 0 && entries.some(e => e.entryDate >= startDate && e.lines.some(l => upper.has(l.accountId)))) return null;
+  const debit = leaves.filter(a => isDebitNature(a.accountType)).length;
+  if (debit !== 0 && debit !== leaves.length) return null;
+  return { accountIds: leaves.map(a => a.id), side: debit ? "debit" : "credit" };
+}
+
 /** 資金日報表／資金情況表：各科目結轉、增加、減少、餘額（拆到客戶/供應商）；detail=1 再附資金與應收應付的增減明細 */
 router.get("/reports/books/fund-status", ...access, async (req, res): Promise<void> => {
   const q = req.query as Q;
@@ -167,6 +185,8 @@ router.get("/reports/books/fund-status", ...access, async (req, res): Promise<vo
     fund: fundMovements(entries, map, fund, q.startDate!, q.endDate),
     receivable: accountMovements(lines, map, new Set(list.filter(isReceivable).map(a => a.id)), q.startDate!, q.endDate),
     payable: accountMovements(lines, map, new Set(list.filter(isPayable).map(a => a.id)), q.startDate!, q.endDate),
+    receivableDrill: drillAccounts(list, entries, q.startDate!, isReceivable),
+    payableDrill: drillAccounts(list, entries, q.startDate!, isPayable),
   });
 });
 
@@ -216,18 +236,25 @@ router.get("/reports/books/summary", ...access, async (req, res): Promise<void> 
   const ids = idList(q.accountIds);
   const target = ids.length ? expandAccountIds(ids, list) : null;
   const lines = flattenLines(entries, map).filter(l => (!target || target.has(l.accountId)) && (!q.party || l.party.includes(q.party)));
-  res.json(accountingSummary(lines, map, { startDate: q.startDate!, key1, key2, dimName: await dimensionNames() }));
+  // 「點借方、貸方看分錄」用（只多回一個欄位）：分錄明細只列最底層科目，期間內如果有分錄直接記在上層科目，明細會少算，這時不給點
+  const parents = new Set(list.map(a => a.parentAccountId).filter((id): id is number => !!id));
+  const drillable = !lines.some(l => l.date >= q.startDate! && parents.has(l.accountId));
+  res.json({ ...accountingSummary(lines, map, { startDate: q.startDate!, key1, key2, dimName: await dimensionNames() }), drillable });
 });
 
 /** 月銷項／月進項合計表 */
 router.get("/reports/books/monthly-party", ...access, async (req, res): Promise<void> => {
   const q = req.query as Q;
   if (!needRange(q, res)) return;
-  const { map } = await loadAccounts();
+  const { list, map } = await loadAccounts();
   const { entries } = await loadEntries(q, { fromStart: true });
-  const result = monthlyPartyTotals(entries, map, q.kind === "purchase" ? "purchase" : "sales", q.startDate!, q.endDate!);
+  const sales = q.kind !== "purchase";
+  const result = monthlyPartyTotals(entries, map, sales ? "sales" : "purchase", q.startDate!, q.endDate!);
+  // 算進去的科目跟 monthlyPartyTotals 一樣：銷項＝4 開頭的收入科目＋銷項稅額（看貸方減借方）；進項＝應付帳款（只看貸方）
+  const picked = drillAccounts(list, entries, q.startDate!, sales ? a => (a.accountType === "Income" && /^4/.test(a.accountNumber)) || isSalesTax(a) : isPayable);
+  const drill = picked && (!sales || picked.side === "credit") ? picked : null;
   const p = q.party?.trim();
-  res.json(p ? { ...result, rows: result.rows.filter(r => r.party.includes(p)) } : result);
+  res.json(p ? { ...result, rows: result.rows.filter(r => r.party.includes(p)), drill } : { ...result, drill });
 });
 
 /** 收款單／付款單／暫付款單合計 */

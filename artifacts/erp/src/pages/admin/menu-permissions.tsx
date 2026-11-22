@@ -13,7 +13,7 @@ import { useAutoReloadKey } from "@/lib/auto-refresh";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
-const ROLE_ORDER = ["owner", "admin", "manager", "hr_admin", "finance_admin", "accountant", "viewer"];
+const ROLE_ORDER = ["owner", "admin", "finance_admin", "accountant", "manager", "sales", "warehouse", "hr_admin", "viewer"];
 
 interface Row {
   groupLabel: string;

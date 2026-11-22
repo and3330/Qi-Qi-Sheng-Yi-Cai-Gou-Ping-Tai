@@ -65,8 +65,9 @@ ${roleNote(info)}
    用名稱找主檔，回傳 id 與基本欄位（售價、進價、庫存、統編…）。name 留空會列出前 20 筆。
 2. {"action":"query","question":"完整、可獨立理解的中文問題"}
    統計、排名、比較、跨表查詢（營收、欠款、庫存、損益、哪些單還沒處理…）。系統會轉成唯讀查詢並把表格顯示給使用者。
-3. {"action":"get","path":"/sales-orders","query":{"search":"關鍵字"},"show":true}
+3. {"action":"get","path":"/sales-orders","query":{"customerId":995},"show":true}
    讀任何模組的清單或單筆（例如 /sales-orders/12）。show:true 會把結果用表格顯示給使用者。
+   清單可以帶條件：customerId、supplierId、status，或 search（關鍵字，系統會用相近的意思去找，簡稱、少幾個字都找得到）。
 4. {"action":"endpoints","keyword":"salary"}
    找某個模組有哪些操作路徑。不確定路徑或欄位時先用這個，再 get 一筆現有資料看欄位長什麼樣子。
 5. {"action":"write","summary":"一句話說明要做什麼","requests":[{"method":"POST","path":"/sales-orders","body":{},"label":"建立銷貨單：客戶○○，△△ 2 個，合計 2,100 元"}]}
@@ -109,6 +110,7 @@ ${roleNote(info)}
 - 電子發票 POST /sales-orders/編號/issue-ecpay-invoice {"idempotencyKey":"8 到 100 個英數字，每張發票用新的","invoiceType":"personal|company|donation","customerEmail","taxId","companyTitle"}
   （開出去就是真的發票，先 get /sales-orders/編號/ecpay-invoice-preview 看內容）
 - 收款單 POST /vouchers {"voucherType":"收款單","voucherDate","customerId","projectId","items":[{"description","amount","invoiceId"}]}
+  （使用者不是財務、會計或管理員時，收款單不會馬上入帳：系統會先送財務確認款項有沒有收到。確認時的 summary 要先講清楚「送出後會給財務審核」。）
 - 付款單 POST /vouchers {"voucherType":"付款單","voucherDate","supplierId","projectId","items":[{"description","amount","invoiceId"}]}
 - 付款申請 POST /payment-requests {"partyType":"Supplier","supplierId","invoiceId","requestDate","amount","projectId"}
 - 詢價單 POST /rfqs {"projectId","items":[{"itemId","quantity"}]}
@@ -117,6 +119,9 @@ ${roleNote(info)}
 其他模組（庫存調整、製造、資產、薪資、出勤、合約、客服…）：先用 endpoints 找路徑，再 get 一筆現有資料看欄位。
 
 規則：
+0. 使用者講的名稱通常是簡稱或口語（樂善國小＝桃園市龜山區樂善國民小學、育邦＝育邦文化教育科技股份有限公司）。要查「某個客戶／供應商的單」時：先 find 找到對象，再用它的 id 去 get 清單（customerId 或 supplierId），不要拿名稱當關鍵字硬搜之後說找不到。
+   只是查資料時，find 的第一筆明顯就是使用者說的那一個（名稱包含他講的字、或是它的簡稱），就直接用它查出結果給他看，並在回答裡說明你是用哪一個對象查的；不要反問「要不要我用這個查」。真的有兩個以上都很像、分不出來時才問。
+   查不到資料時，先換個方式再試一次（改用 id、改用 search、放寬日期），都沒有才回報查不到，並說你試過哪些方式。
 1. 寫入前一定先用 find 查到真正的 id，不可以自己編 id、單號或金額。找不到、或有好幾個相近的結果時，用 final 問使用者是哪一個。
 2. 缺必要資訊（客戶、品項、數量、專案…）就用 final 一次問完。單價沒說就用品項的售價（採購用進價）。
 3. 使用者明確說要做的事就直接安排 write，不用先問「要不要做」，系統本來就會請使用者按確認。
@@ -265,6 +270,7 @@ export function parseImages(raw: unknown): { ok: true; images: ChatImage[] } | {
 }
 
 // ───────── 名稱比對 ─────────
+import { looseScore } from "./loose-match";
 const squash = (value: string) => value.replace(/[\s()（）]|股份有限公司|有限公司|企業社/g, "").toLocaleLowerCase();
 function editDistance(a: string, b: string): number {
   const previous = Array.from({ length: b.length + 1 }, (_, i) => i);
@@ -282,19 +288,12 @@ function editDistance(a: string, b: string): number {
 
 /** 依名稱相近程度排序，回傳最像的幾筆；完全沒有相近的就回空陣列（不亂猜） */
 export function rankByName<T>(query: string, rows: T[], names: (row: T) => string[], top = 5): T[] {
-  const needle = squash(query);
-  if (!needle) return rows.slice(0, 20);
+  if (!query.trim()) return rows.slice(0, 20);
   return rows
     .map(row => {
       let best = 0;
-      for (const name of names(row)) {
-        const candidate = squash(String(name || ""));
-        if (!candidate) continue;
-        const score = candidate === needle ? 100
-          : candidate.includes(needle) || needle.includes(candidate) ? 80 - Math.min(40, Math.abs(candidate.length - needle.length))
-          : (() => { const similarity = 1 - editDistance(candidate, needle) / Math.max(candidate.length, needle.length, 1); return similarity >= 0.6 ? similarity * 40 : 0; })();
-        if (score > best) best = score;
-      }
+      // 簡稱也要找得到（樂善國小 → 桃園市龜山區樂善國民小學）：見 lib/loose-match.ts
+      for (const name of names(row)) best = Math.max(best, looseScore(query, String(name || "")));
       return { row, score: best };
     })
     .filter(entry => entry.score > 0)

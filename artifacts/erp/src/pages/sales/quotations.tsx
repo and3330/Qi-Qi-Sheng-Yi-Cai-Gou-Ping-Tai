@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListDepartments, useListProjects } from "@workspace/erp-api-client-react";
 import { PageHeader } from "@/components/shared/page-header";
@@ -19,7 +20,7 @@ import { BatchActionBar, type BatchField } from "@/components/shared/batch-actio
 import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
 import { ColumnSelector, useColumnVisibility, type ColumnDef } from "@/components/shared/column-selector";
 import { SearchableSelect } from "@/components/shared/searchable-select";
-import { QuotationPrintDialog } from "@/components/sales/quotation-print-dialog";
+import { QuotationPrintDialog, defaultBrand } from "@/components/sales/quotation-print-dialog";
 import { missingTemplateFields, templateDefaults, extraFieldRows, withoutLegacyFields, templateAppliesTo, suggestTemplateForGroups } from "@/lib/template-fields";
 import { useSearch } from "wouter";
 
@@ -278,8 +279,8 @@ export default function QuotationsPage() {
     setShowForm(true);
   };
 
-  // 從關聯單據點過來（?open=編號）：直接打開那張報價單
-  useOpenFromUrl(quotations as any[], handleEdit);
+  // 從關聯單據點過來（?open=編號）：跟點清單那一列一樣，打開那張報價單
+  useOpenFromUrl(quotations as any[], q => setPrintQuot(q));
 
   const handleCopy = (q: any) => {
     setEditId(null);
@@ -505,9 +506,9 @@ export default function QuotationsPage() {
                 <SearchableSelect
                   value={form.departmentId}
                   onValueChange={(v) => setForm({ ...form, departmentId: v })}
-                  options={(departments as any[]).filter((d: any) => d.isActive !== false || String(d.id) === form.departmentId).map((d: any) => ({
+                  options={selectableDepartments(departments as any[], form.departmentId).map((d: any) => ({
                     value: String(d.id),
-                    label: `${d.name}${d.isActive === false ? "（已停用）" : ""}`,
+                    label: departmentLabel(d),
                   }))}
                   placeholder="請選擇部門"
                   searchPlaceholder="輸入部門名稱搜尋..."
@@ -525,9 +526,9 @@ export default function QuotationsPage() {
                     );
                     setForm({ ...form, projectId, templateId: templateAvailable ? form.templateId : "", extraFields: templateAvailable ? form.extraFields : {} });
                   }}
-                  options={(projects as any[]).filter((p: any) => p.isActive !== false || String(p.id) === String(form.projectId)).map((p: any) => ({
+                  options={selectableProjects(projects as any[], form.projectId).map((p: any) => ({
                     value: String(p.id),
-                    label: `${p.name}${p.isActive === false ? "（已停用）" : ""}`,
+                    label: projectPickerLabel(p),
                   }))}
                   placeholder="請選擇專案"
                   searchPlaceholder="輸入專案名稱搜尋..."
@@ -899,7 +900,7 @@ export default function QuotationsPage() {
           extraFieldRows: extraFieldRows(orderTemplates.find(t => t.id === printQuot.templateId)?.fieldSchema, printQuot.extraFields),
         } : null}
         customer={printQuot ? (customers as any[]).find((c: any) => c.id === printQuot.customerId) || null : null}
-        brand={printQuot ? (brands as any[]).find((b: any) => b.id === printQuot.brandId) || null : null}
+        brand={printQuot ? (brands as any[]).find((b: any) => b.id === printQuot.brandId) || defaultBrand(brands as any[]) : null}
       />
       <SendEmailDialog docType="quotation" docId={emailQuotId} open={emailQuotId != null} onOpenChange={(v) => !v && setEmailQuotId(null)} />
     </div>

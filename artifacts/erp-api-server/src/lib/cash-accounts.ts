@@ -105,6 +105,8 @@ export interface SettlementPart {
   paymentRate?: number;
   /** 訂單還沒成立就先收的訂金：記預收款項，不沖應收 */
   deposit?: boolean;
+  /** 這一行自己選的對方科目（沒沖發票、沒核對訂單的行才有）：不記應收／應付，改記這個科目 */
+  account?: LineAccount;
 }
 
 type SettlementLine = { accountId?: number; accountNumber?: string; accountName: string; debit: number; credit: number; description: string };
@@ -114,6 +116,9 @@ type SettlementLine = { accountId?: number; accountNumber?: string; accountName:
  * - 沖掉的應收（應付）用發票當時的匯率換算，和發票入帳的金額一致
  * - 實際進出的錢用收付當天的匯率換算
  * - 兩者的差額就是兌換損益
+ * - 手續費（跟日記帳「一張單打多筆」同一個記法）：
+ *   收款 → 借 收款帳戶（金額 − 手續費）＋ 借 手續費科目／貸 應收或對方科目（金額）
+ *   付款 → 借 應付或對方科目（金額）＋ 借 手續費科目／貸 付款帳戶（金額 ＋ 手續費）
  */
 export function settlementJournalLines(input: {
   kind: "receipt" | "payment"; voucherNumber: string;
@@ -121,32 +126,55 @@ export function settlementJournalLines(input: {
   parts: SettlementPart[];
   /** 實際進出的新台幣（外幣貨款用台幣換匯去付，換到的價錢和入帳時不同）；有填就以這個數字為準 */
   actualCash?: number;
+  /** 手續費合計（新台幣）；有填就一定要給手續費科目 */
+  fee?: number;
+  feeAccount?: LineAccount | null;
 }): SettlementLine[] {
   const round = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
-  let settled = 0, deposit = 0, cash = 0;
+  let settled = 0, deposit = 0, cash = 0, other = 0;
+  // 自己選科目的行：同一個科目合成一行
+  const others: Array<{ account: LineAccount; amount: number }> = [];
   for (const part of input.parts) {
     const invoiceRate = part.invoiceRate && part.invoiceRate > 0 ? part.invoiceRate : 1;
     const paymentRate = part.paymentRate && part.paymentRate > 0 ? part.paymentRate : invoiceRate;
     if (part.deposit) { deposit += part.amount; cash += part.amount; continue; }
+    if (part.account) {
+      const same = others.find(o => o.account.accountId !== undefined && o.account.accountId === part.account!.accountId);
+      if (same) same.amount += part.amount; else others.push({ account: part.account, amount: part.amount });
+      other += part.amount; cash += part.amount;
+      continue;
+    }
     settled += part.amount * invoiceRate;
     cash += part.amount * paymentRate;
   }
-  settled = round(settled); deposit = round(deposit); cash = round(cash);
-  if (input.actualCash !== undefined) cash = round(input.actualCash);
-  const fx = round(cash - settled - deposit);
+  settled = round(settled); deposit = round(deposit); cash = round(cash); other = round(other);
+  const fee = round(input.fee ?? 0);
+  if (fee < 0) throw new Error("手續費不可為負數");
+  if (fee > 0 && !input.feeAccount) throw new Error("有填手續費時，請選擇手續費要記到哪個科目");
+  const isReceipt = input.kind === "receipt";
+  // 帳款金額（含匯率換算）→ 真的進出帳戶的錢：收款扣掉手續費，付款加上手續費；有填實際進出的台幣就以那個數字為準
+  const booked = cash;
+  cash = input.actualCash !== undefined ? round(input.actualCash) : round(isReceipt ? booked - fee : booked + fee);
+  if (isReceipt && fee > 0 && cash <= 0) throw new Error("手續費不能大於或等於收到的金額");
+  const fx = round((isReceipt ? cash + fee : cash - fee) - settled - deposit - other);
   const no = input.voucherNumber;
   const line = (account: { accountId?: number; accountNumber?: string; accountName: string }, debit: number, credit: number, description: string): SettlementLine =>
     ({ ...account, debit, credit, description });
-  const lines = input.kind === "receipt"
+  const feeLine = fee > 0 ? [line(input.feeAccount!, fee, 0, `${no} 手續費`)] : [];
+  const lines = isReceipt
     ? [
       line(input.cash, cash, 0, `${no} 收款`),
+      ...feeLine,
       line({ accountName: "應收帳款" }, 0, settled, `${no} 收款沖銷`),
+      ...others.map(o => line(o.account, 0, round(o.amount), `${no} 收款`)),
       line({ accountName: "預收款項" }, 0, deposit, `${no} 預收訂金`),
       // 收到的新台幣比帳上應收多 → 兌換利益；比較少 → 兌換損失
       fx > 0 ? line({ accountName: "兌換利益" }, 0, fx, `${no} 兌換利益`) : line({ accountName: "兌換損失" }, -fx, 0, `${no} 兌換損失`),
     ]
     : [
       line({ accountName: "應付帳款" }, settled + deposit, 0, `${no} 付款沖銷`),
+      ...others.map(o => line(o.account, round(o.amount), 0, `${no} 付款`)),
+      ...feeLine,
       line(input.cash, 0, cash, `${no} 付款`),
       // 付出的新台幣比帳上應付多 → 兌換損失；比較少 → 兌換利益
       fx > 0 ? line({ accountName: "兌換損失" }, fx, 0, `${no} 兌換損失`) : line({ accountName: "兌換利益" }, 0, -fx, `${no} 兌換利益`),

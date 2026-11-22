@@ -5,6 +5,8 @@ import multer from "multer";
 import { UploadRejectedError } from "../middleware/multer-error";
 import { objectStorageClient as storage, objectStorageBucketId as bucketId, privateObjectDir as privateDir } from "../lib/object-storage";
 import { requireAuth } from "../middleware/require-auth";
+import { machineOnly } from "../lib/api-key-user";
+import { isItemImage, itemImageUploadError, showInline } from "../lib/item-image";
 
 // 封鎖可執行 / 具腳本風險的副檔名，其餘文件、圖片類皆允許
 const BLOCKED_EXTS = new Set([
@@ -44,7 +46,7 @@ const MODULE_ROLES: Record<string, string[]> = {
 };
 
 function canAccessAttachmentModule(req: any, module: string | null | undefined): boolean {
-  if (req.apiKeyAuth) return req.apiKey?.permissions === "admin"; // API key 需 admin 權限
+  if (machineOnly(req)) return req.apiKey?.permissions === "admin"; // 沒有對應使用者的舊機器金鑰需 admin 權限
   const u = req.session?.user;
   if (!u) return false;
   if (u.role === "super_admin") return true;
@@ -81,6 +83,10 @@ router.post("/attachments", upload.single("file"), async (req, res): Promise<voi
   if (!canAccessAttachmentModule(req, module)) {
     res.status(403).json({ error: "權限不足", message: "您沒有存取此模組附件的權限" }); return;
   }
+  if (isItemImage(documentType)) {
+    const problem = itemImageUploadError(req.file.mimetype, documentId);
+    if (problem) { res.status(400).json({ error: problem }); return; }
+  }
 
   const objectPath = `${privateDir}/attachments/${Date.now()}-${sanitizeFilename(req.file.originalname)}`;
 
@@ -111,6 +117,16 @@ router.post("/attachments", upload.single("file"), async (req, res): Promise<voi
       }).returning();
       return row;
     });
+    // 一個品項只留一張主圖：新圖存好之後才清掉舊的，中途失敗也不會變成沒有圖
+    if (isItemImage(documentType)) {
+      const old = await db.delete(attachmentsTable).where(and(
+        eq(attachmentsTable.module, module), eq(attachmentsTable.documentType, documentType),
+        eq(attachmentsTable.documentId, result.documentId), sql`${attachmentsTable.id} <> ${result.id}`,
+      )).returning();
+      for (const row of old) {
+        try { await storage.bucket(bucketId).file(row.filePath).delete(); } catch { /* 檔案清不掉不影響換圖 */ }
+      }
+    }
     res.status(201).json(result);
   } catch (err: any) {
     res.status(500).json({ error: "建立失敗: " + (err.message || "Unknown error") });
@@ -160,7 +176,11 @@ router.get("/attachments/download/:id", async (req, res): Promise<void> => {
     const file = bucket.file(row.filePath);
     const [exists] = await file.exists();
     if (!exists) { res.status(404).json({ error: "File not found in storage" }); return; }
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(row.fileName)}"`);
+    // 品項縮圖用 ?inline=1 直接顯示；只限安全的圖片格式，其餘照舊當下載
+    const inline = showInline(row.fileType, req.query.inline);
+    res.setHeader("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${encodeURIComponent(row.fileName)}"`);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    if (inline) res.setHeader("Cache-Control", "private, max-age=3600");
     res.setHeader("Content-Type", row.fileType || "application/octet-stream");
     const stream = file.createReadStream();
     stream.on("error", () => {

@@ -15,10 +15,11 @@ const DEFAULT_ITEM_NAME = "七期商城商品銷售";
  *
  * 建立的東西：
  * - 專案「七期商城」：商城訂單的收入都歸在這個專案
- * - 品項「七期商城商品銷售」：還沒做品項對應的商品先記在這個品項（不扣 ERP 庫存）
+ * - 品項「七期商城商品銷售」：沒有商品編號的明細記在這個品項（不扣 ERP 庫存）
  * - 來源「七期商城」＋「所有訂單類型」的對應：專案、預設品項、收入科目（銷貨收入）
  *
- * 之後要讓某個商品扣 ERP 庫存，到「外部串接 → 品項對應」把商品編號對到 ERP 品項即可。
+ * 商城的每個商品另外會自動建立同編號的 ERP 品項並對應好（見 integration-adapters.ts 的 syncQiqiShopItems）。
+ * 要讓某個商品扣 ERP 庫存，到「外部串接 → 品項對應」把商品編號改對到有庫存的 ERP 品項即可。
  */
 export async function ensureQiqiShopSource(): Promise<void> {
   try {

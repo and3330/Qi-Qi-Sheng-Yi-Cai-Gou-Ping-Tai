@@ -16,7 +16,7 @@ export const isFundAccount = (a: BookAccount) => !a.isGroup && /^111/.test(a.acc
 /** 應收帳款 1141、應付帳款 2141（含底下子科目） */
 export const isReceivable = (a: BookAccount) => !a.isGroup && /^114[1-2]/.test(a.accountNumber);
 export const isPayable = (a: BookAccount) => !a.isGroup && /^214[1-2]/.test(a.accountNumber);
-const isSalesTax = (a?: BookAccount) => !!a && (/銷項稅額/.test(a.accountName) || /^2281/.test(a.accountNumber));
+export const isSalesTax = (a?: BookAccount) => !!a && (/銷項稅額/.test(a.accountName) || /^2281/.test(a.accountNumber));
 const isInputTax = (a?: BookAccount) => !!a && (/進項稅額/.test(a.accountName) || /^1281/.test(a.accountNumber));
 const isFee = (a?: BookAccount) => !!a && /手續費/.test(a.accountName);
 
@@ -126,14 +126,14 @@ export function fundMovements(entries: BookEntry[], accounts: AccMap, fundIds: S
 
 /** 某科目在期間的增加／減少明細（應收帳款的增加、應付帳款的減少……） */
 export function accountMovements(lines: BookLine[], accounts: AccMap, ids: Set<number>, startDate: string, endDate?: string) {
-  const increase: { date: string; reference: string; party: string; summary: string; amount: number }[] = [];
+  const increase: { date: string; entryId: number; reference: string; party: string; summary: string; amount: number }[] = [];
   const decrease: typeof increase = [];
   for (const l of lines) {
     if (!ids.has(l.accountId) || l.date < startDate || (endDate && l.date > endDate)) continue;
     const natural = isDebitNature(accounts.get(l.accountId)?.accountType ?? "Asset");
     const inc = natural ? l.debit : l.credit, dec = natural ? l.credit : l.debit;
-    if (inc) increase.push({ date: l.date, reference: l.reference, party: l.party, summary: l.summary, amount: inc });
-    if (dec) decrease.push({ date: l.date, reference: l.reference, party: l.party, summary: l.summary, amount: dec });
+    if (inc) increase.push({ date: l.date, entryId: l.entryId, reference: l.reference, party: l.party, summary: l.summary, amount: inc });
+    if (dec) decrease.push({ date: l.date, entryId: l.entryId, reference: l.reference, party: l.party, summary: l.summary, amount: dec });
   }
   return { increase, decrease, totalIncrease: money(increase.reduce((s, r) => s + r.amount, 0)), totalDecrease: money(decrease.reduce((s, r) => s + r.amount, 0)) };
 }

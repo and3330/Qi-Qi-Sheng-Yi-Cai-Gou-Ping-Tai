@@ -6,6 +6,8 @@ import { date, id, money, docTypeSchema, draftPayloadSchemas, validateDraft } fr
 import { getDocument, searchDocuments, searchCustomers } from "./document-reads";
 import { createCustomerDraftArgs, toCustomerDraftPayload, validateCustomerDraft } from "./customer-drafts";
 import { adminToolSchemas, erpRequest, getQuotationPdf, listEndpoints, sendQuotationPdf } from "./admin-tools";
+import { currentAgent } from "./agent-caps";
+import { whoAmI } from "./user-identity";
 import { createCustomerDirect, createQuotationDirect, directToolSchemas, listUnmatchedBankEntries, matchBankEntry, previewInvoiceEmail, requestQuotationEmail, requestInvoiceEmail } from "./direct-tools";
 
 const documentType = z.enum(["invoices", "vouchers", "quotations", "sales_orders"]);
@@ -17,7 +19,8 @@ export const toolSchemas = {
   search_documents: z.object({ type: documentType, keyword: shortText.optional(), status: shortText.optional(), date_from: date.optional(), date_to: date.optional(), limit: z.number().int().min(1).max(50).default(20) }).strict(),
   get_document: z.object({ type: documentType, id }).strict(),
   search_customers: z.object({ keyword: z.string().trim().max(100).optional(), limit: z.number().int().min(1).max(50).default(50) }).strict(),
-  create_receipt_draft: z.object({ customer_id: id, date, account_id: id, lines: z.array(z.object({ invoice_id: id, amount: money }).strict()).min(1).max(100), description: z.string().max(500) }).strict(),
+  create_receipt_draft: z.object({ customer_id: id, date, account_id: id, lines: z.array(z.object({ invoice_id: id.optional(), sales_order_id: id.optional(), amount: money }).strict()
+    .refine(row => (row.invoice_id === undefined) !== (row.sales_order_id === undefined), "Each line needs exactly one of invoice_id or sales_order_id")).min(1).max(100), description: z.string().max(500) }).strict(),
   create_document_draft: z.discriminatedUnion("doc_type", [
     z.object({ doc_type: z.literal("quotation"), payload: draftPayloadSchemas.quotation }).strict(),
     z.object({ doc_type: z.literal("payment"), payload: draftPayloadSchemas.payment }).strict(),
@@ -114,7 +117,7 @@ export async function executeTool(name: ToolName, raw: unknown): Promise<unknown
       const type = name === "create_receipt_draft" ? "receipt" : docTypeSchema.parse(p.doc_type);
       const payload = name === "create_receipt_draft" ? {
         voucherType: "收款單", voucherDate: p.date, customerId: p.customer_id, accountId: p.account_id,
-        description: p.description, items: p.lines.map((row: any) => ({ invoiceId: row.invoice_id, amount: row.amount })),
+        description: p.description, items: p.lines.map((row: any) => (row.sales_order_id !== undefined ? { salesOrderId: row.sales_order_id, amount: row.amount } : { invoiceId: row.invoice_id, amount: row.amount })),
       } : p.payload;
       await validateDraft(type,payload);
       const [draft] = await db.insert(aiDraftDocumentsTable).values({ tenantId, docType: type, payload, summary: `${type} draft awaiting human approval` }).returning({ id: aiDraftDocumentsTable.id, status: aiDraftDocumentsTable.status, summary: aiDraftDocumentsTable.summary });
@@ -134,6 +137,11 @@ export async function executeTool(name: ToolName, raw: unknown): Promise<unknown
     case "preview_invoice_email": return previewInvoiceEmail(p);
     case "request_quotation_email": return requestQuotationEmail(p);
     case "request_invoice_email": return requestInvoiceEmail(p);
+    case "erp_whoami": {
+      const agent = currentAgent();
+      if (agent?.profile) return whoAmI(agent.profile, agent.keyName);
+      return { key: agent?.keyName ?? "共用（舊）", note: "這是環境變數設定的舊金鑰，沒有綁定使用者；能用的工具就是工具清單上列出的那些。" };
+    }
     case "erp_list_endpoints": return listEndpoints(p);
     case "erp_request": return erpRequest(p);
     case "get_quotation_pdf": return getQuotationPdf(p);

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { EMPLOYEE_ROLE } from "./require-auth";
+import { machineOnly } from "../lib/api-key-actor";
 
 /**
  * 員工自助帳號（role=employee）只能使用自助功能：
@@ -7,7 +8,8 @@ import { EMPLOYEE_ROLE } from "./require-auth";
  * 其餘 API 一律 403。各路由內另有「只能操作自己資料」的細部限制。
  */
 export function employeeAccessGuard(req: Request, res: Response, next: NextFunction): void {
-  if ((req as any).apiKeyAuth) { next(); return; }
+  // 金鑰綁到員工帳號時，一樣只能用自助功能
+  if (machineOnly(req)) { next(); return; }
   const user = req.session?.user;
   if (!user || user.role !== EMPLOYEE_ROLE) { next(); return; }
 
@@ -54,7 +56,13 @@ export function employeeAccessGuard(req: Request, res: Response, next: NextFunct
     (/^\/my-requests\/\d+\/cancel$/.test(path) && method === "POST") ||
     // 自己這張申請的收據照片：看、補、刪（路由內限制只能動自己的單、核准前才能改）
     (/^\/my-requests\/\d+\/attachments$/.test(path) && (method === "GET" || method === "POST")) ||
-    (/^\/my-requests\/\d+\/attachments\/\d+$/.test(path) && (method === "GET" || method === "DELETE"));
+    (/^\/my-requests\/\d+\/attachments\/\d+$/.test(path) && (method === "GET" || method === "DELETE")) ||
+    // 收款申請：員工收到客戶的錢，送財務確認（路由內限制只能看、撤回自己送的；選項只給客戶與帳戶的編號、名稱）
+    (["/my-receipt-requests", "/my-receipt-requests/options", "/my-receipt-requests/open-orders"].includes(path) && method === "GET") ||
+    (path === "/my-receipt-requests" && method === "POST") ||
+    (/^\/my-receipt-requests\/\d+\/cancel$/.test(path) && method === "POST") ||
+    (/^\/my-receipt-requests\/\d+\/attachments$/.test(path) && (method === "GET" || method === "POST")) ||
+    (/^\/my-receipt-requests\/\d+\/attachments\/\d+$/.test(path) && method === "GET");
 
   if (!allowed) {
     res.status(403).json({ error: "權限不足：員工帳號僅能使用打卡、出勤、薪資單、請假與自己的申請" });

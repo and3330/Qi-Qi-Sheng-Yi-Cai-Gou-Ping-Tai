@@ -23,12 +23,19 @@ async function findOrCreateCustomer(tx: any, party: Party): Promise<{ id: number
   // 先用 Email 找，再用電話找；都找不到才建新客戶，同一個人不會重複建檔
   for (const [column, value] of [[customersTable.email, party.email], [customersTable.phone, party.phone]] as const) {
     if (!value) continue;
-    const [found] = await tx.select({ id: customersTable.id, name: customersTable.name }).from(customersTable)
+    const [found] = await tx.select({ id: customersTable.id, name: customersTable.name, category: customersTable.category }).from(customersTable)
       .where(sql`lower(${column}) = ${String(value).toLowerCase()}`).orderBy(customersTable.id).limit(1);
-    if (found) return found;
+    if (found) {
+      // 來源有帶分類（例如商城會員等級）而且跟 ERP 不一樣：以來源為準
+      if (party.category && found.category !== party.category) {
+        await tx.update(customersTable).set({ category: party.category }).where(eq(customersTable.id, found.id));
+      }
+      return { id: found.id, name: found.name };
+    }
   }
   const [created] = await tx.insert(customersTable).values({
     name: party.name, email: party.email ?? null, phone: party.phone ?? null, taxId: party.taxId ?? null,
+    ...(party.category ? { category: party.category } : {}),
   }).returning({ id: customersTable.id, name: customersTable.name });
   return created;
 }

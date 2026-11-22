@@ -13,12 +13,12 @@ export interface DescribedEndpoint extends CatalogEndpoint { resource: string; m
 const RESOURCES: Record<string, [string, string]> = {
   // 銷售
   "customers": ["銷售", "客戶"], "quotations": ["銷售", "報價單"], "quotation-templates": ["銷售", "報價模板"],
-  "sales-orders": ["銷售", "銷貨單"], "order-templates": ["銷售", "訂單模板"], "delivery-notes": ["銷售", "送貨單"],
-  "sales-returns": ["銷售", "銷售退貨"], "price-lists": ["銷售", "價目表"], "leads": ["銷售", "潛在客戶"], "opportunities": ["銷售", "商機"],
+  "sales-orders": ["銷售", "銷貨單"], "order-templates": ["銷售", "訂單模板"], "delivery-notes": ["銷售", "出貨單"],
+  "sales-returns": ["銷售", "銷貨退回"], "price-lists": ["銷售", "價目表"], "leads": ["銷售", "潛在客戶"], "opportunities": ["銷售", "商機"],
   "create-sales-order": ["銷售", "外部建立銷貨單"], "registrants": ["銷售", "報名名單"],
   // 採購
   "suppliers": ["採購", "供應商"], "purchase-orders": ["採購", "採購單"], "purchase-receipts": ["採購", "進貨單"],
-  "purchase-returns": ["採購", "採購退貨"], "rfqs": ["採購", "詢價單"], "material-requests": ["採購", "請購單"], "subcontract-orders": ["採購", "委外加工單"],
+  "purchase-returns": ["採購", "進貨退出"], "rfqs": ["採購", "詢價單"], "material-requests": ["採購", "請購單"], "subcontract-orders": ["採購", "委外加工單"],
   // 庫存
   "items": ["庫存", "品項"], "item-categories": ["庫存", "品項分類"], "item-types": ["庫存", "品項類型"], "brands": ["庫存", "品牌"],
   "warehouses": ["庫存", "倉庫"], "stock-entries": ["庫存", "庫存異動"], "stock-counts": ["庫存", "盤點單"], "inventory-lookup": ["庫存", "查庫存"],

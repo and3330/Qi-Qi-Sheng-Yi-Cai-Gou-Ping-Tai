@@ -4,7 +4,9 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("@workspace/erp-db", () => ({ db: {} }));
 vi.mock("@workspace/erp-db/schema", () => ({ menuPermissionsTable: {} }));
 
-import { actionForRequest, customRoleDenial, viewerDenial } from "../permission-guard";
+import { actionForRequest, customRoleDenial } from "../permission-guard";
+import { ALL_MENU_PATHS } from "../../lib/custom-roles";
+import { EDITABLE_BUILTIN_ROLES, cleanPermissions, defaultRolePermissions } from "../../lib/role-defaults";
 
 const role = {
   name: "倉管",
@@ -66,19 +68,58 @@ describe("自訂角色把關", () => {
   });
 });
 
-describe("一般員工（僅可檢視）", () => {
-  it("可以讀，不能新增、修改、刪除", () => {
-    expect(viewerDenial("GET", "/customers")).toBeNull();
-    expect(viewerDenial("POST", "/customers")).toContain("只能檢視");
-    expect(viewerDenial("PATCH", "/sales-orders/3")).toContain("只能檢視");
-    expect(viewerDenial("DELETE", "/items/3")).toContain("只能檢視");
+describe("內建角色的預設勾選表（老闆 2026-11-18 定的原則）", () => {
+  const as = (r: string) => ({ name: r, permissions: defaultRolePermissions(r, ALL_MENU_PATHS) });
+
+  it("財務長以下每個人都能開報價單、銷貨單、收款與付款申請，也都看得到庫存", () => {
+    for (const r of ["viewer", "sales", "warehouse", "hr_admin", "manager", "accountant"]) {
+      expect(customRoleDenial(as(r), "POST", "/quotations"), r).toBeNull();
+      expect(customRoleDenial(as(r), "POST", "/sales-orders"), r).toBeNull();
+      expect(customRoleDenial(as(r), "POST", "/my-receipt-requests"), r).toBeNull();
+      expect(customRoleDenial(as(r), "POST", "/my-requests"), r).toBeNull();
+      expect(customRoleDenial(as(r), "GET", "/stock-entries"), r).toBeNull();
+      expect(customRoleDenial(as(r), "GET", "/inventory-lookup"), r).toBeNull();
+    }
   });
 
-  it("自己的打卡、請假、通知與 AI 查詢仍然可以用", () => {
-    expect(viewerDenial("POST", "/attendance")).toBeNull();
-    expect(viewerDenial("POST", "/leaves")).toBeNull();
-    expect(viewerDenial("PATCH", "/notifications/1")).toBeNull();
-    expect(viewerDenial("POST", "/ai/ask")).toBeNull();
-    expect(viewerDenial("POST", "/admin/me/change-password")).toBeNull();
+  it("進出貨只有倉管（和財務）能動，業務、一般職員、主管只能看", () => {
+    for (const r of ["viewer", "sales", "manager", "hr_admin"]) {
+      expect(customRoleDenial(as(r), "POST", "/delivery-notes"), r).toContain("新增");
+      expect(customRoleDenial(as(r), "POST", "/purchase-receipts"), r).toContain("新增");
+      expect(customRoleDenial(as(r), "POST", "/stock-entries"), r).toContain("新增");
+      expect(customRoleDenial(as(r), "GET", "/delivery-notes"), r).toBeNull();
+    }
+    for (const r of ["warehouse", "finance_admin", "accountant"]) {
+      expect(customRoleDenial(as(r), "POST", "/delivery-notes"), r).toBeNull();
+      expect(customRoleDenial(as(r), "POST", "/purchase-receipts"), r).toBeNull();
+      expect(customRoleDenial(as(r), "DELETE", "/stock-entries/3"), r).toBeNull();
+    }
+  });
+
+  it("一般職員不能改商品主檔或刪單；倉管可以改商品", () => {
+    expect(customRoleDenial(as("viewer"), "PATCH", "/items/3")).toContain("修改");
+    expect(customRoleDenial(as("viewer"), "DELETE", "/sales-orders/3")).toContain("刪除");
+    expect(customRoleDenial(as("warehouse"), "PATCH", "/items/3")).toBeNull();
+  });
+
+  it("自己的打卡、請假、通知與 AI 查詢不論勾選怎麼設都能用", () => {
+    const none = { name: "空白", permissions: {} };
+    expect(customRoleDenial(none, "POST", "/attendance")).toBeNull();
+    expect(customRoleDenial(none, "POST", "/leaves")).toBeNull();
+    expect(customRoleDenial(none, "PATCH", "/notifications/1")).toBeNull();
+    expect(customRoleDenial(none, "POST", "/ai/ask")).toBeNull();
+    expect(customRoleDenial(none, "POST", "/admin/me/change-password")).toBeNull();
+  });
+
+  it("送進來的勾選表只收認得的頁面，有勾其他動作會自動補檢視", () => {
+    const clean = cleanPermissions({ "/sales/orders": ["create"], "/nope": ["view"], "/sales/quotations": ["fly"] }, ALL_MENU_PATHS);
+    expect(clean).toEqual({ "/sales/orders": ["view", "create"] });
+  });
+
+  it("每個可編輯的內建角色都涵蓋所有功能頁的檢視，不會因為改版突然看不到東西", () => {
+    for (const r of EDITABLE_BUILTIN_ROLES) {
+      const perms = defaultRolePermissions(r, ALL_MENU_PATHS);
+      for (const p of ALL_MENU_PATHS) expect(perms[p]?.includes("view"), `${r} ${p}`).toBe(true);
+    }
   });
 });

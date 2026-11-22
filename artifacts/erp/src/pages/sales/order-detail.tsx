@@ -6,11 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, FileText, Calendar, Building2, FolderKanban, User, GraduationCap, Clock, Tag, Warehouse, Plus, Link2, Unlink, Receipt, Layers, Users, Trash2, Mail, Printer } from "lucide-react";
 import { SendEmailDialog } from "@/components/email/send-email-dialog";
-import { DocumentPrintDialog, COMPANY_INFO } from "@/components/sales/quotation-print-dialog";
+import { DocumentPrintDialog, companyOf, defaultBrand } from "@/components/sales/quotation-print-dialog";
 import type { PrintData } from "@/lib/print-layout";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -292,12 +292,13 @@ export default function SalesOrderDetail() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setInvoiceDialogOpen(false);
+        toast({ title: "內部發票已登記", description: "尚未送至綠界，不代表電子發票已開立。" });
         await loadInvoices();
       } else {
-        setInvoiceError(data.error || "開立發票失敗");
+        setInvoiceError(data.error || "內部發票登記失敗");
       }
     } catch {
-      setInvoiceError("開立發票失敗，請稍後再試");
+      setInvoiceError("內部發票登記失敗，請稍後再試");
     }
     setActionLoading(false);
   };
@@ -408,13 +409,16 @@ export default function SalesOrderDetail() {
       code: it.code || "", name: it.itemName || it.name || "", qty: Number(it.quantity) || 0, unit: it.unit || "",
       unitPrice: Number(it.rate ?? it.unitPrice) || 0, amount: Number(it.amount) || (Number(it.quantity) || 0) * (Number(it.rate ?? it.unitPrice) || 0), summary: it.summary || "",
     }));
+    // 我方公司用系統設定的預設公司，不寫死在程式裡
+    let company = companyOf(null);
+    try { const r = await fetch(`/erp-api/brands`, { credentials: "include" }); if (r.ok) company = companyOf(defaultBrand(await r.json())); } catch {}
     const grand = Number(order.totalAmount) || 0;
     const tax = lines.length ? (order.items as any[]).reduce((sum: number, it: any) => sum + (Number(it.taxAmount) || 0), 0) : 0;
     setPrintData({
       docNumber: order.orderNumber,
       title: order.label || "",
       customer: { name: order.customerName, taxId: order.invoiceTaxId || customer?.taxId, phone: customer?.phone || customer?.mobile, address: customer?.address || order.extraFields?.legacyAddress },
-      company: { ...COMPANY_INFO, contact: handlerName || order.extraFields?.legacyStaff || COMPANY_INFO.contact },
+      company: { ...company, contact: handlerName || order.extraFields?.legacyStaff || company.contact },
       fields: {
         date: order.orderDate, handler: handlerName || order.extraFields?.legacyStaff, project: projName, deliveryDate: order.deliveryDate,
         courseStartDate: order.courseStartDate, courseEndDate: order.courseEndDate, caseTime: order.caseTime, coursePeriod: order.coursePeriod, teacher: teacherName || order.teacherCode,
@@ -615,7 +619,7 @@ export default function SalesOrderDetail() {
             <Receipt className="h-5 w-5" />
             關聯發票
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={actionLoading} onClick={async () => {
               setActionLoading(true);
               try {
@@ -631,11 +635,18 @@ export default function SalesOrderDetail() {
               <Link2 className="h-4 w-4 mr-1" />綁定既有發票
             </Button>
             <Button size="sm" onClick={handleOpenInvoiceDialog} disabled={actionLoading || remainingInvoiceable <= 0}>
-              <Plus className="h-4 w-4 mr-1" />開立新發票
+              <Plus className="h-4 w-4 mr-1" />登記內部發票
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate(`/sales/orders?ecpay=${order.id}`)} disabled={actionLoading}>
+              <Receipt className="h-4 w-4 mr-1" />開立綠界電子發票
             </Button>
           </div>
         </CardHeader>
         <CardContent className="px-4 pb-3">
+          <p className="text-sm text-muted-foreground mb-3">
+            內部登記僅建立 ERP 帳務紀錄，不會送至綠界。電子發票請使用「開立綠界電子發票」，成功後以綠界發票號碼為準。
+            歷史單仍須核對舊系統開票紀錄，避免重複開立。
+          </p>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
             <span className="text-muted-foreground">已開 <span className="font-semibold text-foreground">{activeInvoices.length}</span> 張發票</span>
             <span className="text-muted-foreground">已開金額 <span className="font-semibold text-foreground">${alreadyInvoiced.toLocaleString()}</span></span>
@@ -686,12 +697,23 @@ export default function SalesOrderDetail() {
         </CardContent>
       </Card>
 
-      <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
-        <DialogContent className="md:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>本次開票內容</DialogTitle>
-          </DialogHeader>
+      <DocWindow
+        open={invoiceDialogOpen}
+        onClose={() => setInvoiceDialogOpen(false)}
+        name="內部發票登記（不送綠界）"
+        number={order.orderNumber}
+        footer={<>
+          <Button variant="outline" onClick={() => setInvoiceDialogOpen(false)}>取消</Button>
+          <Button onClick={handleCreateInvoice} disabled={actionLoading || invoiceTotal <= 0 || invoiceTotal > remainingInvoiceable || invoiceItems.some(it => !it.itemName.trim())}>
+            確認登記內部發票
+          </Button>
+        </>}
+      >
           <div className="space-y-4">
+            <p role="note" className="text-sm text-muted-foreground">
+              此操作只建立 ERP 內部發票及既有帳務紀錄，不會開立綠界電子發票；登記金額會占用本銷貨單的可開額度。
+              若要開立電子發票，請取消後使用「開立綠界電子發票」。
+            </p>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm bg-muted/40 rounded-lg px-3 py-2">
               <span className="text-muted-foreground">訂單總額 <span className="font-semibold text-foreground">${Number(order.totalAmount || 0).toLocaleString()}</span></span>
               <span className="text-muted-foreground">已開金額 <span className="font-semibold text-foreground">${alreadyInvoiced.toLocaleString()}</span></span>
@@ -728,21 +750,19 @@ export default function SalesOrderDetail() {
             )}
             {invoiceError && <p className="text-sm text-red-600">{invoiceError}</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInvoiceDialogOpen(false)}>取消</Button>
-            <Button onClick={handleCreateInvoice} disabled={actionLoading || invoiceTotal <= 0 || invoiceTotal > remainingInvoiceable || invoiceItems.some(it => !it.itemName.trim())}>
-              確認開立
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>綁定既有發票</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
+      <DocWindow
+        open={linkDialogOpen}
+        onClose={() => setLinkDialogOpen(false)}
+        name="綁定既有發票"
+        number={order.orderNumber}
+        footer={<>
+          <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>取消</Button>
+          <Button onClick={handleLinkInvoice} disabled={!selectedInvoiceId || actionLoading}>確認綁定</Button>
+        </>}
+      >
+          <div>
             <p className="text-sm text-muted-foreground mb-3">
               選擇尚未綁定銷貨單的發票（僅顯示同一客戶的發票）
             </p>
@@ -765,12 +785,7 @@ export default function SalesOrderDetail() {
               </p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>取消</Button>
-            <Button onClick={handleLinkInvoice} disabled={!selectedInvoiceId || actionLoading}>確認綁定</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       {templateFields.some((fd: any) => !COLUMN_FIELDS.has(fd.name) && (order.extraFields?.[fd.name] || order.extraFields?.[fd.name] === 0)) && (
         <Card>

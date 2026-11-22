@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { looseSqlMatch } from "../lib/loose-match";
 import { autoEntryText, applyAutoText } from "../lib/auto-entry-text";
 import { todayTaipei } from "../lib/inventory-journal";
 import { nextDocNumber } from "../lib/doc-number";
@@ -21,6 +22,10 @@ import { reqTenantId } from "../middleware/tenant-context";
 import { assertPeriodOpen, assertVatAccountsReady, createInvoiceJournalEntry, deleteInvoiceJournalEntry, getLockDate, resolveJournalLines, syncSalesOrderJournalEntry } from "../lib/auto-journal";
 import { missingIssues, normalizeSavedEcpayCustomer } from "../lib/ecpay-buyer";
 import { assertDeletableDraft } from "../lib/document-rules";
+import { assertIntegerInvoiceItems } from "../lib/ecpay-integer-items";
+import { printInvoice } from "../lib/ecpay-invoice";
+import { renderEcpayPdf } from "../lib/ecpay-pdf";
+import { requireInvoicePermission } from "../middleware/invoice-permission";
 
 const router: IRouter = Router();
 const FINANCE_ROLES = ["owner", "admin", "finance_admin", "accountant"] as const;
@@ -181,6 +186,14 @@ router.get("/invoices", async (req, res): Promise<void> => {
   const conditions = [];
   if (query.success && query.data.type) conditions.push(eq(invoicesTable.invoiceType, query.data.type));
   if (query.success && query.data.status) conditions.push(eq(invoicesTable.status, query.data.status));
+  // 關鍵字：發票號碼、客戶或供應商名稱／簡稱；打簡稱也找得到
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const searchMatch = search ? looseSqlMatch(search, [sql`${invoicesTable.invoiceNumber}`, sql`COALESCE(${customersTable.name}, '')`, sql`COALESCE(${customersTable.shortName}, '')`, sql`COALESCE(${suppliersTable.name}, '')`, sql`COALESCE(${suppliersTable.shortName}, '')`]) : undefined;
+  if (searchMatch) conditions.push(searchMatch);
+  const customerId = Number(req.query.customerId);
+  if (Number.isInteger(customerId) && customerId > 0) conditions.push(eq(invoicesTable.customerId, customerId));
+  const supplierId = Number(req.query.supplierId);
+  if (Number.isInteger(supplierId) && supplierId > 0) conditions.push(eq(invoicesTable.supplierId, supplierId));
 
   const invoices = await db
     .select({
@@ -252,14 +265,29 @@ router.get("/sales-orders/:id/invoices", async (req, res): Promise<void> => {
   res.json(invoices.map(numericInvoice));
 });
 
+/**
+ * 歷史單（Ecount 搬來的）能不能補開發票：舊系統已經開過發票的不能再開；沒開過的可以補開
+ * （補開的發票不再入帳，見 createInvoiceJournalEntry）。回傳擋下的原因，可以開就回 null
+ */
+async function legacyOrderInvoiceBlock(order: { orderSource: string | null; orderNumber: string }): Promise<string | null> {
+  if (order.orderSource !== "ecount") return null;
+  const result = await db.execute(sql`
+    SELECT d.doc_number AS "docNumber" FROM legacy_documents d
+    WHERE d.doc_type = '銷項發票明細' AND d.lines->0->>'銷貨單號' = ${order.orderNumber}
+    ORDER BY d.doc_number LIMIT 5`);
+  const numbers = (((result as any).rows ?? result) as Array<{ docNumber: string }>).map(r => r.docNumber).filter(Boolean);
+  return numbers.length > 0 ? `這張歷史單在舊系統（Ecount）已經開過發票（${numbers.join("、")}），不能再開一次` : null;
+}
+
 router.post("/sales-orders/:id/invoices", async (req, res): Promise<void> => {
   const orderId = parseInt(req.params.id);
   if (isNaN(orderId)) { res.status(400).json({ error: "銷貨單編號格式不正確" }); return; }
 
   const [order] = await db.select().from(salesOrdersTable).where(eq(salesOrdersTable.id, orderId));
   if (!order) { res.status(404).json({ error: "找不到銷貨單" }); return; }
-  // 舊系統搬來的歷史單：營收已經入過帳，再開發票會重複認列
-  if (order.orderSource === "ecount") { res.status(400).json({ error: "這是從舊系統（Ecount）搬過來的歷史單據，帳已經入過了，不能再開發票。要收款請直接開收款單沖這張單" }); return; }
+  // 舊系統搬來的歷史單：舊系統開過發票的不能再開；沒開過的可以補開（不再入帳）
+  const legacyBlock = await legacyOrderInvoiceBlock(order);
+  if (legacyBlock) { res.status(400).json({ error: legacyBlock }); return; }
 
   const { invoiceId } = req.body;
 
@@ -626,6 +654,33 @@ router.post("/invoices", async (req, res): Promise<void> => {
   }
 
   res.status(201).json({ ...numericInvoice(inv), customerName: null, supplierName: null });
+});
+
+router.post(["/invoices/:id/ecpay-print", "/invoices/:id/ecpay-pdf"], requireInvoicePermission("print"), async (req, res): Promise<void> => {
+  res.set("Cache-Control", "no-store");
+  const printStyle = req.body?.printStyle ?? 1;
+  if (printStyle !== 1 && printStyle !== 4) { res.status(400).json({ error: "列印格式僅支援一般格式或公司發票 A4" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id <= 0) { res.status(400).json({ error: "發票編號無效" }); return; }
+  const [inv] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
+  if (!inv) { res.status(404).json({ error: "找不到發票" }); return; }
+  if (!inv.ecpayInvoiceNumber || !inv.ecpayInvoiceDate) { res.status(409).json({ error: "尚未取得綠界發票號碼，不能列印正式電子發票" }); return; }
+  if (inv.ecpayVoidedAt || inv.status === "Cancelled") { res.status(409).json({ error: "已作廢或取消的發票不可列印為有效憑證" }); return; }
+  if (printStyle === 4 && !/^\d{8}$/.test(inv.ecpayTaxId || "")) { res.status(409).json({ error: "公司發票 A4 僅限開票時已填買方統編的發票，不能用客戶目前統編取代原開票資料" }); return; }
+  const result = await printInvoice(inv.ecpayInvoiceNumber, String(inv.ecpayInvoiceDate).slice(0, 10), undefined, printStyle);
+  if (!result.success) { res.status(502).json({ error: result.message }); return; }
+  if (req.path.endsWith("/ecpay-pdf")) {
+    try {
+      const pdf = await renderEcpayPdf(result.url!, inv.ecpayInvoiceNumber);
+      res.set("Content-Disposition", `attachment; filename="${inv.ecpayInvoiceNumber}.pdf"`);
+      res.type("application/pdf").send(pdf);
+    } catch (error) {
+      res.status((error as { status?: number }).status === 503 ? 503 : 502)
+        .json({ error: "無法產生綠界發票 PDF，請稍後重試" });
+    }
+    return;
+  }
+  res.json({ url: result.url, expiresInSeconds: 3600 });
 });
 
 router.get("/invoices/:id", async (req, res): Promise<void> => {
@@ -996,7 +1051,7 @@ router.get("/sales-orders/:id/ecpay-invoice-preview", async (req, res): Promise<
 });
 
 // 開立綠界電子發票
-router.post("/sales-orders/:id/issue-ecpay-invoice", requireRole(...FINANCE_ROLES), async (req, res): Promise<void> => {
+router.post("/sales-orders/:id/issue-ecpay-invoice", requireInvoicePermission("issue"), async (req, res): Promise<void> => {
   const orderId = Number(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id);
   if (isNaN(orderId)) { res.status(400).json({ error: "銷貨單編號格式不正確" }); return; }
   const issueKey = String(req.get("Idempotency-Key") || req.body?.idempotencyKey || "").trim();
@@ -1006,8 +1061,9 @@ router.post("/sales-orders/:id/issue-ecpay-invoice", requireRole(...FINANCE_ROLE
 
   const [order] = await db.select().from(salesOrdersTable).where(eq(salesOrdersTable.id, orderId));
   if (!order) { res.status(404).json({ error: "找不到銷貨單" }); return; }
-  // 舊系統搬來的歷史單：當時已經開過發票、入過帳，不能再開一次
-  if (order.orderSource === "ecount") { res.status(400).json({ error: "這是從舊系統（Ecount）搬過來的歷史單據，當時已經開過發票，不能再開一次" }); return; }
+  // 舊系統搬來的歷史單：舊系統開過發票的不能再開；沒開過的可以補開（不再入帳）
+  const legacyBlock = await legacyOrderInvoiceBlock(order);
+  if (legacyBlock) { res.status(400).json({ error: legacyBlock }); return; }
 
   const {
     invoiceType,
@@ -1107,6 +1163,7 @@ router.post("/sales-orders/:id/issue-ecpay-invoice", requireRole(...FINANCE_ROLE
         return { operation: existingOperation, invoice: null, existed: true };
       }
 
+      assertIntegerInvoiceItems(items);
       const buyerIssues = missingIssues(requestInput);
       if (buyerIssues.length > 0) {
         throw Object.assign(new Error(`買方資料不完整：${buyerIssues.join("、")}`), { statusCode: 400 });

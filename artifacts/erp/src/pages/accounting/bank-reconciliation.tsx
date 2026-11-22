@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -270,9 +271,15 @@ export default function BankReconciliationPage() {
         </div>
       </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>新增銀行對帳單</DialogTitle></DialogHeader>
+      <DocWindow
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        name="新增銀行對帳單"
+        footer={<>
+          <Button variant="outline" onClick={() => setCreateOpen(false)}>取消</Button>
+          <Button onClick={() => createStmt.mutate(stmtForm)} disabled={!stmtForm.bankName || !stmtForm.statementDate}>建立</Button>
+        </>}
+      >
           <div className="grid gap-4">
             <div><label className="text-sm font-medium">銀行名稱 *</label><Input value={stmtForm.bankName} onChange={e => setStmtForm({ ...stmtForm, bankName: e.target.value })} /></div>
             <div><label className="text-sm font-medium">帳號</label><Input value={stmtForm.accountNumber} onChange={e => setStmtForm({ ...stmtForm, accountNumber: e.target.value })} /></div>
@@ -282,16 +289,18 @@ export default function BankReconciliationPage() {
               <div><label className="text-sm font-medium">期末餘額</label><Input type="number" value={stmtForm.closingBalance} onChange={e => setStmtForm({ ...stmtForm, closingBalance: e.target.value })} /></div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>取消</Button>
-            <Button onClick={() => createStmt.mutate(stmtForm)} disabled={!stmtForm.bankName || !stmtForm.statementDate}>建立</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={entryOpen} onOpenChange={setEntryOpen}>
-        <DialogContent className="md:max-w-3xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>新增對帳明細</DialogTitle></DialogHeader>
+      <DocWindow
+        open={entryOpen}
+        onClose={() => setEntryOpen(false)}
+        name="新增對帳明細"
+        wide
+        footer={<>
+          <Button variant="outline" onClick={() => setEntryOpen(false)}>取消</Button>
+          <Button onClick={() => addEntries.mutate({ id: selectedId!, entries: entryRows.filter(r => r.transactionDate) })} disabled={!entryRows.some(r => r.transactionDate)}>儲存</Button>
+        </>}
+      >
           <div className="space-y-3">
             {entryRows.map((row, idx) => (
               <div key={idx} className="grid grid-cols-6 gap-2 items-end">
@@ -304,12 +313,7 @@ export default function BankReconciliationPage() {
             ))}
             <Button variant="outline" size="sm" onClick={addEntryRow}><Plus className="w-4 h-4 mr-1" />增加一列</Button>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEntryOpen(false)}>取消</Button>
-            <Button onClick={() => addEntries.mutate({ id: selectedId!, entries: entryRows.filter(r => r.transactionDate) })} disabled={!entryRows.some(r => r.transactionDate)}>儲存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       <Dialog open={matchOpen} onOpenChange={setMatchOpen}>
         <DialogContent>
@@ -342,9 +346,18 @@ export default function BankReconciliationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!postingEntry} onOpenChange={(o) => { if (!o) setPostingEntry(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>直接入帳</DialogTitle></DialogHeader>
+      <DocWindow
+        open={!!postingEntry}
+        onClose={() => setPostingEntry(null)}
+        name="直接入帳"
+        footer={<>
+          <Button variant="outline" onClick={() => setPostingEntry(null)}>取消</Button>
+          <Button
+            disabled={!postForm.accountId || postJournal.isPending}
+            onClick={() => postJournal.mutate({ entryId: postingEntry!.id, body: { accountId: Number(postForm.accountId), bankAccountId: postForm.bankAccountId ? Number(postForm.bankAccountId) : null, description: postForm.description, projectId: postForm.projectId ? Number(postForm.projectId) : null } })}
+          >確認入帳</Button>
+        </>}
+      >
           <div className="space-y-4">
             {postingEntry && (
               <div className="text-sm p-3 bg-muted rounded">
@@ -366,15 +379,7 @@ export default function BankReconciliationPage() {
             <p className="text-xs text-muted-foreground -mt-2">對方科目是收入或費用（手續費、利息）時一定要選；單純帳戶之間的轉帳可以不選。</p>
             <div><label className="text-sm font-medium">摘要</label><Input value={postForm.description} onChange={e => setPostForm(f => ({ ...f, description: e.target.value }))} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPostingEntry(null)}>取消</Button>
-            <Button
-              disabled={!postForm.accountId || postJournal.isPending}
-              onClick={() => postJournal.mutate({ entryId: postingEntry!.id, body: { accountId: Number(postForm.accountId), bankAccountId: postForm.bankAccountId ? Number(postForm.bankAccountId) : null, description: postForm.description, projectId: postForm.projectId ? Number(postForm.projectId) : null } })}
-            >確認入帳</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

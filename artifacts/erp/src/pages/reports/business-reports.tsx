@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { departmentLabel, projectLabel } from "@/lib/select-options";
 import { useLocation, useRoute } from "wouter";
 import { Printer } from "lucide-react";
 import { ReportHeader } from "@/components/shared/report-header";
@@ -11,7 +12,9 @@ import { AccountMultiPicker, type PickerAccount } from "@/components/accounting/
 import { fmtMoney } from "@/lib/report-format";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import type { ExportOptions } from "@/lib/export-utils";
-import { F8, quickRanges, refText, SubledgerView, type SubData, type ViewType } from "./account-books";
+import { clipPeriod, F8, quickRanges, refText, SubledgerView, type SubData, type ViewType } from "./account-books";
+import { JournalEntryDialog } from "@/components/accounting/journal-entry-dialog";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 
 /** 經營資料與其他帳簿：照 Ecount「會計 > 報表 > 經營資料／帳簿」的查詢方式 */
 type Kind =
@@ -45,51 +48,68 @@ const amt = (n: number) => (n ? fmtMoney(n) : "");
 
 /** 通用表格：每張報表先轉成這個格式，畫面與匯出共用 */
 type RowStyle = "total" | "sub" | "head" | undefined;
-interface TRow { cells: string[]; style?: RowStyle; indent?: number }
+/** entryId：整列點了開那張分錄。drill：每一格對應一個明細條件（null＝這格不能點） */
+interface TRow { cells: string[]; style?: RowStyle; indent?: number; entryId?: number; drill?: Array<DrillTarget | null> }
+/** 查詢當下的條件（點數字看明細要用同一組，不是畫面上後來改的） */
+interface QueryScope { startDate: string; endDate: string; projectId: string; departmentId: string; party: string; reference: string; accountIds?: number[] }
+/** 後端說「這個合計是哪幾個科目算的、增加記在哪一邊」；null＝明細會對不起來，不能點 */
+type DrillAccounts = { accountIds: number[]; side: "debit" | "credit" } | null;
 interface TSection { title?: string; headers: string[]; right: number[]; rows: TRow[] }
 
 interface FundParty { party: string; opening: number; increase: number; decrease: number; closing: number }
 interface FundAcc extends Omit<FundParty, "party"> { accountId: number; accountNumber: string; accountName: string; parties: FundParty[] }
-interface MoveRow { date: string; reference: string; counterAccount?: string; party: string; summary: string; amount: number }
+interface MoveRow { date: string; entryId?: number; reference: string; counterAccount?: string; party: string; summary: string; amount: number }
 interface Moves { increase: MoveRow[]; decrease: MoveRow[]; totalIncrease: number; totalDecrease: number }
-interface FundStatusData { rows: FundAcc[]; total: Omit<FundParty, "party">; fund?: Moves; receivable?: Moves; payable?: Moves }
+interface FundStatusData { rows: FundAcc[]; total: Omit<FundParty, "party">; fund?: Moves; receivable?: Moves; payable?: Moves; receivableDrill?: DrillAccounts; payableDrill?: DrillAccounts }
 interface Flow { opening: number; increase: { account: string; amount: number }[]; decrease: { account: string; amount: number }[]; totalIncrease: number; totalDecrease: number; closing: number }
-interface PLData { months: string[]; rows: { accountId: number; accountNumber: string; accountName: string; depth: number; isGroup: boolean; months: number[]; total: number }[]; income: { months: number[]; total: number }; expense: { months: number[]; total: number }; net: { months: number[]; total: number } }
-interface SumData { rows: { key1: string; key2: string; opening: number; debit: number; credit: number; amount: number }[]; total: { opening: number; debit: number; credit: number; amount: number } }
-interface PartyMonthData { months: string[]; rows: { party: string; months: number[]; total: number }[]; totals: number[]; total: number }
-interface Voucher { date: string; reference: string; fundAccount: string; account: string; party: string; summary: string; amount: number; fee: number; tax: number; department: string | null; project: string | null }
-interface VatData { rows: { date: string; reference: string; kind: "sales" | "purchase"; invoiceNumber: string; party: string; detail: string; net: number; tax: number }[]; sales: { net: number; tax: number }; purchase: { net: number; tax: number } }
-interface ChangeSection { accountNumber: string; accountName: string; opening: number; days: { date: string; increase: number; decrease: number; balance: number }[]; totalIncrease: number; totalDecrease: number; closing: number }
-interface AccountDetail { sections: { accountNumber: string; accountName: string; rows: { party: string; amount: number }[]; total: number }[] }
-interface PartyTx { sections: { party: string; rows: { date: string; reference: string; accountName: string; summary: string; debit: number; credit: number }[]; totalDebit: number; totalCredit: number }[] }
+interface PLData { months: string[]; rows: { accountId: number; accountNumber: string; accountName: string; accountType?: string; depth: number; isGroup: boolean; months: number[]; total: number }[]; income: { months: number[]; total: number }; expense: { months: number[]; total: number }; net: { months: number[]; total: number } }
+interface SumData { rows: { key1: string; key2: string; opening: number; debit: number; credit: number; amount: number }[]; total: { opening: number; debit: number; credit: number; amount: number }; drillable?: boolean }
+interface PartyMonthData { months: string[]; rows: { party: string; months: number[]; total: number }[]; totals: number[]; total: number; drill?: DrillAccounts }
+interface Voucher { date: string; entryId?: number; reference: string; fundAccount: string; account: string; party: string; summary: string; amount: number; fee: number; tax: number; department: string | null; project: string | null }
+interface VatData { rows: { date: string; entryId?: number; reference: string; kind: "sales" | "purchase"; invoiceNumber: string; party: string; detail: string; net: number; tax: number }[]; sales: { net: number; tax: number }; purchase: { net: number; tax: number } }
+interface ChangeSection { accountId?: number; accountNumber: string; accountName: string; opening: number; days: { date: string; increase: number; decrease: number; balance: number }[]; totalIncrease: number; totalDecrease: number; closing: number }
+interface AccountDetail { sections: { accountId?: number; accountNumber: string; accountName: string; rows: { party: string; amount: number }[]; total: number }[] }
+interface PartyTx { sections: { party: string; rows: { date: string; entryId?: number; reference: string; accountName: string; summary: string; debit: number; credit: number }[]; totalDebit: number; totalCredit: number }[] }
 interface AgingData { months: string[]; rows: { party: string; total: number; buckets: number[] }[]; totals: number[]; total: number }
 
 const SUM_KEYS: [string, string][] = [["account", "科目"], ["party", "客戶/供應商"], ["department", "部門"], ["project", "專案"], ["month", "月份"]];
 const ym = (m: string) => m.replace("-", ".");
 const d8 = (d: string) => d.replace(/-/g, "/");
 
-function moveSection(title: string, m: MoveRow[], total: number, withCounter: boolean): TSection {
+/** totalDrill：合計那一格點了看哪些分錄（沒給就不能點）。每一列本身點了開那張分錄。 */
+function moveSection(title: string, m: MoveRow[], total: number, withCounter: boolean, totalDrill?: DrillTarget | null): TSection {
   return {
     title,
     headers: withCounter ? ["日期-號碼", "對應科目", "對應客戶", "摘要", "金額"] : ["日期-號碼", "客戶/供應商", "摘要", "金額"],
     right: [withCounter ? 4 : 3],
     rows: [
-      ...m.map(r => ({ cells: withCounter ? [refText(r.date, r.reference), r.counterAccount ?? "", r.party, r.summary, fmt(r.amount)] : [refText(r.date, r.reference), r.party, r.summary, fmt(r.amount)] })),
-      { cells: withCounter ? ["合計", "", "", "", fmt(total)] : ["合計", "", "", fmt(total)], style: "total" as const },
+      ...m.map(r => ({ cells: withCounter ? [refText(r.date, r.reference), r.counterAccount ?? "", r.party, r.summary, fmt(r.amount)] : [refText(r.date, r.reference), r.party, r.summary, fmt(r.amount)], entryId: r.entryId })),
+      { cells: withCounter ? ["合計", "", "", "", fmt(total)] : ["合計", "", "", fmt(total)], style: "total" as const, drill: totalDrill ? [...Array<null>(withCounter ? 4 : 3).fill(null), totalDrill] : undefined },
     ],
   };
 }
 
-function fundStatusSection(d: FundStatusData, title?: string): TSection {
+function fundStatusSection(d: FundStatusData, q: QueryScope, title?: string): TSection {
   const rows: TRow[] = [];
+  // 增加、減少看查詢期間；今日餘額從頭累計到結束日。「（無客戶）」那一列沒辦法只篩出沒有對象的分錄，不能點。
+  const drillOf = (t: Pick<DrillTarget, "title" | "accountIds" | "party">): Array<DrillTarget | null> => {
+    const base = { ...t, endDate: q.endDate, projectId: q.projectId || undefined, departmentId: q.departmentId || undefined };
+    const period = { ...base, startDate: q.startDate };
+    return [null, null, null, period, period, base];
+  };
   for (const a of d.rows) {
     const acc = `[${a.accountNumber}] ${a.accountName}`;
+    const whole = a.accountId ? drillOf({ title: `${a.accountNumber} ${a.accountName}`, accountIds: [a.accountId] }) : undefined;
     const named = a.parties.filter(p => p.party);
-    if (named.length === 0) { rows.push({ cells: [acc, "", fmt(a.opening), amt(a.increase), amt(a.decrease), fmt(a.closing)] }); continue; }
-    for (const p of a.parties) rows.push({ cells: [acc, p.party || "（無客戶）", fmt(p.opening), amt(p.increase), amt(p.decrease), fmt(p.closing)] });
-    rows.push({ cells: [acc, "合計", fmt(a.opening), amt(a.increase), amt(a.decrease), fmt(a.closing)], style: "sub" });
+    if (named.length === 0) { rows.push({ cells: [acc, "", fmt(a.opening), amt(a.increase), amt(a.decrease), fmt(a.closing)], drill: whole }); continue; }
+    for (const p of a.parties) rows.push({
+      cells: [acc, p.party || "（無客戶）", fmt(p.opening), amt(p.increase), amt(p.decrease), fmt(p.closing)],
+      drill: a.accountId && p.party ? drillOf({ title: `${a.accountNumber} ${a.accountName}`, accountIds: [a.accountId], party: p.party }) : undefined,
+    });
+    rows.push({ cells: [acc, "合計", fmt(a.opening), amt(a.increase), amt(a.decrease), fmt(a.closing)], style: "sub", drill: whole });
   }
-  rows.push({ cells: ["總計", "", fmt(d.total.opening), fmt(d.total.increase), fmt(d.total.decrease), fmt(d.total.closing)], style: "total" });
+  const allIds = d.rows.map(a => a.accountId).filter(Boolean);
+  rows.push({ cells: ["總計", "", fmt(d.total.opening), fmt(d.total.increase), fmt(d.total.decrease), fmt(d.total.closing)], style: "total", drill: allIds.length ? drillOf({ title: "總計", accountIds: allIds }) : undefined });
   return { title, headers: ["科目", "客戶/供應商", "結轉", "增加", "減少", "今日餘額"], right: [2, 3, 4, 5], rows };
 }
 
@@ -108,17 +128,31 @@ function flowRows(cur: Flow, cmp: Flow | null): TRow[] {
 }
 
 /** 把每張報表的回應轉成表格 */
-function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: string; compareLabel: string; txMode: string; txView: string }): TSection[] {
+function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: string; compareLabel: string; txMode: string; txView: string; q: QueryScope; typeOf: (accountId: number) => string | undefined; accounts: PickerAccount[] }): TSection[] {
+  const q = opts.q;
+  const dim = { projectId: q.projectId || undefined, departmentId: q.departmentId || undefined };
+  const pageRange = { startDate: q.startDate, endDate: q.endDate };
   switch (kind) {
     case "fund-daily": {
       const d = body as FundStatusData;
-      const s: TSection[] = [fundStatusSection(d, "1. 資金情況")];
+      const s: TSection[] = [fundStatusSection(d, q, "1. 資金情況")];
       if (d.fund) s.push(moveSection("2. 資金的增加", d.fund.increase, d.fund.totalIncrease, true), moveSection("3. 資金的減少", d.fund.decrease, d.fund.totalDecrease, true));
-      if (d.receivable) s.push(moveSection("4. 應收帳款的增加", d.receivable.increase, d.receivable.totalIncrease, false), moveSection("5. 應收帳款的減少", d.receivable.decrease, d.receivable.totalDecrease, false));
-      if (d.payable) s.push(moveSection("6. 應付帳款的增加", d.payable.increase, d.payable.totalIncrease, false), moveSection("7. 應付帳款的減少", d.payable.decrease, d.payable.totalDecrease, false));
+      // 應收、應付的增減合計：就是這幾個科目在期間內的借方或貸方合計，點了看那些分錄
+      const sideDrill = (a: DrillAccounts | undefined, name: string, increase: boolean): DrillTarget | null => (a ? {
+        title: name, accountIds: a.accountIds, ...pageRange, ...dim,
+        note: `這個數字是下面的「${(a.side === "debit") === increase ? "借方" : "貸方"}合計」`,
+      } : null);
+      if (d.receivable) s.push(
+        moveSection("4. 應收帳款的增加", d.receivable.increase, d.receivable.totalIncrease, false, sideDrill(d.receivableDrill, "應收帳款的增加", true)),
+        moveSection("5. 應收帳款的減少", d.receivable.decrease, d.receivable.totalDecrease, false, sideDrill(d.receivableDrill, "應收帳款的減少", false)),
+      );
+      if (d.payable) s.push(
+        moveSection("6. 應付帳款的增加", d.payable.increase, d.payable.totalIncrease, false, sideDrill(d.payableDrill, "應付帳款的增加", true)),
+        moveSection("7. 應付帳款的減少", d.payable.decrease, d.payable.totalDecrease, false, sideDrill(d.payableDrill, "應付帳款的減少", false)),
+      );
       return s;
     }
-    case "fund-status": return [fundStatusSection(body as FundStatusData)];
+    case "fund-status": return [fundStatusSection(body as FundStatusData, q)];
     case "cash-movement": {
       const d = body as { current: Flow; compare: (Flow & { startDate: string; endDate: string }) | null };
       const headers = ["類型", "科目", "本期"];
@@ -131,12 +165,25 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
     }
     case "monthly-pl": {
       const d = body as PLData;
-      const line = (label: string, v: { months: number[]; total: number }, style: RowStyle): TRow => ({ cells: [label, ...v.months.map(fmt), fmt(v.total)], style });
+      // 每個月那一格只看那個月（夾在查詢期間裡），合計看整段查詢期間
+      const monthly = (t: Pick<DrillTarget, "title" | "accountIds" | "accountTypes">): Array<DrillTarget | null> => [
+        null,
+        ...d.months.map(m => ({ ...t, ...(clipPeriod(m, q.startDate, q.endDate) ?? pageRange), ...dim })),
+        { ...t, ...pageRange, ...dim },
+      ];
+      const line = (label: string, v: { months: number[]; total: number }, style: RowStyle, type?: string): TRow => ({
+        cells: [label, ...v.months.map(fmt), fmt(v.total)], style,
+        drill: type ? monthly({ title: label, accountTypes: [type] }) : undefined,
+      });
       return [{
         headers: ["財務報表顯示名", ...d.months.map(ym), "合計"], right: d.months.map((_, i) => i + 1).concat(d.months.length + 1),
         rows: [
-          ...d.rows.map(r => ({ cells: [`[${r.accountNumber}] ${r.accountName}`, ...r.months.map(amt), fmt(r.total)], indent: r.depth, style: r.isGroup ? "sub" as const : undefined })),
-          line("收入合計", d.income, "sub"), line("費用合計", d.expense, "sub"), line("本期損益", d.net, "total"),
+          ...d.rows.map(r => ({
+            cells: [`[${r.accountNumber}] ${r.accountName}`, ...r.months.map(amt), fmt(r.total)], indent: r.depth, style: r.isGroup ? "sub" as const : undefined,
+            // 「（本科目）」那一列是上層科目自己的分錄，沒辦法只篩自己，不能點
+            drill: r.accountId && !r.accountName.endsWith("（本科目）") ? monthly({ title: `${r.accountNumber} ${r.accountName}`, accountIds: [r.accountId] }) : undefined,
+          })),
+          line("收入合計", d.income, "sub", "Income"), line("費用合計", d.expense, "sub", "Expense"), line("本期損益", d.net, "total"),
         ],
       }];
     }
@@ -147,16 +194,48 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
       const headers = [n1, ...(n2 ? [n2] : []), ...(withOpening ? ["結轉餘額"] : []), "借方", "貸方", withOpening ? "金額" : "借方−貸方"];
       const base = n2 ? 2 : 1;
       const cells = (r: SumData["total"], k1: string, k2: string) => [k1, ...(n2 ? [k2] : []), ...(withOpening ? [fmt(r.opening)] : []), amt(r.debit), amt(r.credit), fmt(r.amount)];
+      // 借方、貸方可以點（看期間內算進去的分錄）。結轉餘額、金額是另外算出來的，分錄明細對不上，不能點。
+      // 合計條件是部門、專案的那一列，還有空白的那一列，分錄明細沒辦法用同樣的條件篩，不能點。
+      const picked = q.accountIds?.length ? q.accountIds : undefined;
+      const part = (key: string, value: string): Partial<DrillTarget> | null => {
+        if (!key) return {};
+        if (!value) return null;
+        if (key === "party") return { party: value };
+        if (key === "month") return clipPeriod(value, q.startDate, q.endDate);
+        if (key === "account") { const hit = opts.accounts.filter(a => `[${a.accountNumber}] ${a.accountName}` === value); return hit.length === 1 ? { accountIds: [hit[0].id] } : null; }
+        return null;
+      };
+      const sumDrill = (title: string, k1: string, k2: string, isTotal = false): Array<DrillTarget | null> | undefined => {
+        if (!d.drillable) return undefined;
+        const a = isTotal ? {} : part(opts.key1, k1), b = isTotal ? {} : part(opts.key2, k2);
+        if (!a || !b) return undefined;
+        const t = { title, ...pageRange, ...dim, ...(picked ? { accountIds: picked } : {}), ...a, ...b };
+        // 有篩客戶/供應商（名稱的一部分）時，只有「指定了對象」的那幾列篩得一樣
+        if (q.party && !("party" in t)) return undefined;
+        const lead = Array<null>(base + (withOpening ? 1 : 0)).fill(null);
+        return [...lead, { ...t, note: "這個數字是下面的「借方合計」" }, { ...t, note: "這個數字是下面的「貸方合計」" }, null];
+      };
       return [{
         headers, right: headers.map((_, i) => i).filter(i => i >= base),
-        rows: [...d.rows.map(r => ({ cells: cells(r, r.key1 || "（空白）", r.key2 || "（空白）") })), { cells: cells(d.total, "合計", ""), style: "total" }],
+        rows: [
+          ...d.rows.map(r => ({ cells: cells(r, r.key1 || "（空白）", r.key2 || "（空白）"), drill: sumDrill([r.key1, r.key2].filter(Boolean).join("・"), r.key1, r.key2) })),
+          { cells: cells(d.total, "合計", ""), style: "total", drill: sumDrill("合計", "", "", true) },
+        ],
       }];
     }
     case "monthly-sales": case "monthly-purchase": {
       const d = body as PartyMonthData;
+      // 每一格＝這個對象、這個月，算進去的科目（後端給）的分錄。沒有對象的那一列篩不出來，不能點。
+      // 合計列是全部對象（有篩客戶/供應商時也是），所以不帶對象。
+      const acc = d.drill;
+      const cell = (party: string | null, m?: string): DrillTarget | null => (!acc || party === "" ? null : {
+        title: party ?? "合計", accountIds: acc.accountIds, ...(party ? { party } : {}), ...((m ? clipPeriod(m, q.startDate, q.endDate) : null) ?? pageRange), ...dim,
+        note: kind === "monthly-sales" ? "含稅銷售額＝收入加銷項稅額，是下面的「本期淨額」" : "只算新增的應付，是下面的「貸方合計」（付款不扣）",
+      });
+      const line = (party: string | null) => [null, ...d.months.map(m => cell(party, m)), cell(party)];
       return [{
         headers: [kind === "monthly-sales" ? "客戶名稱" : "供應商名稱", ...d.months.map(ym), "合計"], right: d.months.map((_, i) => i + 1).concat(d.months.length + 1),
-        rows: [...d.rows.map(r => ({ cells: [r.party || "（無客戶）", ...r.months.map(amt), fmt(r.total)] })), { cells: ["合計", ...d.totals.map(fmt), fmt(d.total)], style: "total" }],
+        rows: [...d.rows.map(r => ({ cells: [r.party || "（無客戶）", ...r.months.map(amt), fmt(r.total)], drill: line(r.party) })), { cells: ["合計", ...d.totals.map(fmt), fmt(d.total)], style: "total", drill: line(null) }],
       }];
     }
     case "receipts": case "payments": case "advances": {
@@ -166,7 +245,7 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
       return [{
         headers: ["日期-號碼", acc, "科目名稱", "客戶/供應商", "摘要", "金額", "手續費", "營業稅", "部門", "專案"], right: [5, 6, 7],
         rows: [
-          ...d.rows.map(r => ({ cells: [refText(r.date, r.reference), r.fundAccount, r.account, r.party, r.summary, fmt(r.amount), amt(r.fee), amt(r.tax), r.department ?? "", r.project ?? ""] })),
+          ...d.rows.map(r => ({ cells: [refText(r.date, r.reference), r.fundAccount, r.account, r.party, r.summary, fmt(r.amount), amt(r.fee), amt(r.tax), r.department ?? "", r.project ?? ""], entryId: r.entryId })),
           { cells: [`合計（${d.rows.length} 筆）`, "", "", "", "", fmt(d.total), fmt(d.totalFee), fmt(tax), "", ""], style: "total" },
         ],
       }];
@@ -181,14 +260,21 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
     }
     case "account-changes": {
       const d = body as { sections: ChangeSection[] };
-      return d.sections.map(s => ({
-        title: `[${s.accountNumber}] ${s.accountName}`, headers: ["日期", "增加", "減少", "餘額"], right: [1, 2, 3],
-        rows: [
-          { cells: ["結轉餘額", "", "", fmt(s.opening)], style: "head" as const },
-          ...s.days.map(x => ({ cells: [d8(x.date), amt(x.increase), amt(x.decrease), fmt(x.balance)] })),
-          { cells: ["合計", fmt(s.totalIncrease), fmt(s.totalDecrease), fmt(s.closing)], style: "total" as const },
-        ],
-      }));
+      return d.sections.map(s => {
+        // 有篩客戶/供應商（名稱的一部分）時，明細沒辦法用同樣的方式篩，數字會對不起來，所以不給點
+        const t = s.accountId && !q.party ? { title: `${s.accountNumber} ${s.accountName}`, accountIds: [s.accountId], ...dim } : null;
+        return {
+          title: `[${s.accountNumber}] ${s.accountName}`, headers: ["日期", "增加", "減少", "餘額"], right: [1, 2, 3],
+          rows: [
+            { cells: ["結轉餘額", "", "", fmt(s.opening)], style: "head" as const },
+            ...s.days.map(x => ({
+              cells: [d8(x.date), amt(x.increase), amt(x.decrease), fmt(x.balance)],
+              drill: t ? [null, { ...t, startDate: x.date, endDate: x.date }, { ...t, startDate: x.date, endDate: x.date }, { ...t, endDate: x.date }] : undefined,
+            })),
+            { cells: ["合計", fmt(s.totalIncrease), fmt(s.totalDecrease), fmt(s.closing)], style: "total" as const, drill: t ? [null, { ...t, ...pageRange }, { ...t, ...pageRange }, { ...t, endDate: q.endDate }] : undefined },
+          ],
+        };
+      });
     }
     case "vat": {
       const d = body as VatData;
@@ -199,25 +285,42 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
         const name = k === "sales" ? "銷項" : "進項";
         out.push({
           title: `${name}帳簿`, headers: ["日期-號碼", "發票號碼", k === "sales" ? "客戶" : "供應商", "明細", `${name}稅前價格`, `${name}營業稅`], right: [4, 5],
-          rows: [...rows.map(r => ({ cells: [refText(r.date, r.reference), r.invoiceNumber, r.party, r.detail, fmt(r.net), fmt(r.tax)] })), { cells: [`合計（${rows.length} 筆）`, "", "", "", fmt(d[k].net), fmt(d[k].tax)], style: "total" }],
+          rows: [...rows.map(r => ({ cells: [refText(r.date, r.reference), r.invoiceNumber, r.party, r.detail, fmt(r.net), fmt(r.tax)], entryId: r.entryId })), { cells: [`合計（${rows.length} 筆）`, "", "", "", fmt(d[k].net), fmt(d[k].tax)], style: "total" }],
         });
       }
       return out;
     }
     case "account-detail": {
       const d = body as AccountDetail;
-      return d.sections.map(s => ({
-        title: `[${s.accountNumber}] ${s.accountName}`, headers: ["科目名稱", "客戶/供應商名稱", "金額"], right: [2],
-        rows: [...s.rows.map(r => ({ cells: [s.accountName, r.party, fmt(r.amount)] })), { cells: ["合計", "", fmt(s.total)], style: "total" as const }],
-      }));
+      return d.sections.map(s => {
+        // 餘額算到查詢日；收入、費用是當年 1/1 起累計（知道科目類別才帶起始日）
+        const type = s.accountId ? opts.typeOf(s.accountId) : undefined;
+        const t: DrillTarget | null = s.accountId ? {
+          title: `${s.accountNumber} ${s.accountName}`, accountIds: [s.accountId], endDate: q.endDate, ...dim,
+          ...(type === "Income" || type === "Expense" ? { startDate: `${q.endDate.slice(0, 4)}-01-01` } : {}),
+        } : null;
+        // 沒有對象的那一列：整個科目只有這一列時等於科目餘額，可以點；跟其他對象並列時沒辦法只篩出它，不能點
+        const rowDrill = (party: string): DrillTarget | null => (!t ? null : party ? { ...t, party } : s.rows.length === 1 && !q.party ? t : null);
+        return {
+          title: `[${s.accountNumber}] ${s.accountName}`, headers: ["科目名稱", "客戶/供應商名稱", "金額"], right: [2],
+          rows: [
+            ...s.rows.map(r => ({ cells: [s.accountName, r.party, fmt(r.amount)], drill: [null, null, rowDrill(r.party)] })),
+            // 有篩客戶/供應商時，合計只是篩到的那幾列相加，不是整個科目，不能點
+            { cells: ["合計", "", fmt(s.total)], style: "total" as const, drill: [null, null, q.party ? null : t] },
+          ],
+        };
+      });
     }
     case "party-tx": {
       const d = body as PartyTx;
+      // 這個對象在期間內的全部分錄行（不分科目）。有篩單據號碼時合計只是篩到的幾筆，不能點。
+      const partyDrill = (party: string, period?: string): DrillTarget | null => (!party || q.reference ? null
+        : { title: party, party, ...((period ? clipPeriod(period, q.startDate, q.endDate) : null) ?? pageRange), ...dim, note: "不分科目" });
       if (opts.txMode === "sum") {
         return [{
           headers: ["客戶/供應商", "借方金額", "貸方金額"], right: [1, 2],
           rows: [
-            ...d.sections.map(s => ({ cells: [s.party, amt(s.totalDebit), amt(s.totalCredit)] })),
+            ...d.sections.map(s => ({ cells: [s.party, amt(s.totalDebit), amt(s.totalCredit)], drill: [null, partyDrill(s.party), partyDrill(s.party)] })),
             { cells: [`合計（${d.sections.length} 個）`, fmt(d.sections.reduce((t, s) => t + s.totalDebit, 0)), fmt(d.sections.reduce((t, s) => t + s.totalCredit, 0))], style: "total" },
           ],
         }];
@@ -226,11 +329,11 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
         const rows: TRow[] = [];
         if (opts.txView === "line") {
           let month = "", dr = 0, cr = 0;
-          const flush = () => { if (month) rows.push({ cells: [`${month.replace("-", "/")} 合計`, "", "", fmt(dr), fmt(cr)], style: "sub" }); };
+          const flush = () => { if (month) rows.push({ cells: [`${month.replace("-", "/")} 合計`, "", "", fmt(dr), fmt(cr)], style: "sub", drill: [null, null, null, partyDrill(s.party, month), partyDrill(s.party, month)] }); };
           for (const r of s.rows) {
             if (r.date.slice(0, 7) !== month) { flush(); month = r.date.slice(0, 7); dr = 0; cr = 0; }
             dr += r.debit; cr += r.credit;
-            rows.push({ cells: [refText(r.date, r.reference), r.accountName, r.summary, amt(r.debit), amt(r.credit)] });
+            rows.push({ cells: [refText(r.date, r.reference), r.accountName, r.summary, amt(r.debit), amt(r.credit)], entryId: r.entryId });
           }
           flush();
         } else {
@@ -239,9 +342,9 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
             const k = opts.txView === "day" ? d8(r.date) : r.date.slice(0, 7).replace("-", "/");
             const v = g.get(k) ?? [0, 0]; v[0] += r.debit; v[1] += r.credit; g.set(k, v);
           }
-          for (const [k, [dr, cr]] of g) rows.push({ cells: [k, "", "", amt(dr), amt(cr)] });
+          for (const [k, [dr, cr]] of g) rows.push({ cells: [k, "", "", amt(dr), amt(cr)], drill: [null, null, null, partyDrill(s.party, k), partyDrill(s.party, k)] });
         }
-        rows.push({ cells: ["合計", "", "", fmt(s.totalDebit), fmt(s.totalCredit)], style: "total" });
+        rows.push({ cells: ["合計", "", "", fmt(s.totalDebit), fmt(s.totalCredit)], style: "total", drill: [null, null, null, partyDrill(s.party), partyDrill(s.party)] });
         return { title: s.party, headers: ["日期-號碼", "科目", "摘要", "借方金額", "貸方金額"], right: [3, 4], rows };
       });
     }
@@ -251,7 +354,7 @@ function toSections(kind: Kind, body: unknown, opts: { key1: string; key2: strin
 
 const th = "px-3 py-2 font-semibold";
 
-function SectionTable({ s }: { s: TSection }) {
+function SectionTable({ s, onOpenEntry, onDrill }: { s: TSection; onOpenEntry: (id: number) => void; onDrill: (t: DrillTarget) => void }) {
   const right = new Set(s.right);
   return (
     <div className="space-y-1 break-inside-avoid">
@@ -263,14 +366,21 @@ function SectionTable({ s }: { s: TSection }) {
           </tr></thead>
           <tbody>
             {s.rows.length === 0 && <tr><td colSpan={s.headers.length} className="px-3 py-6 text-center text-muted-foreground">沒有資料</td></tr>}
-            {s.rows.map((r, i) => (
-              <tr key={i} className={r.style === "total" ? "border-t-2 bg-primary/5 font-semibold" : r.style === "sub" ? "border-b bg-muted/30 font-medium" : r.style === "head" ? "border-b bg-primary/5" : "border-b hover:bg-muted/40"}>
-                {r.cells.map((c, j) => (
-                  <td key={j} className={`px-3 py-1.5 ${right.has(j) ? "text-right font-mono" : ""} ${j === 0 ? "whitespace-nowrap" : "max-w-[300px] truncate"}`} title={c}
-                    style={j === 0 && r.indent ? { paddingLeft: 12 + r.indent * 16 } : undefined}>{c}</td>
-                ))}
-              </tr>
-            ))}
+            {s.rows.map((r, i) => {
+              const entryId = r.entryId;
+              return (
+                <tr key={i} onClick={entryId ? () => onOpenEntry(entryId) : undefined}
+                  className={`${r.style === "total" ? "border-t-2 bg-primary/5 font-semibold" : r.style === "sub" ? "border-b bg-muted/30 font-medium" : r.style === "head" ? "border-b bg-primary/5" : "border-b hover:bg-muted/40"}${entryId ? " cursor-pointer" : ""}`}>
+                  {r.cells.map((c, j) => {
+                    const t = c ? r.drill?.[j] : null;
+                    return (
+                      <td key={j} className={`px-3 py-1.5 ${right.has(j) ? "text-right font-mono" : ""} ${j === 0 ? "whitespace-nowrap" : "max-w-[300px] truncate"}`} title={c}
+                        style={j === 0 && r.indent ? { paddingLeft: 12 + r.indent * 16 } : undefined}>{t ? <DrillAmount onClick={() => onDrill(t)}>{c}</DrillAmount> : c}</td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </CardContent></Card>
@@ -307,9 +417,11 @@ export default function BusinessReportsPage() {
   const [accounts, setAccounts] = useState<PickerAccount[]>([]);
   const [departments, setDepartments] = useState<{ id: number; name: string }[]>([]);
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
-  const [data, setData] = useState<{ kind: Kind; body: unknown; key1: string; key2: string; compare: string; txMode: string; txView: string } | null>(null);
+  const [data, setData] = useState<{ kind: Kind; body: unknown; key1: string; key2: string; compare: string; txMode: string; txView: string; q: QueryScope } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [openEntryId, setOpenEntryId] = useState<number | null>(null);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
 
   useEffect(() => {
     fetch(`/erp-api/accounts`).then(r => r.json()).then(d => setAccounts(Array.isArray(d) ? d : [])).catch(() => {});
@@ -365,7 +477,7 @@ export default function BusinessReportsPage() {
       const res = await fetch(`/erp-api/reports/books/${url}?${p}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "查詢失敗");
-      setData({ kind, body: json, key1, key2, compare, txMode, txView });
+      setData({ kind, body: json, key1, key2, compare, txMode, txView, q: { startDate, endDate, projectId, departmentId, party: usesParty ? party : "", reference: p.get("reference") ?? "", accountIds: usesAccounts ? accountIds : [] } });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "查詢失敗");
     }
@@ -373,7 +485,8 @@ export default function BusinessReportsPage() {
   };
 
   const compareLabel = ({ prevDay: "前一天同期", prevMonth: "上個月同期", lastYear: "去年同期" } as Record<string, string>)[data?.compare ?? ""] ?? "比較";
-  const sections = data && !(data.kind === "ledger-1" || data.kind === "ledger-2") ? toSections(data.kind, data.body, { key1: data.key1, key2: data.key2, compareLabel, txMode: data.txMode, txView: data.txView }) : [];
+  const typeOf = (accountId: number) => (accounts.find(a => a.id === accountId) as (PickerAccount & { accountType?: string }) | undefined)?.accountType;
+  const sections = data && !(data.kind === "ledger-1" || data.kind === "ledger-2") ? toSections(data.kind, data.body, { key1: data.key1, key2: data.key2, compareLabel, txMode: data.txMode, txView: data.txView, q: data.q, typeOf, accounts }) : [];
 
   const filterText = [
     departmentId && `部門：${departments.find(d => String(d.id) === departmentId)?.name ?? ""}`,
@@ -489,13 +602,13 @@ export default function BusinessReportsPage() {
             {field("部門", (
               <select className={select} value={departmentId} onChange={e => setDepartmentId(e.target.value)} aria-label="部門">
                 <option value="">全部部門</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {departments.map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
               </select>
             ))}
             {field("專案", (
               <select className={select} value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="專案">
                 <option value="">全部專案</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {projects.map(p => <option key={p.id} value={p.id}>{projectLabel(p)}</option>)}
               </select>
             ))}
             {usesParty && field("客戶/供應商", <Input value={party} onChange={e => setParty(e.target.value)} placeholder="名稱的一部分" />)}
@@ -528,9 +641,11 @@ export default function BusinessReportsPage() {
       <F8 onQuery={fetchReport} />
       {data && <p className="text-sm text-muted-foreground">{subtitle}</p>}
       {data && (data.kind === "ledger-1" || data.kind === "ledger-2") && (
-        <SubledgerView kind="account-party" d={data.body as SubData} view={data.kind === "ledger-2" ? "summary" : view} showOpening subtitle={subtitle} />
+        <SubledgerView kind="account-party" d={data.body as SubData} view={data.kind === "ledger-2" ? "summary" : view} showOpening subtitle={subtitle} scope={data.q} />
       )}
-      {sections.map((s, i) => <SectionTable key={`${data?.kind}-${i}`} s={s} />)}
+      {sections.map((s, i) => <SectionTable key={`${data?.kind}-${i}`} s={s} onOpenEntry={setOpenEntryId} onDrill={setDrill} />)}
+      <JournalEntryDialog entryId={openEntryId} onClose={() => setOpenEntryId(null)} />
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
       {!data && !loading && <Card><CardContent className="py-12 text-center text-muted-foreground">設定條件後按「查詢(F8)」</CardContent></Card>}
     </div>
   );

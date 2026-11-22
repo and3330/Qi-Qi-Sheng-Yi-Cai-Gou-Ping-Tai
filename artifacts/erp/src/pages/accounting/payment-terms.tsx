@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { call, post } from "@/lib/call";
@@ -76,9 +76,15 @@ export default function PaymentTermsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!form} onOpenChange={(o) => { if (!o) setForm(null); }}>
-        <DialogContent className="md:max-w-lg max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{form?.id ? "編輯付款條件" : "新增付款條件"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={!!form}
+        onClose={() => setForm(null)}
+        name={form?.id ? "編輯付款條件" : "新增付款條件"}
+        footer={<>
+          <Button variant="outline" onClick={() => setForm(null)}>取消</Button>
+          <Button onClick={save} disabled={saving || !form?.name.trim() || Math.abs(total - 100) > 0.001}>{saving ? "處理中…" : "儲存"}</Button>
+        </>}
+      >
           {form && (
             <div className="space-y-4">
               {!form.id && (
@@ -107,12 +113,7 @@ export default function PaymentTermsPage() {
               <div className="space-y-1.5"><Label htmlFor="pt-note">說明</Label><Input id="pt-note" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} /></div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setForm(null)}>取消</Button>
-            <Button onClick={save} disabled={saving || !form?.name.trim() || Math.abs(total - 100) > 0.001}>{saving ? "處理中…" : "儲存"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

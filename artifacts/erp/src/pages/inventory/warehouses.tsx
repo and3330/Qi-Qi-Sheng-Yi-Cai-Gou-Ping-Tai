@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow, DocStatus } from "@/components/shared/doc-window";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -130,23 +130,24 @@ export default function WarehousesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editing ? `編輯倉庫：${editing.name}` : "新增倉庫"}</DialogTitle>
-            <DialogDescription>停用後，開單時的倉庫選單不會再出現這個倉庫；原本的庫存紀錄與單據不受影響。</DialogDescription>
-          </DialogHeader>
+      {/* 新增／編輯倉庫：外框用全系統共用的單據視窗 */}
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? `編輯倉庫：${editing.name}` : "新增倉庫"} layoutKey="倉庫"
+        status={editing && !editing.isActive ? <DocStatus label="已停用" tone="outline" /> : undefined}
+        description="停用後，開單時的倉庫選單不會再出現這個倉庫；原本的庫存紀錄與單據不受影響。"
+        footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={save} disabled={saving || !form.name.trim()} data-testid="button-save-warehouse">{saving ? "儲存中…" : "儲存"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div className="space-y-1.5"><Label htmlFor="wh-name">倉庫名稱</Label><Input id="wh-name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1.5"><Label htmlFor="wh-location">地點／說明</Label><Input id="wh-location" value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} /></div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />啟用（取消勾選就是停用）</label>
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={save} disabled={saving || !form.name.trim()} data-testid="button-save-warehouse">{saving ? "儲存中…" : "儲存"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

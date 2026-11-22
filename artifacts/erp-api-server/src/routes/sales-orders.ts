@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { looseSqlMatch } from "../lib/loose-match";
 import { nextDocNumber } from "../lib/doc-number";
 import { randomUUID } from "node:crypto";
 import { desc, eq, and, sql, inArray } from "drizzle-orm";
@@ -17,6 +18,7 @@ import { assertDeletableDraft } from "../lib/document-rules";
 import { orderOutstanding, orderPaymentSummaries } from "../lib/order-payments";
 import { LEGACY_READONLY_MESSAGE, LEGACY_SOURCE, isLegacySource, LEGACY_SALES_EDITABLE, CONFIRMED_SALES_EDITABLE, LEGACY_EDIT_LIMIT_MESSAGE, keepLegacyFields } from "../lib/legacy";
 import { assertCreditLimit } from "../lib/credit-limit";
+import { machineOnly } from "../lib/api-key-user";
 const router: IRouter = Router();
 router.use("/sales-orders", requireAuth);
 router.use("/create-sales-order", requireAuth);
@@ -127,6 +129,10 @@ router.get("/sales-orders", async (req, res): Promise<void> => {
   const templateId = req.query.templateId as string | undefined;
   if (orderSource) conditions.push(eq(salesOrdersTable.orderSource, orderSource));
   if (templateId) conditions.push(eq(salesOrdersTable.templateId, parseInt(templateId)));
+  // 關鍵字：單號、客戶名稱／簡稱／編號、標題；打簡稱也找得到（樂善國小 → 樂善國民小學）
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const searchMatch = search ? looseSqlMatch(search, [sql`${salesOrdersTable.orderNumber}`, sql`${customersTable.name}`, sql`COALESCE(${customersTable.shortName}, '')`, sql`COALESCE(${customersTable.customerCode}, '')`, sql`COALESCE(${salesOrdersTable.label}, '')`]) : undefined;
+  if (searchMatch) conditions.push(searchMatch);
 
   const orders = await db
     .select({
@@ -518,7 +524,7 @@ router.patch("/sales-orders/:id", async (req, res): Promise<void> => {
       // 訂單要成立（開始算應收）時檢查客戶信用額度；老闆或財務可以明確放行
       if (req.body.status !== undefined && REVENUE_ORDER_STATUSES.includes(req.body.status) && !REVENUE_ORDER_STATUSES.includes(locked.status)) {
         const role = (req as any).session?.user?.role;
-        const canOverride = (req as any).apiKeyAuth ? false : ["owner", "admin", "finance_admin", "super_admin"].includes(role);
+        const canOverride = machineOnly(req) ? false : ["owner", "admin", "finance_admin", "super_admin"].includes(role);
         await assertCreditLimit(tx, locked, canOverride && req.body.overrideCreditLimit === true);
       }
       const [updated] = await tx.update(salesOrdersTable).set(updateData).where(eq(salesOrdersTable.id, params.data.id)).returning();

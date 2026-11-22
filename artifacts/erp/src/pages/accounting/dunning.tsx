@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { DrillAmount } from "@/components/shared/account-drill";
+import { DocListDrillDialog, type DocListTarget } from "@/components/shared/doc-list-drill";
 import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, PhoneCall } from "lucide-react";
 import { call, money, post, selectClass, todayText } from "@/lib/call";
@@ -37,6 +40,7 @@ export default function DunningPage() {
   const [recording, setRecording] = useState<CustomerGroup | null>(null);
   const [form, setForm] = useState({ channel: "phone", dunnedDate: todayText(), note: "" });
   const [saving, setSaving] = useState(false);
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
 
   const copy = async (group: CustomerGroup) => {
     try { await navigator.clipboard.writeText(messageFor(group)); toast({ title: "已複製催款訊息", description: "可以貼到電子郵件或通訊軟體" }); }
@@ -73,7 +77,7 @@ export default function DunningPage() {
                 <div className="text-xs text-muted-foreground">{[group.contactPerson, group.phone, group.email].filter(Boolean).join("・") || "沒有聯絡資料"}</div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-bold text-red-600 dark:text-red-400">{money(group.totalOverdue)}</div>
+                <div className="text-lg font-bold text-red-600 dark:text-red-400"><DrillAmount title="點一下看這個客戶還沒收的發票" onClick={() => setDocs({ kind: "open-invoices", type: "Sales", partyId: group.customerId, title: `${group.customerName} 應收`, note: "這個客戶全部還沒收的發票，包含還沒到期的" })}>{money(group.totalOverdue)}</DrillAmount></div>
                 <div className="text-xs text-muted-foreground">最久逾期 {group.maxDaysOverdue} 天</div>
               </div>
             </div>
@@ -81,7 +85,7 @@ export default function DunningPage() {
               {group.invoices.map(inv => (
                 <li key={inv.invoiceId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                   <span>
-                    <span className="font-medium">{inv.invoiceNumber}</span>
+                    <Link href={`/sales/invoices?open=${inv.invoiceId}`} className="font-medium text-primary hover:underline">{inv.invoiceNumber}</Link>
                     <span className="ml-2 text-xs text-muted-foreground">到期 {inv.dueDate}・逾期 {inv.daysOverdue} 天</span>
                     <span className="block text-xs text-muted-foreground">{inv.dunCount > 0 ? `已催 ${inv.dunCount} 次，最近 ${inv.lastDunnedDate}${inv.lastNote ? `：${inv.lastNote}` : ""}` : "還沒催過"}</span>
                   </span>
@@ -97,9 +101,15 @@ export default function DunningPage() {
         </Card>
       ))}
 
-      <Dialog open={!!recording} onOpenChange={(o) => { if (!o) setRecording(null); }}>
-        <DialogContent className="md:max-w-md">
-          <DialogHeader><DialogTitle>記錄催款：{recording?.customerName}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={!!recording}
+        onClose={() => setRecording(null)}
+        name={`記錄催款：${recording?.customerName ?? ""}`} layoutKey="記錄催款"
+        footer={<>
+          <Button variant="outline" onClick={() => setRecording(null)}>取消</Button>
+          <Button onClick={record} disabled={saving}>{saving ? "處理中…" : "記錄"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">會記在這個客戶的 {recording?.invoices.length} 張逾期發票上。</p>
             <div className="grid grid-cols-2 gap-3">
@@ -113,12 +123,8 @@ export default function DunningPage() {
             </div>
             <div className="space-y-1.5"><Label htmlFor="dun-note">對方回覆</Label><Input id="dun-note" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} placeholder="例如：答應月底前付款" /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRecording(null)}>取消</Button>
-            <Button onClick={record} disabled={saving}>{saving ? "處理中…" : "記錄"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
+      <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
     </div>
   );
 }

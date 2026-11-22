@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { selectableDepartments, departmentLabel } from "@/lib/select-options";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow, DocStatus } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, RefreshCw, Trash2 } from "lucide-react";
 import { call, money, post, selectClass } from "@/lib/call";
@@ -65,7 +67,7 @@ export default function IntegrationsPage() {
   const { data: storedValue } = useQuery({ queryKey: ["/integrations/stored-value"], queryFn: () => call<StoredValue>("integrations/stored-value") });
   const { data: format } = useQuery({ queryKey: ["/integrations/format"], queryFn: () => call<FormatInfo>("integrations/format") });
   const { data: apiKeys = [] } = useQuery({ queryKey: ["/api-keys", "for-integrations"], queryFn: () => call<Array<{ id: number; keyName: string; permissions: string; isActive: boolean }>>("api-keys"), enabled: sourceForm !== null });
-  const { data: departments = [] } = useQuery({ queryKey: ["/departments", "for-integrations"], queryFn: () => call<Array<{ id: number; name: string }>>("departments"), enabled: sourceForm !== null || mappingForm !== null });
+  const { data: departments = [] } = useQuery({ queryKey: ["/departments", "for-integrations"], queryFn: () => call<Array<{ id: number; name: string; isActive?: boolean }>>("departments"), enabled: sourceForm !== null || mappingForm !== null });
 
   // 銷貨訂單模組（居家、活動、課程…）：訂單對應可以指定進來的訂單要套哪一個
   const { data: templates = [] } = useQuery({ queryKey: ["/order-templates", "for-integrations"], queryFn: () => call<Array<{ id: number; name: string; businessType: string; isActive: boolean }>>("order-templates"), enabled: mappingForm !== null });
@@ -170,7 +172,7 @@ export default function IntegrationsPage() {
             {statusFilter === "failed" && (events?.length || 0) > 0 && <Button variant="outline" onClick={retryAll} disabled={busy}><RefreshCw className="h-4 w-4 mr-1" />全部重試</Button>}
           </div>
           <Card><CardContent className="p-0 overflow-x-auto">
-            <DataTable
+            <DataTable layoutId="integrations-events"
               isLoading={loadingEvents} data={events} onRowClick={(e: EventRow) => setViewing(e)}
               emptyMessage={statusFilter === "failed" ? "沒有失敗的單據" : "沒有單據"}
               columns={[
@@ -186,7 +188,7 @@ export default function IntegrationsPage() {
         <TabsContent value="sources" className="space-y-3">
           <div className="flex justify-end"><Button onClick={() => setSourceForm({ ...emptySource })}><Plus className="h-4 w-4 mr-1" />新增來源</Button></div>
           <Card><CardContent className="p-0 overflow-x-auto">
-            <DataTable
+            <DataTable layoutId="integrations-sources"
               isLoading={loadingSources} data={sources} emptyMessage="還沒有來源。七期商城會自動建立，重新整理即可"
               onRowClick={(s: Source) => setSourceForm({ id: s.id, code: s.code, name: s.name, apiKeyId: s.apiKeyId ? String(s.apiKeyId) : "", defaultProjectId: s.defaultProjectId ? String(s.defaultProjectId) : "", defaultDepartmentId: s.defaultDepartmentId ? String(s.defaultDepartmentId) : "", defaultCashAccountId: s.defaultCashAccountId ? String(s.defaultCashAccountId) : "", isActive: s.isActive, note: s.note || "" })}
               columns={[
@@ -207,7 +209,7 @@ export default function IntegrationsPage() {
             <Button onClick={() => setMappingForm({ ...emptyMapping, sourceId: sources[0] ? String(sources[0].id) : "" })} disabled={sources.length === 0}><Plus className="h-4 w-4 mr-1" />新增對應</Button>
           </div>
           <Card><CardContent className="p-0 overflow-x-auto">
-            <DataTable
+            <DataTable layoutId="integrations-mappings"
               isLoading={false} data={mappings} emptyMessage="還沒有對應設定"
               onRowClick={(m: Mapping) => setMappingForm({ sourceId: String(m.sourceId), externalType: m.externalType, label: m.label || "", projectId: m.projectId ? String(m.projectId) : "", departmentId: m.departmentId ? String(m.departmentId) : "", revenueAccountId: m.revenueAccountId ? String(m.revenueAccountId) : "", expenseAccountId: m.expenseAccountId ? String(m.expenseAccountId) : "", defaultItemId: m.defaultItemId ? String(m.defaultItemId) : "", templateId: m.templateId ? String(m.templateId) : "" })}
               columns={[
@@ -230,7 +232,7 @@ export default function IntegrationsPage() {
             <Button onClick={() => setItemMapForm({ ...emptyItemMap, sourceId: sources[0] ? String(sources[0].id) : "" })} disabled={sources.length === 0}><Plus className="h-4 w-4 mr-1" />新增品項對應</Button>
           </div>
           <Card><CardContent className="p-0 overflow-x-auto">
-            <DataTable
+            <DataTable layoutId="integrations-item-maps"
               isLoading={false} data={itemMaps} emptyMessage="還沒有品項對應"
               columns={[
                 { header: "來源", accessor: (m: ItemMap) => sourceName(m.sourceId) },
@@ -245,7 +247,7 @@ export default function IntegrationsPage() {
         <TabsContent value="stored" className="space-y-3">
           <p className="text-sm text-muted-foreground">會員先存進來、還沒用掉的錢。這是公司欠會員的（帳上記在「預收款項」），會員拿餘額買東西時才變成收入。</p>
           <Card><CardContent className="p-0 overflow-x-auto">
-            <DataTable
+            <DataTable layoutId="integrations-stored-value"
               isLoading={!storedValue} data={storedValue?.members} emptyMessage="還沒有儲值紀錄"
               columns={[
                 { header: "會員", accessor: (m: any) => <div><span className="font-medium">{m.customerName || "—"}</span><span className="block text-xs text-muted-foreground">{m.email || ""}</span></div> },
@@ -295,7 +297,7 @@ export default function IntegrationsPage() {
                   <Label htmlFor="src-dept">預設部門</Label>
                   <select id="src-dept" className={selectClass} value={sourceForm.defaultDepartmentId} onChange={e => setSourceForm({ ...sourceForm, defaultDepartmentId: e.target.value })}>
                     <option value="">不指定</option>
-                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    {selectableDepartments(departments, sourceForm.defaultDepartmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
@@ -347,7 +349,7 @@ export default function IntegrationsPage() {
                 <Label htmlFor="map-dept">部門</Label>
                 <select id="map-dept" className={selectClass} value={mappingForm.departmentId} onChange={e => setMappingForm({ ...mappingForm, departmentId: e.target.value })}>
                   <option value="">不指定</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  {selectableDepartments(departments, mappingForm.departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                 </select>
               </div>
               <div><Label>收入科目</Label><MasterLookup source="accounts" value={mappingForm.revenueAccountId} onValueChange={v => setMappingForm({ ...mappingForm, revenueAccountId: v })} filter={isIncomeAccount} placeholder="不選：實體商品記商品收入，其他記勞務收入" /></div>
@@ -385,12 +387,19 @@ export default function IntegrationsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) setViewing(null); }}>
-        <DialogContent className="md:max-w-2xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{viewing ? `${viewing.kindLabel}　${viewing.externalId}　${STATUS[viewing.status]?.label || viewing.status}` : ""}</DialogTitle>
-            <DialogDescription>{viewing ? `${viewing.sourceName || ""}・${viewing.occurredAt}・${money(viewing.amount)}` : ""}</DialogDescription>
-          </DialogHeader>
+      {/* 一筆收到的串接紀錄：標題是對方送來的種類，所以版面固定存在「串接紀錄」底下 */}
+      <DocWindow
+        open={viewing !== null} onClose={() => setViewing(null)}
+        name={viewing?.kindLabel || "串接紀錄"} layoutKey="串接紀錄" number={viewing?.externalId}
+        status={viewing ? <DocStatus label={STATUS[viewing.status]?.label || viewing.status} tone={STATUS[viewing.status]?.variant} /> : undefined}
+        description={viewing ? `${viewing.sourceName || ""}・${viewing.occurredAt}・${money(viewing.amount)}` : undefined}
+        footer={<>
+            {viewing?.status === "ignored" && <Button variant="outline" onClick={() => ignore(viewing, true)} disabled={busy}>取消略過</Button>}
+            {(viewing?.status === "failed" || viewing?.status === "pending") && <Button variant="outline" onClick={() => ignore(viewing)} disabled={busy}>略過不入帳</Button>}
+            {(viewing?.status === "failed" || viewing?.status === "pending") && <Button onClick={() => retry(viewing)} disabled={busy}><RefreshCw className="h-4 w-4 mr-1" />{busy ? "處理中…" : "重試"}</Button>}
+            <Button variant="outline" onClick={() => setViewing(null)}>關閉</Button>
+        </>}
+      >
           {viewing && (
             <div className="space-y-3 text-sm">
               {viewing.error && <p className={viewing.status === "failed" ? "rounded-md bg-red-50 p-3 text-red-700 dark:bg-red-950/40 dark:text-red-300" : "text-muted-foreground"}>{viewing.error}</p>}
@@ -404,13 +413,7 @@ export default function IntegrationsPage() {
               <div><p className="text-xs text-muted-foreground mb-1">對方送來的內容</p><pre className="rounded-md bg-muted p-3 text-xs overflow-x-auto max-h-72">{JSON.stringify(viewing.payload, null, 2)}</pre></div>
             </div>
           )}
-          <DialogFooter className="gap-2">
-            {viewing?.status === "ignored" && <Button variant="outline" onClick={() => ignore(viewing, true)} disabled={busy}>取消略過</Button>}
-            {(viewing?.status === "failed" || viewing?.status === "pending") && <Button variant="outline" onClick={() => ignore(viewing)} disabled={busy}>略過不入帳</Button>}
-            {(viewing?.status === "failed" || viewing?.status === "pending") && <Button onClick={() => retry(viewing)} disabled={busy}><RefreshCw className="h-4 w-4 mr-1" />{busy ? "處理中…" : "重試"}</Button>}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search, Settings2, X } from "lucide-react";
 import { AttachmentsPanel } from "@/components/shared/attachments-panel";
@@ -238,10 +239,18 @@ export default function HrContractsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? `合約 ${editing.contractNumber}` : "新增人事合約"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-1">
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "人事合約" : "新增人事合約"}
+        number={editing?.contractNumber}
+        status={editing ? <DocStatus label={statusLabel[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>關閉</Button>
+          <Button onClick={handleSave} disabled={!canSave || saving}>{saving ? "處理中..." : editing ? "更新" : "建立"}</Button>
+        </>}
+      >
+          <div className="grid gap-4">
             <section className="grid gap-3 rounded-lg border p-3">
               <h3 className="text-sm font-semibold">合約類型與簽約人</h3>
               <div>
@@ -318,12 +327,7 @@ export default function HrContractsPage() {
               </section>
             ) : <p className="text-xs text-muted-foreground">先按「建立」，就可以在這裡上傳簽好的合約檔。</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>關閉</Button>
-            <Button onClick={handleSave} disabled={!canSave || saving}>{saving ? "處理中..." : editing ? "更新" : "建立"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
         <DialogContent className="md:max-w-md">

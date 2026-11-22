@@ -93,7 +93,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fixedKind, onCreated }
           govInvoiceNumber: sales ? undefined : govInvoiceNumber || undefined,
         },
       });
-      toast({ title: `${INVOICE_TYPE[kind]}發票已建立` });
+      toast({ title: `${INVOICE_TYPE[kind]}發票已登記`, description: sales ? "僅建立 ERP 帳務紀錄，未送至綠界開立電子發票。" : undefined });
       onOpenChange(false);
       onCreated?.();
     } catch (err: any) {
@@ -105,7 +105,7 @@ export function InvoiceCreateDialog({ open, onOpenChange, fixedKind, onCreated }
     <DocWindow
       open={open}
       onClose={() => onOpenChange(false)}
-      name={`新增${INVOICE_TYPE[kind]}發票`}
+      name={`登記${INVOICE_TYPE[kind]}發票（不送綠界）`}
       wide
       footer={<>
         <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
@@ -113,6 +113,9 @@ export function InvoiceCreateDialog({ open, onOpenChange, fixedKind, onCreated }
       </>}
     >
         <div className="grid gap-4 py-2">
+          {sales && <p role="note" className="text-sm text-muted-foreground">
+            此操作僅建立內部發票及既有帳務紀錄，不會向綠界開票。要開立電子發票，請至銷貨單使用「開立綠界電子發票」。
+          </p>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label htmlFor="inv-kind">類型</Label>

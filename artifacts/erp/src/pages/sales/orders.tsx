@@ -8,9 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
+import { useInvoicePermissions } from "@/hooks/use-invoice-permissions";
 import { Plus, Pencil, Trash2, Search, FileText, Copy } from "lucide-react";
 import { templateAppliesTo } from "@/lib/template-fields";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -22,6 +23,9 @@ import type { ExportOptions } from "@/lib/export-utils";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import {
   getEcpayInvoiceFormErrors,
+  getEcpayOrderId,
+  toTaxIncludedInvoiceItem,
+  invoiceIntegerErrors,
   type EcpayInvoiceForm,
 } from "@/lib/ecpay-invoice-form";
 
@@ -73,6 +77,7 @@ interface TemplateInfo {
 }
 
 export default function SalesOrdersPage() {
+  const { canIssueInvoice } = useInvoicePermissions();
   const reloadKey = useAutoReloadKey();
   const [, navigate] = useLocation();
   const searchParams = useSearch();
@@ -102,6 +107,7 @@ export default function SalesOrdersPage() {
   });
   const [invoiceItems, setInvoiceItems] = useState<{ name: string; count: number; unitPrice: number; amount: number }[]>([]);
   const invoiceItemsTotal = invoiceItems.reduce((s, it) => s + (it.amount || 0), 0);
+  const invoiceAmountErrors = invoiceIntegerErrors(invoiceItems);
   const invoiceFormErrors = useMemo(() => getEcpayInvoiceFormErrors(invoiceForm), [invoiceForm]);
   const updateInvoiceItem = (idx: number, field: "name" | "count" | "unitPrice", value: any) => {
     setInvoiceItems(prev => {
@@ -310,11 +316,7 @@ export default function SalesOrdersPage() {
         carrierNum: "",
         loveCode: "",
       });
-      setInvoiceItems((data.order?.items || []).map((it: any) => {
-        const count = Number(it.quantity || 1);
-        const unitPrice = Number(it.rate || it.unitPrice || 0);
-        return { name: it.itemName || it.name || "商品", count, unitPrice, amount: Number(it.amount ?? count * unitPrice) };
-      }));
+      setInvoiceItems((data.order?.items || []).map(toTaxIncludedInvoiceItem));
     } catch (err: any) {
       if (requestId !== invoicePreviewRequestRef.current) return;
       toast({ title: "讀取失敗", description: err.message, variant: "destructive" });
@@ -332,7 +334,11 @@ export default function SalesOrdersPage() {
   };
 
   const handleIssueInvoice = async () => {
+    if (!canIssueInvoice) { toast({ title: "角色未授權開立綠界發票", variant: "destructive" }); return; }
     if (!invoicePreview?.order?.id) return;
+    if (invoiceAmountErrors.length) {
+      toast({ title: "含稅金額需要核對", description: invoiceAmountErrors.join("、"), variant: "destructive" }); return;
+    }
     if (invoiceFormErrors.length > 0) {
       toast({ title: "買方資料不完整", description: invoiceFormErrors.join("、"), variant: "destructive" }); return;
     }
@@ -409,6 +415,18 @@ export default function SalesOrdersPage() {
       toast({ title: "刪除失敗", description: err.message, variant: "destructive" });
     }
   };
+
+  // 從單據明細只開啟預覽，絕不因網址導覽自動送出開票。
+  const ecpayFromUrlHandled = useRef<number | null>(null);
+  useEffect(() => {
+    const id = getEcpayOrderId(searchParams);
+    if (!id) { ecpayFromUrlHandled.current = null; return; }
+    if (ecpayFromUrlHandled.current === id) return;
+    ecpayFromUrlHandled.current = id;
+    void openInvoice({ id });
+    // openInvoice 只使用 setter 與穩定 ref，不依賴列表的日期篩選。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   return (
     <div className="space-y-6">
@@ -520,7 +538,7 @@ export default function SalesOrdersPage() {
               <div className="flex gap-1 pt-1 border-t" onClick={e => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" onClick={() => openEdit(r)}><Pencil size={14} className="mr-1" />編輯</Button>
                 <Button variant="ghost" size="sm" onClick={() => openCopy(r)}><Copy size={14} className="mr-1" />複製</Button>
-                {r.orderSource !== "ecount" && <Button variant="ghost" size="sm" onClick={() => openInvoice(r)}><FileText size={14} className="mr-1 text-blue-600" />發票</Button>}
+                <Button variant="ghost" size="sm" onClick={() => openInvoice(r)}><FileText size={14} className="mr-1 text-blue-600" />綠界電子發票</Button>
                 {r.orderSource !== "ecount" && <Button variant="ghost" size="sm" onClick={() => handleDelete(r)}><Trash2 size={14} className="text-destructive" /></Button>}
               </div>
             </CardContent>
@@ -595,7 +613,7 @@ export default function SalesOrdersPage() {
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)} title="編輯"><Pencil size={14} /></Button>
                     <Button variant="ghost" size="icon" onClick={() => openCopy(r)} title="複製"><Copy size={14} /></Button>
-                    {r.orderSource !== "ecount" && <Button variant="ghost" size="icon" onClick={() => openInvoice(r)} title="開立發票"><FileText size={14} className="text-blue-600" /></Button>}
+                    <Button variant="ghost" size="icon" onClick={() => openInvoice(r)} title="開立綠界電子發票" aria-label={`開立綠界電子發票：${r.orderNumber}`}><FileText size={14} className="text-blue-600" /></Button>
                     {r.orderSource !== "ecount" && <Button variant="ghost" size="icon" onClick={() => handleDelete(r)} title="刪除"><Trash2 size={14} className="text-destructive" /></Button>}
                   </div>
                 ),
@@ -616,25 +634,40 @@ export default function SalesOrdersPage() {
       />
 
       {/* ===== 開立綠界電子發票對話框 ===== */}
-      <Dialog open={invoiceOpen} onOpenChange={setInvoiceOpen}>
-        <DialogContent className="md:max-w-3xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>開立電子發票 - {invoicePreview?.orderNumber || invoicePreview?.order?.orderNumber}</DialogTitle>
-          </DialogHeader>
-
+      <DocWindow
+        open={invoiceOpen}
+        onClose={() => setInvoiceOpen(false)}
+        name="開立綠界電子發票"
+        number={invoicePreview?.orderNumber || invoicePreview?.order?.orderNumber}
+        wide
+        footer={<>
+          <Button variant="outline" onClick={() => setInvoiceOpen(false)}>取消</Button>
+          <Button onClick={handleIssueInvoice} disabled={!canIssueInvoice || invoiceLoading || invoiceSubmitting || !invoicePreview?.order?.id || invoiceFormErrors.length > 0 || invoiceAmountErrors.length > 0 || Number(invoicePreview?.remainingAmount ?? 0) <= 0}>
+            {invoiceSubmitting ? "開立中..." : "確認送至綠界開立"}
+          </Button>
+        </>}
+      >
           {invoiceLoading ? (
             <div className="py-12 text-center text-muted-foreground">讀取訂單資料中...</div>
           ) : (
-            <div className="space-y-4 py-2">
+            <div className="space-y-4">
+              <Alert>
+                <AlertTitle>此操作會送至綠界</AlertTitle>
+                <AlertDescription>
+                  使用本公司的綠界串接設定；正式環境會開出真實電子發票，測試環境不會。只有取得綠界發票號碼才表示開立成功。
+                  歷史單須先核對舊系統是否已開票，系統仍會檢查並阻擋重複開立。
+                  既有內部登記也會占用可開額度；若額度不足，請先由會計核對，勿為重開而刪除或解除關聯。
+                </AlertDescription>
+              </Alert>
               {/* 已開立發票 */}
               {invoicePreview?.existingInvoices?.length > 0 && (
                 <div className="border rounded-lg p-3 bg-blue-50">
-                  <div className="text-sm font-semibold mb-2 text-blue-900">此訂單已開立發票</div>
+                  <div className="text-sm font-semibold mb-2 text-blue-900">此訂單既有發票紀錄（含內部登記）</div>
                   <div className="space-y-1.5">
                     {invoicePreview.existingInvoices.map((e: any) => (
                       <div key={e.id} className="flex items-center gap-2 text-sm">
                         <Badge variant={e.ecpayVoidedAt ? "destructive" : "default"}>
-                          {e.ecpayVoidedAt ? "已作廢" : "有效"}
+                          {e.ecpayVoidedAt ? "已作廢" : e.status === "Cancelled" ? "已取消" : e.ecpayInvoiceNumber ? "綠界已開立" : "內部登記，非綠界開立"}
                         </Badge>
                         <span className="font-mono">{e.ecpayInvoiceNumber || e.invoiceNumber}</span>
                         {e.ecpayInvoiceDate && <span className="text-muted-foreground">{String(e.ecpayInvoiceDate).slice(0, 10)}</span>}
@@ -768,7 +801,7 @@ export default function SalesOrdersPage() {
               {/* 發票品項（可調整金額，分次開票） */}
               <div className="border-t pt-3">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold">發票品項（可修改數量與單價，分次開立）</div>
+                  <div className="text-sm font-semibold">發票品項（整數含稅單價 × 數量）</div>
                   <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setInvoiceItems(prev => [...prev, { name: "", count: 1, unitPrice: 0, amount: 0 }])}>
                     <Plus size={13} className="mr-1" />加一項
                   </Button>
@@ -777,8 +810,8 @@ export default function SalesOrdersPage() {
                   {invoiceItems.map((it, i) => (
                     <div key={i} className="grid grid-cols-2 md:grid-cols-12 gap-2 items-center rounded-md border p-2 md:border-0 md:p-0">
                       <Input className="col-span-2 md:col-span-5 h-9" placeholder="品項名稱" value={it.name} onChange={e => updateInvoiceItem(i, "name", e.target.value)} />
-                      <div className="col-span-1 md:col-span-2"><Input className="h-9" type="number" min={1} placeholder="數量" value={it.count} onChange={e => updateInvoiceItem(i, "count", e.target.value)} /></div>
-                      <div className="col-span-1 md:col-span-2"><Input className="h-9" type="number" min={0} placeholder="單價" value={it.unitPrice} onChange={e => updateInvoiceItem(i, "unitPrice", e.target.value)} /></div>
+                      <div className="col-span-1 md:col-span-2"><Input className="h-9" type="number" min={1} step={1} aria-label={`第 ${i + 1} 項數量`} placeholder="數量" value={it.count} onChange={e => updateInvoiceItem(i, "count", e.target.value)} /></div>
+                      <div className="col-span-1 md:col-span-2"><Input className="h-9" type="number" min={0} step={1} aria-label={`第 ${i + 1} 項含稅單價`} placeholder="含稅單價" value={it.unitPrice} onChange={e => updateInvoiceItem(i, "unitPrice", e.target.value)} /></div>
                       <div className="col-span-1 md:col-span-2 text-right text-sm font-medium">${(it.amount || 0).toLocaleString()}</div>
                       <div className="col-span-1 md:col-span-1 text-right">
                         {invoiceItems.length > 1 && (
@@ -791,9 +824,11 @@ export default function SalesOrdersPage() {
                   ))}
                 </div>
                 <div className={`text-right mt-2 text-sm font-bold ${invoiceItemsTotal > Number(invoicePreview?.remainingAmount ?? invoicePreview?.order?.totalAmount ?? 0) + 0.001 ? "text-red-600" : ""}`}>
-                  本次開立金額：${invoiceItemsTotal.toLocaleString()}
+                  本次含稅開立金額：${invoiceItemsTotal.toLocaleString()}
                   {invoiceItemsTotal > Number(invoicePreview?.remainingAmount ?? invoicePreview?.order?.totalAmount ?? 0) + 0.001 && "（超過剩餘可開金額）"}
                 </div>
+                {invoiceAmountErrors.length > 0 && <p role="alert" className="text-sm text-destructive">{invoiceAmountErrors.join(" ")}</p>}
+                <p className="text-xs text-muted-foreground">含稅單價與小計直接送至綠界，不先除以 1.05；總額不因自動四捨五入而變動。綠界正式版型仍可能另列未稅金額與稅額。</p>
               </div>
 
               <div className="text-xs text-muted-foreground">
@@ -801,15 +836,7 @@ export default function SalesOrdersPage() {
               </div>
             </div>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInvoiceOpen(false)}>取消</Button>
-            <Button onClick={handleIssueInvoice} disabled={invoiceLoading || invoiceSubmitting || !invoicePreview?.order?.id || invoiceFormErrors.length > 0}>
-              {invoiceSubmitting ? "開立中..." : "開立發票"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

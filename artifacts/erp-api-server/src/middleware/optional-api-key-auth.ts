@@ -2,18 +2,34 @@ import { Request, Response, NextFunction } from "express";
 import { eq, and } from "drizzle-orm";
 import { db, apiKeysTable } from "@workspace/erp-db";
 import crypto from "crypto";
-import { internalTenant } from "../lib/internal-auth";
+import { internalActor, internalTenant } from "../lib/internal-auth";
+import { actAsUser, loadKeyUser } from "../lib/api-key-user";
 
 function hashSecret(secret: string): string {
   return crypto.createHash("sha256").update(secret).digest("hex");
 }
 
+/**
+ * 帶了 API 金鑰就驗證金鑰；權限不看金鑰本身，而是跟著金鑰綁定的使用者目前的角色
+ * （老闆 2026-11-19）。之後所有守衛看到的就是那個人，跟他自己登入操作一樣。
+ */
 export async function optionalApiKeyAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  // 伺服器自己發出的內部呼叫（AI 全權身分的通用操作工具）：視同管理員等級的金鑰，租戶由內部標頭決定
+  // 伺服器自己發出的內部呼叫（AI 助理的通用操作工具）
   const internal = internalTenant(req.headers as Record<string, unknown>);
   if (internal !== null) {
-    (req as any).apiKey = { id: null, keyName: "AI 全權", permissions: "admin", tenantId: internal };
-    (req as any).apiKeyAuth = true;
+    const actor = internalActor(req.headers as Record<string, unknown>);
+    if (actor.userId) {
+      // 從 ERP 金鑰來的：以金鑰綁定的使用者身分執行
+      const user = await loadKeyUser(internal, actor.userId);
+      if (!user) { res.status(403).json({ error: "權限不足", message: "金鑰綁定的使用者已停用或不存在" }); return; }
+      (req as any).apiKey = { id: actor.keyId, keyName: "AI 助理", tenantId: internal, userId: user.id };
+      (req as any).apiKeyAuth = true;
+      actAsUser(req, user);
+    } else {
+      // 環境變數設定的舊 AI 金鑰：沒有對應的使用者，維持原本的管理員等級
+      (req as any).apiKey = { id: null, keyName: "AI 全權", permissions: "admin", tenantId: internal };
+      (req as any).apiKeyAuth = true;
+    }
     next();
     return;
   }
@@ -66,6 +82,21 @@ export async function optionalApiKeyAuth(req: Request, res: Response, next: Next
     return;
   }
 
+  if (!apiKeyRecord.userId) {
+    res.status(403).json({ error: "權限不足", message: "這把金鑰還沒指定使用者，請管理員到「API 金鑰」頁面指定它代表誰" });
+    return;
+  }
+  const user = await loadKeyUser(apiKeyRecord.tenantId, apiKeyRecord.userId);
+  if (!user) {
+    res.status(403).json({ error: "權限不足", message: "這把金鑰綁定的使用者已停用或不存在" });
+    return;
+  }
+  // 已經登入的瀏覽器又帶金鑰：分不清要用誰的身分，直接拒絕，也避免動到登入狀態
+  if (req.session?.user) {
+    res.status(400).json({ error: "請求有誤", message: "已登入時不要再帶 API 金鑰" });
+    return;
+  }
+
   db.update(apiKeysTable)
     .set({ lastUsedAt: new Date() })
     .where(eq(apiKeysTable.id, apiKeyRecord.id))
@@ -74,21 +105,6 @@ export async function optionalApiKeyAuth(req: Request, res: Response, next: Next
 
   (req as any).apiKey = apiKeyRecord;
   (req as any).apiKeyAuth = true;
-
-  const method = req.method.toUpperCase();
-  const isWrite = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
-  const isDelete = method === "DELETE";
-  const perms = apiKeyRecord.permissions;
-
-  if (isWrite && perms === "read") {
-    res.status(403).json({ error: "權限不足", message: "此 API Key 僅具有唯讀權限" });
-    return;
-  }
-
-  if (isDelete && perms === "readwrite") {
-    res.status(403).json({ error: "權限不足", message: "刪除操作需要管理員 (admin) 權限" });
-    return;
-  }
-
+  actAsUser(req, user);
   next();
 }

@@ -5,7 +5,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { BiPage } from "./types";
 
-export const BI_AI_MODEL = "gemini-2.5-flash";
+export const BI_AI_MODEL = "gemini-3.5-flash-lite";
 
 export function geminiConfigured(): boolean {
   return Boolean(process.env.AI_INTEGRATIONS_GEMINI_BASE_URL && process.env.AI_INTEGRATIONS_GEMINI_API_KEY);

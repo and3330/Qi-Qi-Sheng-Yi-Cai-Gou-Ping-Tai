@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DocWindow, DocFields, DocLines, DocNote, DocSection, type DocColumn } from "@/components/shared/doc-window";
 import { PageHeader } from "@/components/shared/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, ChevronRight, ExternalLink, Check, X, Circle, Ban, FileText } from "lucide-react";
@@ -32,8 +32,8 @@ async function decide(id: number, status: "Approved" | "Rejected", comments: str
   return data;
 }
 
-/** 右側抽屜：單據內容、審批關卡與歷程、核准／駁回 */
-function ApprovalDetail({ id, onClose }: { id: number; onClose: () => void }) {
+/** 審批內容視窗（共用的單據外框）：單據內容、審批關卡與歷程，底部核准／駁回 */
+function ApprovalDetail({ id, number, onClose }: { id: number; number?: string | null; onClose: () => void }) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [comments, setComments] = useState("");
@@ -56,136 +56,29 @@ function ApprovalDetail({ id, onClose }: { id: number; onClose: () => void }) {
     onError: (e: Error) => toast({ title: "沒有成功", description: e.message, variant: "destructive" }),
   });
 
-  if (isLoading || !data) return <div className="p-6 text-sm text-muted-foreground">載入中…</div>;
-  if (data.error) return <div className="p-6 text-sm text-destructive">{data.error}</div>;
+  if (isLoading || !data) return <DocWindow open onClose={onClose} name="審批內容" number={number}><p className="text-muted-foreground">載入中…</p></DocWindow>;
+  if (data.error) return <DocWindow open onClose={onClose} name="審批內容" number={number}><p className="text-destructive">{data.error}</p></DocWindow>;
   const req = data.request;
   const doc = data.document;
   const hasQty = doc?.lines?.some((l: any) => l.qty);
+  const lineColumns: DocColumn<any>[] = [
+    { header: "項目", cell: l => l.name },
+    ...(hasQty ? [
+      { header: "數量", cell: (l: any) => <span className="whitespace-nowrap">{l.qty}{l.unit}</span>, align: "right" as const },
+      { header: "單價", cell: (l: any) => Number(l.price).toLocaleString(), align: "right" as const },
+    ] : []),
+    { header: "金額", cell: l => Number(l.amount).toLocaleString(), align: "right" },
+  ];
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{docTypeLabels[req.documentType] || req.documentType}</Badge>
-          <Badge variant={statusColors[req.status] as any}>{statusLabels[req.status] || req.status}</Badge>
-          {doc?.status && <span className="text-xs text-muted-foreground">單據狀態：{docStatusLabels[doc.status] || doc.status}</span>}
-        </div>
-
-        {doc?.amount != null && (
-          <div>
-            <p className="text-xs text-muted-foreground">金額</p>
-            <p className="text-2xl font-semibold tabular-nums">{money(doc.amount)}</p>
-          </div>
-        )}
-
-        {data.documentMissing ? (
-          <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">找不到這張單據（可能已經刪除）。</p>
-        ) : (
-          <dl className="grid grid-cols-[6rem_1fr] gap-x-3 gap-y-2 text-sm">
-            {(doc.fields as [string, string][]).map(([k, v]) => (<Fragment key={k}><dt className="text-muted-foreground">{k}</dt><dd className="break-words">{v}</dd></Fragment>))}
-          </dl>
-        )}
-
-        {doc?.lines?.length > 0 && (
-          <div className="overflow-x-auto rounded-md border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50"><tr>
-                <th className="px-3 py-2 text-left font-medium">項目</th>
-                {hasQty && <th className="px-3 py-2 text-right font-medium whitespace-nowrap">數量</th>}
-                {hasQty && <th className="px-3 py-2 text-right font-medium whitespace-nowrap">單價</th>}
-                <th className="px-3 py-2 text-right font-medium whitespace-nowrap">金額</th>
-              </tr></thead>
-              <tbody>
-                {doc.lines.map((l: any, i: number) => (
-                  <tr key={i} className="border-t">
-                    <td className="px-3 py-2">{l.name}</td>
-                    {hasQty && <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">{l.qty}{l.unit}</td>}
-                    {hasQty && <td className="px-3 py-2 text-right tabular-nums">{Number(l.price).toLocaleString()}</td>}
-                    <td className="px-3 py-2 text-right tabular-nums">{Number(l.amount).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {doc?.change && (
-          <div className="rounded-md border p-3">
-            <ChangeReview change={doc.change} editable={isOpen(req.status) && data.canDecide && doc.change.kind === "edit"} onChange={setRevised} />
-          </div>
-        )}
-
-        {doc?.remarks && (
-          <div>
-            <p className="mb-1 text-xs text-muted-foreground">{req.documentType === "Leave" ? "請假原因" : req.documentType === "ChangeRequest" ? "申請原因" : "說明"}</p>
-            <p className="whitespace-pre-wrap rounded-md bg-muted/40 px-3 py-2 text-sm">{doc.remarks}</p>
-          </div>
-        )}
-
-        {data.attachments?.length > 0 && (
-          <div>
-            <p className="mb-2 text-sm font-semibold">附件（{data.attachments.length}）</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(data.attachments as any[]).map(a => {
-                const href = api(`approval-requests/${id}/attachments/${a.id}`);
-                const isImage = /^image\//.test(a.fileType || "");
-                return (
-                  <a key={a.id} href={href} target="_blank" rel="noopener noreferrer" title={a.fileName} className="group overflow-hidden rounded-md border bg-muted/30 hover:border-primary">
-                    {isImage
-                      ? <img src={href} alt={a.fileName} loading="lazy" className="aspect-square w-full object-cover" />
-                      : <div className="flex aspect-square w-full items-center justify-center p-2 text-center text-xs text-muted-foreground"><FileText size={22} className="mb-1 block" /></div>}
-                    <p className="truncate px-1.5 py-1 text-[11px] text-muted-foreground group-hover:text-foreground">{a.fileName}</p>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        {req.documentType === "PaymentRequest" && !data.documentMissing && !(data.attachments?.length > 0) && (
-          <p className="text-xs text-muted-foreground">這張單沒有附收據或發票。</p>
-        )}
-
-        {doc?.link && (
-          <Link href={doc.link} className="inline-flex items-center gap-1 text-sm text-primary hover:underline" onClick={onClose}>
-            打開完整單據<ExternalLink size={13} />
-          </Link>
-        )}
-
-        <div>
-          <p className="mb-2 text-sm font-semibold">審批關卡{req.workflowName ? `（${req.workflowName}）` : ""}</p>
-          <ol className="space-y-2">
-            {data.steps.map((s: any) => (
-              <li key={s.step} className="flex items-center gap-2 text-sm">
-                {s.state === "done" ? <Check size={16} className="text-emerald-600" /> : s.state === "rejected" ? <X size={16} className="text-destructive" /> : s.state === "cancelled" ? <Ban size={16} className="text-muted-foreground" /> : <Circle size={16} className={s.state === "current" ? "text-amber-500" : "text-muted-foreground"} />}
-                <span className={s.state === "current" ? "font-medium" : ""}>第 {s.step} 關：{s.label}</span>
-                {s.state === "current" && <Badge variant="outline" className="text-xs">輪到這關</Badge>}
-                {s.note && <span className="text-xs text-muted-foreground">{s.note}</span>}
-              </li>
-            ))}
-          </ol>
-          {!req.workflowId && req.documentType === "ChangeRequest" && <p className="mt-2 text-xs text-muted-foreground">異動申請沒設流程時，由財務或超級管理員其中一位核准；財務提出的由超級管理員核准。</p>}
-          {!req.workflowId && req.documentType !== "ChangeRequest" && <p className="mt-2 text-xs text-amber-700">這類單據還沒設定審批流程，所以任何主管都能審，而且不審也不會擋住後續作業。可到「系統管理 › 審批流程」設定。</p>}
-        </div>
-
-        <div>
-          <p className="mb-2 text-sm font-semibold">歷程</p>
-          <ul className="space-y-1.5 text-sm">
-            <li className="text-muted-foreground">{new Date(req.createdAt).toLocaleString("zh-TW")}　{req.requestedBy} 送出申請</li>
-            {(data.history as any[]).map((h, i) => (
-              <li key={i}>
-                <span className="text-muted-foreground">{h.at ? new Date(h.at).toLocaleString("zh-TW") : ""}　</span>
-                {h.name} {actionLabels[h.action] || h.action}了第 {h.step} 關
-                {h.comments && <span className="block pl-4 text-muted-foreground">「{h.comments}」</span>}
-                {h.revised && <span className="block pl-4 text-amber-700">審核人修改：{h.revised}</span>}
-              </li>
-            ))}
-            {req.status === "Cancelled" && <li className="text-muted-foreground">單據已取消，這筆審批自動撤銷</li>}
-          </ul>
-        </div>
-      </div>
-
-      {isOpen(req.status) && (
-        <div className="space-y-3 border-t bg-background px-5 py-4">
+    <DocWindow
+      open onClose={onClose} name="審批內容" number={number ?? req.documentNumber}
+      status={<>
+        <Badge variant="secondary">{docTypeLabels[req.documentType] || req.documentType}</Badge>
+        <Badge variant={statusColors[req.status] as any}>{statusLabels[req.status] || req.status}</Badge>
+      </>}
+      footer={isOpen(req.status) ? (
+        <div className="w-full space-y-3">
           {data.canDecide ? (
             <>
               <div className="space-y-1.5">
@@ -210,8 +103,91 @@ function ApprovalDetail({ id, onClose }: { id: number; onClose: () => void }) {
             <p className="text-sm text-muted-foreground">{data.decideBlockedReason}</p>
           )}
         </div>
+      ) : <Button variant="outline" onClick={onClose}>關閉</Button>}
+    >
+      {doc?.status && <p className="text-xs text-muted-foreground">單據狀態：{docStatusLabels[doc.status] || doc.status}</p>}
+
+      {doc?.amount != null && (
+        <div>
+          <p className="text-xs text-muted-foreground">金額</p>
+          <p className="text-2xl font-semibold tabular-nums">{money(doc.amount)}</p>
+        </div>
       )}
-    </div>
+
+      {data.documentMissing ? (
+        <p className="rounded-md border border-dashed px-3 py-4 text-sm text-muted-foreground">找不到這張單據（可能已經刪除）。</p>
+      ) : (
+        <DocFields items={doc.fields as [string, string][]} />
+      )}
+
+      {doc?.lines?.length > 0 && <DocLines columns={lineColumns} rows={doc.lines as any[]} />}
+
+      {doc?.change && (
+        <div className="rounded-md border p-3">
+          <ChangeReview change={doc.change} editable={isOpen(req.status) && data.canDecide && doc.change.kind === "edit"} onChange={setRevised} />
+        </div>
+      )}
+
+      <DocNote label={req.documentType === "Leave" ? "請假原因" : req.documentType === "ChangeRequest" ? "申請原因" : "說明"}>{doc?.remarks}</DocNote>
+
+      {data.attachments?.length > 0 && (
+        <DocSection title={`附件（${data.attachments.length}）`}>
+          <div className="grid grid-cols-3 gap-2">
+            {(data.attachments as any[]).map(a => {
+              const href = api(`approval-requests/${id}/attachments/${a.id}`);
+              const isImage = /^image\//.test(a.fileType || "");
+              return (
+                <a key={a.id} href={href} target="_blank" rel="noopener noreferrer" title={a.fileName} className="group overflow-hidden rounded-md border bg-muted/30 hover:border-primary">
+                  {isImage
+                    ? <img src={href} alt={a.fileName} loading="lazy" className="aspect-square w-full object-cover" />
+                    : <div className="flex aspect-square w-full items-center justify-center p-2 text-center text-xs text-muted-foreground"><FileText size={22} className="mb-1 block" /></div>}
+                  <p className="truncate px-1.5 py-1 text-[11px] text-muted-foreground group-hover:text-foreground">{a.fileName}</p>
+                </a>
+              );
+            })}
+          </div>
+        </DocSection>
+      )}
+      {req.documentType === "PaymentRequest" && !data.documentMissing && !(data.attachments?.length > 0) && (
+        <p className="text-xs text-muted-foreground">這張單沒有附收據或發票。</p>
+      )}
+
+      {doc?.link && (
+        <Link href={doc.link} className="inline-flex items-center gap-1 text-sm text-primary hover:underline" onClick={onClose}>
+          打開完整單據<ExternalLink size={13} />
+        </Link>
+      )}
+
+      <DocSection title={`審批關卡${req.workflowName ? `（${req.workflowName}）` : ""}`}>
+        <ol className="space-y-2">
+          {data.steps.map((s: any) => (
+            <li key={s.step} className="flex items-center gap-2 text-sm">
+              {s.state === "done" ? <Check size={16} className="text-emerald-600" /> : s.state === "rejected" ? <X size={16} className="text-destructive" /> : s.state === "cancelled" ? <Ban size={16} className="text-muted-foreground" /> : <Circle size={16} className={s.state === "current" ? "text-amber-500" : "text-muted-foreground"} />}
+              <span className={s.state === "current" ? "font-medium" : ""}>第 {s.step} 關：{s.label}</span>
+              {s.state === "current" && <Badge variant="outline" className="text-xs">輪到這關</Badge>}
+              {s.note && <span className="text-xs text-muted-foreground">{s.note}</span>}
+            </li>
+          ))}
+        </ol>
+        {!req.workflowId && req.documentType === "ChangeRequest" && <p className="mt-2 text-xs text-muted-foreground">異動申請沒設流程時，由財務或超級管理員其中一位核准；財務提出的由超級管理員核准。</p>}
+        {!req.workflowId && req.documentType !== "ChangeRequest" && <p className="mt-2 text-xs text-amber-700">這類單據還沒設定審批流程，所以任何主管都能審，而且不審也不會擋住後續作業。可到「系統管理 › 審批流程」設定。</p>}
+      </DocSection>
+
+      <DocSection title="歷程">
+        <ul className="space-y-1.5 text-sm">
+          <li className="text-muted-foreground">{new Date(req.createdAt).toLocaleString("zh-TW")}　{req.requestedBy} 送出申請</li>
+          {(data.history as any[]).map((h, i) => (
+            <li key={i}>
+              <span className="text-muted-foreground">{h.at ? new Date(h.at).toLocaleString("zh-TW") : ""}　</span>
+              {h.name} {actionLabels[h.action] || h.action}了第 {h.step} 關
+              {h.comments && <span className="block pl-4 text-muted-foreground">「{h.comments}」</span>}
+              {h.revised && <span className="block pl-4 text-amber-700">審核人修改：{h.revised}</span>}
+            </li>
+          ))}
+          {req.status === "Cancelled" && <li className="text-muted-foreground">單據已取消，這筆審批自動撤銷</li>}
+        </ul>
+      </DocSection>
+    </DocWindow>
   );
 }
 
@@ -246,7 +222,7 @@ export default function ApprovalRequests() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="審批請求" description="點任何一筆就能看完整內容，在右邊直接核准或駁回。" />
+      <PageHeader title="審批請求" description="點任何一筆就能看完整內容，在視窗裡直接核准或駁回。" />
 
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="審批篩選">
         {([["mine", "輪到我審", counts.mine], ["open", "全部待審", counts.open], ["all", "全部紀錄", counts.all]] as [Tab, string, number][]).map(([key, label, n]) => (
@@ -311,12 +287,7 @@ export default function ApprovalRequests() {
         </CardContent>
       </Card>
 
-      <Sheet open={openId != null} onOpenChange={o => { if (!o) setOpenId(null); }}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
-          <SheetHeader className="border-b px-5 py-4"><SheetTitle>審批內容</SheetTitle></SheetHeader>
-          {openId != null && <ApprovalDetail key={openId} id={openId} onClose={() => setOpenId(null)} />}
-        </SheetContent>
-      </Sheet>
+      {openId != null && <ApprovalDetail key={openId} id={openId} number={requests.find(r => r.id === openId)?.documentNumber} onClose={() => setOpenId(null)} />}
     </div>
   );
 }

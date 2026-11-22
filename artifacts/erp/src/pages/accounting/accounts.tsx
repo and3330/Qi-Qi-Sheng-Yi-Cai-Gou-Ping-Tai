@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Search, FolderOpen, FileText, Plus, Pencil, RefreshCw, AlertTriangle, Loader2 } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
 import { BatchActionBar } from "@/components/shared/batch-action-bar";
@@ -379,11 +380,18 @@ export default function AccountsPage() {
         </Card>
       ))}
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="md:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "編輯科目" : "新增科目"}</DialogTitle>
-          </DialogHeader>
+      <DocWindow
+        open={showDialog}
+        onClose={() => setShowDialog(false)}
+        name={editingId ? "編輯科目" : "新增科目"}
+        number={editingId ? form.accountNumber : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "儲存中..." : "儲存"}
+          </Button>
+        </>}
+      >
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">科目編號 *</label>
@@ -456,14 +464,7 @@ export default function AccountsPage() {
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "儲存中..." : "儲存"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       {canRepairYubonAccounts && (
         <Dialog open={repairOpen} onOpenChange={setRepairOpen}>

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Banknote, Plus } from "lucide-react";
 import { call, money, post, selectClass, todayText } from "@/lib/call";
@@ -207,9 +208,16 @@ export function ChannelsTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={viewing !== null} onOpenChange={(o) => { if (!o) setViewing(null); }}>
-        <DialogContent className="md:max-w-3xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{viewing?.name}的帳款</DialogTitle><DialogDescription>{showSettled ? "已經被撥款沖掉的帳款，以及每一筆實際被扣的手續費。" : "還在通路手上、還沒撥進銀行的錢。退款是負數，會從之後的撥款扣回。"}</DialogDescription></DialogHeader>
+      {/* 一家通路的帳款明細：通路名稱放在單號的位置，版面固定存在「通路帳款」底下 */}
+      <DocWindow
+        open={viewing !== null} onClose={() => setViewing(null)} wide
+        name="通路帳款" layoutKey="通路帳款" number={viewing?.name}
+        description={showSettled ? "已經被撥款沖掉的帳款，以及每一筆實際被扣的手續費。" : "還在通路手上、還沒撥進銀行的錢。退款是負數，會從之後的撥款扣回。"}
+        footer={<>
+            {viewing?.startDate && <Button variant="ghost" className="md:mr-auto" onClick={() => { setPicked(new Set()); setLegacyFor(viewing); setViewing(null); }} data-testid="button-legacy-orders">轉入啟用日前的訂單</Button>}
+            <Button variant="outline" onClick={() => setViewing(null)}>關閉</Button>
+        </>}
+      >
           <div className="flex gap-2">
             <Button size="sm" variant={showSettled ? "outline" : "default"} className="h-9" onClick={() => setShowSettled(false)}>還沒撥款</Button>
             <Button size="sm" variant={showSettled ? "default" : "outline"} className="h-9" onClick={() => setShowSettled(true)}>已沖銷</Button>
@@ -226,12 +234,7 @@ export function ChannelsTab() {
               ]}
             />
           </div>
-          <DialogFooter className="gap-2">
-            {viewing?.startDate && <Button variant="ghost" className="md:mr-auto" onClick={() => { setPicked(new Set()); setLegacyFor(viewing); setViewing(null); }} data-testid="button-legacy-orders">轉入啟用日前的訂單</Button>}
-            <Button variant="outline" onClick={() => setViewing(null)}>關閉</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       <Dialog open={legacyFor !== null} onOpenChange={(o) => { if (!o) setLegacyFor(null); }}>
         <DialogContent className="md:max-w-2xl max-h-[92dvh] overflow-y-auto">

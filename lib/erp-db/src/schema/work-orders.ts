@@ -5,6 +5,8 @@ import { z } from "zod/v4";
 import { itemsTable } from "./items";
 import { bomsTable } from "./bom";
 import { salesOrdersTable } from "./sales-orders";
+import { customersTable } from "./customers";
+import { employeesTable } from "./employees";
 
 export const workOrdersTable = pgTable("work_orders", {
   tenantId: integer("tenant_id").notNull().default(sql`(current_setting('app.tenant_id'::text))::integer`),
@@ -13,6 +15,9 @@ export const workOrdersTable = pgTable("work_orders", {
   bomId: integer("bom_id").notNull().references(() => bomsTable.id),
   itemId: integer("item_id").notNull().references(() => itemsTable.id),
   salesOrderId: integer("sales_order_id").references(() => salesOrdersTable.id),
+  // 這張工單是幫哪個客戶做的、誰承辦（都選填；從銷貨單帶入時客戶會跟著帶）
+  customerId: integer("customer_id").references(() => customersTable.id),
+  handlerId: integer("handler_id").references(() => employeesTable.id),
   plannedQuantity: numeric("planned_quantity", { precision: 12, scale: 2 }).notNull(),
   completedQuantity: numeric("completed_quantity", { precision: 12, scale: 2 }).notNull().default("0"),
   // 已計入成品成本的人工與製造費用累計（工時表 + 工作站時數）

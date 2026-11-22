@@ -27,7 +27,7 @@ router.post("/warehouses", async (req, res): Promise<void> => {
 });
 
 /** 編輯倉庫：名稱、地點、啟用／停用。停用只是開單時不再出現，原本的庫存紀錄與單據都還在 */
-router.patch("/warehouses/:id", requireRole("owner", "admin", "manager", "finance_admin"), async (req, res): Promise<void> => {
+router.patch("/warehouses/:id", requireRole("owner", "admin", "manager", "finance_admin", "warehouse"), async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "倉庫編號格式不正確" }); return; }
   const set: Record<string, unknown> = {};

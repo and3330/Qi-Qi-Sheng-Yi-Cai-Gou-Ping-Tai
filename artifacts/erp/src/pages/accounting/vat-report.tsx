@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
+import { useLocation } from "wouter";
+import { JournalEntryDialog } from "@/components/accounting/journal-entry-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageHint } from "@/components/page-hint";
 import { DataTable } from "@/components/shared/data-table";
@@ -25,6 +27,14 @@ function initialPeriod() {
 }
 
 export default function VatReportPage() {
+  const [, navigate] = useLocation();
+  const [entryId, setEntryId] = useState<number | null>(null);
+  // 點一列就開原單：發票和折讓開發票、代墊開代墊款、進貨運費開那張分錄
+  const openRow = (row: any) => {
+    if (row.kind === "advance") navigate(`/accounting/advances?open=${row.id - 1_000_000_000}`);
+    else if (row.kind === "landed_cost") setEntryId(row.id - 2_000_000_000);
+    else navigate(`/accounting/invoices?open=${row.id}`);
+  };
   const initial = useMemo(initialPeriod, []);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
@@ -124,8 +134,9 @@ export default function VatReportPage() {
       </CardContent>
     </Card>}
     <Card><CardHeader><CardTitle>銷項發票與折讓（未稅銷售額 {money(data?.salesTotal)}）</CardTitle></CardHeader>
-      <CardContent className="p-0 overflow-x-auto"><DataTable data={data?.outputInvoices || []} columns={columns} isLoading={isLoading} /></CardContent></Card>
+      <CardContent className="p-0 overflow-x-auto"><DataTable data={data?.outputInvoices || []} columns={columns} isLoading={isLoading} onRowClick={openRow} /></CardContent></Card>
     <Card><CardHeader><CardTitle>進項發票、折讓與代墊（未稅進貨額 {money(data?.purchasesTotal)}）</CardTitle></CardHeader>
-      <CardContent className="p-0 overflow-x-auto"><DataTable data={data?.inputInvoices || []} columns={columns} isLoading={isLoading} /></CardContent></Card>
+      <CardContent className="p-0 overflow-x-auto"><DataTable data={data?.inputInvoices || []} columns={columns} isLoading={isLoading} onRowClick={openRow} /></CardContent></Card>
+    <JournalEntryDialog entryId={entryId} onClose={() => setEntryId(null)} />
   </div>;
 }

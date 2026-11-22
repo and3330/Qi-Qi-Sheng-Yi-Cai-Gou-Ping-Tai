@@ -10,7 +10,9 @@ import { sql } from "drizzle-orm";
 export type DocType =
   | "quotation" | "sales_order" | "delivery_note" | "sales_return"
   | "rfq" | "purchase_order" | "purchase_receipt" | "purchase_return"
-  | "invoice" | "payment_request" | "voucher" | "advance" | "stock_count" | "work_order";
+  | "invoice" | "payment_request" | "voucher" | "advance" | "stock_count" | "work_order"
+  | "material_request" | "subcontract_order" | "service_fee" | "asset" | "stock_entry" | "salary_slip"
+  | "recurring_invoice" | "legacy_document";
 
 export interface RelatedDoc {
   group: "source" | "next" | "entry";
@@ -25,7 +27,7 @@ export interface RelatedDoc {
   href: string | null;
 }
 
-interface Meta { table: string; number: string; date: string | null; amount: string | null; label: string; kind?: string; href: (id: number, number: string, kind: string | null) => string | null }
+interface Meta { table: string; number: string; date: string | null; amount: string | null; label: string; kind?: string; /** 狀態欄位不叫 status 的表 */ status?: string; /** kind 不在 KIND_LABEL 裡時，用它組出顯示名稱 */ kindLabel?: (kind: string) => string; href: (id: number, number: string, kind: string | null) => string | null }
 
 const META: Record<DocType, Meta> = {
   quotation: { table: "quotations", number: "quotation_number", date: "quotation_date", amount: "grand_total", label: "報價單", href: id => `/sales/quotations?open=${id}` },
@@ -47,8 +49,22 @@ const META: Record<DocType, Meta> = {
   },
   advance: { table: "advances", number: "advance_number", date: "entry_date", amount: "amount", label: "代墊款", kind: "kind", href: id => `/accounting/advances?open=${id}` },
   stock_count: { table: "stock_counts", number: "count_number", date: "count_date", amount: null, label: "盤點單", href: id => `/inventory/stock-counts?open=${id}` },
-  work_order: { table: "work_orders", number: "work_order_number", date: "planned_start_date", amount: null, label: "工單", href: () => null },
+  work_order: { table: "work_orders", number: "work_order_number", date: "planned_start_date", amount: null, label: "工單", href: id => `/manufacturing/work-orders?open=${id}` },
+  material_request: { table: "material_requests", number: "request_number", date: "request_date", amount: null, label: "請購單", href: id => `/purchasing/material-requests?open=${id}` },
+  subcontract_order: { table: "subcontract_orders", number: "order_number", date: "order_date", amount: "fee_amount", label: "外包單", href: id => `/manufacturing/subcontract-orders?open=${id}` },
+  service_fee: { table: "service_fees", number: "fee_number", date: "service_date", amount: "amount", label: "服務費", href: () => "/hr/service-fees" },
+  asset: { table: "assets", number: "asset_number", date: "purchase_date", amount: "purchase_cost", label: "固定資產", href: id => `/assets/register?open=${id}` },
+  // 庫存異動和薪資單沒有單號欄位：用編號和年月組一個看得懂的名稱
+  stock_entry: { table: "stock_entries", number: "('異動 #' || id)", date: "created_at", amount: "amount", status: "entry_type", label: "庫存異動", href: () => "/inventory/stock" },
+  salary_slip: { table: "salary_slips", number: "(year || ' 年 ' || month || ' 月薪資')", date: "NULL", amount: "net_salary", label: "薪資單", href: () => "/hr/salary-slips" },
+  // 定期發票範本沒有單號：用名稱；狀態是「使用中／已停用」
+  recurring_invoice: { table: "recurring_invoices", number: "name", date: "next_run_date", amount: null, status: "(CASE WHEN is_active THEN 'InUse' ELSE 'Disabled' END)", label: "定期發票", href: id => `/accounting/recurring-invoices?open=${id}` },
+  // 歷史單據（Ecount 原始單）：沒有狀態，名稱用舊系統的單據種類（歷史銷貨單、歷史進貨單…）
+  legacy_document: { table: "legacy_documents", number: "doc_number", date: "doc_date", amount: "total", status: "NULL", kind: "doc_type", kindLabel: kind => `歷史${kind}`, label: "歷史單據", href: id => `/system/legacy-documents?open=${id}` },
 };
+
+/** 只有財務角色能看的種類（歷史單據裡有薪資與出勤、定期發票頁只開給財務）：其他角色查不到，也不會出現在別張單的關聯裡 */
+const FINANCE_ONLY = new Set<DocType>(["recurring_invoice", "legacy_document"]);
 
 export const isDocType = (t: string): t is DocType => Object.prototype.hasOwnProperty.call(META, t);
 
@@ -64,7 +80,36 @@ interface Edge { from: DocType; to: DocType; query: (id: number) => ReturnType<t
 const idsFrom = (table: string, where: string) => (id: number) => sql`SELECT id FROM ${sql.raw(table)} WHERE ${sql.raw(where)} = ${id} ORDER BY id LIMIT 50`;
 const pointer = (table: string, column: string) => (id: number) => sql`SELECT ${sql.raw(column)} AS id FROM ${sql.raw(table)} WHERE id = ${id} AND ${sql.raw(column)} IS NOT NULL`;
 
+/**
+ * 搬進來的歷史單（銷貨單、報價單、採購單、進貨單）在 extra_fields 記著舊系統的單號（legacyDocNumber）和來源（legacySource）；
+ * 歷史單據表用「來源＋種類＋單號」當唯一鍵，所以種類固定之後對得到的最多就是一張，不用猜。
+ */
+const LEGACY_LINKS: Array<{ type: DocType; table: string; docType: string }> = [
+  { type: "sales_order", table: "sales_orders", docType: "銷貨單" },
+  { type: "quotation", table: "quotations", docType: "報價單" },
+  { type: "purchase_order", table: "purchase_orders", docType: "採購單" },
+  { type: "purchase_receipt", table: "purchase_receipts", docType: "進貨單" },
+];
+const LEGACY_JOIN = "s.tenant_id = d.tenant_id AND s.extra_fields->>'legacyDocNumber' = d.doc_number AND s.extra_fields->>'legacySource' = d.source";
+const legacyOf = (table: string, docType: string) => (id: number) =>
+  sql`SELECT d.id FROM legacy_documents d JOIN ${sql.raw(table)} s ON ${sql.raw(LEGACY_JOIN)} WHERE s.id = ${id} AND d.doc_type = ${docType} ORDER BY d.id LIMIT 5`;
+const migratedFrom = (table: string, docType: string) => (id: number) =>
+  sql`SELECT s.id FROM ${sql.raw(table)} s JOIN legacy_documents d ON ${sql.raw(LEGACY_JOIN)} WHERE d.id = ${id} AND d.doc_type = ${docType} ORDER BY s.id LIMIT 50`;
+/** 歷史收款單沒有 extra_fields，舊單號記在每一行明細上（items[].legacyDocNumber） */
+const VOUCHER_LEGACY_JOIN = "v.tenant_id = d.tenant_id AND v.voucher_type = 'Receipt' AND jsonb_typeof(v.items) = 'array' AND v.items @> jsonb_build_array(jsonb_build_object('legacy', true, 'legacyDocNumber', d.doc_number, 'legacySource', d.source))";
+const LEGACY_RECEIPT = "收款單";
+
 /** 往上：這張單的來源 */
+/** 收付款單明細裡綁的訂單（欄位名稱是程式內固定的兩個常數，不是使用者輸入） */
+const orderIdsOfVoucher = (id: number, key: "salesOrderId" | "purchaseOrderId") => sql`
+  SELECT DISTINCT (l->>${key})::int AS id
+  FROM vouchers v, jsonb_array_elements(CASE WHEN jsonb_typeof(v.items) = 'array' THEN v.items ELSE '[]'::jsonb END) AS l
+  WHERE v.id = ${id} AND l->>${key} ~ '^[0-9]+$' ORDER BY 1 LIMIT 50`;
+const vouchersOfOrder = (id: number, key: "salesOrderId" | "purchaseOrderId") => sql`
+  SELECT v.id FROM vouchers v
+  WHERE jsonb_typeof(v.items) = 'array' AND v.items @> jsonb_build_array(jsonb_build_object(${key}::text, ${id}::int))
+  ORDER BY v.id LIMIT 50`;
+
 const UP: Edge[] = [
   { from: "sales_order", to: "quotation", query: pointer("sales_orders", "quotation_id") },
   { from: "delivery_note", to: "sales_order", query: pointer("delivery_notes", "sales_order_id") },
@@ -81,6 +126,16 @@ const UP: Edge[] = [
   { from: "invoice", to: "purchase_order", query: pointer("invoices", "purchase_order_id") },
   { from: "payment_request", to: "invoice", query: pointer("payment_requests", "invoice_id") },
   { from: "voucher", to: "invoice", query: id => sql`SELECT DISTINCT invoice_id AS id FROM invoice_settlements WHERE voucher_id = ${id} ORDER BY 1 LIMIT 50` },
+  // 收款單、付款單的明細可以直接綁銷貨單、採購單（還沒開發票就先收、先付，或沖舊系統帶來的欠款）
+  { from: "voucher", to: "sales_order", query: id => orderIdsOfVoucher(id, "salesOrderId") },
+  { from: "voucher", to: "purchase_order", query: id => orderIdsOfVoucher(id, "purchaseOrderId") },
+  { from: "purchase_order", to: "material_request", query: idsFrom("material_requests", "purchase_order_id") },
+  { from: "invoice", to: "subcontract_order", query: pointer("invoices", "subcontract_order_id") },
+  { from: "service_fee", to: "sales_order", query: pointer("service_fees", "sales_order_id") },
+  // 定期發票只記最後開出的那一張（last_invoice_id）
+  { from: "invoice", to: "recurring_invoice", query: idsFrom("recurring_invoices", "last_invoice_id") },
+  ...LEGACY_LINKS.map(l => ({ from: l.type, to: "legacy_document" as const, query: legacyOf(l.table, l.docType) })),
+  { from: "voucher", to: "legacy_document", query: id => sql`SELECT d.id FROM legacy_documents d JOIN vouchers v ON ${sql.raw(VOUCHER_LEGACY_JOIN)} WHERE v.id = ${id} AND d.doc_type = ${LEGACY_RECEIPT} ORDER BY d.id LIMIT 5` },
 ];
 
 /** 往下：這張單產生的後續單據 */
@@ -100,17 +155,26 @@ const DOWN: Edge[] = [
   { from: "purchase_return", to: "invoice", query: pointer("purchase_returns", "debit_note_invoice_id") },
   { from: "invoice", to: "payment_request", query: idsFrom("payment_requests", "invoice_id") },
   { from: "invoice", to: "voucher", query: id => sql`SELECT DISTINCT voucher_id AS id FROM invoice_settlements WHERE invoice_id = ${id} AND voucher_id IS NOT NULL ORDER BY 1 LIMIT 50` },
+  { from: "sales_order", to: "voucher", query: id => vouchersOfOrder(id, "salesOrderId") },
+  { from: "purchase_order", to: "voucher", query: id => vouchersOfOrder(id, "purchaseOrderId") },
+  { from: "material_request", to: "purchase_order", query: pointer("material_requests", "purchase_order_id") },
+  { from: "subcontract_order", to: "invoice", query: idsFrom("invoices", "subcontract_order_id") },
+  { from: "sales_order", to: "service_fee", query: idsFrom("service_fees", "sales_order_id") },
+  { from: "recurring_invoice", to: "invoice", query: pointer("recurring_invoices", "last_invoice_id") },
+  ...LEGACY_LINKS.map(l => ({ from: "legacy_document" as const, to: l.type, query: migratedFrom(l.table, l.docType) })),
+  { from: "legacy_document", to: "voucher", query: id => sql`SELECT v.id FROM vouchers v JOIN legacy_documents d ON ${sql.raw(VOUCHER_LEGACY_JOIN)} WHERE d.id = ${id} AND d.doc_type = ${LEGACY_RECEIPT} ORDER BY v.id LIMIT 50` },
 ];
 
 /** 分錄編號尾巴的來源代碼（JE-xxxxxxxx-DN12、JE-xxxxxxxx-PQV7…）；跟 auto-entry-text 的寫法一致 */
 const ENTRY_KEYS: Partial<Record<DocType, string[]>> = {
   sales_order: ["SO"], delivery_note: ["DN"], sales_return: ["SR"], purchase_receipt: ["PR"], purchase_return: ["PRR"],
   invoice: ["I", "W"], payment_request: ["PQ", "PQV"], voucher: ["RB"], advance: ["ADV"], stock_count: ["SC"], work_order: ["WO"],
+  subcontract_order: ["SUB"], service_fee: ["SF", "SFP", "SFV"], stock_entry: ["SE"],
 };
 /** 單據上直接記著分錄編號的欄位 */
 const ENTRY_COLUMNS: Partial<Record<DocType, string[]>> = {
   sales_order: ["journal_entry_id"], delivery_note: ["cogs_journal_entry_id"], invoice: ["journal_entry_id", "write_off_journal_entry_id"],
-  voucher: ["journal_entry_id"], advance: ["journal_entry_id"],
+  voucher: ["journal_entry_id"], advance: ["journal_entry_id"], service_fee: ["journal_entry_id", "payment_journal_entry_id"],
 };
 
 const MAX_NODES = 120;
@@ -150,14 +214,14 @@ async function describe(executor: any, group: "source" | "next", nodes: Node[]):
   for (const type of types) {
     const m = META[type];
     const ids = nodes.filter(n => n.type === type).map(n => n.id);
-    const rows = rowsOf(await executor.execute(sql`SELECT id, ${sql.raw(m.number)} AS number, ${sql.raw(m.date ?? "NULL")} AS date, status,
+    const rows = rowsOf(await executor.execute(sql`SELECT id, ${sql.raw(m.number)} AS number, ${sql.raw(m.date ?? "NULL")} AS date, ${sql.raw(m.status ?? "status")} AS status,
       ${sql.raw(m.amount ?? "NULL")} AS amount, ${sql.raw(m.kind ?? "NULL")} AS kind
       FROM ${sql.raw(m.table)} WHERE id IN (${sql.join(ids.map(i => sql`${i}`), sql`, `)})`));
     for (const r of rows) {
       const kind = r.kind == null ? null : String(r.kind);
       const number = String(r.number ?? "");
       found.set(`${type}:${r.id}`, {
-        group, type, id: Number(r.id), label: (kind && KIND_LABEL[kind]) || m.label, number,
+        group, type, id: Number(r.id), label: (kind && (KIND_LABEL[kind] ?? m.kindLabel?.(kind))) || m.label, number,
         date: dateText(r.date), status: r.status == null ? null : String(r.status),
         amount: r.amount == null ? null : Number(r.amount), href: m.href(Number(r.id), number, kind),
       });
@@ -193,6 +257,14 @@ async function entriesOf(executor: any, node: Node): Promise<RelatedDoc[]> {
   if (keys.length > 0) patterns.push(`-(${keys.join("|")})${node.id}(-[A-Z0-9]+)?$`);
   if (node.type === "voucher") patterns.push(`^JE-V${node.id}-`);
   if (node.type === "advance") patterns.push(`^JE-ADV${node.id}-`);
+  if (node.type === "asset") {
+    patterns.push(`^JE-AST${node.id}-`);
+    // 折舊、價值調整的分錄記在各自的紀錄上
+    for (const table of ["asset_depreciation_entries", "asset_value_adjustments"]) {
+      for (const r of rowsOf(await executor.execute(sql`SELECT journal_entry_id AS id FROM ${sql.raw(table)} WHERE asset_id = ${node.id} AND journal_entry_id IS NOT NULL ORDER BY id DESC LIMIT 60`))) ids.add(Number(r.id));
+    }
+  }
+  if (node.type === "salary_slip") patterns.push(`^JE-SAL-[0-9]{6}-${node.id}$`);
   for (const p of patterns) {
     for (const r of rowsOf(await executor.execute(sql`SELECT id FROM journal_entries WHERE entry_number ~ ${p} ORDER BY id LIMIT 50`))) ids.add(Number(r.id));
   }
@@ -210,12 +282,14 @@ async function entriesOf(executor: any, node: Node): Promise<RelatedDoc[]> {
   }));
 }
 
-/** includeEntries：只有財務角色看得到分錄 */
+/** includeEntries：只有財務角色看得到分錄，以及只開給財務的種類（歷史單據、定期發票） */
 export async function relatedDocuments(executor: any, type: DocType, id: number, includeEntries: boolean): Promise<RelatedDoc[]> {
+  if (!includeEntries && FINANCE_ONLY.has(type)) return [];
   const start = { type, id };
   const seen = new Set<string>([`${type}:${id}`]);
-  const up = await walk(executor, start, UP, seen);
-  const down = await walk(executor, start, DOWN, seen);
+  const visible = (edges: Edge[]) => (includeEntries ? edges : edges.filter(e => !FINANCE_ONLY.has(e.from) && !FINANCE_ONLY.has(e.to)));
+  const up = await walk(executor, start, visible(UP), seen);
+  const down = await walk(executor, start, visible(DOWN), seen);
   return [
     ...(up.length ? await describe(executor, "source", up) : []),
     ...(down.length ? await describe(executor, "next", down) : []),

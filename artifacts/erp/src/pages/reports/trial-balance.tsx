@@ -12,6 +12,7 @@ import { ExportMenu } from "@/components/shared/export-menu";
 import { MobileCard, MobileCardHeader, MobileCardGrid, MobileCardItem, MobileTotalCard } from "@/components/shared/mobile-card";
 import type { ExportOptions } from "@/lib/export-utils";
 import type { TrialBalanceData, TrialBalanceRow } from "./types";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
@@ -21,6 +22,9 @@ export default function TrialBalancePage() {
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [data, setData] = useState<TrialBalanceData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  // 這次查詢實際用的期間（點數字看明細時要用同一組）
+  const [queried, setQueried] = useState({ startDate, endDate });
 
   const fetchReport = async () => {
     setLoading(true);
@@ -31,6 +35,7 @@ export default function TrialBalancePage() {
       const res = await fetch(`/erp-api/reports/trial-balance?${params}`);
       if (!res.ok) throw new Error("API error");
       setData(await res.json());
+      setQueried({ startDate, endDate });
     } catch { setData(null); }
     setLoading(false);
   };
@@ -38,6 +43,11 @@ export default function TrialBalancePage() {
   useEffect(() => { fetchReport(); }, [reloadKey]);
 
   const fmt = (n: number) => fmtMoney(n, true);
+
+  // 點數字看明細：金額不是 0 才可以點
+  const amount = (r: TrialBalanceRow, value: number) => value !== 0
+    ? <DrillAmount onClick={() => setDrill({ title: `${r.accountNumber} ${r.accountName}`, accountIds: [r.accountId], startDate: queried.startDate, endDate: queried.endDate })}>{fmt(value)}</DrillAmount>
+    : fmt(value);
 
   const buildExport = (): ExportOptions => {
     if (!data) return { title: "", subtitle: "", fileName: "", headers: [], columnKeys: [], rows: [] };
@@ -104,16 +114,16 @@ export default function TrialBalancePage() {
                   <div className="mb-2 pb-2 border-b border-gray-100">
                     <div className="text-xs font-semibold text-gray-500 mb-1">發生額</div>
                     <MobileCardGrid>
-                      <MobileCardItem label="借方" value={fmt(r.debit)} valueClass="font-mono text-gray-600" />
-                      <MobileCardItem label="貸方" value={fmt(r.credit)} valueClass="font-mono text-gray-600" />
+                      <MobileCardItem label="借方" value={amount(r, r.debit)} valueClass="font-mono text-gray-600" />
+                      <MobileCardItem label="貸方" value={amount(r, r.credit)} valueClass="font-mono text-gray-600" />
                     </MobileCardGrid>
                   </div>
                   
                   <div>
                     <div className="text-xs font-semibold text-gray-500 mb-1">餘額</div>
                     <MobileCardGrid>
-                      <MobileCardItem label="借方" value={fmt(r.debitBalance)} valueClass="font-mono text-blue-600 font-medium" />
-                      <MobileCardItem label="貸方" value={fmt(r.creditBalance)} valueClass="font-mono text-blue-600 font-medium" />
+                      <MobileCardItem label="借方" value={amount(r, r.debitBalance)} valueClass="font-mono text-blue-600 font-medium" />
+                      <MobileCardItem label="貸方" value={amount(r, r.creditBalance)} valueClass="font-mono text-blue-600 font-medium" />
                     </MobileCardGrid>
                   </div>
                 </MobileCard>
@@ -160,10 +170,10 @@ export default function TrialBalancePage() {
                       <td className="px-4 py-1.5 font-mono text-xs text-gray-500">{r.accountNumber}</td>
                       <td className="px-4 py-1.5">{r.accountName}</td>
                       <td className="px-4 py-1.5 hidden md:table-cell text-gray-500 text-xs">{typeLabel[r.accountType] || r.accountType}</td>
-                      <td className="px-4 py-1.5 text-right font-mono">{fmt(r.debit)}</td>
-                      <td className="px-4 py-1.5 text-right font-mono">{fmt(r.credit)}</td>
-                      <td className="px-4 py-1.5 text-right font-mono text-blue-600">{fmt(r.debitBalance)}</td>
-                      <td className="px-4 py-1.5 text-right font-mono text-blue-600">{fmt(r.creditBalance)}</td>
+                      <td className="px-4 py-1.5 text-right font-mono">{amount(r, r.debit)}</td>
+                      <td className="px-4 py-1.5 text-right font-mono">{amount(r, r.credit)}</td>
+                      <td className="px-4 py-1.5 text-right font-mono text-blue-600">{amount(r, r.debitBalance)}</td>
+                      <td className="px-4 py-1.5 text-right font-mono text-blue-600">{amount(r, r.creditBalance)}</td>
                     </tr>
                   ))}
                   <tr className="border-t-2 bg-gray-100 font-bold">
@@ -181,6 +191,8 @@ export default function TrialBalancePage() {
       )}
 
       {!data && !loading && <Card><CardContent className="py-12 text-center text-gray-400">點擊查詢以產生試算表</CardContent></Card>}
+
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

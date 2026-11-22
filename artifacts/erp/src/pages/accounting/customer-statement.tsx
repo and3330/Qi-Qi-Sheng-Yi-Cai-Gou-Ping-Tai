@@ -199,7 +199,7 @@ function RowGroup({ inv }: { inv: StatementInvoice }) {
         <td className="px-4 py-2 font-mono text-xs">
           {inv.salesOrderId
             ? <Link href={`/sales/orders/${inv.salesOrderId}`} className="text-blue-600 hover:underline">{inv.invoiceNumber}</Link>
-            : inv.invoiceNumber}
+            : <Link href={`/sales/invoices?open=${inv.id}`} className="text-blue-600 hover:underline">{inv.invoiceNumber}</Link>}
         </td>
         <td className="px-4 py-2">{inv.invoiceDate}</td>
         <td className="px-4 py-2">{inv.dueDate || "-"}</td>
@@ -214,7 +214,7 @@ function RowGroup({ inv }: { inv: StatementInvoice }) {
             <span className="mr-2">沖銷紀錄：</span>
             {inv.applied.map(a => (
               <span key={a.id} className="inline-block mr-3">
-                {a.voucherDate} <span className="font-mono">{a.voucherNumber}</span> -{fmt(a.amount)}
+                {a.voucherDate} {a.voucherNumber ? <Link href={`/accounting/receipts?search=${encodeURIComponent(a.voucherNumber)}`} className="font-mono text-blue-600 hover:underline">{a.voucherNumber}</Link> : <span className="font-mono">{a.voucherNumber}</span>} -{fmt(a.amount)}
               </span>
             ))}
           </td>

@@ -6,6 +6,7 @@ import { requireAuth, requireRole, sessionEmployeeScope } from "../middleware/re
 import { ListLeavesQueryParams, CreateLeaveBody, ApproveLeaveParams, ApproveLeaveBody } from "@workspace/erp-api-zod";
 import { LEAVE_TYPES, countLeaveDays, isDateString, leaveLimitProblem, leaveTypeRule, taipeiToday, type DayPart } from "../lib/hr-rules";
 import { ANNUAL_LEAVE, annualBalanceFor, annualOverview, ensureAnnualGrants, leavesOfYear, loadHolidays } from "../lib/hr-data";
+import { machineOnly } from "../lib/api-key-user";
 
 const router: IRouter = Router();
 router.use("/leaves", requireAuth);
@@ -14,7 +15,7 @@ const HR_ROLES = ["owner", "admin", "hr_admin"] as const;
 const APPROVER_ROLES = [...HR_ROLES, "manager"] as const;
 
 function hasRole(req: Request, roles: readonly string[]): boolean {
-  if ((req as any).apiKeyAuth) return true;
+  if (machineOnly(req)) return true;
   const u = req.session?.user;
   return Boolean(u && (u.role === "super_admin" || roles.includes(u.role)));
 }

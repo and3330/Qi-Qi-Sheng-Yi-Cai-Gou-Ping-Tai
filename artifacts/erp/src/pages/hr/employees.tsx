@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { selectableDepartments, departmentLabel } from "@/lib/select-options";
 import { useListEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee, useListDepartments } from "@workspace/erp-api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/shared/data-table";
@@ -9,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, UserPlus, CheckSquare, Square, Search, Settings2, X, KeyRound, ShieldOff, FileCheck, UserX, UserCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { adminApi } from "@/lib/api";
+import { ASSIGNABLE_ROLE_ORDER, ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/roles";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 const api = (path: string) => `/erp-api/${path}`;
@@ -435,6 +438,7 @@ export default function EmployeesPage() {
           <DataTable
             isLoading={isLoading}
             data={employees}
+            onRowClick={openEdit}
             emptyMessage={statusTab === "inactive" ? "沒有已停用的員工" : "沒有符合條件的員工"}
             columns={[
               {
@@ -487,7 +491,7 @@ export default function EmployeesPage() {
               {
                 header: "操作",
                 accessor: (r: any) => (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     {r.accountUsername ? (
                       <Button variant="ghost" size="icon" title="解除登入帳號" onClick={() => handleDeleteAccount(r)}>
                         <ShieldOff size={14} className="text-amber-600" />
@@ -512,10 +516,20 @@ export default function EmployeesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-lg max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯員工" : "新增員工"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-2">
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "員工" : "新增員工"}
+        number={editing ? editing.employeeId : undefined}
+        status={editing ? <DocStatus label={statusMap[editing.status] || editing.status} tone={editing.status === "Active" ? "default" : "secondary"} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
+            {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
+          </Button>
+        </>}
+      >
+          <div className="grid gap-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><Label>員工編號 *</Label><Input value={form.employeeId} onChange={F("employeeId")} /></div>
               <div><Label>狀態</Label>
@@ -539,7 +553,7 @@ export default function EmployeesPage() {
               <div><Label>部門</Label>
                 <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.departmentId} onChange={F("departmentId")}>
                   <option value="">請選擇</option>
-                  {(departments || []).filter((d: any) => d.isActive !== false || String(d.id) === form.departmentId).map((d: any) => <option key={d.id} value={d.id}>{d.name}{d.isActive === false ? "（已停用）" : ""}</option>)}
+                  {selectableDepartments(departments, form.departmentId).map((d: any) => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                 </select>
               </div>
               <div><Label>到職日 *</Label><Input type="date" value={form.dateOfJoining} onChange={F("dateOfJoining")} /><p className="text-xs text-muted-foreground mt-1">年資與特休從這天起算</p></div>
@@ -584,14 +598,7 @@ export default function EmployeesPage() {
               建立後接著填這位新人的合約（新進人員合約）
             </label>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
-              {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       <Dialog open={showBatchEdit} onOpenChange={setShowBatchEdit}>
         <DialogContent className="md:max-w-md">
@@ -622,7 +629,7 @@ export default function EmployeesPage() {
                     onChange={e => setBatchValue(e.target.value)}
                   >
                     <option value="">請選擇部門</option>
-                    {(departments || []).filter((d: any) => d.isActive !== false).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    {selectableDepartments(departments).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 ) : batchField === "status" ? (
                   <select
@@ -676,7 +683,7 @@ export default function EmployeesPage() {
                 onChange={e => setImportDeptId(e.target.value)}
               >
                 <option value="">指定部門（選填）</option>
-                {(departments || []).filter((d: any) => d.isActive !== false).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {selectableDepartments(departments).map((d: any) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
           </div>
@@ -769,14 +776,7 @@ export default function EmployeesPage() {
               <div>
                 <Label>角色</Label>
                 <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={accountForm.role} onChange={(e) => setAccountForm({ ...accountForm, role: e.target.value })}>
-                  <option value="viewer">一般員工</option>
-                  <option value="manager">主管</option>
-                  <option value="accountant">會計</option>
-                  <option value="hr_admin">人資管理員</option>
-                  <option value="finance_admin">財務管理員</option>
-                  <option value="admin">管理員</option>
-                  <option value="owner">擁有者</option>
-                  <option value="super_admin">超級管理員</option>
+                  {ASSIGNABLE_ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}　{ROLE_DESCRIPTIONS[r]}</option>)}
                 </select>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ictaBaseUrlError, ictaCaseRecord, parseCaseTime, salesOrderToIctaCase } from "../icta-case";
+import { ictaBaseUrlError, ictaCaseRecord, ictaReplyProblem, parseCaseTime, salesOrderToIctaCase } from "../icta-case";
 
 const order = {
   orderNumber: "SO-2026-0001", status: "Confirmed", label: "115(上) A 國小 魔術社", courseStartDate: "2026-12-01", courseEndDate: "2027-01-12",
@@ -56,5 +56,12 @@ describe("銷貨單送件到 ICTA PRO", () => {
     expect(ictaBaseUrlError("http://icta-pro.com")).toMatch(/https/);
     expect(ictaBaseUrlError("https://user:pw@icta-pro.com")).toMatch(/網域/);
     expect(ictaBaseUrlError("icta-pro")).toMatch(/格式/);
+  });
+
+  it("對方回首頁網頁或沒回案件編號，不能算送件成功", () => {
+    expect(ictaReplyProblem("text/html; charset=UTF-8", null, true)).toMatch(/一般網頁/);
+    expect(ictaReplyProblem("application/json", { ok: true }, true)).toMatch(/案件編號/);
+    expect(ictaReplyProblem("application/json", { case: { id: 0 } }, true)).toMatch(/案件編號/);
+    expect(ictaReplyProblem("application/json; charset=utf-8", { case: { id: 12 }, created: true }, true)).toBeNull();
   });
 });

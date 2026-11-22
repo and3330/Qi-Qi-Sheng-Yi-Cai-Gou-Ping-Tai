@@ -15,6 +15,13 @@
       "when": 1794895313908,
       "tag": "0001_extra_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795337936249,
+      "tag": "0002_fresh_firelord",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,9 @@ import {
   queryVoidedAllowance,
   sanitizeEcpayResponse,
   voidAllowance,
+  printInvoice,
 } from "../ecpay-invoice";
+import { assertIntegerInvoiceItems } from "../ecpay-integer-items";
 
 const config = {
   merchantId: "2000132",
@@ -21,6 +23,48 @@ const config = {
   isTest: true,
 };
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+describe("integer tax included invoice validation", () => {
+  it("allows integer prices and rejects mismatches and rounding", () => {
+    expect(() => assertIntegerInvoiceItems([{ count: 14, unitPrice: 2510, amount: 35140 }])).not.toThrow();
+    for (const item of [
+      { count: 3, unitPrice: 100 / 3, amount: 100 },
+      { count: 3, unitPrice: 33, amount: 100 },
+      { count: 1.5, unitPrice: 20, amount: 30 },
+    ]) expect(() => assertIntegerInvoiceItems([item])).toThrow(/含稅/);
+  });
+});
+
+describe("official invoice printing", () => {
+  it("sends the B2B A4 format without issuing a new invoice", async () => {
+    const fetch = mockFetch({ RtnCode: 1, InvoiceHtml: "https://einvoice-stage.ecpay.com.tw/print/a4" });
+    expect((await printInvoice("AB12345678", "2026-11-19", { config, fetch, log }, 4)).success).toBe(true);
+    expect(decryptedRequest(fetch).data.PrintStyle).toBe(4);
+    expect(decryptedRequest(fetch).url).toContain("/InvoicePrint");
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it("requests only InvoicePrint with details and returns the official URL", async () => {
+    const fetch = mockFetch({ RtnCode: 1, InvoiceHtml: "https://einvoice-stage.ecpay.com.tw/print/example" });
+    const result = await printInvoice("AB12345678", "2026-11-19", { config, fetch, log });
+    expect(result.success).toBe(true);
+    expect(decryptedRequest(fetch).url).toBe(`${config.apiUrl}/B2CInvoice/InvoicePrint`);
+    expect(decryptedRequest(fetch).data).toMatchObject({ InvoiceNo: "AB12345678", PrintStyle: 1, IsShowingDetail: 1 });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it("rejects internal numbers before any network request", async () => {
+    const fetch = mockFetch({ RtnCode: 1 });
+    expect((await printInvoice("SINV-123", "2026-11-19", { config, fetch, log })).success).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("does not expose unsafe URLs, missing links or upstream failures", async () => {
+    for (const reply of [
+      { RtnCode: 1, InvoiceHtml: "https://ecpay.com.tw.evil.example/print" },
+      { RtnCode: 1, InvoiceHtml: "http://einvoice.ecpay.com.tw/print" },
+      { RtnCode: 1 },
+      { RtnCode: 999, RtnMsg: "列印失敗" },
+    ]) expect((await printInvoice("AB12345678", "2026-11-19", { config, fetch: mockFetch(reply), log })).success).toBe(false);
+  });
+});
 
 function mockFetch(reply: Record<string, unknown>) {
   return vi.fn(async () => new Response(JSON.stringify({

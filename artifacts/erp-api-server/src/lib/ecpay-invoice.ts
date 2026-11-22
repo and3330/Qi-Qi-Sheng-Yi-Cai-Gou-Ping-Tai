@@ -227,6 +227,24 @@ export interface InvoiceIssueResult extends EcpayResult {
   randomNumber?: string;
 }
 
+/** 取得綠界官方一小時效期的列印頁，不開票、不寫入帳務。 */
+export async function printInvoice(invoiceNumber: string, invoiceDate: string, client?: EcpayClientOptions, printStyle: 1 | 4 = 1) {
+  if (!/^[A-Z]{2}\d{8}$/.test(invoiceNumber) || !/^\d{4}[-/]\d{2}[-/]\d{2}$/.test(invoiceDate)) {
+    return { success: false, message: "綠界發票號碼或開立日期不完整" };
+  }
+  const result = await request("/B2CInvoice/InvoicePrint", {
+    InvoiceNo: invoiceNumber, InvoiceDate: invoiceDate, PrintStyle: printStyle, IsShowingDetail: 1,
+  }, client);
+  if (!result.success) return { success: false, message: result.message || "綠界列印連結取得失敗" };
+  try {
+    const url = new URL(String(result.data?.InvoiceHtml || ""));
+    if (url.protocol !== "https:" || !url.hostname.endsWith(".ecpay.com.tw") || url.username || url.password) throw new Error("invalid URL");
+    return { success: true, url: url.href };
+  } catch {
+    return { success: false, message: "綠界回傳的列印網址無效" };
+  }
+}
+
 export async function issueInvoice(options: InvoiceIssueOptions, client?: EcpayClientOptions): Promise<InvoiceIssueResult> {
   if (options.salesAmount <= 0) return { success: false, message: "發票金額必須大於 0" };
   if (!options.customerEmail && !options.customerPhone) return { success: false, message: "買方 Email 和手機號碼至少需填一項" };

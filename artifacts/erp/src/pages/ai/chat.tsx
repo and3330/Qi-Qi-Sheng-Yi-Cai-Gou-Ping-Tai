@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Link } from "wouter";
 import { AlertTriangle, ArrowUpRight, Camera, Check, Download, Loader2, RotateCcw, Send, Sparkles, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
@@ -6,45 +6,7 @@ import { ROLE_EMPLOYEE } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-
-interface ChatAnswer {
-  tool: string;
-  ok: boolean;
-  text: string;
-  table?: { columns: string[]; rows: Array<Record<string, unknown>>; totalRows: number };
-  link?: { label: string; path: string };
-  detail?: string;
-  /** 站外的下載連結（報價單 PDF） */
-  download?: { label: string; url: string };
-  /** AI 這一輪做了哪些事 */
-  steps?: string[];
-  /** 這一輪產生的單號，下一輪要帶回去，AI 才接得上「剛剛那張」 */
-  context?: string;
-}
-
-/** AI 想做、但要使用者本人按確認才會執行的動作 */
-interface Pending {
-  token: string;
-  summary: string;
-  items: Array<{ label: string; detail: string; sensitive?: string }>;
-}
-
-type PendingState = "waiting" | "running" | "approved" | "cancelled";
-
-interface Message {
-  id: number;
-  role: "user" | "assistant";
-  text: string;
-  answer?: ChatAnswer;
-  failed?: boolean;
-  pending?: Pending;
-  pendingState?: PendingState;
-  /** 使用者這則訊息附的圖片（只留縮圖網址給畫面顯示） */
-  photos?: string[];
-}
-
-/** 準備送出的圖片 */
-interface Attachment { name: string; type: string; data: string; preview: string }
+import { getChatSession, type ChatAnswer, type Pending, type PendingState, type Message, type Attachment } from "@/lib/ai-chat-session";
 
 const MAX_PHOTOS = 5;
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
@@ -167,6 +129,7 @@ function PendingCard({ pending, state, onDecide }: { pending: Pending; state?: P
       {state === "running" && <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />執行中…</p>}
       {state === "approved" && <p className="mt-3 text-xs text-muted-foreground">已確認，結果在下面。</p>}
       {state === "cancelled" && <p className="mt-3 text-xs text-muted-foreground">已取消，沒有執行。</p>}
+      {state === "expired" && <p className="mt-3 text-xs text-muted-foreground">重新載入前的確認單僅供查看，請先確認單據現況，再重新提出需求。</p>}
     </div>
   );
 }
@@ -177,7 +140,7 @@ function buildHistory(messages: Message[]) {
     if (m.role === "user") return { role: m.role, content: m.photos?.length ? `${m.text}（當時附了 ${m.photos.length} 張圖片，現在已經讀不到，需要的話請使用者重傳）` : m.text };
     const parts = [m.answer?.text || m.text];
     if (m.pending) {
-      const decision = m.pendingState === "cancelled" ? "已取消" : m.pendingState === "approved" ? "已確認" : "還沒決定";
+      const decision = m.pendingState === "expired" ? "確認單已失效，需先查證是否曾執行" : m.pendingState === "cancelled" ? "已取消" : m.pendingState === "approved" ? "已確認" : "還沒決定";
       parts.push(`（等待確認的動作：${m.pending.items.map((item) => item.label).join("；")}。使用者${decision}）`);
     }
     if (m.answer?.context) parts.push(`（系統記錄：${m.answer.context}）`);
@@ -198,16 +161,18 @@ async function postChat(payload: Record<string, unknown>): Promise<{ answer: Cha
 }
 
 export default function AiChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [attachError, setAttachError] = useState("");
-  const fileInput = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const scope = `${user?.tenantId ?? ""}:${user?.id ?? ""}:${user?.role ?? ""}:${user?.companyCode ?? ""}`;
+  const session = getChatSession(scope);
+  const { messages, input, sending, attachments, attachError, storageError } = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  const setMessages = (value: Message[] | ((previous: Message[]) => Message[])) => session.set("messages", value);
+  const setInput = (value: string) => session.set("input", value);
+  const setSending = (value: boolean) => session.set("sending", value);
+  const setAttachments = (value: Attachment[] | ((previous: Attachment[]) => Attachment[])) => session.set("attachments", value);
+  const setAttachError = (value: string) => session.set("attachError", value);
+  const fileInput = useRef<HTMLInputElement>(null);
   const isEmployee = user?.role === ROLE_EMPLOYEE;
   const suggestions = isEmployee ? EMPLOYEE_SUGGESTIONS : OWNER_SUGGESTIONS;
-  const nextId = useRef(1);
 
   const addFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -230,23 +195,23 @@ export default function AiChatPage() {
 
   const appendReply = (body: { answer: ChatAnswer; pending?: Pending }) => {
     setMessages((prev) => [...prev, {
-      id: nextId.current++, role: "assistant", text: body.answer.text, answer: body.answer, failed: !body.answer.ok,
+      id: session.nextId(), role: "assistant", text: body.answer.text, answer: body.answer, failed: !body.answer.ok,
       pending: body.pending, pendingState: body.pending ? "waiting" : undefined,
     }]);
   };
   const appendError = (error: unknown, fallback: string) => {
-    setMessages((prev) => [...prev, { id: nextId.current++, role: "assistant", text: error instanceof Error ? error.message : fallback, failed: true }]);
+    setMessages((prev) => [...prev, { id: session.nextId(), role: "assistant", text: error instanceof Error ? error.message : fallback, failed: true }]);
   };
 
   const send = async (raw: string) => {
     const text = raw.trim();
     const photos = attachments;
-    if ((!text && photos.length === 0) || sending) return;
+    if ((!text && photos.length === 0) || session.getSnapshot().sending) return;
     const history = buildHistory(messages);
     // 還沒決定的確認單，在使用者說了別的話之後就不能再按，避免執行到已經過時的動作
     setMessages((prev) => [
       ...prev.map((m) => (m.pendingState === "waiting" ? { ...m, pendingState: "cancelled" as const } : m)),
-      { id: nextId.current++, role: "user", text: text || (photos.length > 0 ? "（傳了照片）" : ""), photos: photos.map((photo) => photo.preview).filter(Boolean) },
+      { id: session.nextId(), role: "user", text: text || (photos.length > 0 ? "（傳了照片）" : ""), photos: photos.map((photo) => photo.preview).filter(Boolean) },
     ]);
     setInput("");
     setAttachments([]);
@@ -263,11 +228,11 @@ export default function AiChatPage() {
 
   /** 使用者對確認單按了「確認執行」或「取消」 */
   const decide = async (messageId: number, pending: Pending, approve: boolean) => {
-    if (sending) return;
+    if (session.getSnapshot().sending) return;
     const mark = (state: PendingState) => setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, pendingState: state } : m)));
     if (!approve) {
       mark("cancelled");
-      setMessages((prev) => [...prev, { id: nextId.current++, role: "assistant", text: "已取消，沒有變更任何資料。" }]);
+      setMessages((prev) => [...prev, { id: session.nextId(), role: "assistant", text: "已取消，沒有變更任何資料。" }]);
       return;
     }
     mark("running");
@@ -287,6 +252,7 @@ export default function AiChatPage() {
 
   return (
     <div className="flex h-[calc(100dvh-15rem)] min-h-[26rem] flex-col rounded-xl border bg-card" data-testid="ai-chat">
+      {storageError && <p role="status" className="border-b px-4 py-2 text-sm text-muted-foreground">瀏覽器無法暫存對話；切換系統頁面仍會保留，但重新整理後可能遺失。</p>}
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
           <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center gap-4 text-center">
@@ -398,7 +364,7 @@ export default function AiChatPage() {
           <Camera className="h-5 w-5" />
         </Button>
         {messages.length > 0 && (
-          <Button type="button" variant="ghost" size="icon" title="清除對話，重新開始" onClick={() => setMessages([])} disabled={sending}>
+          <Button type="button" variant="ghost" size="icon" title="清除對話，重新開始" aria-label="清除對話，重新開始" onClick={() => setMessages([])} disabled={sending}>
             <RotateCcw className="h-4 w-4" />
           </Button>
         )}
@@ -412,6 +378,7 @@ export default function AiChatPage() {
           rows={1}
           maxLength={2000}
           placeholder="輸入訊息"
+          aria-label="AI 對話訊息"
           className="max-h-40 min-h-10 flex-1 resize-none"
           data-testid="ai-chat-input"
         />

@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow, DocFields, DocLines, DocNote, DocStatus, statusTone } from "@/components/shared/doc-window";
+import { RelatedDocs, useOpenFromUrl } from "@/components/shared/related-docs";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Plus, ShoppingCart, X } from "lucide-react";
@@ -37,9 +38,14 @@ export default function MaterialRequestsPage() {
   const [ordering, setOrdering] = useState<Request | null>(null);
   const [supplierId, setSupplierId] = useState("");
   const [busy, setBusy] = useState(false);
+  // 點一列打開的請購單；存編號，核准、退回後畫面上的內容才會跟著清單更新
+  const [viewingId, setViewingId] = useState<number | null>(null);
 
   const { data: requests, isLoading } = useQuery({ queryKey: ["/material-requests", status], queryFn: () => call<Request[]>(`material-requests${status ? `?status=${status}` : ""}`) });
   const { data: items = [] } = useMasterRows("items", !!ordering);
+
+  const viewing = viewingId === null ? null : requests?.find(r => r.id === viewingId) ?? null;
+  useOpenFromUrl(requests, r => setViewingId(r.id));
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["/material-requests"] });
   const fail = (error: unknown) => toast({ title: "沒有成功", description: error instanceof Error ? error.message : "請稍後再試", variant: "destructive" });
@@ -103,6 +109,7 @@ export default function MaterialRequestsPage() {
           <DataTable
             isLoading={isLoading}
             data={requests}
+            onRowClick={(r: Request) => setViewingId(r.id)}
             emptyMessage="沒有請購單"
             columns={[
               { header: "單號", accessor: (r: Request) => <div><span className="font-medium">{r.requestNumber}</span><span className="block text-xs text-muted-foreground">{r.requestDate}・{r.requesterName}</span></div> },
@@ -113,7 +120,7 @@ export default function MaterialRequestsPage() {
               {
                 header: "操作",
                 accessor: (r: Request) => (
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1" onClick={e => e.stopPropagation()}>
                     {r.status === "Submitted" && canApprove && <Button size="sm" className="h-8" onClick={() => review(r, "approve")}><Check className="h-3.5 w-3.5 mr-1" />核准</Button>}
                     {r.status === "Submitted" && canApprove && <Button size="sm" variant="outline" className="h-8" onClick={() => review(r, "reject")}><X className="h-3.5 w-3.5 mr-1" />退回</Button>}
                     {r.status === "Approved" && canOrder && <Button size="sm" className="h-8" onClick={() => { setSupplierId(""); setOrdering(r); }}><ShoppingCart className="h-3.5 w-3.5 mr-1" />轉採購單</Button>}
@@ -126,9 +133,54 @@ export default function MaterialRequestsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-lg max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>提出請購</DialogTitle></DialogHeader>
+      {/* 請購單內容：點清單的一列打開 */}
+      <DocWindow
+        open={!!viewing}
+        onClose={() => setViewingId(null)}
+        name="請購單"
+        number={viewing?.requestNumber}
+        status={viewing ? <DocStatus label={STATUS[viewing.status] || viewing.status} tone={statusTone(viewing.status)} /> : undefined}
+        footer={viewing && <>
+            {["Submitted", "Approved"].includes(viewing.status) && (canApprove || viewing.createdBy === user?.username) && <Button variant="ghost" className="mr-auto text-red-600 dark:text-red-400" onClick={() => cancel(viewing)} data-testid="button-view-cancel">取消請購</Button>}
+            {viewing.status === "Submitted" && canApprove && <Button variant="outline" onClick={() => review(viewing, "reject")} data-testid="button-view-reject"><X className="h-4 w-4 mr-1" />退回</Button>}
+            {viewing.status === "Submitted" && canApprove && <Button onClick={() => review(viewing, "approve")} data-testid="button-view-approve"><Check className="h-4 w-4 mr-1" />核准</Button>}
+            {viewing.status === "Approved" && canOrder && <Button onClick={() => { setViewingId(null); setSupplierId(""); setOrdering(viewing); }} data-testid="button-view-convert"><ShoppingCart className="h-4 w-4 mr-1" />轉採購單</Button>}
+            <Button variant="outline" onClick={() => setViewingId(null)}>關閉</Button>
+        </>}
+      >
+        {viewing && <>
+          <DocFields items={[
+            ["請購日期", viewing.requestDate],
+            ["需要日期", viewing.neededBy],
+            ["請購人", viewing.requesterName],
+            ["專案", viewing.projectName],
+            ["審核人", viewing.reviewedBy],
+            ["採購單", viewing.purchaseOrderNumber],
+          ]} />
+          <DocLines
+            columns={[
+              { header: "品項", cell: (l: Request["items"][number]) => l.itemName },
+              { header: "備註", cell: (l: Request["items"][number]) => l.note || "" },
+              { header: "數量", cell: (l: Request["items"][number]) => l.quantity, align: "right" },
+            ]}
+            rows={viewing.items}
+          />
+          <DocNote label="用途">{viewing.reason}</DocNote>
+          <DocNote label={viewing.status === "Rejected" ? "退回原因" : "審核意見"}>{viewing.reviewNote}</DocNote>
+          <RelatedDocs type="material_request" id={viewing.id} onNavigate={() => setViewingId(null)} />
+        </>}
+      </DocWindow>
+
+      {/* 提出請購 */}
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name="提出請購"
+        footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={create} disabled={busy || !form.projectId || !form.lines.some(l => l.itemId && Number(l.quantity) > 0)}>{busy ? "處理中…" : "送出"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             <ProjectField value={form.projectId} onChange={v => setForm({ ...form, projectId: v })} />
             <div className="space-y-1.5"><Label>要買什麼 *</Label><ItemLines lines={form.lines} onChange={lines => setForm({ ...form, lines })} /></div>
@@ -137,19 +189,20 @@ export default function MaterialRequestsPage() {
               <div className="space-y-1.5"><Label htmlFor="mr-reason">用途</Label><Input id="mr-reason" value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} placeholder="例如：12 月課程教材" /></div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={create} disabled={busy || !form.projectId || !form.lines.some(l => l.itemId && Number(l.quantity) > 0)}>{busy ? "處理中…" : "送出"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={!!ordering} onOpenChange={(o) => { if (!o) setOrdering(null); }}>
-        <DialogContent className="md:max-w-md max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>轉成採購單</DialogTitle>
-            <DialogDescription>{ordering?.requestNumber}：{ordering?.items.map(i => `${i.itemName} × ${i.quantity}`).join("、")}</DialogDescription>
-          </DialogHeader>
+      {/* 轉成採購單 */}
+      <DocWindow
+        open={!!ordering}
+        onClose={() => setOrdering(null)}
+        name="轉成採購單"
+        number={ordering?.requestNumber}
+        description={ordering ? ordering.items.map(i => `${i.itemName} × ${i.quantity}`).join("、") : undefined}
+        footer={<>
+            <Button variant="outline" onClick={() => setOrdering(null)}>取消</Button>
+            <Button onClick={convert} disabled={busy || !supplierId}>{busy ? "處理中…" : "建立採購單"}</Button>
+        </>}
+      >
           <div className="space-y-3">
             <div>
               <Label>供應商 *</Label>
@@ -157,12 +210,7 @@ export default function MaterialRequestsPage() {
             </div>
             <p className="text-sm text-muted-foreground">單價先帶品項主檔的進價，估計 {money(estimate)}。採購單建立後是草稿並送簽核，可以再改單價。</p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOrdering(null)}>取消</Button>
-            <Button onClick={convert} disabled={busy || !supplierId}>{busy ? "處理中…" : "建立採購單"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

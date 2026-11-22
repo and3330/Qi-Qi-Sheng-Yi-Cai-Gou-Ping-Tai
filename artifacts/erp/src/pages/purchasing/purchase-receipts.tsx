@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { LandedCostButton } from "@/components/purchasing/landed-cost-dialog";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageHint } from "@/components/page-hint";
@@ -11,28 +12,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Check, X, Eye, Search, Receipt, Ban, Pencil } from "lucide-react";
+import { Plus, Trash2, Check, X, Eye, Search, Receipt, Ban, Pencil, RotateCcw } from "lucide-react";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import { DateRangePresets } from "@/components/shared/date-range-presets";
-import { DocWindow, DocStatus, statusTone, DocFields, DocLines, DocSection } from "@/components/shared/doc-window";
+import { DocWindow, DocStatus, statusTone, DocFields, DocLines, DocSection, DocFormRows, DocFormRow } from "@/components/shared/doc-window";
+import { DocItemLines, blankLines, filledLines, linesPayload, linesFromSaved, type ItemLine } from "@/components/shared/doc-item-lines";
 import { RelatedDocs, useOpenFromUrl } from "@/components/shared/related-docs";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
-interface PRItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number }
+interface PRItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number; specification?: string; note?: string }
 interface PurchaseReceipt {
   id: number; receiptNumber: string; purchaseOrderId: number | null; supplierId: number;
   supplierName: string; receiptDate: string; status: string; totalAmount: number;
   items: PRItem[]; remarks: string | null; createdAt: string;
   departmentId?: number | null; projectId?: number | null;
+  warehouseId?: number | null; handlerId?: number | null;
+  handlerName?: string | null; warehouseName?: string | null; purchaseOrderNumber?: string | null; currency?: string | null;
   extraFields?: { legacy?: boolean; legacyUnpaid?: number; legacyDocNumber?: string; legacyStaff?: string } | null;
 }
 /** 從舊系統（Ecount）搬過來的歷史進貨單：只能查看 */
 const isLegacy = (r: { extraFields?: { legacy?: boolean } | null }) => r.extraFields?.legacy === true;
 const legacyUnpaid = (r: { extraFields?: { legacyUnpaid?: number } | null }) => Number(r.extraFields?.legacyUnpaid) || 0;
 interface Supplier { id: number; name: string }
-interface Item { id: number; itemName: string; buyingPrice: string }
+interface Item { id: number; itemName: string; buyingPrice: string; itemCode?: string | null; specification?: string | null }
+/** 「從採購單帶入」選單裡的一張採購單 */
+interface OpenOrder { id: number; orderNumber: string; supplierId: number; supplierName: string; orderDate: string }
+const empName = (e: any) => e ? (e.fullName || e.name || `${e.firstName || ""}${/^[A-Za-z]/.test(e.lastName || "") ? " " : ""}${e.lastName || ""}`.trim()) : "";
+const today = () => new Date().toISOString().slice(0, 10);
+const emptyForm = () => ({ purchaseOrderId: "", supplierId: "", receiptDate: today(), handlerId: "", warehouseId: "", remarks: "", departmentId: "", projectId: "" });
 interface Department { id: number; name: string }
 interface Project { id: number; name: string }
 
@@ -81,8 +90,13 @@ export default function PurchaseReceiptsPage() {
   const batch = useBatchSelection(filtered);
   const batchFields: BatchField[] = [{key:"status",label:"狀態",type:"select",options:[{value:"Draft",label:"草稿"},{value:"Submitted",label:"已提交"},{value:"Completed",label:"已完成"}]}];
 
-  const [form, setForm] = useState({ supplierId: "", receiptDate: new Date().toISOString().slice(0, 10), remarks: "", departmentId: "", projectId: "" });
-  const [lineItems, setLineItems] = useState<{ itemId: string; quantity: string; rate: string }[]>([{ itemId: "", quantity: "1", rate: "" }]);
+  const [form, setForm] = useState(emptyForm);
+  const [lineItems, setLineItems] = useState<ItemLine[]>(() => blankLines());
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [openOrders, setOpenOrders] = useState<OpenOrder[]>([]);
+  /** 來源採購單的幣別：外幣進貨沒有台灣的營業稅，就不拆稅前價格與營業稅 */
+  const [orderCurrency, setOrderCurrency] = useState("TWD");
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -96,40 +110,66 @@ export default function PurchaseReceiptsPage() {
     setDepts(await deptRes.json());
     setProjs(await projRes.json());
     setLoading(false);
+    // 表單才用得到的選單：讀不到不影響列表
+    const list = async (path: string) => { try { const r = await fetch(path); const d = r.ok ? await r.json() : []; return Array.isArray(d) ? d : []; } catch { return []; } };
+    const [emps, whs, orders] = await Promise.all([list(`/erp-api/employees`), list(`/erp-api/warehouses`), list(`/erp-api/purchase-receipts/open-orders`)]);
+    setEmployees(emps); setWarehouses(whs); setOpenOrders(orders);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll, reloadKey]);
 
-  const addLine = () => setLineItems(prev => [...prev, { itemId: "", quantity: "1", rate: "" }]);
-  const removeLine = (i: number) => setLineItems(prev => prev.filter((_, idx) => idx !== i));
-  const updateLine = (i: number, field: string, val: string) => {
-    setLineItems(prev => {
-      const copy = [...prev];
-      copy[i] = { ...copy[i], [field]: val };
-      if (field === "itemId") {
-        const found = items.find(it => it.id === Number(val));
-        if (found) copy[i].rate = String(found.buyingPrice);
-      }
-      return copy;
-    });
+  const resetForm = () => {
+    setForm(emptyForm());
+    setLineItems(blankLines());
+    setOrderCurrency("TWD");
+    setEditing(null);
+  };
+  const formHasContent = () => !!(form.purchaseOrderId || form.supplierId || form.remarks || filledLines(lineItems).length > 0);
+  /** 重新輸入：清空整張表單（跟 Ecount 的「重新輸入」一樣） */
+  const clearForm = () => {
+    if (formHasContent() && !window.confirm("要清空目前填的內容、重新輸入嗎？")) return;
+    setForm(emptyForm()); setLineItems(blankLines()); setOrderCurrency("TWD");
   };
 
-  const resetForm = () => {
-    setForm({ supplierId: "", receiptDate: new Date().toISOString().slice(0, 10), remarks: "", departmentId: "", projectId: "" });
-    setLineItems([{ itemId: "", quantity: "1", rate: "" }]);
-    setEditing(null);
+  /** 從採購單帶入：把這張採購單還沒收貨的品項與數量帶進來，數量可以再改少（分批到貨） */
+  const pullFromOrder = async (orderId: string) => {
+    if (!orderId) {
+      setForm(p => ({ ...p, purchaseOrderId: "" }));
+      setLineItems(prev => prev.map(l => ({ ...l, remaining: undefined })));
+      setOrderCurrency("TWD");
+      return;
+    }
+    const res = await fetch(`/erp-api/purchase-receipts/order-remaining/${orderId}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { toast({ title: data.error || "讀不到這張採購單", variant: "destructive" }); return; }
+    if (!data.lines?.length) { toast({ title: "這張採購單的品項都已經排進進貨單了", variant: "destructive" }); return; }
+    const o = data.order;
+    setForm(p => ({
+      ...p, purchaseOrderId: orderId, supplierId: String(o.supplierId),
+      departmentId: o.departmentId ? String(o.departmentId) : p.departmentId,
+      projectId: o.projectId ? String(o.projectId) : p.projectId,
+      handlerId: o.handlerId ? String(o.handlerId) : p.handlerId,
+      warehouseId: o.warehouseId ? String(o.warehouseId) : p.warehouseId,
+    }));
+    setOrderCurrency(o.currency || "TWD");
+    setLineItems(data.lines.map((l: any) => ({ itemId: String(l.itemId), quantity: String(l.quantity), rate: String(l.rate), specification: l.specification || "", note: l.note || "", remaining: Number(l.quantity) })));
+    toast({ title: `已帶入 ${o.orderNumber} 還沒收貨的 ${data.lines.length} 個品項`, description: "只到一部分的話，把數量改少或刪掉那一行就可以。" });
   };
 
   const openEdit = (r: PurchaseReceipt) => {
     setEditing(r);
     setForm({
+      purchaseOrderId: r.purchaseOrderId != null ? String(r.purchaseOrderId) : "",
       supplierId: String(r.supplierId),
       receiptDate: r.receiptDate,
+      handlerId: r.handlerId != null ? String(r.handlerId) : "",
+      warehouseId: r.warehouseId != null ? String(r.warehouseId) : "",
       remarks: r.remarks || "",
       departmentId: r.departmentId != null ? String(r.departmentId) : "",
       projectId: r.projectId != null ? String(r.projectId) : "",
     });
-    setLineItems((r.items || []).map(it => ({ itemId: String(it.itemId), quantity: String(it.quantity), rate: String(it.rate) })));
+    setOrderCurrency(r.currency || "TWD");
+    setLineItems(linesFromSaved(r.items));
     setDetailItem(null);
     setOpen(true);
   };
@@ -138,10 +178,17 @@ export default function PurchaseReceiptsPage() {
     if (!form.departmentId || !form.projectId) {
       toast({ title: "請選擇部門與專案", description: "部門與專案為必填欄位", variant: "destructive" }); return;
     }
+    if (filledLines(lineItems).some(l => !(Number(l.quantity) > 0))) {
+      toast({ title: "數量要大於 0", description: "沒到貨的品項請把那一行刪掉。", variant: "destructive" }); return;
+    }
     const payload = {
       supplierId: Number(form.supplierId), receiptDate: form.receiptDate, remarks: form.remarks || null,
       departmentId: Number(form.departmentId), projectId: Number(form.projectId),
-      items: lineItems.filter(l => l.itemId).map(l => ({ itemId: Number(l.itemId), quantity: Number(l.quantity), rate: Number(l.rate) })),
+      handlerId: form.handlerId ? Number(form.handlerId) : null,
+      warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
+      items: linesPayload(lineItems),
+      // 來源採購單只在新增時送；建好之後不能換
+      ...(!editing && form.purchaseOrderId ? { purchaseOrderId: Number(form.purchaseOrderId) } : {}),
     };
     const res = editing
       ? await fetch(`/erp-api/purchase-receipts/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
@@ -207,7 +254,12 @@ export default function PurchaseReceiptsPage() {
     else { const err = await res.json(); toast({ title: err.error || "作廢失敗", variant: "destructive" }); }
   };
 
-  const total = lineItems.reduce((s, l) => s + Number(l.quantity) * Number(l.rate || 0), 0);
+  // 「從採購單帶入」的選項：先選了供應商就只列那家的單
+  const orderOptions = openOrders
+    .filter(o => !form.supplierId || form.purchaseOrderId === String(o.id) || String(o.supplierId) === form.supplierId)
+    .map(o => ({ value: String(o.id), label: `${o.orderNumber}｜${o.supplierName}｜${o.orderDate}` }));
+  const linkedOrder = !!form.purchaseOrderId;
+  const foreign = orderCurrency !== "TWD";
 
   return (
     <div className="space-y-6">
@@ -221,114 +273,105 @@ export default function PurchaseReceiptsPage() {
           name={editing ? "編輯進貨單" : "新增進貨單"}
           number={editing?.receiptNumber}
           status={editing ? <DocStatus label={statusMap[editing.status] || editing.status} tone={statusTone(editing.status === "Submitted" ? "Confirmed" : editing.status)} /> : undefined}
-          wide
+          extraWide
           footer={<>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleCreate} disabled={!form.supplierId || lineItems.every(l => !l.itemId)}>{editing ? "儲存變更" : "建立"}</Button>
+            <Button variant="outline" onClick={() => { setOpen(false); resetForm(); }}>取消</Button>
+            {!editing && <Button variant="outline" onClick={clearForm}><RotateCcw className="mr-1 h-4 w-4" />重新輸入</Button>}
+            <Button onClick={handleCreate} disabled={!form.supplierId || filledLines(lineItems).length === 0}>儲存</Button>
           </>}
         >
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">供應商 *</label>
-                  <SearchableSelect
-                    value={form.supplierId}
-                    onValueChange={v => setForm(p => ({ ...p, supplierId: v }))}
-                    options={suppliers.map(s => ({ value: String(s.id), label: s.name }))}
-                    placeholder="選擇供應商"
-                    searchPlaceholder="輸入供應商名稱搜尋..."
-                    emptyText="找不到符合的供應商"
-                    disabled={!!editing?.purchaseOrderId}
-                    title={editing?.purchaseOrderId ? "此進貨單由採購訂單建立，供應商不可變更" : undefined}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">收貨日期 *</label>
-                  <Input type="date" value={form.receiptDate} onChange={e => setForm(p => ({ ...p, receiptDate: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">部門 <span className="text-red-500">*</span></label>
-                  <SearchableSelect
-                    value={form.departmentId}
-                    onValueChange={v => setForm(p => ({ ...p, departmentId: v }))}
-                    options={depts.filter(d => (d as any).isActive !== false || String(d.id) === String(form.departmentId)).map(d => ({ value: String(d.id), label: `${d.name}${(d as any).isActive === false ? "（已停用）" : ""}` }))}
-                    placeholder="請選擇部門"
-                    searchPlaceholder="輸入部門名稱搜尋..."
-                    emptyText="找不到符合的部門"
-                    triggerClassName={!form.departmentId ? "border-red-300 bg-red-50" : undefined}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">專案 <span className="text-red-500">*</span></label>
-                  <SearchableSelect
-                    value={form.projectId}
-                    onValueChange={v => setForm(p => ({ ...p, projectId: v }))}
-                    options={projs.filter(p => (p as any).isActive !== false || String(p.id) === String(form.projectId)).map(p => ({ value: String(p.id), label: `${p.name}${(p as any).isActive === false ? "（已停用）" : ""}` }))}
-                    placeholder="請選擇專案"
-                    searchPlaceholder="輸入專案名稱搜尋..."
-                    emptyText="找不到符合的專案"
-                    triggerClassName={!form.projectId ? "border-red-300 bg-red-50" : undefined}
-                  />
-                </div>
-              </div>
-              <div><label className="text-sm font-medium">備註</label><Input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註說明" /></div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-medium">品項明細</label>
-                  <Button size="sm" variant="outline" onClick={addLine}><Plus className="h-3 w-3 mr-1" />新增</Button>
-                </div>
-                {/* 手機版：卡片式品項編輯 */}
-                <div className="md:hidden space-y-3">
-                  {lineItems.map((line, i) => (
-                    <div key={i} className="rounded-lg border p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">項目 {i + 1}</span>
-                        {lineItems.length > 1 && (
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500" onClick={() => removeLine(i)}><Trash2 size={14} /></Button>
-                        )}
-                      </div>
-                      <SearchableSelect
-                        value={String(line.itemId || "")}
-                        onValueChange={v => updateLine(i, "itemId", v)}
-                        options={items.map(it => ({ value: String(it.id), label: it.itemName }))}
-                        placeholder="選擇品項"
-                        searchPlaceholder="輸入品項名稱搜尋..."
-                        emptyText="找不到符合的品項"
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <div><Label className="text-xs text-muted-foreground">數量</Label><Input type="number" min="1" value={line.quantity} onChange={e => updateLine(i, "quantity", e.target.value)} /></div>
-                        <div><Label className="text-xs text-muted-foreground">單價</Label><Input type="number" value={line.rate} onChange={e => updateLine(i, "rate", e.target.value)} /></div>
-                      </div>
-                      <div className="text-right text-sm font-medium">小計：${(Number(line.quantity) * Number(line.rate || 0)).toLocaleString()}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* 桌面版：列式品項編輯 */}
-                <div className="hidden md:block space-y-2">
-                  {lineItems.map((line, i) => (
-                    <div key={i} className="flex gap-2 items-end">
-                      <div className="flex-1">
-                        <SearchableSelect
-                          value={String(line.itemId || "")}
-                          onValueChange={v => updateLine(i, "itemId", v)}
-                          options={items.map(it => ({ value: String(it.id), label: it.itemName }))}
-                          placeholder="選擇品項"
-                          searchPlaceholder="輸入品項名稱搜尋..."
-                          emptyText="找不到符合的品項"
-                        />
-                      </div>
-                      <Input className="w-20" type="number" min="1" value={line.quantity} onChange={e => updateLine(i, "quantity", e.target.value)} />
-                      <Input className="w-24" type="number" value={line.rate} onChange={e => updateLine(i, "rate", e.target.value)} />
-                      <span className="w-20 text-right text-sm font-mono">${(Number(line.quantity) * Number(line.rate || 0)).toLocaleString()}</span>
-                      {lineItems.length > 1 && <Button size="sm" variant="ghost" onClick={() => removeLine(i)}><Trash2 className="h-3 w-3" /></Button>}
-                    </div>
-                  ))}
-                </div>
-                <div className="text-right mt-2 font-bold">合計：${total.toLocaleString()}</div>
-              </div>
-            </div>
+          {/* 排法照 Ecount 的輸入畫面：上面一個欄位一列，下面一張一行一筆的品項表 */}
+          <div className="space-y-4">
+            <DocFormRows>
+              <DocFormRow label="進貨單單號">
+                <p className="py-1.5 text-sm text-muted-foreground">{editing ? editing.receiptNumber : "儲存時產生"}</p>
+              </DocFormRow>
+              <DocFormRow label="採購單" hint={editing
+                ? (linkedOrder ? "這張進貨單是從這張採購單帶入的，來源不能換。" : "這張進貨單沒有對應的採購單。")
+                : "選一張採購單，會把還沒收貨的品項和數量帶進下面的表格；不選也可以直接自己填。"}>
+                {editing
+                  ? <p className="py-1.5 text-sm">{editing.purchaseOrderNumber || (linkedOrder ? `#${form.purchaseOrderId}` : "（無）")}</p>
+                  : <SearchableSelect
+                      value={form.purchaseOrderId}
+                      onValueChange={pullFromOrder}
+                      options={[{ value: "", label: "不從採購單帶入" }, ...orderOptions]}
+                      placeholder="從採購單帶入（可不選）"
+                      searchPlaceholder="輸入採購單號或供應商搜尋..."
+                      emptyText="找不到還沒收完的採購單"
+                      data-testid="pr-pull-order"
+                    />}
+              </DocFormRow>
+              <DocFormRow label="日期" htmlFor="pr-date" required>
+                <Input id="pr-date" type="date" className="md:w-56" value={form.receiptDate} onChange={e => setForm(p => ({ ...p, receiptDate: e.target.value }))} />
+              </DocFormRow>
+              <DocFormRow label="供應商" required hint={linkedOrder ? "供應商跟著採購單走，不能改。" : undefined}>
+                <SearchableSelect
+                  value={form.supplierId}
+                  onValueChange={v => setForm(p => ({ ...p, supplierId: v }))}
+                  options={suppliers.map(s => ({ value: String(s.id), label: s.name }))}
+                  placeholder="選擇供應商"
+                  searchPlaceholder="輸入供應商名稱搜尋..."
+                  emptyText="找不到符合的供應商"
+                  disabled={linkedOrder}
+                />
+              </DocFormRow>
+              <DocFormRow label="承辦人">
+                <SearchableSelect
+                  value={form.handlerId}
+                  onValueChange={v => setForm(p => ({ ...p, handlerId: v }))}
+                  options={[{ value: "", label: "不指定" }, ...employees.filter(e => !e.status || e.status === "Active" || String(e.id) === form.handlerId).map(e => ({ value: String(e.id), label: empName(e) }))]}
+                  placeholder="選擇承辦人"
+                  searchPlaceholder="輸入姓名搜尋..."
+                  emptyText="找不到符合的員工"
+                />
+              </DocFormRow>
+              <DocFormRow label="收貨倉庫" hint="確認收貨時，庫存會加到這個倉庫。">
+                <SearchableSelect
+                  value={form.warehouseId}
+                  onValueChange={v => setForm(p => ({ ...p, warehouseId: v }))}
+                  options={[{ value: "", label: "不指定" }, ...warehouses.filter(w => w.isActive !== false || String(w.id) === form.warehouseId).map(w => ({ value: String(w.id), label: w.name }))]}
+                  placeholder="選擇倉庫"
+                  searchPlaceholder="輸入倉庫名稱搜尋..."
+                  emptyText="找不到符合的倉庫"
+                />
+              </DocFormRow>
+              <DocFormRow label="部門" required>
+                <SearchableSelect
+                  value={form.departmentId}
+                  onValueChange={v => setForm(p => ({ ...p, departmentId: v }))}
+                  options={selectableDepartments(depts, form.departmentId).map(d => ({ value: String(d.id), label: departmentLabel(d) }))}
+                  placeholder="請選擇部門"
+                  searchPlaceholder="輸入部門名稱搜尋..."
+                  emptyText="找不到符合的部門"
+                  triggerClassName={!form.departmentId ? "border-red-300 bg-red-50" : undefined}
+                />
+              </DocFormRow>
+              <DocFormRow label="專案" required>
+                <SearchableSelect
+                  value={form.projectId}
+                  onValueChange={v => setForm(p => ({ ...p, projectId: v }))}
+                  options={selectableProjects(projs, form.projectId).map(p => ({ value: String(p.id), label: projectPickerLabel(p) }))}
+                  placeholder="請選擇專案"
+                  searchPlaceholder="輸入專案名稱搜尋..."
+                  emptyText="找不到符合的專案"
+                  triggerClassName={!form.projectId ? "border-red-300 bg-red-50" : undefined}
+                />
+              </DocFormRow>
+              <DocFormRow label="備註" htmlFor="pr-remarks">
+                <Input id="pr-remarks" value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註說明" />
+              </DocFormRow>
+            </DocFormRows>
+
+            {foreign && <p className="text-xs text-muted-foreground">這張採購單是 {orderCurrency} 計價：單價填原幣金額，入帳時依採購單的匯率換成台幣；境外進貨沒有營業稅。</p>}
+            <DocItemLines
+              lines={lineItems}
+              onChange={setLineItems}
+              items={items}
+              priceOf={id => items.find(it => it.id === id)?.buyingPrice}
+              taxInclusive={!foreign}
+              remainingLabel="採購單還剩"
+            />
+          </div>
         </DocWindow>
       </div>
 
@@ -484,6 +527,9 @@ export default function PurchaseReceiptsPage() {
               ["金額", <span className="font-mono">${detailItem.totalAmount.toLocaleString()}</span>],
               ["部門", depts.find(d => d.id === detailItem.departmentId)?.name],
               ["專案", projs.find(p => p.id === detailItem.projectId)?.name],
+              ["採購單", detailItem.purchaseOrderNumber],
+              ["承辦人", detailItem.handlerName],
+              ["收貨倉庫", detailItem.warehouseName],
             ]} />
             <DocLines<PRItem>
               rows={(detailItem.items as PRItem[]) || []}
@@ -491,7 +537,7 @@ export default function PurchaseReceiptsPage() {
                 { header: "品項", cell: (item) => (
                   <>
                     {item.itemName}
-                    {((item as any).specification || (item as any).summary) && <div className="text-xs text-muted-foreground">{[(item as any).specification, (item as any).summary].filter(Boolean).join("・")}</div>}
+                    {(item.specification || (item as any).summary || item.note) && <div className="text-xs text-muted-foreground">{[item.specification, (item as any).summary, item.note].filter(Boolean).join("・")}</div>}
                     {(item as any).originalCurrency && <div className="text-xs text-muted-foreground">原幣 {(item as any).originalCurrency} {Number((item as any).originalAmount).toLocaleString()}（匯率 {(item as any).originalRate}）</div>}
                   </>
                 ) },

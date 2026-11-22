@@ -13,6 +13,7 @@ export interface CashFlowData {
 }
 
 export interface CashFlowItem {
+  accountId?: number;
   accountName: string;
   accountNumber: string;
   amount: number;
@@ -66,6 +67,10 @@ export interface AgingData {
 }
 
 export interface AgingRow {
+  /** 客戶編號（0＝未指定），應收帳齡才有 */
+  customerId?: number;
+  /** 供應商編號（0＝未指定），應付帳齡才有 */
+  supplierId?: number;
   customerName?: string;
   customerCode?: string | null;
   supplierName?: string;

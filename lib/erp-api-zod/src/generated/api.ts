@@ -2494,6 +2494,49 @@ export const DeleteInvoiceParams = zod.object({
 export const DeleteInvoiceResponse = zod.void();
 
 /**
+ * @summary Get an official ECPay print URL without issuing an invoice
+ */
+export const GetEcpayInvoicePrintParams = zod.object({
+  id: zod.coerce.number().int(),
+});
+
+export const getEcpayInvoicePrintBodyPrintStyleDefault = 1;
+
+export const GetEcpayInvoicePrintBody = zod.object({
+  printStyle: zod
+    .union([zod.literal(1), zod.literal(4)])
+    .default(getEcpayInvoicePrintBodyPrintStyleDefault)
+    .describe(
+      "General format or B2B A4, which requires the original buyer tax ID",
+    ),
+});
+
+export const GetEcpayInvoicePrintResponse = zod.object({
+  url: zod.string().url(),
+  expiresInSeconds: zod.number().int(),
+});
+
+/**
+ * @summary Download the official ECPay print page as PDF without issuing an invoice
+ */
+export const DownloadEcpayInvoicePdfParams = zod.object({
+  id: zod.coerce.number().int(),
+});
+
+export const downloadEcpayInvoicePdfBodyPrintStyleDefault = 1;
+
+export const DownloadEcpayInvoicePdfBody = zod.object({
+  printStyle: zod
+    .union([zod.literal(1), zod.literal(4)])
+    .default(downloadEcpayInvoicePdfBodyPrintStyleDefault)
+    .describe(
+      "General format or B2B A4, which requires the original buyer tax ID",
+    ),
+});
+
+export const DownloadEcpayInvoicePdfResponse = zod.unknown();
+
+/**
  * @summary Sync an issued ECPay invoice with the remote tax platform
  */
 export const SyncEcpayInvoiceParams = zod.object({

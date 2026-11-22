@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { Plus, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,8 @@ const cell = "h-9 w-full rounded-md border border-input bg-background px-2 text-
  */
 export function BatchEntryDialog({ open, mode, onOpenChange, onSaved, accounts, departments, projects }: {
   open: boolean; mode: BatchMode; onOpenChange: (v: boolean) => void; onSaved: () => void;
-  accounts: Acc[]; departments: Named[]; projects: (Named & { isActive?: boolean })[];
+  accounts: Acc[]; departments: (Named & { isActive?: boolean })[];
+  projects: (Named & { isActive?: boolean; startDate?: string | null; endDate?: string | null })[];
 }) {
   const { toast } = useToast();
   const leaf = useMemo(() => accounts.filter(a => !a.isGroup).sort((a, b) => a.accountNumber.localeCompare(b.accountNumber, "zh-Hant", { numeric: true })), [accounts]);
@@ -142,13 +144,13 @@ export function BatchEntryDialog({ open, mode, onOpenChange, onSaved, accounts, 
                   <td className="px-1 py-1">
                     <select className={cell} value={l.departmentId} onChange={e => set(i, "departmentId", e.target.value)} aria-label={`第 ${i + 1} 行部門`}>
                       <option value="">無</option>
-                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      {selectableDepartments(departments, l.departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                     </select>
                   </td>
                   <td className="px-1 py-1">
                     <select className={cell} value={l.projectId} onChange={e => set(i, "projectId", e.target.value)} aria-label={`第 ${i + 1} 行專案`}>
                       <option value="">無</option>
-                      {projects.filter(p => p.isActive !== false || String(p.id) === l.projectId).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {selectableProjects(projects, l.projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
                     </select>
                   </td>
                   <td className="whitespace-nowrap px-1">

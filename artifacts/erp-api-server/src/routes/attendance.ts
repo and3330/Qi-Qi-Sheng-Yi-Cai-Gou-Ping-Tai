@@ -6,6 +6,7 @@ import { requireAuth, requireRole, sessionEmployeeScope } from "../middleware/re
 import { db, attendanceTable, employeesTable, shiftTypesTable, leavesTable, clockInLocationsTable, activitiesTable } from "@workspace/erp-db";
 import { addDays, computeCheckout, isDateString, isTimeString, lateMinutesFor, shiftTimeline, summarizeMonth, taipeiToday, type ShiftLike } from "../lib/hr-rules";
 import { loadHolidays } from "../lib/hr-data";
+import { machineOnly } from "../lib/api-key-user";
 
 const router: IRouter = Router();
 router.use("/attendance", requireAuth);
@@ -31,7 +32,7 @@ function resolveEmployeeScope(req: Parameters<typeof sessionEmployeeScope>[0], r
 function requireAttendanceRole(req: Parameters<typeof sessionEmployeeScope>[0], res: import("express").Response): boolean {
   const scope = sessionEmployeeScope(req);
   if (scope.isEmployee) return true;
-  if ((req as any).apiKeyAuth) return true;
+  if (machineOnly(req)) return true;
   const u = req.session?.user;
   if (!u || (u.role !== "super_admin" && !["owner", "admin", "hr_admin"].includes(u.role))) {
     res.status(403).json({ error: "權限不足" });

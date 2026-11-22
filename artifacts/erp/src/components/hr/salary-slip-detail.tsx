@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import type { SalarySlip } from "@/lib/api";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
+import { RelatedDocs } from "@/components/shared/related-docs";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Printer } from "lucide-react";
 
 const fmt = (n: number) => `$${n.toLocaleString()}`;
@@ -84,19 +84,21 @@ ${content}
   const deductionLines = (slip.components || []).filter(c => c.kind === "deduction");
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-lg max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 flex-wrap">
-            薪資單明細 — {slip.year}/{String(slip.month).padStart(2, "0")}
-            <Badge variant="secondary">{statusMap[slip.status] || slip.status}</Badge>
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="text-sm text-gray-600">
-          {slip.employeeName || `員工 ID: ${slip.employeeId}`}
-          {slip.employeeCode ? `（${slip.employeeCode}）` : ""}
-        </div>
+    <DocWindow
+      open={open}
+      onClose={() => onOpenChange(false)}
+      name="薪資單"
+      number={`${slip.year}/${String(slip.month).padStart(2, "0")}`}
+      status={<DocStatus label={statusMap[slip.status] || slip.status} tone={statusTone(slip.status)} />}
+      description={`${slip.employeeName || `員工 ID: ${slip.employeeId}`}${slip.employeeCode ? `（${slip.employeeCode}）` : ""}`}
+      footer={<>
+        <Button variant="outline" onClick={() => onOpenChange(false)}>關閉</Button>
+        <Button onClick={handlePrint}>
+          <Printer className="h-4 w-4 mr-2" />
+          列印 / 下載 PDF
+        </Button>
+      </>}
+    >
 
         <div ref={printRef}>
           {att && (
@@ -152,15 +154,7 @@ ${content}
             <span className="font-mono text-green-600">{fmt(slip.netSalary)}</span>
           </div>
         </div>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>關閉</Button>
-          <Button onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
-            列印 / 下載 PDF
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        {slip && <RelatedDocs type="salary_slip" id={slip.id} />}
+    </DocWindow>
   );
 }

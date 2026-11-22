@@ -7,7 +7,7 @@ import { buildEmailDraft, type EmailDocType } from "../lib/email-templates";
 const router: IRouter = Router();
 const ADMIN_ROLES = ["owner", "admin", "super_admin"];
 /** 可寄送單據郵件的角色（業務/會計/管理職） */
-const MAIL_ROLES = ["owner", "admin", "super_admin", "manager", "project_manager", "finance_admin", "accountant"];
+const MAIL_ROLES = ["owner", "admin", "super_admin", "manager", "finance_admin", "accountant"];
 const DOC_TYPES = new Set(["quotation", "sales_order", "invoice"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** 去除換行等控制字元，防郵件標頭注入 */

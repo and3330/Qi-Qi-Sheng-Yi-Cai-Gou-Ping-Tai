@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -141,7 +141,7 @@ export default function TicketsPage() {
             <TableBody>
               {tickets.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無工單</TableCell></TableRow>}
               {tickets.map(t => (
-                <TableRow key={t.id}>
+                <TableRow key={t.id} className="cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; openEdit(t); }}>
                   <TableCell><CheckboxCell checked={batch.selectedIds.has(t.id)} onChange={() => batch.toggle(t.id)} /></TableCell>
                   <TableCell className="font-mono text-sm">{t.ticketNumber}</TableCell>
                   <TableCell>{t.subject}</TableCell>
@@ -163,9 +163,17 @@ export default function TicketsPage() {
           </Table>
         </CardContent>
       </Card>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯工單" : "新增工單"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "客訴工單" : "新增工單"}
+        number={editing?.ticketNumber}
+        status={editing ? <DocStatus label={statusLabel[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={!form.subject}>{editing ? "更新" : "建立"}</Button>
+        </>}
+      >
           <div className="grid gap-4">
             <div>
               <label className="text-sm font-medium">主題 *</label>
@@ -232,12 +240,7 @@ export default function TicketsPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={!form.subject}>{editing ? "更新" : "建立"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

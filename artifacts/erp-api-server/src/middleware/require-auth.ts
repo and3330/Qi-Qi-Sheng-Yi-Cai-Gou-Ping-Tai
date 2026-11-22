@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { machineOnly } from "../lib/api-key-actor";
 
 function hasValidTenantScope(req: Request): boolean {
   const tenantId = (req as any).apiKeyAuth
@@ -9,7 +10,6 @@ function hasValidTenantScope(req: Request): boolean {
 
 /** 有效 API key 或已登入 session 皆視為已驗證 */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  // 已透過 API key 驗證的呼叫直接放行（方法層級權限由 optionalApiKeyAuth 把關）
   if ((req as any).apiKeyAuth) {
     if (hasValidTenantScope(req)) { next(); return; }
     res.status(401).json({ error: "無效的租戶憑證" });
@@ -24,21 +24,21 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 
 export const EMPLOYEE_ROLE = "employee";
 
-/** 員工自助帳號：回傳綁定的員工 id（非 employee 角色回傳 null） */
+/** 員工自助帳號：回傳綁定的員工 id（非 employee 角色回傳 null）。金鑰綁到員工帳號時一樣受限。 */
 export function sessionEmployeeScope(req: Request): { isEmployee: boolean; employeeId: number | null } {
-  if ((req as any).apiKeyAuth) return { isEmployee: false, employeeId: null };
+  if (machineOnly(req)) return { isEmployee: false, employeeId: null };
   const u = req.session?.user;
   if (!u || u.role !== EMPLOYEE_ROLE) return { isEmployee: false, employeeId: null };
   return { isEmployee: true, employeeId: u.employeeId ?? null };
 }
 
 /**
- * 角色守衛。API key 不對應應用角色：
- * 只有 permissions === "admin" 的金鑰可通過角色守衛，read/readwrite 一律 403。
+ * 角色守衛。API 金鑰跟著綁定的使用者角色判斷，跟那個人自己登入一樣。
+ * 只有沒有對應使用者的機器身分（環境變數設定的舊 AI 金鑰）才看它原本的等級：admin 才能過。
  */
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
-    if ((req as any).apiKeyAuth) {
+    if (machineOnly(req)) {
       if (!hasValidTenantScope(req)) {
         res.status(401).json({ error: "無效的租戶憑證" });
         return;
@@ -58,7 +58,7 @@ export function requireRole(...roles: string[]) {
   };
 }
 
-/** 僅限登入 session 使用；任何 API key（含 admin 權限）一律拒絕。用於帳號管理、備份、金鑰管理等。 */
+/** 僅限登入 session 使用；任何 API key 一律拒絕。用於帳號管理、備份、金鑰管理等。 */
 export function sessionOnly(req: Request, res: Response, next: NextFunction): void {
   if ((req as any).apiKeyAuth) {
     res.status(403).json({ error: "權限不足", message: "此端點僅限登入使用者操作，不開放 API Key" });

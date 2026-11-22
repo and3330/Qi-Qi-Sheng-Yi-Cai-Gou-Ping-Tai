@@ -71,7 +71,9 @@ Mobile-first B2B2C 醫藥採購 WebApp：三種會員身份（A 醫院 / B 診�
 - **資料庫**：同一個 `DATABASE_URL`，ERP 的資料表全部在 `erp` schema（`ERP_DB_SCHEMA` 可改）。`lib/erp-db/src/index.ts` 讓每條連線一建立就 `SET search_path TO erp, public`，受限角色 `erp_app` 只有 `erp` schema 的權限。商城的資料表在 `public`，舊版 ERP 的 `erp_*` 等資料表也還留在 `public`（未刪除）。
 - **資料表結構**：由 ERP 伺服器啟動時套用 `lib/erp-db/drizzle` 的遷移檔（`src/lib/schema-bootstrap.ts`），不是用 `drizzle-kit push`，也不靠 Replit 發布時的資料庫比對。改了 `lib/erp-db/src/schema` 之後要執行 `pnpm --filter @workspace/erp-db run generate` 產生新的遷移檔並一起提交。**不要對 `lib/erp-db` 執行 push**（它會把 `public` 當成自己的範圍）。
 - **單一公司**：`/erp-api/public/signup` 只有在還沒有任何公司時才開放；建立的公司直接是正式、免收費（`is_exempt`）。沒有 Stripe 訂閱（`ENABLE_STRIPE_SYNC` 沒設就不啟動）。
-- **商城 → ERP**：`src/lib/integration-adapters.ts` 的 `qiqi-shop` 轉接直接讀 `public.orders` 等資料表，每小時由排程（`integration_pull`）把已付款訂單送進 ERP 的外部串接收件匣；來源、專案、預設品項由 `src/lib/qiqi-shop-source.ts` 自動建立。
+- **商城 → ERP**：`src/lib/integration-adapters.ts` 的 `qiqi-shop` 轉接直接讀 `public.orders` 等資料表，每小時由排程（`integration_pull`）把已付款訂單送進 ERP 的外部串接收件匣；來源、專案、預設品項由 `src/lib/qiqi-shop-source.ts` 自動建立。每次抓單前會先跑 `syncQiqiShopItems`（商城商品 → 同編號的 ERP 品項與品項對應）與 `syncQiqiMemberTiers`（會員等級 → ERP 客戶分類）。
+- **與公司 ERP 同步**：ERP 的程式來自公司 ERP，七期這邊改過路徑與套件名稱。之後要再同步，取公司 ERP 的新舊兩版與七期現有檔案做三方合併（路徑對照：`artifacts/api-server`→`artifacts/erp-api-server`、`lib/db`→`lib/erp-db`、`lib/api-*`→`lib/erp-api-*`；前端 `/api/`→`/erp-api/`），再到 `lib/erp-db` 跑 `pnpm run generate` 產生資料表變更檔。
+- **舊版 ERP 已移除**：商城後端原本的 `/api/erp/*` 路由與自動記帳到舊帳本的程式已刪除；商城的庫存、採購、報價、銷貨單仍使用 `public` 裡原本的資料表（`lib/db` 的結構檔保留，沒有刪任何資料表）。「調整庫存」在 `artifacts/api-server/src/lib/stockAdjust.ts`。
 - **不連外**：公司 ERP 專用的 CM生活+、AI 大學、講師平台（ICTA）、資料同步、訂閱收費在這裡都沒有載入，請勿加回。
 - **AI 代理**：商城 `/api/mcp`（金鑰在後台「Bot 連線」）、ERP `/erp-mcp`（Secrets：`ERP_AI_KEY_ADMIN` 等，至少 24 字元）。說明見 `docs/AI代理連線安裝說明.md`。
 - 之後要再跟上公司 ERP 的更新：把公司 ERP 的 `artifacts/erp`、`artifacts/api-server`、`lib/{db,api-zod,api-client-react,api-spec}` 覆蓋到這裡對應的 `erp-` 目錄，重新套用上面列的七期專屬修改（搜尋註解「七期網站」），再產生遷移檔。

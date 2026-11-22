@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -157,9 +158,16 @@ export default function KnowledgeBasePage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯文章" : "新增文章"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "文章" : "新增文章"}
+        status={editing ? <DocStatus label={statusLabel[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={!form.title}>{editing ? "更新" : "建立"}</Button>
+        </>}
+      >
           <div className="grid gap-4">
             <div><label className="text-sm font-medium">標題 *</label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
             <div><label className="text-sm font-medium">內容</label><Textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} rows={8} /></div>
@@ -185,12 +193,7 @@ export default function KnowledgeBasePage() {
             </div>
             <div><label className="text-sm font-medium">標籤 (逗號分隔)</label><Input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="例: FAQ, 常見問題, 操作手冊" /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={!form.title}>{editing ? "更新" : "建立"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       <Dialog open={catOpen} onOpenChange={setCatOpen}>
         <DialogContent>

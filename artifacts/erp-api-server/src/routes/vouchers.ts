@@ -52,6 +52,8 @@ router.get("/vouchers", async (req, res): Promise<void> => {
     .select({
       id: vouchersTable.id,
       voucherNumber: vouchersTable.voucherNumber,
+      templateId: vouchersTable.templateId,
+      extraFields: vouchersTable.extraFields,
       voucherType: vouchersTable.voucherType,
       voucherDate: vouchersTable.voucherDate,
       description: vouchersTable.description,
@@ -107,7 +109,8 @@ router.post("/vouchers", async (req, res): Promise<void> => {
     const dbType = typeToDb[uiType] || uiType;
     if (!typeToDb[uiType]) throw new Error("傳票類型無效");
     if (!isRealDate(parsed.data.voucherDate)) throw new Error("請填寫正確的傳票日期");
-    const voucherItems = parsed.data.items as Array<{ amount: number; invoiceId?: number; salesOrderId?: number; purchaseOrderId?: number }>;
+    const voucherItems = parsed.data.items as Array<{ amount: number; accountId?: number; fee?: number; invoiceId?: number; salesOrderId?: number; purchaseOrderId?: number }>;
+    const isCashSlip = uiType === "收款單" || uiType === "付款單";
     // 明細可直接指定銷貨單（收款）或採購單（付款）：還沒開發票就先收、先付訂金
     const rawItems: any[] = Array.isArray(req.body?.items) ? req.body.items : [];
     voucherItems.forEach((item, index) => {
@@ -132,6 +135,17 @@ router.post("/vouchers", async (req, res): Promise<void> => {
         throw new Error("傳票明細的發票編號格式不正確");
       }
     }
+    // 每一行的手續費（收款單、付款單）：收款是對方匯款時被扣掉的，付款是我們另外付給銀行的
+    voucherItems.forEach((item, index) => {
+      const raw = rawItems[index]?.fee;
+      if (raw === undefined || raw === null || raw === "" || Number(raw) === 0) return;
+      const fee = Math.round(Number(raw) * 100) / 100;
+      if (!Number.isFinite(fee) || fee < 0) throw new Error(`第 ${index + 1} 行手續費不可為負數`);
+      if (!isCashSlip) throw new Error("只有收款單、付款單可以填手續費");
+      if (uiType === "收款單" && fee >= item.amount) throw new Error(`第 ${index + 1} 行手續費不能大於或等於金額`);
+      item.fee = fee;
+    });
+    const feeTotal = Math.round(voucherItems.reduce((sum, item) => sum + (item.fee || 0), 0) * 100) / 100;
 
     const result = await db.transaction(async (tx) => {
       await assertPeriodOpen(tx, parsed.data.voucherDate, "建立傳票");
@@ -140,6 +154,29 @@ router.post("/vouchers", async (req, res): Promise<void> => {
       const expenseAccount = uiType === "請款單" && req.body?.expenseAccountId
         ? await leafAccount(tx, req.body.expenseAccountId, "費用科目", ["Expense", "Asset"])
         : null;
+      // 手續費記到哪個費用科目（有填手續費才需要）
+      // 沒指定時自動帶科目表裡名稱有「手續費」的費用科目（編號最小的那一個）；科目表裡沒有才要求指定
+      let feeAccountId: unknown = req.body?.feeAccountId;
+      if (feeTotal > 0 && (feeAccountId === undefined || feeAccountId === null || feeAccountId === "")) {
+        const found: any = await tx.execute(sql`SELECT id FROM accounts WHERE account_type = 'Expense' AND is_group = false AND account_name LIKE ${"%手續費%"} ORDER BY account_number LIMIT 1`);
+        feeAccountId = (found.rows ?? found)[0]?.id;
+        if (!feeAccountId) throw new Error("科目表裡找不到名稱有「手續費」的費用科目，請指定手續費科目");
+      }
+      const feeAccount = feeTotal > 0
+        ? await leafAccount(tx, feeAccountId, "手續費科目", ["Expense"]).then(a => ({ accountId: a.accountId, accountNumber: a.accountNumber, accountName: a.accountName }))
+        : null;
+      // 每一行自己選的科目：只有沒沖發票、沒核對訂單的行才用得到（沖帳的行一定是應收／應付）
+      const lineAccounts = new Map<number, { accountId?: number; accountNumber?: string; accountName: string }>();
+      for (const [index, item] of voucherItems.entries()) {
+        if (item.accountId === undefined) continue;
+        const linked = item.invoiceId !== undefined || item.salesOrderId !== undefined || item.purchaseOrderId !== undefined;
+        if (!isCashSlip || linked) { delete item.accountId; continue; }
+        const account = await leafAccount(tx, item.accountId, `第 ${index + 1} 行的科目`);
+        if (cashAccount.accountId !== undefined && account.accountId === cashAccount.accountId) {
+          throw new Error(`第 ${index + 1} 行的科目不能跟${uiType === "收款單" ? "收款" : "付款"}帳戶相同`);
+        }
+        lineAccounts.set(index, { accountId: account.accountId, accountNumber: account.accountNumber, accountName: account.accountName });
+      }
       const typePrefix: Record<string, string> = { "請款單": "RQ", "收款單": "RC", "付款單": "PY" };
       const prefix = typePrefix[uiType] || "VO";
       // 連號：前綴-年月-流水號。原本用「目前筆數 + 1」，刪過一張或兩人同時開單就會撞號
@@ -172,11 +209,19 @@ router.post("/vouchers", async (req, res): Promise<void> => {
       }
       const totalAmount = String(itemsSum > 0 ? itemsSum : (declaredTotal ?? 0));
 
+      // 收付款單模板：記下用了哪個模板，和模板自訂欄位填的值（只收簡單的文字、數字）
+      const templateId = Number.isInteger(Number(req.body?.templateId)) && Number(req.body.templateId) > 0 ? Number(req.body.templateId) : null;
+      const rawExtra = req.body?.extraFields && typeof req.body.extraFields === "object" && !Array.isArray(req.body.extraFields) ? req.body.extraFields as Record<string, unknown> : null;
+      const extraFields = rawExtra ? Object.fromEntries(Object.entries(rawExtra).slice(0, 30)
+        .filter(([k, v]) => k.length <= 40 && (typeof v === "string" || typeof v === "number") && String(v).trim() !== "")
+        .map(([k, v]) => [k, typeof v === "string" ? v.trim().slice(0, 300) : v])) : null;
       const [voucher] = await tx.insert(vouchersTable).values({
         ...parsed.data,
         voucherType: dbType,
         voucherNumber,
         totalAmount,
+        templateId,
+        extraFields: extraFields && Object.keys(extraFields).length > 0 ? extraFields : null,
       }).returning();
 
       // 收款單沖銷銷貨發票 / 付款單沖銷採購發票：items 帶 invoiceId 的明細寫入 invoice_settlements，並重算對應發票
@@ -304,6 +349,7 @@ router.post("/vouchers", async (req, res): Promise<void> => {
             // 只有外幣發票才有匯率差；本幣明細填了匯率也不採用
             paymentRate: invoiceRate !== undefined && paymentRate > 0 ? paymentRate : undefined,
             deposit: (item as any).asDeposit === true,
+            account: lineAccounts.get(index),
           };
         });
         // 實際進出的台幣（外幣貨款換匯去付，和入帳時的台幣金額不同）：差額記兌換損益
@@ -325,12 +371,12 @@ router.post("/vouchers", async (req, res): Promise<void> => {
         if (itemsSum > 0 && !hasLinked && actualCash === undefined) {
           // 一般收付（沒沖發票、沒核對訂單）：一行摘要拆成一組借貸，各自帶自己的摘要
           lines = voucherItems.flatMap((item, index) =>
-            settlementJournalLines({ kind, voucherNumber, cash: cashAccount, parts: [{ amount: item.amount }] })
+            settlementJournalLines({ kind, voucherNumber, cash: cashAccount, parts: [{ amount: item.amount, account: lineAccounts.get(index) }], fee: item.fee, feeAccount })
               .map(l => ({ ...l, description: partyLineText(party, summaries[index], verb) })));
         } else {
           const text = partyLineText(party, entryText, verb);
           lines = (itemsSum > 0
-            ? settlementJournalLines({ kind, voucherNumber, cash: cashAccount, parts, actualCash })
+            ? settlementJournalLines({ kind, voucherNumber, cash: cashAccount, parts, actualCash, fee: feeTotal, feeAccount })
             : settlementJournalLines({ kind, voucherNumber, cash: cashAccount, parts: [{ amount: amt }] }))
             .map(l => ({ ...l, description: text }));
         }
@@ -415,6 +461,8 @@ router.get("/vouchers/:id", async (req, res): Promise<void> => {
     .select({
       id: vouchersTable.id,
       voucherNumber: vouchersTable.voucherNumber,
+      templateId: vouchersTable.templateId,
+      extraFields: vouchersTable.extraFields,
       voucherType: vouchersTable.voucherType,
       voucherDate: vouchersTable.voucherDate,
       description: vouchersTable.description,

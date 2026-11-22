@@ -4,7 +4,12 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod/v4";
-import { db, runWithTenant, currentTenantId, currentTenantClient, aiActionsTable } from "@workspace/erp-db";
+import { eq, and } from "drizzle-orm";
+import { db, runWithTenant, currentTenantId, currentTenantClient, aiActionsTable, apiKeysTable } from "@workspace/erp-db";
+import { MAX_ACTIONS, NO_ACTIONS, parseAgentConfig, runWithAgent, type AgentContext } from "./agent-caps";
+import { loadKeyUser } from "../lib/api-key-user";
+import { bearerProblem, mcpAuthHeader } from "./auth-help";
+import { buildUserProfile } from "./user-identity";
 import { toolSchemas, executeTool, type ToolName } from "./tools";
 import { CustomerDraftConflictError } from "./customer-drafts";
 import { DIRECT_WRITE_TOOLS, ROLE_LABEL, ROLE_TOOLS, resolveIdentity, roleAllows, roleAllowsDraftType, type McpRole } from "./identity";
@@ -35,6 +40,7 @@ export async function audit(tool: unknown, args: unknown, status: "ok" | "denied
   });
 }
 const TOOL_DESCRIPTIONS: Partial<Record<ToolName,string>> = {
+  erp_whoami: "Call this first. Tells you whose key this is (the ERP user it represents), that user's role, and exactly which ERP modules and actions (view/create/edit/delete) that role allows. The key has no permissions of its own: everything follows this user's current role, the same as if they were logged in to the ERP.",
   erp_list_endpoints: "List the ERP REST endpoints this identity may call with erp_request (all modules: sales, purchasing, inventory, manufacturing, HR/payroll, assets, accounting, projects...). Pass keyword (e.g. purchase, salary, leave, item, invoice) to narrow down and to see which endpoints are reserved for humans.",
   erp_request: "Call any ERP REST endpoint (method + path + optional query/body), with all the ERP's own validation applied; takes effect immediately. Typical flows: GET /items, /suppliers, /customers, /projects, /employees to look up ids; POST /purchase-orders, /purchase-receipts/from-order/:id, /sales-orders, /quotations, /invoices (invoiceType Sales, taxType taxable) to create documents; POST /sales-orders/:id/issue-ecpay-invoice with body {idempotencyKey: <8-100 chars, letters/digits/dashes, a fresh one per invoice>, invoiceType: personal|company|donation, customerEmail, and for company: taxId + companyTitle} to issue the government e-invoice for a confirmed sales order (GET /sales-orders/:id/ecpay-invoice-preview first to see what will be issued; issuing is real and can only be undone by a human voiding it); POST /leaves, /attendance, /salary-slips for HR. Every income/expense document needs projectId. Reserved for humans (returns humanOnly): paying, payroll payout, void/cancel/delete, approvals, credit-limit override, accounts, keys and system settings. Lists are capped at 100 rows; use query filters.",
   get_quotation_pdf: "Generate the PDF of a quotation and return a download link valid for 7 days (no login needed) that can be forwarded to the customer.",
@@ -46,7 +52,7 @@ const TOOL_DESCRIPTIONS: Partial<Record<ToolName,string>> = {
   preview_invoice_email: "Read-only check before emailing a sales invoice: recipient, subject and blockers. Does not send; a human sends it from the ERP invoice page.",
   request_quotation_email: "Ask for a quotation to be emailed to the customer. Creates a pending email only; a human must confirm it in the ERP before anything is sent. Body is rebuilt by the server from the quotation.",
   request_invoice_email: "Ask for a sales invoice to be emailed to the customer. Creates a pending email only; a human must confirm it in the ERP before anything is sent. Draft or cancelled invoices are refused.",
-  create_receipt_draft: "Create a customer receipt (collection) draft that settles invoices. Requires human confirmation in the ERP before any money or ledger entry is recorded.",
+  create_receipt_draft: "Create a customer receipt (collection) draft. Each line settles either an invoice (invoice_id) or, for sales orders without an invoice such as Ecount historical orders, the sales order itself (sales_order_id). Requires human confirmation in the ERP before any money or ledger entry is recorded.",
   create_document_draft: "Create a draft (sales_invoice, payment, payment_request, quotation) for human confirmation in the ERP; never posts financial data by itself.",
   create_customer_draft: "Create AI-only customer master draft (ai_customer_drafts) for human review; never creates a formal customer. Rejects invalid Taiwan tax_id and same-tenant duplicate tax_id/customer_code/name (existing customers or pending drafts, exact match after trim).",
 };
@@ -65,17 +71,50 @@ async function admit(tenantId: number, ip?: string) {
     return true;
   } catch (error) { await client.query("ROLLBACK"); throw error; }
 }
-export async function auditedTool(tenantId: number, name: string, args: unknown, ip?: string, role: McpRole = "legacy") {
-  return runWithTenant(tenantId, async () => {
+/**
+ * 在 ERP「API 金鑰」頁面建立的金鑰：Authorization: Bearer <金鑰>:<密鑰>。
+ * 金鑰沒有自己的權限：可用的工具與能做的動作都跟著金鑰綁定的使用者目前的角色（老闆 2026-11-19）。
+ * 沒有開放 AI 助理、還沒指定使用者、或使用者已停用的金鑰都不能用：
+ * 金鑰和密鑰都對了才會回 denied 說明是哪一種（不對的人問不出金鑰狀態）。
+ */
+export type DbKeyDenied = { denied: string; tenantId: number };
+export async function resolveDbKey(header: string | undefined): Promise<{ tenantId: number; role: McpRole; agent: AgentContext } | DbKeyDenied | null> {
+  const token = header?.startsWith("Bearer ") ? header.slice(7) : "";
+  const cut = token.indexOf(":");
+  if (cut <= 0 || cut !== token.lastIndexOf(":")) return null;
+  const [record] = await db.select().from(apiKeysTable).where(and(eq(apiKeysTable.apiKey, token.slice(0, cut)), eq(apiKeysTable.isActive, true))).limit(1);
+  if (!record) return null;
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  const suppliedHash = createHash("sha256").update(token.slice(cut + 1)).digest("hex");
+  if (!timingSafeEqual(digest(suppliedHash), digest(record.secretHash))) return null;
+  const denied = (reason: string): DbKeyDenied => ({ denied: `金鑰「${record.keyName}」${reason}`, tenantId: record.tenantId });
+  if (record.expiresAt && new Date(record.expiresAt) < new Date()) return denied("已經過期。請到 ERP「API 金鑰」頁建立新的金鑰。");
+  const config = parseAgentConfig(record.agentConfig);
+  if (!config.enabled) return denied("沒有開放給 AI 助理連線。請到 ERP「API 金鑰」頁點這把金鑰的「AI 助理」，打勾「開放給 AI 助理連線」。");
+  if (!record.userId) return denied("還沒指定代表哪一位使用者，所以暫停使用。請到 ERP「API 金鑰」頁指定。");
+  const profile = await runWithTenant(record.tenantId, async () => {
+    const user = await loadKeyUser(record.tenantId, record.userId);
+    return user ? buildUserProfile(record.tenantId, user) : null;
+  });
+  if (!profile) return denied("代表的使用者帳號已停用或不存在，所以暫停使用。");
+  db.update(apiKeysTable).set({ lastUsedAt: new Date() }).where(eq(apiKeysTable.id, record.id)).execute().catch(() => {});
+  // 四類動作不再由金鑰決定：照那個人的角色，ERP 自己的守衛會擋下他不能做的
+  return { tenantId: record.tenantId, role: profile.mcpRole, agent: { keyId: record.id, keyName: record.keyName, actions: MAX_ACTIONS, profile } };
+}
+
+export async function auditedTool(tenantId: number, name: string, args: unknown, ip?: string, role: McpRole = "legacy", agent: AgentContext = { keyId: null, keyName: ROLE_LABEL[role], actions: NO_ACTIONS }) {
+  return runWithTenant(tenantId, async () => runWithAgent(agent, async () => {
     if (!Object.hasOwn(toolSchemas,name)) {
       await audit(name,args,"denied",ip,undefined,role);
       return { isError: true, content: [{ type: "text" as const, text: "Unknown tool" }] };
     }
     // 身分沒有這個工具的權限：拒絕並留下稽核紀錄
     const draftType = name === "create_document_draft" ? String((args as any)?.doc_type ?? "") : null;
-    if (!roleAllows(role, name) || (draftType !== null && !roleAllowsDraftType(role, draftType))) {
+    const toolAllowed = agent.profile ? agent.profile.tools.includes(name) : roleAllows(role, name);
+    if (!toolAllowed || (draftType !== null && !roleAllowsDraftType(role, draftType))) {
       await audit(name,args,"denied",ip,undefined,role);
-      return { isError: true, content: [{ type: "text" as const, text: `This identity (${role}) is not permitted to use ${name}` }] };
+      const who = agent.profile ? `${agent.profile.user.displayName}（${agent.profile.roleLabel}）` : role;
+      return { isError: true, content: [{ type: "text" as const, text: `This key acts as ${who}, whose role is not permitted to use ${name}. Call erp_whoami to see what this user can do.` }] };
     }
     const schema = toolSchemas[name as ToolName];
     if (!schema.safeParse(args ?? {}).success) {
@@ -100,13 +139,25 @@ export async function auditedTool(tenantId: number, name: string, args: unknown,
         : DIRECT_WRITE_TOOLS.has(name) ? "Tool failed validation or could not complete; nothing was changed." : "Tool failed validation or could not complete; no financial data changed.";
       return { isError: true, content: [{ type: "text" as const, text }] };
     }
-  });
+  }));
 }
 const router = Router();
 router.all("/", async (req,res) => {
-  // 七期網站只有一家公司，沒設定 ERP_AI_TENANT_ID 時就用第一家（編號 1）
-  const tenantId = Number(process.env.ERP_AI_TENANT_ID || 1);
-  const identity = resolveIdentity(req.headers.authorization, process.env);
+  // ERP 裡建立的金鑰優先；不是這種格式或不認得，才看環境變數設定的舊金鑰
+  const authHeader = mcpAuthHeader(req.headers);
+  let resolved: Awaited<ReturnType<typeof resolveDbKey>> = null;
+  try { resolved = await resolveDbKey(authHeader); } catch { res.status(503).json({ error: "MCP unavailable" }); return; }
+  // 金鑰和密鑰都對，但金鑰暫停中（過期、沒開放 AI 助理、沒指定使用者、使用者停用）：說明是哪一種
+  if (resolved && "denied" in resolved) {
+    const paused = resolved;
+    try { await runWithTenant(paused.tenantId, () => audit("authentication", undefined, "denied", req.socket.remoteAddress)); } catch { /* best effort */ }
+    res.status(401).json({ error: "Unauthorized", reason: paused.denied }); return;
+  }
+  const dbKey = resolved;
+  // 長得像 ERP 金鑰（金鑰:密鑰）但不認得或已停用：直接回未授權
+  if (!dbKey && /^Bearer [^:\s]+:[^:\s]+$/.test(authHeader || "")) { res.status(401).json({ error: "Unauthorized", reason: bearerProblem(authHeader) }); return; }
+  const tenantId = dbKey ? dbKey.tenantId : Number(process.env.ERP_AI_TENANT_ID || 1) /* 七期只有一家公司，沒設定就用第一家 */;
+  const identity: ReturnType<typeof resolveIdentity> = dbKey ? { ok: true, role: dbKey.role } : resolveIdentity(authHeader, process.env);
   if ((!identity.ok && identity.reason !== "unauthorized") || !Number.isSafeInteger(tenantId) || tenantId <= 0) {
     if (Number.isSafeInteger(tenantId) && tenantId > 0) {
       try { await runWithTenant(tenantId, () => audit("configuration",undefined,"denied",req.socket.remoteAddress)); }
@@ -122,7 +173,7 @@ router.all("/", async (req,res) => {
         if (req.body?.method === "tools/call") await audit(req.body?.params?.name,undefined,"denied",ip);
       });
     } catch { /* Denied-auth logging is best effort; never change 401 into 503. */ }
-    res.status(401).json({ error: "Unauthorized" }); return;
+    res.status(401).json({ error: "Unauthorized", reason: bearerProblem(authHeader) }); return;
   }
   const role = identity.role;
   try {
@@ -143,13 +194,19 @@ router.all("/", async (req,res) => {
     if (req.body?.method === "tools/call" && !CallToolRequestSchema.safeParse(req.body).success) {
       await runWithTenant(tenantId,() => audit("invalid_tool",undefined,"denied",ip));
     }
-    const server = new Server({ name: `erp-ai (${ROLE_LABEL[role]})`, version: "1.2.0" }, { capabilities: { tools: {} } });
-    // 只列出這個身分可以用的工具
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: Object.entries(toolSchemas).filter(([name]) => ROLE_TOOLS[role].includes(name)).map(([name,schema]) => ({
+    const profile = dbKey?.agent.profile;
+    const serverName = profile ? `erp-ai (${profile.user.displayName}・${profile.roleLabel})` : `erp-ai (${ROLE_LABEL[role]})`;
+    const server = new Server({ name: serverName, version: "1.3.0" }, {
+      capabilities: { tools: {} },
+      ...(profile ? { instructions: `這把金鑰代表 ERP 使用者「${profile.user.displayName}」，角色是「${profile.roleLabel}」。金鑰沒有自己的權限，能做什麼完全跟著這個人的角色。先呼叫 erp_whoami 看他能用哪些功能。` } : {}),
+    });
+    // 只列出這個身分可以用的工具（ERP 金鑰：跟著綁定使用者的角色）
+    const visibleTools = profile ? profile.tools : ROLE_TOOLS[role];
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: Object.entries(toolSchemas).filter(([name]) => visibleTools.includes(name)).map(([name,schema]) => ({
       name, description: TOOL_DESCRIPTIONS[name as ToolName] ?? (name.startsWith("create_") ? "Create AI-only draft for human review; never post financial data" : "Tenant-scoped read only"),
       inputSchema: z.toJSONSchema(schema) as any,
     })) }));
-    server.setRequestHandler(CallToolRequestSchema, req => auditedTool(tenantId, req.params.name, req.params.arguments, ip, role));
+    server.setRequestHandler(CallToolRequestSchema, req => auditedTool(tenantId, req.params.name, req.params.arguments, ip, role, dbKey?.agent));
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on("close", () => { void transport.close(); void server.close(); });
     await server.connect(transport);

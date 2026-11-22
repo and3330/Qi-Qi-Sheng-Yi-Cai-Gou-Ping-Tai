@@ -9,6 +9,34 @@ export function reversalOriginalId(entryNumber: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+/** 稽核紀錄裡的名字：API 金鑰寫成看得懂的樣子 */
+export const actorLabel = (name: string) => (name.startsWith("apikey:") ? `API 金鑰「${name.slice(7)}」` : name);
+
+export interface ActorCandidate { userName: string | null; createdAt: Date | string; documentNumber: string | null; newValues: unknown }
+
+/**
+ * 單據入帳時自動開的分錄，分錄本身沒有記是誰按的：回頭從稽核紀錄找「當時是誰建立收付款單、核准或付款」。
+ * candidates 是分錄建立前後那一小段時間的稽核紀錄。
+ * 先找有提到原單號或這張分錄號的那一筆；找不到時，那幾秒內只有一個人在操作才算他，否則寧可不寫。
+ */
+export function pickAutoActor(entry: { entryNumber: string; createdAt: Date | string | null }, sourceNumber: string | null, candidates: ActorCandidate[]): string | null {
+  if (!entry.createdAt) return null;
+  const made = new Date(entry.createdAt).getTime();
+  const named = candidates
+    .filter(c => c.userName && c.userName !== "system" && c.userName !== "系統")
+    .map(c => ({ ...c, gap: new Date(c.createdAt).getTime() - made }))
+    .filter(c => c.gap >= -2000 && c.gap <= 30000)
+    .sort((a, b) => a.gap - b.gap);
+  const mentions = (c: ActorCandidate) => {
+    const text = JSON.stringify(c.newValues ?? "");
+    return (!!sourceNumber && (c.documentNumber === sourceNumber || text.includes(sourceNumber))) || text.includes(entry.entryNumber);
+  };
+  const exact = named.find(mentions);
+  if (exact) return actorLabel(exact.userName!);
+  const near = new Set(named.filter(c => c.gap <= 10000).map(c => c.userName!));
+  return near.size === 1 ? actorLabel([...near][0]) : null;
+}
+
 const STATUS: Record<string, string> = { Posted: "已入帳", Reversed: "已沖銷", Draft: "草稿" };
 
 /**
@@ -19,6 +47,8 @@ export function journalHistoryRows(
   entry: { id: number; entryNumber: string; createdAt: Date | string | null; sourceNumber?: string | null },
   logs: HistoryLog[],
   reversedBy?: { log: HistoryLog; originalNumber: string } | null,
+  /** 單據自動開的分錄：是哪張單開的、當時是誰操作的（查不到就是 null） */
+  auto?: { source: string | null; actor: string | null } | null,
 ): HistoryRow[] {
   const rows: HistoryRow[] = [];
   for (const log of logs) {
@@ -52,7 +82,11 @@ export function journalHistoryRows(
   }
   // 系統自動產生、Ecount 搬來、或稽核上線前建立的分錄沒有「新增」紀錄：用建立時間補一行
   if (!rows.some(r => r.action === "新增") && entry.createdAt) {
-    rows.unshift({ at: new Date(entry.createdAt).toISOString(), user: entry.sourceNumber ? "Ecount 匯入" : "系統自動產生", action: "新增", detail: "" });
+    if (entry.sourceNumber) rows.unshift({ at: new Date(entry.createdAt).toISOString(), user: "Ecount 匯入", action: "新增", detail: "" });
+    else rows.unshift({
+      at: new Date(entry.createdAt).toISOString(), user: auto?.actor || "系統自動產生", action: "新增",
+      detail: auto?.source ? `${auto.source} 入帳時自動開立${auto.actor ? "" : "（查不到當時是誰操作的）"}` : "",
+    });
   }
   return rows.sort((a, b) => a.at.localeCompare(b.at));
 }

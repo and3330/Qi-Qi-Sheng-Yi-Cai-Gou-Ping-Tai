@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, DocFields, DocNote, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, Search } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -87,10 +87,14 @@ export default function NonConformancePage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input className="pl-9" placeholder="搜尋..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />新增 NCR</Button></DialogTrigger>
-          <DialogContent className="md:max-w-lg max-h-[85dvh] overflow-y-auto">
-            <DialogHeader><DialogTitle>新增不符合報告</DialogTitle></DialogHeader>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增 NCR</Button>
+        <DocWindow
+          open={open} onClose={() => setOpen(false)} name="新增不符合報告"
+          footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} disabled={!form.title || !form.description}>建立</Button>
+          </>}
+        >
             <div className="space-y-4">
               <div><label className="text-sm font-medium">標題 *</label><Input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} /></div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -114,12 +118,7 @@ export default function NonConformancePage() {
               <div><label className="text-sm font-medium">矯正措施</label><textarea className="w-full border rounded-md px-3 py-2 text-sm min-h-[60px]" value={form.correctiveAction} onChange={e => setForm(p => ({ ...p, correctiveAction: e.target.value }))} /></div>
               <div><label className="text-sm font-medium">報告人</label><Input value={form.reportedBy} onChange={e => setForm(p => ({ ...p, reportedBy: e.target.value }))} /></div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-              <Button onClick={handleCreate} disabled={!form.title || !form.description}>建立</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </DocWindow>
       </div>
 
       <Card>
@@ -138,8 +137,8 @@ export default function NonConformancePage() {
               {loading ? <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">載入中...</td></tr>
               : filtered.length === 0 ? <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
               : filtered.map(r => (
-                <tr key={r.id} className="border-b hover:bg-gray-50">
-                  <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} /></td>
+                <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(r.id); }} data-testid={`ncr-row-${r.id}`}>
+                  <td className="px-2" onClick={e => e.stopPropagation()}><CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} /></td>
                   <td className="px-4 py-2 font-mono">{r.reportNumber}</td>
                   <td className="px-4 py-2">{r.title}</td>
                   <td className="px-4 py-2 text-center"><Badge variant={r.severity === "Critical" ? "destructive" : r.severity === "Major" ? "default" : "secondary"}>{severityMap[r.severity]}</Badge></td>
@@ -153,32 +152,33 @@ export default function NonConformancePage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!detail} onOpenChange={v => { if (!v) setDetail(null); }}>
-        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>NCR - {detail?.reportNumber}</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div><span className="text-gray-500">標題：</span>{detail.title}</div>
-                <div><span className="text-gray-500">嚴重度：</span><Badge variant={detail.severity === "Critical" ? "destructive" : "secondary"}>{severityMap[detail.severity]}</Badge></div>
-                <div><span className="text-gray-500">狀態：</span><Badge variant={statusColor(detail.status)}>{statusMap[detail.status]}</Badge></div>
-                <div><span className="text-gray-500">品項：</span>{detail.itemName || "-"}</div>
-                <div><span className="text-gray-500">報告人：</span>{detail.reportedBy || "-"}</div>
-                <div><span className="text-gray-500">報告日期：</span>{detail.reportDate}</div>
-              </div>
-              <div><h4 className="text-sm font-semibold">描述</h4><p className="text-sm text-gray-700 whitespace-pre-wrap">{detail.description}</p></div>
-              {detail.rootCause && <div><h4 className="text-sm font-semibold">根因分析</h4><p className="text-sm text-gray-700 whitespace-pre-wrap">{detail.rootCause}</p></div>}
-              {detail.correctiveAction && <div><h4 className="text-sm font-semibold">矯正措施</h4><p className="text-sm text-gray-700 whitespace-pre-wrap">{detail.correctiveAction}</p></div>}
-              {detail.closedDate && <div className="text-sm"><span className="text-gray-500">結案日期：</span>{detail.closedDate}</div>}
-              <div className="flex gap-2 justify-end">
-                {detail.status === "Open" && <Button onClick={() => updateStatus(detail.id, "Under Investigation")}>開始調查</Button>}
-                {detail.status === "Under Investigation" && <Button onClick={() => updateStatus(detail.id, "Resolution In Progress")}>開始改善</Button>}
-                {detail.status === "Resolution In Progress" && <Button onClick={() => updateStatus(detail.id, "Closed")}>結案</Button>}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <DocWindow
+        open={!!detail} onClose={() => setDetail(null)}
+        name="不符合報告" number={detail?.reportNumber}
+        status={detail ? <DocStatus label={statusMap[detail.status] || detail.status} tone={statusTone(detail.status)} /> : undefined}
+        footer={detail && <>
+          <Button variant="outline" onClick={() => setDetail(null)}>關閉</Button>
+          {detail.status === "Open" && <Button onClick={() => updateStatus(detail.id, "Under Investigation")}>開始調查</Button>}
+          {detail.status === "Under Investigation" && <Button onClick={() => updateStatus(detail.id, "Resolution In Progress")}>開始改善</Button>}
+          {detail.status === "Resolution In Progress" && <Button onClick={() => updateStatus(detail.id, "Closed")}>結案</Button>}
+        </>}
+      >
+        {detail && (
+          <>
+            <DocFields items={[
+              ["標題", detail.title],
+              ["嚴重度", <Badge variant={detail.severity === "Critical" ? "destructive" : "secondary"}>{severityMap[detail.severity]}</Badge>],
+              ["品項", detail.itemName || "-"],
+              ["報告人", detail.reportedBy || "-"],
+              ["報告日期", detail.reportDate],
+              ["結案日期", detail.closedDate],
+            ]} />
+            <DocNote label="描述">{detail.description}</DocNote>
+            <DocNote label="根因分析">{detail.rootCause}</DocNote>
+            <DocNote label="矯正措施">{detail.correctiveAction}</DocNote>
+          </>
+        )}
+      </DocWindow>
     </div>
   );
 }

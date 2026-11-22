@@ -165,7 +165,7 @@ router.post("/purchase-returns", async (req, res): Promise<void> => {
       }).returning();
       const [sup] = await tx.select({ name: suppliersTable.name }).from(suppliersTable).where(eq(suppliersTable.id, supplierId));
       await tx.insert(activitiesTable).values({
-        type: "create", title: "採購退貨單已建立",
+        type: "create", title: "進貨退出單已建立",
         description: `${ret.returnNumber} - ${sup?.name || "供應商"} - $${totalAmount.toFixed(2)}`, module: "Purchasing",
       });
       return { ret, supplierName: sup?.name || "Unknown" };
@@ -414,7 +414,7 @@ router.patch("/purchase-returns/:id", async (req, res): Promise<void> => {
           await tx.update(invoicesTable).set({ status: "Cancelled" }).where(eq(invoicesTable.id, lockedDebitNote.id));
 
           await tx.insert(activitiesTable).values({
-            type: "update", title: "採購退貨已取消",
+            type: "update", title: "進貨退出已取消",
             description: `${locked.returnNumber} - 庫存已回補，扣項單 ${lockedDebitNote.invoiceNumber} 與分錄已作廢`,
             module: "Purchasing",
           });

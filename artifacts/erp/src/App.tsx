@@ -104,6 +104,7 @@ const Reimbursement = lazy(() => import("@/pages/accounting/reimbursement"));
 const Receipts = lazy(() => import("@/pages/accounting/receipts"));
 const AiDrafts = lazy(() => import("@/pages/accounting/ai-drafts"));
 const Payments = lazy(() => import("@/pages/accounting/payments"));
+const VoucherTemplates = lazy(() => import("@/pages/accounting/voucher-templates"));
 const IncomeStatement = lazy(() => import("@/pages/accounting/income-statement"));
 const BalanceSheet = lazy(() => import("@/pages/accounting/balance-sheet"));
 const AdminDesignations = lazy(() => import("@/pages/admin/designations"));
@@ -339,6 +340,7 @@ function Router() {
           <Route path="/accounting/receipts"><RoleGate roles={FINANCE_ROLES}><Receipts /></RoleGate></Route>
           <Route path="/accounting/ai-drafts"><RoleGate roles={FINANCE_ROLES}><AiDrafts /></RoleGate></Route>
           <Route path="/accounting/payments"><RoleGate roles={FINANCE_ROLES}><Payments /></RoleGate></Route>
+          <Route path="/accounting/voucher-templates"><RoleGate roles={FINANCE_ROLES}><VoucherTemplates /></RoleGate></Route>
           <Route path="/accounting/payment-requests"><RoleGate roles={FINANCE_ROLES}><PaymentRequests /></RoleGate></Route>
           <Route path="/accounting/income-statement"><RoleGate roles={FINANCE_ROLES}><IncomeStatement /></RoleGate></Route>
           <Route path="/accounting/balance-sheet"><RoleGate roles={FINANCE_ROLES}><BalanceSheet /></RoleGate></Route>

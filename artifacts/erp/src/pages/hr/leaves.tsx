@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -131,7 +132,7 @@ export default function LeavesPage() {
           </div>
           <Card>
             <CardContent className="p-0 overflow-x-auto">
-              <DataTable
+              <DataTable layoutId="leaves-list"
                 isLoading={isLoading}
                 data={rows}
                 emptyMessage="沒有假單"
@@ -167,9 +168,15 @@ export default function LeavesPage() {
 
       {tab === "annual" && isHr && <AnnualLeaveOverview onChanged={refresh} />}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-lg max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>申請請假</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name="申請請假"
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "送出中…" : "送出申請"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             {isApprover && (
               <div className="space-y-1.5">
@@ -228,12 +235,7 @@ export default function LeavesPage() {
             <p className="text-xs text-muted-foreground">天數由系統計算，六日與行事曆上的假日不會算進去。</p>
             {formError && <div className="text-sm text-red-600 dark:text-red-400">{formError}</div>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={submit} disabled={saving}>{saving ? "送出中…" : "送出申請"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }
@@ -292,7 +294,7 @@ function AnnualLeaveOverview({ onChanged }: { onChanged: () => void }) {
         <Card className="border-amber-300 dark:border-amber-700">
           <CardContent className="p-0">
             <div className="px-4 py-3 border-b font-semibold text-sm text-amber-800 dark:text-amber-300">待結清：期滿或離職沒休完的特休要折發工資（{data!.unsettled.length} 筆）</div>
-            <DataTable
+            <DataTable layoutId="leaves-unsettled"
               isLoading={false}
               data={data!.unsettled.map(u => ({ ...u, id: u.grantId }))}
               defaultPageSize={0}
@@ -311,7 +313,7 @@ function AnnualLeaveOverview({ onChanged }: { onChanged: () => void }) {
 
       <Card>
         <CardContent className="p-0 overflow-x-auto">
-          <DataTable
+          <DataTable layoutId="leaves-balance"
             isLoading={isLoading}
             data={data?.rows.map(r => ({ ...r, id: r.employeeId }))}
             emptyMessage="還沒有在職員工"

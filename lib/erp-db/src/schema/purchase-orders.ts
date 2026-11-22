@@ -6,6 +6,8 @@ import { suppliersTable } from "./suppliers";
 import { departmentsTable } from "./departments";
 import { projectsTable } from "./projects";
 import { orderTemplatesTable } from "./order-templates";
+import { employeesTable } from "./employees";
+import { warehousesTable } from "./warehouses";
 
 export const purchaseOrdersTable = pgTable("purchase_orders", {
   tenantId: integer("tenant_id").notNull().default(sql`(current_setting('app.tenant_id'::text))::integer`),
@@ -23,6 +25,9 @@ export const purchaseOrdersTable = pgTable("purchase_orders", {
   extraFields: jsonb("extra_fields").default({}),
   departmentId: integer("department_id").references(() => departmentsTable.id),
   projectId: integer("project_id").references(() => projectsTable.id),
+  // 承辦人（員工）與收貨倉庫：照 Ecount 採購單的表頭，兩個都可以不填
+  handlerId: integer("handler_id").references(() => employeesTable.id),
+  warehouseId: integer("warehouse_id").references(() => warehousesTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

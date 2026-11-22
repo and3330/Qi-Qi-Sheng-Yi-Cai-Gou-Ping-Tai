@@ -3,7 +3,9 @@ import { ChevronDown, PackageSearch, Search, X } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { fmtMoney, fmtQty } from "@/lib/report-format";
-import type { InventoryRow, InventoryStatusData } from "@/pages/reports/types";
+import type { InventoryRow, InventoryStatusData, WarehouseBreakdown } from "@/pages/reports/types";
+import { DrillAmount } from "@/components/shared/account-drill";
+import { DocListDrillDialog, type DocListTarget } from "@/components/shared/doc-list-drill";
 
 const PAGE_SIZE = 30;
 
@@ -27,7 +29,8 @@ const LEVEL_STYLE: Record<StockLevel, { label: string; badge: string; qty: strin
 export default function InventoryLookupPage() {
   const [search, setSearch] = useState("");
   const [keyword, setKeyword] = useState("");
-  const [lowOnly, setLowOnly] = useState(false);
+  // 首頁「低庫存品項」連過來會帶 ?low=1：一進來就只看需要補貨的
+  const [lowOnly, setLowOnly] = useState(() => new URLSearchParams(window.location.search).get("low") === "1");
   const [warehouseId, setWarehouseId] = useState("");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<InventoryRow[]>([]);
@@ -36,6 +39,13 @@ export default function InventoryLookupPage() {
   const [error, setError] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [retry, setRetry] = useState(0);
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
+  // 點數量看這個品項的每一筆進出；給 w 就只看那個倉庫。上面有選倉庫時，整列的數量本來就只算那個倉庫
+  const stockTarget = (row: InventoryRow, w?: WarehouseBreakdown): DocListTarget => {
+    const wid = w ? w.warehouseId : warehouseId ? Number(warehouseId) : undefined;
+    const wname = w ? w.warehouseName : wid ? meta?.warehouses.find((x) => x.id === wid)?.name : undefined;
+    return { kind: "stock-entries", itemId: row.itemId, title: `${row.itemCode} ${row.itemName}`, ...(wid ? { warehouseId: wid } : {}), ...(wname ? { note: `倉庫：${wname}` } : {}) };
+  };
 
   // 打字停一下才查，避免每個字都送出
   useEffect(() => {
@@ -180,13 +190,13 @@ export default function InventoryLookupPage() {
                       <td className="px-4 py-2.5 font-mono text-xs tabular-nums">{row.itemCode}</td>
                       <td className="px-4 py-2.5 font-medium">{row.itemName}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{row.itemGroup || "-"}</td>
-                      <td className={`px-4 py-2.5 text-right text-base font-bold tabular-nums ${style.qty}`}>{fmtQty(row.currentStock)}</td>
+                      <td className={`px-4 py-2.5 text-right text-base font-bold tabular-nums ${style.qty}`}><DrillAmount title="點一下看進出紀錄" onClick={() => setDocs(stockTarget(row))}>{fmtQty(row.currentStock)}</DrillAmount></td>
                       <td className="px-4 py-2.5 text-muted-foreground">{row.unit || "個"}</td>
                       <td className="px-4 py-2.5">
                         {row.warehouseBreakdown.length === 0 ? <span className="text-muted-foreground">-</span> : open ? (
                           <dl className="space-y-0.5">
                             {row.warehouseBreakdown.map((w) => (
-                              <div key={w.warehouseId} className="flex justify-between gap-4"><dt className="text-muted-foreground">{w.warehouseName}</dt><dd className="font-medium tabular-nums">{fmtQty(w.qty)}</dd></div>
+                              <div key={w.warehouseId} className="flex justify-between gap-4"><dt className="text-muted-foreground">{w.warehouseName}</dt><dd className="font-medium tabular-nums"><DrillAmount title="點一下看進出紀錄" onClick={() => setDocs(stockTarget(row, w))}>{fmtQty(w.qty)}</DrillAmount></dd></div>
                             ))}
                           </dl>
                         ) : <span className="text-muted-foreground">{row.warehouseBreakdown.length} 個倉庫 <ChevronDown size={14} className="inline" aria-hidden /></span>}
@@ -236,13 +246,14 @@ export default function InventoryLookupPage() {
                           {row.warehouseBreakdown.map((w) => (
                             <div key={w.warehouseId} className="flex items-center justify-between gap-3">
                               <dt className="min-w-0 truncate text-muted-foreground">{w.warehouseName}</dt>
-                              <dd className="font-semibold tabular-nums">{fmtQty(w.qty)} {row.unit || "個"}</dd>
+                              <dd className="font-semibold tabular-nums"><DrillAmount title="點一下看進出紀錄" onClick={() => setDocs(stockTarget(row, w))}>{fmtQty(w.qty)}</DrillAmount> {row.unit || "個"}</dd>
                             </div>
                           ))}
                         </dl>
                       ) : (
                         <p className="text-muted-foreground">沒有各倉庫的數量紀錄</p>
                       )}
+                      <p className="mt-2 text-xs"><DrillAmount title="點一下看進出紀錄" onClick={() => setDocs(stockTarget(row))}>看這個品項的進出紀錄</DrillAmount></p>
                       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t pt-3 text-xs">
                         <div><dt className="text-muted-foreground">補貨點</dt><dd className="font-medium tabular-nums">{fmtQty(row.reorderLevel)}</dd></div>
                         <div><dt className="text-muted-foreground">售價</dt><dd className="font-medium tabular-nums">{fmtMoney(row.sellingPrice, true)}</dd></div>
@@ -260,6 +271,7 @@ export default function InventoryLookupPage() {
           )}
         </>
       )}
+      <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
     </div>
   );
 }

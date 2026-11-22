@@ -4,6 +4,13 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, Users, FileText } from "lucide-react";
+import { useLocation } from "wouter";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
+import { JournalEntryDialog } from "@/components/accounting/journal-entry-dialog";
+
+/** 收款單、付款單各有自己的頁面，其他傳票都在報支／轉帳那一頁 */
+const voucherHref = (v: { voucherNumber: string; voucherType: string }) =>
+  `${v.voucherType === "Receipt" ? "/accounting/receipts" : v.voucherType === "Payment" ? "/accounting/payments" : "/accounting/reimbursement"}?search=${encodeURIComponent(v.voucherNumber)}`;
 
 export default function DeptFinancialsPage() {
   const { data: departments, isLoading: loadingDepts } = useListDepartments();
@@ -16,6 +23,10 @@ export default function DeptFinancialsPage() {
     selectedId ?? 0,
     { query: { queryKey: getGetDepartmentFinancialsQueryKey(selectedId ?? 0), enabled: !!selectedId } }
   );
+  const [, navigate] = useLocation();
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const [openEntryId, setOpenEntryId] = useState<number | null>(null);
+  const departmentName: string = (financials as any)?.departmentName || departments?.find(d => d.id === selectedId)?.name || "部門";
 
   return (
     <div className="space-y-6">
@@ -69,7 +80,7 @@ export default function DeptFinancialsPage() {
                     </div>
                     <div>
                       <div className="text-sm text-gray-500">部門收入</div>
-                      <div className="text-xl font-bold text-green-600">${financials.totalIncome.toLocaleString()}</div>
+                      <div className="text-xl font-bold text-green-600"><DrillAmount onClick={() => setDrill({ title: `${departmentName} 收入`, accountTypes: ["Income"], departmentId: selectedId })}>${financials.totalIncome.toLocaleString()}</DrillAmount></div>
                     </div>
                   </CardContent>
                 </Card>
@@ -80,7 +91,7 @@ export default function DeptFinancialsPage() {
                     </div>
                     <div>
                       <div className="text-sm text-gray-500">部門支出</div>
-                      <div className="text-xl font-bold text-red-600">${financials.totalExpense.toLocaleString()}</div>
+                      <div className="text-xl font-bold text-red-600"><DrillAmount onClick={() => setDrill({ title: `${departmentName} 支出`, accountTypes: ["Expense"], departmentId: selectedId })}>${financials.totalExpense.toLocaleString()}</DrillAmount></div>
                     </div>
                   </CardContent>
                 </Card>
@@ -147,8 +158,8 @@ export default function DeptFinancialsPage() {
                         </thead>
                         <tbody>
                           {(financials.vouchers as any[]).map((v: any) => (
-                            <tr key={v.id} className="border-b hover:bg-gray-50">
-                              <td className="px-4 py-2 font-mono text-xs">{v.voucherNumber}</td>
+                            <tr key={v.id} className="border-b hover:bg-gray-50 cursor-pointer" title="點一下開啟這張單據" onClick={() => navigate(voucherHref(v))}>
+                              <td className="px-4 py-2 font-mono text-xs text-primary">{v.voucherNumber}</td>
                               <td className="px-4 py-2">{v.voucherType}</td>
                               <td className="px-4 py-2">{v.voucherDate}</td>
                               <td className="px-4 py-2 hidden sm:table-cell">{v.description || "-"}</td>
@@ -182,8 +193,8 @@ export default function DeptFinancialsPage() {
                         </thead>
                         <tbody>
                           {(financials.entries as any[]).map((e: any) => (
-                            <tr key={e.id} className="border-b hover:bg-gray-50">
-                              <td className="px-4 py-2 font-mono text-xs">{e.entryNumber}</td>
+                            <tr key={e.id} className="border-b hover:bg-gray-50 cursor-pointer" title="點一下開啟這張分錄" onClick={() => setOpenEntryId(e.id)}>
+                              <td className="px-4 py-2 font-mono text-xs text-primary">{e.entryNumber}</td>
                               <td className="px-4 py-2">{e.entryDate}</td>
                               <td className="px-4 py-2 hidden sm:table-cell">{e.description || "-"}</td>
                               <td className="px-4 py-2 text-right font-mono">${Number(e.totalDebit).toLocaleString()}</td>
@@ -208,6 +219,8 @@ export default function DeptFinancialsPage() {
           )}
         </>
       )}
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
+      <JournalEntryDialog entryId={openEntryId} onClose={() => setOpenEntryId(null)} />
     </div>
   );
 }

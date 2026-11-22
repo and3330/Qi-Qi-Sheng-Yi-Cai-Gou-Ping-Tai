@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
+import { RelatedDocs, useOpenFromUrl } from "@/components/shared/related-docs";
 import { useToast } from "@/hooks/use-toast";
 import { PackageCheck, Plus, Send, Undo2 } from "lucide-react";
 import { call, money, post, selectClass, todayText } from "@/lib/call";
@@ -45,6 +46,7 @@ export default function SubcontractOrdersPage() {
 
   const { data: orders, isLoading } = useQuery({ queryKey: ["/subcontract-orders", status], queryFn: () => call<Order[]>(`subcontract-orders${status ? `?status=${status}` : ""}`) });
   const { data: vendorStock = [] } = useQuery({ queryKey: ["/subcontract-orders/vendor-stock"], queryFn: () => call<VendorStock[]>("subcontract-orders/vendor-stock") });
+  useOpenFromUrl(orders, o => setDetailId(o.id));
   const { data: detail } = useQuery({ queryKey: ["/subcontract-orders", "detail", detailId], queryFn: () => call<Order>(`subcontract-orders/${detailId}`), enabled: detailId !== null });
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["/subcontract-orders"] });
@@ -146,12 +148,14 @@ export default function SubcontractOrdersPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={creating} onOpenChange={setCreating}>
-        <DialogContent className="md:max-w-lg max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>開外包單</DialogTitle>
-            <DialogDescription>要給代工廠的材料會依成品的物料清單自動算出來。</DialogDescription>
-          </DialogHeader>
+      <DocWindow
+        open={creating} onClose={() => setCreating(false)}
+        name="開外包單" description="要給代工廠的材料會依成品的物料清單自動算出來。"
+        footer={<>
+          <Button variant="outline" onClick={() => setCreating(false)}>取消</Button>
+          <Button onClick={create} disabled={busy || !form.supplierId || !form.itemId || !form.projectId || !(Number(form.quantity) > 0)}>{busy ? "處理中…" : "開立"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div><Label>代工廠 *</Label><MasterLookup source="suppliers" value={form.supplierId} onValueChange={v => setForm({ ...form, supplierId: v })} clearable={false} placeholder="選擇代工廠（供應商）" /></div>
             <div><Label>要加工的成品 *</Label><MasterLookup source="items" value={form.itemId} onValueChange={v => setForm({ ...form, itemId: v })} filter={(r) => !r.isVirtual} clearable={false} placeholder="選擇成品" /></div>
@@ -165,19 +169,21 @@ export default function SubcontractOrdersPage() {
             <label className="flex items-center gap-2 text-sm min-h-11"><input type="checkbox" className="h-4 w-4" checked={form.taxable} onChange={e => setForm({ ...form, taxable: e.target.checked })} />加工費另加 5% 營業稅</label>
             {fee > 0 && <p className="text-sm text-muted-foreground">加工費合計 {money(fee)}{form.taxable ? `，含稅 ${money(fee * 1.05)}` : ""}。成品交回時才會變成應付帳款。</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreating(false)}>取消</Button>
-            <Button onClick={create} disabled={busy || !form.supplierId || !form.itemId || !form.projectId || !(Number(form.quantity) > 0)}>{busy ? "處理中…" : "開立"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={detailId !== null && action === null} onOpenChange={(o) => { if (!o) setDetailId(null); }}>
-        <DialogContent className="md:max-w-2xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{detail ? `${detail.orderNumber}　${STATUS[detail.status] || detail.status}` : "外包單"}</DialogTitle>
-            <DialogDescription>{detail ? `${detail.supplierName || ""} 加工 ${detail.itemName || ""}・專案 ${detail.projectName || "—"}` : "讀取中…"}</DialogDescription>
-          </DialogHeader>
+      <DocWindow
+        open={detailId !== null && action === null} onClose={() => setDetailId(null)}
+        name="外包單" number={detail?.orderNumber}
+        status={detail ? <DocStatus label={STATUS[detail.status] || detail.status} tone={statusTone(detail.status)} /> : undefined}
+        description={detail ? `${detail.supplierName || ""} 加工 ${detail.itemName || ""}・專案 ${detail.projectName || "—"}` : "讀取中…"}
+        footer={<>
+          {detail?.status === "Open" && detail.receivedQuantity === 0 && <Button variant="ghost" className="mr-auto text-red-600 dark:text-red-400" onClick={cancel} disabled={busy}>取消這張單</Button>}
+          <Button variant="outline" onClick={() => setDetailId(null)}>關閉</Button>
+          {(detail?.status === "Open" || detail?.status === "Completed") && <Button variant="outline" onClick={() => openAction("close")}><Undo2 className="h-4 w-4 mr-1" />結案</Button>}
+          {detail?.status === "Open" && <Button variant="outline" onClick={() => openAction("issue")}><Send className="h-4 w-4 mr-1" />發料</Button>}
+          {detail?.status === "Open" && <Button onClick={() => openAction("receive")}><PackageCheck className="h-4 w-4 mr-1" />收成品</Button>}
+        </>}
+      >
           {detail && (
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -212,20 +218,19 @@ export default function SubcontractOrdersPage() {
                 </div>
               )}
               {detail.remarks && <p className="text-muted-foreground">備註：{detail.remarks}</p>}
+              <RelatedDocs type="subcontract_order" id={detail.id} onNavigate={() => setDetailId(null)} />
             </div>
           )}
-          <DialogFooter className="gap-2">
-            {detail?.status === "Open" && detail.receivedQuantity === 0 && <Button variant="ghost" className="text-red-600 dark:text-red-400 md:mr-auto" onClick={cancel} disabled={busy}>取消這張單</Button>}
-            {(detail?.status === "Open" || detail?.status === "Completed") && <Button variant="outline" onClick={() => openAction("close")}><Undo2 className="h-4 w-4 mr-1" />結案</Button>}
-            {detail?.status === "Open" && <Button variant="outline" onClick={() => openAction("issue")}><Send className="h-4 w-4 mr-1" />發料</Button>}
-            {detail?.status === "Open" && <Button onClick={() => openAction("receive")}><PackageCheck className="h-4 w-4 mr-1" />收成品</Button>}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={action === "issue"} onOpenChange={(o) => { if (!o) setAction(null); }}>
-        <DialogContent className="md:max-w-md max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>發料給代工廠</DialogTitle><DialogDescription>材料只是換位置，仍是公司的庫存，不會產生分錄。</DialogDescription></DialogHeader>
+      <DocWindow
+        open={action === "issue"} onClose={() => setAction(null)}
+        name="發料給代工廠" number={detail?.orderNumber} description="材料只是換位置，仍是公司的庫存，不會產生分錄。"
+        footer={<>
+          <Button variant="outline" onClick={() => setAction(null)}>返回</Button>
+          <Button onClick={submitIssue} disabled={busy || !Object.values(quantities).some(q => Number(q) > 0)}>{busy ? "處理中…" : "發料"}</Button>
+        </>}
+      >
           <div className="space-y-3">
             {detail?.materials.map(m => (
               <div key={m.itemId} className="grid grid-cols-[1fr_7rem] items-center gap-3">
@@ -235,16 +240,16 @@ export default function SubcontractOrdersPage() {
             ))}
             <div><Label>從哪一間倉庫發</Label><MasterLookup source="warehouses" value={warehouseId} onValueChange={setWarehouseId} filter={ownWarehouse} placeholder="預設第一間倉庫" /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAction(null)}>返回</Button>
-            <Button onClick={submitIssue} disabled={busy || !Object.values(quantities).some(q => Number(q) > 0)}>{busy ? "處理中…" : "發料"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={action === "receive"} onOpenChange={(o) => { if (!o) setAction(null); }}>
-        <DialogContent className="md:max-w-md max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>收成品</DialogTitle><DialogDescription>成品入庫，同時扣掉用掉的材料，加工費變成應付帳款。</DialogDescription></DialogHeader>
+      <DocWindow
+        open={action === "receive"} onClose={() => setAction(null)}
+        name="收成品" number={detail?.orderNumber} description="成品入庫，同時扣掉用掉的材料，加工費變成應付帳款。"
+        footer={<>
+          <Button variant="outline" onClick={() => setAction(null)}>返回</Button>
+          <Button onClick={submitReceive} disabled={busy || !(Number(receive.quantity) > 0) || Number(receive.quantity) > (detail?.remainingQuantity ?? 0)}>{busy ? "處理中…" : "入庫"}</Button>
+        </>}
+      >
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label htmlFor="recv-qty">交回數量 *</Label><Input id="recv-qty" type="number" inputMode="decimal" min="0" value={receive.quantity} onChange={e => setReceive({ ...receive, quantity: e.target.value })} /><p className="text-xs text-muted-foreground">還剩 {detail?.remainingQuantity} 沒交</p></div>
@@ -253,16 +258,16 @@ export default function SubcontractOrdersPage() {
             <div><Label>入庫到哪一間倉庫</Label><MasterLookup source="warehouses" value={warehouseId} onValueChange={setWarehouseId} filter={ownWarehouse} placeholder="預設第一間倉庫" /></div>
             {detail && Number(receive.quantity) > 0 && <p className="text-sm text-muted-foreground">這批加工費 {money(Number(receive.quantity) * detail.unitFee)}{detail.taxable ? `，含稅 ${money(Number(receive.quantity) * detail.unitFee * 1.05)}` : ""}</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAction(null)}>返回</Button>
-            <Button onClick={submitReceive} disabled={busy || !(Number(receive.quantity) > 0) || Number(receive.quantity) > (detail?.remainingQuantity ?? 0)}>{busy ? "處理中…" : "入庫"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={action === "close"} onOpenChange={(o) => { if (!o) setAction(null); }}>
-        <DialogContent className="md:max-w-md max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>結案</DialogTitle><DialogDescription>填代工廠退回多少剩料。沒退回的部分會算成加工損耗，從庫存扣掉並入帳。</DialogDescription></DialogHeader>
+      <DocWindow
+        open={action === "close"} onClose={() => setAction(null)}
+        name="結案" number={detail?.orderNumber} description="填代工廠退回多少剩料。沒退回的部分會算成加工損耗，從庫存扣掉並入帳。"
+        footer={<>
+          <Button variant="outline" onClick={() => setAction(null)}>返回</Button>
+          <Button onClick={submitClose} disabled={busy}>{busy ? "處理中…" : "結案"}</Button>
+        </>}
+      >
           <div className="space-y-3">
             {detail?.materials.filter(m => m.atVendor > 0).length === 0 && <p className="text-sm text-muted-foreground">代工廠手上沒有剩料，可以直接結案。</p>}
             {detail?.materials.filter(m => m.atVendor > 0).map(m => (
@@ -275,12 +280,7 @@ export default function SubcontractOrdersPage() {
             {closeLoss > 0 && <p className="text-sm text-amber-700 dark:text-amber-400">有 {closeLoss} 項材料沒有全數退回，差額會記成加工損耗。</p>}
             {detail && detail.remainingQuantity > 0 && <p className="text-sm text-amber-700 dark:text-amber-400">成品還有 {detail.remainingQuantity} 沒交，結案後就不能再收貨。</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAction(null)}>返回</Button>
-            <Button onClick={submitClose} disabled={busy}>{busy ? "處理中…" : "結案"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

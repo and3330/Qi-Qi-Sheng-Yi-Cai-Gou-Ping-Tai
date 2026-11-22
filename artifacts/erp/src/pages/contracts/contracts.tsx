@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -148,7 +148,7 @@ export default function ContractsPage() {
               <TableBody>
                 {contracts.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">尚無合約</TableCell></TableRow>}
                 {contracts.map(c => (
-                  <TableRow key={c.id}>
+                  <TableRow key={c.id} className="cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; openEdit(c); }}>
                     <TableCell><CheckboxCell checked={batch.selectedIds.has(c.id)} onChange={() => batch.toggle(c.id)} /></TableCell>
                     <TableCell className="font-mono text-sm">{c.contractNumber}</TableCell>
                     <TableCell className="font-medium">{c.title}</TableCell>
@@ -197,9 +197,17 @@ export default function ContractsPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯合約" : "新增合約"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "合約" : "新增合約"}
+        number={editing?.contractNumber}
+        status={editing ? <DocStatus label={statusLabel[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={!form.title}>{editing ? "更新" : "建立"}</Button>
+        </>}
+      >
           <div className="grid gap-4">
             <div><label className="text-sm font-medium">合約名稱 *</label><Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -252,16 +260,11 @@ export default function ContractsPage() {
             <div><label className="text-sm font-medium">說明</label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} /></div>
           </div>
           {editing && (
-            <div className="mt-4">
+            <div>
               <AttachmentsPanel module="contracts" documentType="contract" documentId={editing.id} />
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={!form.title}>{editing ? "更新" : "建立"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

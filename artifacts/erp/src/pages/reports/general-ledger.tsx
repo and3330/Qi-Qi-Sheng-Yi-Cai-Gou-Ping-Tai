@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { departmentLabel, projectLabel } from "@/lib/select-options";
 import { ReportHeader } from "@/components/shared/report-header";
 import { fmtMoney } from "@/lib/report-format";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
@@ -78,13 +79,23 @@ function displayRows(rows: LedgerRow[], view: ViewType): DisplayRow[] {
   return groups;
 }
 
+/** 從別的報表點過來時網址會帶條件（?accountIds=1,2&startDate=…&endDate=…&departmentId=…&projectId=…），只在第一次開頁面時讀 */
+function urlFilters() {
+  const q = new URLSearchParams(window.location.search);
+  const date = (key: string) => { const v = q.get(key) || ""; return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ""; };
+  const id = (key: string) => { const n = Number(q.get(key)); return Number.isInteger(n) && n > 0 ? String(n) : ""; };
+  const accountIds = [...new Set((q.get("accountIds") || "").split(",").map(Number).filter(n => Number.isInteger(n) && n > 0))];
+  return { accountIds, startDate: date("startDate"), endDate: date("endDate"), departmentId: id("departmentId"), projectId: id("projectId") };
+}
+
 export default function GeneralLedgerPage() {
   const reloadKey = useAutoReloadKey();
-  const [startDate, setStartDate] = useState(() => `${new Date().getFullYear()}-01-01`);
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [accountIds, setAccountIds] = useState<number[]>([]);
-  const [departmentId, setDepartmentId] = useState("");
-  const [projectId, setProjectId] = useState("");
+  const [fromUrl] = useState(urlFilters);
+  const [startDate, setStartDate] = useState(() => fromUrl.startDate || `${new Date().getFullYear()}-01-01`);
+  const [endDate, setEndDate] = useState(() => fromUrl.endDate || new Date().toISOString().slice(0, 10));
+  const [accountIds, setAccountIds] = useState<number[]>(fromUrl.accountIds);
+  const [departmentId, setDepartmentId] = useState(fromUrl.departmentId);
+  const [projectId, setProjectId] = useState(fromUrl.projectId);
   const [hideEmpty, setHideEmpty] = useState(true);
   const [view, setView] = useState<ViewType>("line");
   const [showOpening, setShowOpening] = useState(true);
@@ -123,6 +134,10 @@ export default function GeneralLedgerPage() {
     setLoading(false);
   };
 
+  // 網址有帶科目：開頁面就直接查一次（有科目，不會跳「沒有選科目」的確認）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (fromUrl.accountIds.length > 0) fetchReport(); }, []);
+
   const filterText = [departmentId && `部門：${departments.find(d => String(d.id) === departmentId)?.name}`, projectId && `專案：${projects.find(p => String(p.id) === projectId)?.name}`].filter(Boolean).join("　");
 
   const buildExport = (): ExportOptions => {
@@ -157,14 +172,14 @@ export default function GeneralLedgerPage() {
               <label className="mb-1 block text-sm font-medium text-muted-foreground">部門</label>
               <select className={select} value={departmentId} onChange={e => setDepartmentId(e.target.value)} aria-label="部門">
                 <option value="">全部部門</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {departments.map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-muted-foreground">專案</label>
               <select className={select} value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="專案">
                 <option value="">全部專案</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {projects.map(p => <option key={p.id} value={p.id}>{projectLabel(p)}</option>)}
               </select>
             </div>
           </div>

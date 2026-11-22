@@ -133,7 +133,7 @@ export default function BrandsPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingId ? "編輯品牌" : "新增品牌"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>品牌／公司名稱 <span className="text-red-500">*</span></Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="如 詠勝教育文化事業有限公司" /></div>
+            <div><Label>品牌／公司名稱 <span className="text-red-500">*</span></Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="例如：育邦文化教育科技股份有限公司" /></div>
             <div><Label>統一編號</Label><Input value={form.taxId} onChange={e => setForm(f => ({ ...f, taxId: e.target.value }))} /></div>
             <div><Label>地址</Label><Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
