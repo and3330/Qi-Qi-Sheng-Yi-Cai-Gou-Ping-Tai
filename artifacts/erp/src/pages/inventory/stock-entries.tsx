@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { DocWindow, DocFields, DocLines } from "@/components/shared/doc-window";
+import { RelatedDocs } from "@/components/shared/related-docs";
 import { TransferButton } from "@/components/inventory/transfer-dialog";
 
 const typeMap: Record<string, string> = { Receipt: "入庫", Receive: "入庫", Issue: "出庫", Transfer: "調撥" };
@@ -195,6 +196,7 @@ export default function StockEntriesPage() {
               ]}
             />
             <div className="space-y-1.5"><Label htmlFor="stock-entry-remarks">備註</Label><Textarea id="stock-entry-remarks" rows={2} value={viewRemarks} onChange={e => setViewRemarks(e.target.value)} /></div>
+            {typeof viewing.id === "number" && <RelatedDocs type="stock_entry" id={viewing.id} onNavigate={() => setViewing(null)} />}
           </>
         )}
       </DocWindow>

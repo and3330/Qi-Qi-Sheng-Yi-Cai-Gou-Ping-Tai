@@ -236,7 +236,7 @@ export function samplePrintData(docType: PrintDocType): PrintData {
     docNumber: docType === "Quotation" ? "QT-20261115-001" : "SO-20261115-001",
     title: "115(上) 範例國小 課後社團",
     customer: { name: "範例國民小學", taxId: "12345678", phone: "02-1234-5678", address: "新北市板橋區範例路 1 號" },
-    company: { name: "詠勝教育文化事業有限公司", taxId: "", address: "新北市板橋區南亞東路8號9樓之32", contact: "蘇秉浤", tel: "02-23680623" },
+    company: { name: "範例股份有限公司", taxId: "00000000", address: "新北市板橋區範例路 2 號", contact: "王小明", tel: "02-0000-0000" },
     fields: {
       date: "2026-11-15", validUntil: "2026-12-15", project: "校園社團", handler: "謝孟軒", deliveryDate: "2026-12-01",
       courseStartDate: "2026-09-01", courseEndDate: "2027-01-15", caseTime: "1600-1730", coursePeriod: "115上", teacher: "王老師",

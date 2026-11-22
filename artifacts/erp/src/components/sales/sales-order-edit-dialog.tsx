@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,6 +165,9 @@ export function SalesOrderFormDialog({ open, onOpenChange, order, initial, focus
   const { toast } = useToast();
   const [lookups, setLookups] = useState<Lookups>(NO_LOOKUPS);
   const lookupsLoaded = useRef(false);
+  const lookupsReady = useRef(false);
+  /** 下拉選單的主檔讀取狀態：讀取中要顯示「載入中」，不能讓人以為沒有資料 */
+  const [lookupsState, setLookupsState] = useState<"loading" | "ready" | "failed">("loading");
   const [form, setForm] = useState<SalesOrderForm>(emptyForm);
   const [priceMeta, setPriceMeta] = useState<{ touched: boolean; source: string }[]>([{ touched: false, source: "" }]);
   const [lineWarnings, setLineWarnings] = useState<Record<number, string>>({});
@@ -188,14 +192,35 @@ export function SalesOrderFormDialog({ open, onOpenChange, order, initial, focus
   const lock = (field: string) => (can(field) ? {} : { disabled: true, title: lockedTitle });
   const set = <K extends keyof SalesOrderForm>(key: K, value: SalesOrderForm[K]) => setForm(p => ({ ...p, [key]: value }));
 
-  // 下拉選單要用的主檔：第一次打開時讀一次
+  // 下拉選單要用的主檔：打開時讀一次；有任何一項讀失敗，下次打開（或幾秒後）會再讀，不會一直空著
   useEffect(() => {
     if (!open || lookupsLoaded.current) return;
     lookupsLoaded.current = true;
-    const get = (path: string) => fetch(`/erp-api/${path}`).then(r => (r.ok ? r.json() : [])).then(d => (Array.isArray(d) ? d : [])).catch(() => []);
-    Promise.all(["customers", "departments", "projects", "employees", "teachers", "warehouses", "order-templates", "items"].map(get))
-      .then(([c, d, p, e, t, w, tpl, it]) => setLookups({ customers: c, departments: d, projects: p, employees: e, teachers: t, warehouses: w, templates: tpl, items: it }));
+    let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const get = (path: string): Promise<any[] | null> =>
+      fetch(`/erp-api/${path}`, { credentials: "include" }).then(r => (r.ok ? r.json() : null)).then(d => (Array.isArray(d) ? d : null)).catch(() => null);
+    const load = (attempt: number) => {
+      setLookupsState("loading");
+      Promise.all(["customers", "departments", "projects", "employees", "teachers", "warehouses", "order-templates", "items"].map(get))
+        .then(([c, d, p, e, t, w, tpl, it]) => {
+          if (cancelled) return;
+          setLookups(prev => ({
+            customers: c ?? prev.customers, departments: d ?? prev.departments, projects: p ?? prev.projects, employees: e ?? prev.employees,
+            teachers: t ?? prev.teachers, warehouses: w ?? prev.warehouses, templates: tpl ?? prev.templates, items: it ?? prev.items,
+          }));
+          const failed = [c, d, p, e, t, w, tpl, it].some(x => x === null);
+          if (!failed) { lookupsReady.current = true; setLookupsState("ready"); return; }
+          if (attempt < 2) { retry = setTimeout(() => load(attempt + 1), 2000); return; }
+          setLookupsState("failed");
+          lookupsLoaded.current = false; // 下次打開再讀
+        });
+    };
+    load(0);
+    return () => { cancelled = true; if (retry) clearTimeout(retry); if (!lookupsReady.current) lookupsLoaded.current = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  const lookupEmpty = lookupsState === "loading" ? "載入中…" : lookupsState === "failed" ? "讀取失敗，請關掉這張單再開一次" : undefined;
 
   // 每次打開：照「編輯哪一張」或「新增要帶什麼」把表單準備好
   useEffect(() => {
@@ -563,7 +588,7 @@ export function SalesOrderFormDialog({ open, onOpenChange, order, initial, focus
                 ]}
                 placeholder="請選擇客戶"
                 searchPlaceholder="輸入客戶名稱或編號搜尋..."
-                emptyText="找不到客戶"
+                emptyText={lookupEmpty ?? "找不到客戶"}
                 data-testid="select-order-customer"
                 {...lock("customerId")}
               />
@@ -619,9 +644,10 @@ export function SalesOrderFormDialog({ open, onOpenChange, order, initial, focus
                   });
                 }}
                 options={[
-                  ...projects.filter((p: any) => p.isActive !== false || String(p.id) === String(form.projectId)).map((p: any) => ({ value: String(p.id), label: `${p.name}${p.isActive === false ? "（已停用）" : ""}` })),
+                  ...selectableProjects(projects, form.projectId).map((p: any) => ({ value: String(p.id), label: projectPickerLabel(p) })),
                 ]}
                 placeholder="請選擇專案"
+                emptyText={lookupEmpty}
                 triggerClassName={can("projectId") && !form.projectId ? "border-red-300 bg-red-50" : undefined}
                 data-testid="select-order-project"
                 {...lock("projectId")}
@@ -634,9 +660,10 @@ export function SalesOrderFormDialog({ open, onOpenChange, order, initial, focus
                 options={[
                   // 歷史單的部門可以不指定
                   ...(mode === "legacy" ? [{ value: "", label: "（不指定）" }] : []),
-                  ...departments.filter((d: any) => d.isActive !== false || String(d.id) === String(form.departmentId)).map((d: any) => ({ value: String(d.id), label: `${d.name}${d.isActive === false ? "（已停用）" : ""}` })),
+                  ...selectableDepartments(departments, form.departmentId).map((d: any) => ({ value: String(d.id), label: departmentLabel(d) })),
                 ]}
                 placeholder={mode === "legacy" ? "（不指定）" : "請選擇部門"}
+                emptyText={lookupEmpty}
                 triggerClassName={full && !form.departmentId ? "border-red-300 bg-red-50" : undefined}
                 data-testid="select-order-department"
                 {...lock("departmentId")}

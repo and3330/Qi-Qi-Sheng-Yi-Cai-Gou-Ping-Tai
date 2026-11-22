@@ -11,7 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
+import { RelatedDocs, useOpenFromUrl } from "@/components/shared/related-docs";
 import { useToast } from "@/hooks/use-toast";
 import { FilePlus2, Pencil, Plus, SkipForward, Trash2 } from "lucide-react";
 import { call, money, post, selectClass, todayText } from "@/lib/call";
@@ -40,6 +41,8 @@ export default function RecurringInvoicesPage() {
     frequency: t.frequency, nextRunDate: t.nextRunDate, endDate: t.endDate || "", isActive: t.isActive, note: t.note || "",
     lines: t.items.map(i => ({ itemId: String(i.itemId), quantity: String(i.quantity), rate: String(i.rate), note: "" })),
   });
+  // 從發票的關聯單據點過來（?open=編號）：直接打開那一張
+  useOpenFromUrl(templates, edit);
   const save = async () => {
     if (!form) return;
     setBusy(true);
@@ -117,9 +120,15 @@ export default function RecurringInvoicesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!form} onOpenChange={(o) => { if (!o) setForm(null); }}>
-        <DialogContent className="md:max-w-xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{form?.id ? "編輯定期發票" : "新增定期發票"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={!!form}
+        onClose={() => setForm(null)}
+        name={form?.id ? "編輯定期發票" : "新增定期發票"}
+        footer={<>
+          <Button variant="outline" onClick={() => setForm(null)}>取消</Button>
+          <Button onClick={save} disabled={busy || !valid}>{busy ? "處理中…" : "儲存"}</Button>
+        </>}
+      >
           {form && (
             <div className="space-y-4">
               <div className="space-y-1.5"><Label htmlFor="ri-name">名稱 *</Label><Input id="ri-name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：○○公司系統月費" /></div>
@@ -149,14 +158,10 @@ export default function RecurringInvoicesPage() {
               </div>
               <label className="flex items-center gap-3 text-sm"><Switch checked={form.isActive} onCheckedChange={v => setForm({ ...form, isActive: v })} />使用中</label>
               <p className="text-xs text-muted-foreground">系統不會自己開發票：到期時通知財務，確認後按「開立」才會產生發票並入帳。付款條件會套用客戶或供應商的預設值。</p>
+              {form.id > 0 && <RelatedDocs type="recurring_invoice" id={form.id} onNavigate={() => setForm(null)} />}
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setForm(null)}>取消</Button>
-            <Button onClick={save} disabled={busy || !valid}>{busy ? "處理中…" : "儲存"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

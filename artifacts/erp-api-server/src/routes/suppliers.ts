@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { looseSqlMatch } from "../lib/loose-match";
 import { eq, ilike, or, sql, and, ne, asc } from "drizzle-orm";
 import { db, suppliersTable, activitiesTable, invoicesTable } from "@workspace/erp-db";
 import { requireAuth } from "../middleware/require-auth";
@@ -14,6 +15,8 @@ router.get("/suppliers", async (req, res): Promise<void> => {
       ilike(suppliersTable.name, `%${search}%`),
       ilike(suppliersTable.supplierCode, `%${search}%`),
       ilike(suppliersTable.shortName, `%${search}%`),
+      // 打簡稱也找得到：每個字照順序出現就算
+      looseSqlMatch(search, [sql`${suppliersTable.name}`, sql`COALESCE(${suppliersTable.shortName}, '')`]),
     ));
   }
   // 預設只給啟用中的（開單選供應商用）；供應商管理要看全部的帶 includeInactive=1

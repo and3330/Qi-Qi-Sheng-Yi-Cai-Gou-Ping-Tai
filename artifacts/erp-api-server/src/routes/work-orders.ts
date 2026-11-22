@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { timesheetsTable, jobCardsTable, workstationsTable } from "@workspace/erp-db";
 import { conversionCost } from "../lib/timesheets";
 import { and, eq, desc, inArray, sql } from "drizzle-orm";
-import { db, workOrdersTable, workOrderItemsTable, bomsTable, bomItemsTable, itemsTable, stockEntriesTable, warehousesTable, type WorkOrder } from "@workspace/erp-db";
+import { db, workOrdersTable, workOrderItemsTable, bomsTable, bomItemsTable, itemsTable, stockEntriesTable, warehousesTable, customersTable, employeesTable, salesOrdersTable, type WorkOrder } from "@workspace/erp-db";
 import { requireAuth } from "../middleware/require-auth";
 import { assertLinkedInspectionsAccepted } from "../lib/quality-gate";
 import { closeWorkOrderWip, finishCostShare, itemUnitCost, nextMovingAvgCost, postAutoJournal, round2, todayTaipei, workOrderWipBalance } from "../lib/inventory-journal";
@@ -65,37 +65,53 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   Cancelled: [],
 };
 
-router.get("/work-orders", async (_req, res): Promise<void> => {
-  const rows = await db.select({
-    wo: workOrdersTable,
-    itemName: itemsTable.itemName,
-    bomNumber: bomsTable.bomNumber,
-  })
+/** 清單與明細共用的欄位：工單本身＋成品、BOM、客戶、承辦人、來源銷貨單的名稱 */
+const woColumns = {
+  wo: workOrdersTable,
+  itemName: itemsTable.itemName,
+  itemCode: itemsTable.itemCode,
+  bomNumber: bomsTable.bomNumber,
+  customerName: customersTable.name,
+  handlerFirstName: employeesTable.firstName,
+  handlerLastName: employeesTable.lastName,
+  salesOrderNumber: salesOrdersTable.orderNumber,
+};
+function woQuery() {
+  return db.select(woColumns)
     .from(workOrdersTable)
     .leftJoin(itemsTable, eq(workOrdersTable.itemId, itemsTable.id))
     .leftJoin(bomsTable, eq(workOrdersTable.bomId, bomsTable.id))
-    .orderBy(desc(workOrdersTable.createdAt));
-
-  res.json(rows.map(r => ({
+    .leftJoin(customersTable, eq(workOrdersTable.customerId, customersTable.id))
+    .leftJoin(employeesTable, eq(workOrdersTable.handlerId, employeesTable.id))
+    .leftJoin(salesOrdersTable, eq(workOrdersTable.salesOrderId, salesOrdersTable.id));
+}
+/** 員工姓名：中文姓名直接接起來，英文姓名中間留一個空白 */
+function personName(first: string | null, last: string | null): string {
+  return `${first || ""}${/^[A-Za-z]/.test(last || "") ? " " : ""}${last || ""}`.trim();
+}
+type WoRow = { wo: WorkOrder; itemName: string | null; itemCode: string | null; bomNumber: string | null; customerName: string | null; handlerFirstName: string | null; handlerLastName: string | null; salesOrderNumber: string | null };
+function woView(r: WoRow) {
+  return {
     ...numericWo(r.wo),
     itemName: r.itemName || "",
+    itemCode: r.itemCode || "",
     bomNumber: r.bomNumber || "",
-  })));
+    customerName: r.customerName || "",
+    handlerName: personName(r.handlerFirstName, r.handlerLastName),
+    salesOrderNumber: r.salesOrderNumber || "",
+  };
+}
+
+router.get("/work-orders", async (_req, res): Promise<void> => {
+  const rows = await woQuery().orderBy(desc(workOrdersTable.createdAt));
+  res.json(rows.map(woView));
 });
 
 router.get("/work-orders/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const [row] = await db.select({
-    wo: workOrdersTable,
-    itemName: itemsTable.itemName,
-    bomNumber: bomsTable.bomNumber,
-  })
-    .from(workOrdersTable)
-    .leftJoin(itemsTable, eq(workOrdersTable.itemId, itemsTable.id))
-    .leftJoin(bomsTable, eq(workOrdersTable.bomId, bomsTable.id))
-    .where(eq(workOrdersTable.id, id));
+  const [row] = await woQuery().where(eq(workOrdersTable.id, id));
 
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
 
@@ -109,9 +125,7 @@ router.get("/work-orders/:id", async (req, res): Promise<void> => {
     .where(eq(workOrderItemsTable.workOrderId, id));
 
   res.json({
-    ...numericWo(row.wo),
-    itemName: row.itemName || "",
-    bomNumber: row.bomNumber || "",
+    ...woView(row),
     items: woItems.map(i => ({
       ...i.woItem,
       requiredQuantity: Number(i.woItem.requiredQuantity),
@@ -123,12 +137,43 @@ router.get("/work-orders/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/work-orders", async (req, res): Promise<void> => {
-  const { bomId, plannedQuantity, priority, plannedStartDate, plannedEndDate, salesOrderId, remarks } = req.body;
+  const { bomId, plannedQuantity, priority, plannedStartDate, plannedEndDate, salesOrderId, customerId, handlerId, remarks } = req.body;
   if (!bomId || !plannedQuantity) { res.status(400).json({ error: "必填：BOM、計畫數量" }); return; }
 
   const [bom] = await db.select().from(bomsTable).where(eq(bomsTable.id, Number(bomId)));
   if (!bom) { res.status(404).json({ error: "BOM not found" }); return; }
   if (bom.status !== "Active") { res.status(400).json({ error: "BOM 必須為啟用狀態" }); return; }
+
+  // 銷貨單、客戶、承辦人都選填；有填就要找得到
+  const optionalId = (v: unknown): number | null | "bad" => {
+    if (v === undefined || v === null || v === "") return null;
+    const n = Number(v);
+    return Number.isInteger(n) && n > 0 ? n : "bad";
+  };
+  const soId = optionalId(salesOrderId), custId = optionalId(customerId), hdlId = optionalId(handlerId);
+  if (soId === "bad" || custId === "bad" || hdlId === "bad") { res.status(400).json({ error: "銷貨單、客戶或承辦人的資料不正確，請重新選擇" }); return; }
+  let orderCustomerId: number | null = null;
+  let salesOrderNumber = "";
+  if (soId) {
+    const [so] = await db.select({ id: salesOrdersTable.id, customerId: salesOrdersTable.customerId, orderNumber: salesOrdersTable.orderNumber }).from(salesOrdersTable).where(eq(salesOrdersTable.id, soId));
+    if (!so) { res.status(400).json({ error: "找不到這張銷貨單，請重新選擇" }); return; }
+    orderCustomerId = so.customerId;
+    salesOrderNumber = so.orderNumber;
+  }
+  // 沒另外選客戶時，用銷貨單的客戶
+  const finalCustomerId = custId ?? orderCustomerId;
+  let customerName = "";
+  if (finalCustomerId) {
+    const [cust] = await db.select({ name: customersTable.name }).from(customersTable).where(eq(customersTable.id, finalCustomerId));
+    if (!cust) { res.status(400).json({ error: "找不到這個客戶，請重新選擇" }); return; }
+    customerName = cust.name;
+  }
+  let handlerName = "";
+  if (hdlId) {
+    const [emp] = await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName }).from(employeesTable).where(eq(employeesTable.id, hdlId));
+    if (!emp) { res.status(400).json({ error: "找不到這位承辦人，請重新選擇" }); return; }
+    handlerName = personName(emp.firstName, emp.lastName);
+  }
 
   const bomItems = await db.select().from(bomItemsTable).where(eq(bomItemsTable.bomId, bom.id));
   const qty = Number(plannedQuantity);
@@ -146,7 +191,9 @@ router.post("/work-orders", async (req, res): Promise<void> => {
       workOrderNumber: generateWoNumber(),
       bomId: bom.id,
       itemId: bom.itemId,
-      salesOrderId: salesOrderId ? Number(salesOrderId) : null,
+      salesOrderId: soId,
+      customerId: finalCustomerId,
+      handlerId: hdlId,
       plannedQuantity: String(qty),
       priority: priority || "Medium",
       plannedStartDate: plannedStartDate || null,
@@ -166,11 +213,15 @@ router.post("/work-orders", async (req, res): Promise<void> => {
       });
     }
 
-    const [itemRow] = await tx.select({ itemName: itemsTable.itemName }).from(itemsTable).where(eq(itemsTable.id, bom.itemId));
+    const [itemRow] = await tx.select({ itemName: itemsTable.itemName, itemCode: itemsTable.itemCode }).from(itemsTable).where(eq(itemsTable.id, bom.itemId));
     return {
       ...numericWo(wo),
       itemName: itemRow?.itemName || "",
+      itemCode: itemRow?.itemCode || "",
       bomNumber: bom.bomNumber,
+      customerName,
+      handlerName,
+      salesOrderNumber,
     };
   });
   res.status(201).json(created);

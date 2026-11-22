@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
+import { projectLabel } from "@/lib/select-options";
 import { ReportHeader } from "@/components/shared/report-header";
 import { percentOf, scaledMoney } from "@/lib/statement-display";
 import { useListProjects, useListDepartments } from "@workspace/erp-api-client-react";
@@ -11,6 +12,7 @@ import { ExportMenu } from "@/components/shared/export-menu";
 import { buildVerticalIncomeExport, buildCrossIncomeExport } from "@/lib/export-utils";
 
 import { LookupSelect } from "@/components/shared/lookup-select";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
 type FilterMode = "all" | "project" | "department";
@@ -98,6 +100,16 @@ interface CrossRow {
 
 interface CrossColumn { id: string; name: string; }
 
+/** 這次查詢實際用的條件（點數字看明細時要用同一組，不能用畫面上還沒按查詢的新條件） */
+interface Queried { startDate: string; endDate: string; compareStart: string; compareEnd: string; projectId?: number; departmentId?: number; filterLabel?: string }
+
+const idsOf = (groups?: GroupSection[]) => (groups ?? []).flatMap(g => g.items.map(i => i.accountId));
+
+/** 金額不是 0 才可以點開明細 */
+function Drillable({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return on ? <DrillAmount onClick={onClick}>{children}</DrillAmount> : <>{children}</>;
+}
+
 interface CrossData {
   startDate: string | null;
   endDate: string | null;
@@ -130,6 +142,8 @@ export default function IncomeStatementPage() {
   // Ecount 的顯示選項：千單位、百分比欄
   const [thousand, setThousand] = useState(false);
   const [showPct, setShowPct] = useState(false);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const [queried, setQueried] = useState<Queried>({ startDate, endDate, compareStart: "", compareEnd: "" });
 
   const { data: projects } = useListProjects();
   const { data: departments } = useListDepartments();
@@ -157,6 +171,12 @@ export default function IncomeStatementPage() {
         const [json, compareJson] = await Promise.all([res.json(), compareRes.json()]);
         setData(json);
         setCompareData(compareJson);
+        setQueried({
+          startDate, endDate, compareStart, compareEnd,
+          projectId: filterMode === "project" && projectId ? projectId : undefined,
+          departmentId: filterMode === "department" && departmentId ? departmentId : undefined,
+          filterLabel: filterLabel !== "全部" ? filterLabel : undefined,
+        });
         setCrossData(null);
         const expanded: Record<string, boolean> = {};
         [...json.income, ...json.expense].forEach((g: GroupSection) => { expanded[g.groupNumber] = true; });
@@ -169,6 +189,7 @@ export default function IncomeStatementPage() {
         const res = await fetch(`/erp-api/reports/income-statement/cross?${params}`);
         const json = await res.json();
         setCrossData(json);
+        setQueried({ startDate, endDate, compareStart: "", compareEnd: "" });
         setData(null);
         setCompareData(null);
       }
@@ -216,6 +237,36 @@ export default function IncomeStatementPage() {
   const netProfit = data?.netProfit ?? crossData?.netProfit ?? 0;
   const hasData = data || crossData;
 
+  // 點數字看明細：用這次查詢的期間與專案／部門條件
+  const drillBase = (compare: boolean) => ({
+    startDate: compare ? queried.compareStart : queried.startDate,
+    endDate: compare ? queried.compareEnd : queried.endDate,
+    projectId: queried.projectId,
+    departmentId: queried.departmentId,
+    note: queried.filterLabel,
+  });
+  const openDrill = (title: string, accountIds: number[], compare = false) => {
+    if (accountIds.length === 0) return;
+    setDrill({ title, accountIds, ...drillBase(compare) });
+  };
+  const openTypeDrill = (title: string, accountType: "Income" | "Expense", extra?: { projectId: number; note: string }) =>
+    setDrill({ title, accountTypes: [accountType], ...drillBase(false), ...extra });
+  const openCrossDrill = (row: CrossRow, col?: CrossColumn) => setDrill({
+    title: `${row.accountNumber} ${row.accountName}`,
+    accountIds: [row.accountId],
+    startDate: queried.startDate,
+    endDate: queried.endDate,
+    ...(col
+      ? crossData?.dimension === "department"
+        ? { departmentId: Number(col.id), exactDimension: true, note: `部門：${col.name}` }
+        : { projectId: Number(col.id), note: `專案：${col.name}` }
+      : {}),
+  });
+  const incomeIds = idsOf(data?.income);
+  const expenseIds = idsOf(data?.expense);
+  const compareIncomeIds = idsOf(compareData?.income);
+  const compareExpenseIds = idsOf(compareData?.expense);
+
   return (
     <div className="space-y-6" data-report>
       <ReportHeader />
@@ -257,7 +308,7 @@ export default function IncomeStatementPage() {
           {viewMode === "vertical" && filterMode === "project" && (
             <LookupSelect value={projectId} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : "")} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
               <option value="">請選擇專案</option>
-              {projects?.map((p: any) => <option key={p.id} value={p.id}>{p.name}{p.isActive === false ? "（已停用）" : ""}</option>)}
+              {projects?.map((p: any) => <option key={p.id} value={p.id}>{projectLabel(p)}{p.isActive === false ? "（已停用）" : ""}</option>)}
             </LookupSelect>
           )}
 
@@ -348,7 +399,7 @@ export default function IncomeStatementPage() {
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">營業收入合計</div>
-                  <div className="text-xl font-bold text-green-600">{fmt(totalIncome)}</div>
+                  <div className="text-xl font-bold text-green-600"><Drillable on={totalIncome !== 0} onClick={() => openTypeDrill("營業收入合計", "Income")}>{fmt(totalIncome)}</Drillable></div>
                 </div>
               </CardContent>
             </Card>
@@ -359,7 +410,7 @@ export default function IncomeStatementPage() {
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">營業成本及費用合計</div>
-                  <div className="text-xl font-bold text-red-600">{fmt(totalExpense)}</div>
+                  <div className="text-xl font-bold text-red-600"><Drillable on={totalExpense !== 0} onClick={() => openTypeDrill("營業成本及費用合計", "Expense")}>{fmt(totalExpense)}</Drillable></div>
                 </div>
               </CardContent>
             </Card>
@@ -407,28 +458,28 @@ export default function IncomeStatementPage() {
                     <tbody>
                       <tr className="bg-green-50/50 border-b">
                         <td colSpan={2} className="px-4 py-2.5 font-bold text-green-800">壹、營業收入</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-green-800">{fmt(data.totalIncome)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-green-800"><Drillable on={data.totalIncome !== 0 && incomeIds.length > 0} onClick={() => openDrill("營業收入合計", incomeIds)}>{fmt(data.totalIncome)}</Drillable></td>
                         {pctCell(data.totalIncome, data.totalIncome)}
-                        <td className="px-4 py-2.5 text-right text-gray-600">{fmt(compareData?.totalIncome || 0)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600"><Drillable on={(compareData?.totalIncome || 0) !== 0 && compareIncomeIds.length > 0} onClick={() => openDrill("營業收入合計", compareIncomeIds, true)}>{fmt(compareData?.totalIncome || 0)}</Drillable></td>
                         {pctCell(compareData?.totalIncome || 0, compareData?.totalIncome || 0)}
                         <td className="px-4 py-2.5 text-right">{pct(data.totalIncome, compareData?.totalIncome || 0)}</td>
                       </tr>
                       {data.income.map(group => (
-                        <GroupRows key={group.groupNumber} group={group} compareGroups={compareData?.income} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-green-700" fmt={fmt} pctCell={pctCell} base={data.totalIncome} compareBase={compareData?.totalIncome || 0} />
+                        <GroupRows key={group.groupNumber} group={group} compareGroups={compareData?.income} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-green-700" fmt={fmt} pctCell={pctCell} base={data.totalIncome} compareBase={compareData?.totalIncome || 0} onDrill={openDrill} />
                       ))}
                       {data.income.length === 0 && (
                         <tr><td colSpan={5} className="px-8 py-2 text-gray-400">無收入資料</td></tr>
                       )}
                       <tr className="bg-red-50/50 border-b border-t-2">
                         <td colSpan={2} className="px-4 py-2.5 font-bold text-red-800">貳、營業成本及費用</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-red-800">{fmt(data.totalExpense)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-red-800"><Drillable on={data.totalExpense !== 0 && expenseIds.length > 0} onClick={() => openDrill("營業成本及費用合計", expenseIds)}>{fmt(data.totalExpense)}</Drillable></td>
                         {pctCell(data.totalExpense, data.totalIncome)}
-                        <td className="px-4 py-2.5 text-right text-gray-600">{fmt(compareData?.totalExpense || 0)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600"><Drillable on={(compareData?.totalExpense || 0) !== 0 && compareExpenseIds.length > 0} onClick={() => openDrill("營業成本及費用合計", compareExpenseIds, true)}>{fmt(compareData?.totalExpense || 0)}</Drillable></td>
                         {pctCell(compareData?.totalExpense || 0, compareData?.totalIncome || 0)}
                         <td className="px-4 py-2.5 text-right">{pct(data.totalExpense, compareData?.totalExpense || 0)}</td>
                       </tr>
                       {data.expense.map(group => (
-                        <GroupRows key={group.groupNumber} group={group} compareGroups={compareData?.expense} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-red-700" fmt={fmt} pctCell={pctCell} base={data.totalIncome} compareBase={compareData?.totalIncome || 0} />
+                        <GroupRows key={group.groupNumber} group={group} compareGroups={compareData?.expense} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-red-700" fmt={fmt} pctCell={pctCell} base={data.totalIncome} compareBase={compareData?.totalIncome || 0} onDrill={openDrill} />
                       ))}
                       {data.expense.length === 0 && (
                         <tr><td colSpan={3} className="px-8 py-2 text-gray-400">無費用資料</td></tr>
@@ -456,7 +507,7 @@ export default function IncomeStatementPage() {
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm min-w-[600px]">
                   <thead><tr className="bg-muted/40 border-b"><th className="text-left p-3">專案</th><th className="text-right p-3">收入</th><th className="text-right p-3">費用</th><th className="text-right p-3">淨損益</th></tr></thead>
-                  <tbody>{data.projectBreakdown.map(row => <tr key={row.projectId} className="border-b hover:bg-muted/50"><td className="p-3">{row.projectName}</td><td className="p-3 text-right">{fmt(row.income)}</td><td className="p-3 text-right">{fmt(row.expense)}</td><td className={`p-3 text-right font-medium ${row.net >= 0 ? "text-green-700" : "text-red-700"}`}>{fmt(row.net)}</td></tr>)}</tbody>
+                  <tbody>{data.projectBreakdown.map(row => <tr key={row.projectId} className="border-b hover:bg-muted/50"><td className="p-3">{row.projectName}</td><td className="p-3 text-right"><Drillable on={row.income !== 0} onClick={() => openTypeDrill(`${row.projectName} 收入`, "Income", { projectId: row.projectId, note: `專案：${row.projectName}` })}>{fmt(row.income)}</Drillable></td><td className="p-3 text-right"><Drillable on={row.expense !== 0} onClick={() => openTypeDrill(`${row.projectName} 費用`, "Expense", { projectId: row.projectId, note: `專案：${row.projectName}` })}>{fmt(row.expense)}</Drillable></td><td className={`p-3 text-right font-medium ${row.net >= 0 ? "text-green-700" : "text-red-700"}`}>{fmt(row.net)}</td></tr>)}</tbody>
                 </table>
               </CardContent>
             </Card>
@@ -496,7 +547,7 @@ export default function IncomeStatementPage() {
                         ))}
                       </tr>
                       {crossData.incomeRows.map(row => (
-                        <CrossRowTr key={row.accountId} row={row} cols={crossData.columns} fmt={fmtCross} />
+                        <CrossRowTr key={row.accountId} row={row} cols={crossData.columns} fmt={fmtCross} onDrill={openCrossDrill} />
                       ))}
                       {crossData.incomeRows.length === 0 && (
                         <tr><td colSpan={3 + crossData.columns.length} className="px-3 py-2 text-gray-400 text-center">無收入資料</td></tr>
@@ -509,7 +560,7 @@ export default function IncomeStatementPage() {
                         ))}
                       </tr>
                       {crossData.expenseRows.map(row => (
-                        <CrossRowTr key={row.accountId} row={row} cols={crossData.columns} fmt={fmtCross} />
+                        <CrossRowTr key={row.accountId} row={row} cols={crossData.columns} fmt={fmtCross} onDrill={openCrossDrill} />
                       ))}
                       {crossData.expenseRows.length === 0 && (
                         <tr><td colSpan={3 + crossData.columns.length} className="px-3 py-2 text-gray-400 text-center">無費用資料</td></tr>
@@ -540,24 +591,31 @@ export default function IncomeStatementPage() {
           </CardContent>
         </Card>
       )}
+
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }
 
-function CrossRowTr({ row, cols, fmt }: { row: CrossRow; cols: CrossColumn[]; fmt: (n: number) => string }) {
+function CrossRowTr({ row, cols, fmt, onDrill }: { row: CrossRow; cols: CrossColumn[]; fmt: (n: number) => string; onDrill: (row: CrossRow, col?: CrossColumn) => void }) {
   return (
     <tr className="border-b hover:bg-gray-50">
       <td className="px-3 py-1.5 font-mono text-xs text-gray-400 sticky left-0 bg-white z-10 border-r">{row.accountNumber}</td>
       <td className="px-3 py-1.5 text-gray-600 sticky left-[80px] bg-white z-10 border-r truncate max-w-[160px]" title={row.accountName}>{row.accountName}</td>
-      <td className="px-3 py-1.5 text-right font-mono text-gray-800 bg-blue-50/30 border-r">{fmt(row.totalAmount)}</td>
-      {cols.map(c => (
-        <td key={c.id} className="px-3 py-1.5 text-right font-mono text-gray-600 border-r last:border-r-0">{fmt(row.breakdown[c.id] || 0)}</td>
-      ))}
+      <td className="px-3 py-1.5 text-right font-mono text-gray-800 bg-blue-50/30 border-r"><Drillable on={row.totalAmount !== 0} onClick={() => onDrill(row)}>{fmt(row.totalAmount)}</Drillable></td>
+      {cols.map(c => {
+        const value = row.breakdown[c.id] || 0;
+        // 「未指定」那一欄沒有對應的專案／部門，不開明細
+        const canDrill = value !== 0 && c.id !== "__none__" && Number.isFinite(Number(c.id));
+        return (
+          <td key={c.id} className="px-3 py-1.5 text-right font-mono text-gray-600 border-r last:border-r-0"><Drillable on={canDrill} onClick={() => onDrill(row, c)}>{fmt(value)}</Drillable></td>
+        );
+      })}
     </tr>
   );
 }
 
-function GroupRows({ group, compareGroups, expanded, onToggle, colorClass, fmt, pctCell, base, compareBase }: {
+function GroupRows({ group, compareGroups, expanded, onToggle, colorClass, fmt, pctCell, base, compareBase, onDrill }: {
   group: GroupSection;
   compareGroups?: GroupSection[];
   expanded: boolean;
@@ -567,8 +625,11 @@ function GroupRows({ group, compareGroups, expanded, onToggle, colorClass, fmt, 
   pctCell: (value: number, base: number) => ReactNode;
   base: number;
   compareBase: number;
+  onDrill: (title: string, accountIds: number[], compare?: boolean) => void;
 }) {
   const compareGroup = compareGroups?.find(g => g.groupNumber === group.groupNumber);
+  const groupIds = group.items.map(i => i.accountId);
+  const compareGroupIds = (compareGroup?.items ?? []).map(i => i.accountId);
   const pct = (current: number, prior: number) => prior === 0 ? "—" : `${(((current - prior) / Math.abs(prior)) * 100).toFixed(1)}%`;
   return (
     <>
@@ -578,9 +639,9 @@ function GroupRows({ group, compareGroups, expanded, onToggle, colorClass, fmt, 
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           {group.groupName}
         </td>
-        <td className={`px-4 py-2 text-right font-semibold ${colorClass}`}>{fmt(group.subtotal)}</td>
+        <td className={`px-4 py-2 text-right font-semibold ${colorClass}`}><Drillable on={group.subtotal !== 0 && groupIds.length > 0} onClick={() => onDrill(group.groupName, groupIds)}>{fmt(group.subtotal)}</Drillable></td>
         {pctCell(group.subtotal, base)}
-        <td className="px-4 py-2 text-right text-gray-500">{fmt(compareGroup?.subtotal || 0)}</td>
+        <td className="px-4 py-2 text-right text-gray-500"><Drillable on={(compareGroup?.subtotal || 0) !== 0 && compareGroupIds.length > 0} onClick={() => onDrill(group.groupName, compareGroupIds, true)}>{fmt(compareGroup?.subtotal || 0)}</Drillable></td>
         {pctCell(compareGroup?.subtotal || 0, compareBase)}
         <td className="px-4 py-2 text-right text-gray-500">{pct(group.subtotal, compareGroup?.subtotal || 0)}</td>
       </tr>
@@ -590,9 +651,9 @@ function GroupRows({ group, compareGroups, expanded, onToggle, colorClass, fmt, 
         <tr key={item.accountId} className="border-b hover:bg-gray-50">
           <td className="px-4 py-1.5 pl-8 font-mono text-xs text-gray-400">{item.accountNumber}</td>
           <td className="px-4 py-1.5 pl-10 text-gray-600">{item.accountName}</td>
-          <td className="px-4 py-1.5 text-right font-mono text-gray-700">{fmt(item.amount)}</td>
+          <td className="px-4 py-1.5 text-right font-mono text-gray-700"><Drillable on={item.amount !== 0} onClick={() => onDrill(`${item.accountNumber} ${item.accountName}`, [item.accountId])}>{fmt(item.amount)}</Drillable></td>
           {pctCell(item.amount, base)}
-          <td className="px-4 py-1.5 text-right font-mono text-gray-500">{fmt(prior)}</td>
+          <td className="px-4 py-1.5 text-right font-mono text-gray-500"><Drillable on={prior !== 0} onClick={() => onDrill(`${item.accountNumber} ${item.accountName}`, [item.accountId], true)}>{fmt(prior)}</Drillable></td>
           {pctCell(prior, compareBase)}
           <td className="px-4 py-1.5 text-right text-gray-500">{pct(item.amount, prior)}</td>
         </tr>

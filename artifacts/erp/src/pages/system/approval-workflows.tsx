@@ -140,7 +140,7 @@ export default function ApprovalWorkflows() {
 
             <div>
               <div className="flex items-center justify-between mb-1"><Label>審批步驟</Label><Button type="button" variant="outline" size="sm" onClick={addStep}><Plus className="h-3 w-3 mr-1" />新增步驟</Button></div>
-              <p className="mb-2 text-xs text-muted-foreground">單據會依序一關一關送審，全部核准才算通過。每一關選一個「角色」，有這個角色的人都可以審這一關（擁有者、管理員可以代審任何一關）。要限定某一個人，就在右邊選那位員工（只列出有登入帳號、而且角色可以審批的人）。</p>
+              <p className="mb-2 text-xs text-muted-foreground">單據會依序一關一關送審，全部核准才算通過。每一關選一個「角色」，有這個角色的人都可以審這一關（老闆、系統管理員可以代審任何一關）。要限定某一個人，就在右邊選那位員工（只列出有登入帳號、而且角色可以審批的人）。</p>
               {form.steps.map((step, i) => (
                 <div key={i} className="mb-2 flex flex-wrap items-center gap-2 rounded-md border p-2">
                   <span className="w-14 text-sm text-muted-foreground">第 {step.stepNumber} 關</span>

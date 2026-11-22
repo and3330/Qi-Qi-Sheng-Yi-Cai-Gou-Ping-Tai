@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, DocFields, DocLines, DocSection, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, Search } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -25,7 +25,7 @@ const statusMap: Record<string, string> = { Draft: "草稿", Submitted: "已提�
 const statusColor = (s: string) => s === "Accepted" ? "default" : s === "Rejected" ? "destructive" : "secondary";
 
 const REFERENCE_SOURCES: Record<string, MasterSource> = { "Purchase Receipt": "purchase-receipts", "Delivery Note": "delivery-notes", "Work Order": "work-orders" };
-const REFERENCE_LABELS: Record<string, string> = { "Purchase Receipt": "進貨單", "Delivery Note": "送貨單", "Work Order": "工單" };
+const REFERENCE_LABELS: Record<string, string> = { "Purchase Receipt": "進貨單", "Delivery Note": "出貨單", "Work Order": "工單" };
 const REFERENCE_ACTIONS: Record<string, string> = { "Purchase Receipt": "入庫", "Delivery Note": "出貨", "Work Order": "完工入庫" };
 
 export default function InspectionsPage() {
@@ -110,10 +110,14 @@ export default function InspectionsPage() {
           <option value="">所有類型</option>
           {Object.entries(typeMap).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />新增檢驗</Button></DialogTrigger>
-          <DialogContent className="md:max-w-lg">
-            <DialogHeader><DialogTitle>新增品質檢驗</DialogTitle></DialogHeader>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增檢驗</Button>
+        <DocWindow
+          open={open} onClose={() => setOpen(false)} name="新增品質檢驗"
+          footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} disabled={!form.inspectionDate}>建立</Button>
+          </>}
+        >
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">檢驗範本</label>
@@ -148,7 +152,7 @@ export default function InspectionsPage() {
                   <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.referenceType} onChange={e => setForm(p => ({ ...p, referenceType: e.target.value, referenceId: "" }))}>
                     <option value="">無</option>
                     <option value="Purchase Receipt">進貨單</option>
-                    <option value="Delivery Note">送貨單</option>
+                    <option value="Delivery Note">出貨單</option>
                     <option value="Work Order">工單</option>
                   </select>
                 </div>
@@ -169,12 +173,7 @@ export default function InspectionsPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-              <Button onClick={handleCreate} disabled={!form.inspectionDate}>建立</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </DocWindow>
       </div>
 
       <Card>
@@ -195,8 +194,8 @@ export default function InspectionsPage() {
               {loading ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">載入中...</td></tr>
               : filtered.length === 0 ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
               : filtered.map(i => (
-                <tr key={i.id} className="border-b hover:bg-gray-50">
-                  <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(i.id)} onChange={() => batch.toggle(i.id)} /></td>
+                <tr key={i.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(i.id); }} data-testid={`inspection-row-${i.id}`}>
+                  <td className="px-2" onClick={e => e.stopPropagation()}><CheckboxCell checked={batch.selectedIds.has(i.id)} onChange={() => batch.toggle(i.id)} /></td>
                   <td className="px-4 py-2 font-mono">{i.inspectionNumber}</td>
                   <td className="px-4 py-2"><Badge variant="outline">{typeMap[i.inspectionType]}</Badge></td>
                   <td className="px-4 py-2">{i.itemName || "-"}</td>
@@ -212,59 +211,45 @@ export default function InspectionsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!detail} onOpenChange={v => { if (!v) setDetail(null); }}>
-        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>檢驗明細 - {detail?.inspectionNumber}</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div><span className="text-gray-500">類型：</span>{typeMap[detail.inspectionType]}</div>
-                <div><span className="text-gray-500">品項：</span>{detail.itemName || "-"}</div>
-                <div><span className="text-gray-500">狀態：</span><Badge variant={statusColor(detail.status)}>{statusMap[detail.status]}</Badge></div>
-                <div><span className="text-gray-500">日期：</span>{detail.inspectionDate}</div>
-                <div><span className="text-gray-500">檢驗人：</span>{detail.inspectorName || "-"}</div>
-                <div><span className="text-gray-500">結果：</span>{detail.result || "-"}</div>
-                <div><span className="text-gray-500">檢驗數量：</span>{detail.inspectedQuantity}</div>
-                <div><span className="text-gray-500">合格數：</span>{detail.acceptedQuantity}</div>
-                <div><span className="text-gray-500">不合格數：</span>{detail.rejectedQuantity}</div>
-                {detail.referenceType && <div><span className="text-gray-500">參考：</span>{REFERENCE_LABELS[detail.referenceType] || detail.referenceType} {detail.referenceNumber || `#${detail.referenceId}`}</div>}
-              </div>
-              {detail.results && (detail.results as Array<{ name: string; status?: string }>).length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">檢驗項目</h4>
-                  <table className="w-full text-xs">
-                    <thead><tr className="border-b bg-gray-50">
-                      <th className="text-left px-2 py-1">項目</th>
-                      <th className="text-left px-2 py-1">結果</th>
-                      <th className="text-center px-2 py-1">狀態</th>
-                    </tr></thead>
-                    <tbody>
-                      {(detail.results as Array<{ name: string; result?: string; status?: string }>).map((r, i) => (
-                        <tr key={i} className="border-b">
-                          <td className="px-2 py-1">{r.name}</td>
-                          <td className="px-2 py-1">{r.result || "-"}</td>
-                          <td className="px-2 py-1 text-center">{r.status || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <div className="flex gap-2 justify-end">
-                {detail.status === "Draft" && (
-                  <Button onClick={() => updateStatus(detail.id, "Submitted")}>提交</Button>
-                )}
-                {detail.status === "Submitted" && (
-                  <>
-                    <Button onClick={() => updateStatus(detail.id, "Accepted", { result: "Pass", acceptedQuantity: detail.inspectedQuantity })}>合格</Button>
-                    <Button variant="destructive" onClick={() => updateStatus(detail.id, "Rejected", { result: "Fail", rejectedQuantity: detail.inspectedQuantity })}>不合格</Button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <DocWindow
+        open={!!detail} onClose={() => setDetail(null)}
+        name="檢驗單" number={detail?.inspectionNumber}
+        status={detail ? <DocStatus label={statusMap[detail.status] || detail.status} tone={statusTone(detail.status)} /> : undefined}
+        footer={detail && <>
+          {detail.status === "Submitted" && <Button variant="destructive" className="mr-auto" onClick={() => updateStatus(detail.id, "Rejected", { result: "Fail", rejectedQuantity: detail.inspectedQuantity })}>不合格</Button>}
+          <Button variant="outline" onClick={() => setDetail(null)}>關閉</Button>
+          {detail.status === "Draft" && <Button onClick={() => updateStatus(detail.id, "Submitted")}>提交</Button>}
+          {detail.status === "Submitted" && <Button onClick={() => updateStatus(detail.id, "Accepted", { result: "Pass", acceptedQuantity: detail.inspectedQuantity })}>合格</Button>}
+        </>}
+      >
+        {detail && (
+          <>
+            <DocFields items={[
+              ["類型", typeMap[detail.inspectionType]],
+              ["品項", detail.itemName || "-"],
+              ["日期", detail.inspectionDate],
+              ["檢驗人", detail.inspectorName || "-"],
+              ["結果", detail.result || "-"],
+              ["檢驗數量", detail.inspectedQuantity],
+              ["合格數", detail.acceptedQuantity],
+              ["不合格數", detail.rejectedQuantity],
+              !!detail.referenceType && ["參考", `${REFERENCE_LABELS[detail.referenceType] || detail.referenceType} ${detail.referenceNumber || `#${detail.referenceId}`}`],
+            ]} />
+            {detail.results && detail.results.length > 0 && (
+              <DocSection title="檢驗項目">
+                <DocLines
+                  columns={[
+                    { header: "項目", cell: (r: Inspection["results"][number]) => r.name },
+                    { header: "結果", cell: (r: Inspection["results"][number]) => r.result || "-" },
+                    { header: "狀態", cell: (r: Inspection["results"][number]) => r.status || "-" },
+                  ]}
+                  rows={detail.results}
+                />
+              </DocSection>
+            )}
+          </>
+        )}
+      </DocWindow>
     </div>
   );
 }

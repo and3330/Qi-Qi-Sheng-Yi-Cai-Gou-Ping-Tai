@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Truck } from "lucide-react";
 import { MasterLookup } from "@/components/shared/master-lookup";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -41,12 +41,16 @@ export function LandedCostButton({ receiptId, receiptNumber, onDone }: { receipt
   return (
     <>
       <Button variant="outline" onClick={() => { setForm({ ...empty, date: todayText() }); setOpen(true); }} data-testid="button-landed-cost"><Truck className="h-4 w-4 mr-1" />加入運費／集運費</Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-md max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>加入運費／集運費</DialogTitle>
-            <DialogDescription>進貨單 {receiptNumber}。這筆費用會依各品項的金額比例，攤進這批貨的成本。請填換算成台幣的金額。</DialogDescription>
-          </DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name="加入運費／集運費"
+        description={<>進貨單 {receiptNumber}。這筆費用會依各品項的金額比例，攤進這批貨的成本。請填換算成台幣的金額。</>}
+        footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={submit} disabled={!valid || saving}>{saving ? "處理中…" : "攤進成本"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label htmlFor="lc-desc">費用名稱</Label><Input id="lc-desc" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="集運費、運費、關稅" /></div>
@@ -65,12 +69,7 @@ export function LandedCostButton({ receiptId, receiptNumber, onDone }: { receipt
               ? <div><Label>從哪個帳戶付的 *</Label><MasterLookup source="accounts" value={form.cashAccountId} onValueChange={v => setForm({ ...form, cashAccountId: v })} filter={isCashAccount} clearable={false} placeholder="銀行、現金、支付寶" /></div>
               : <div><Label>要付給哪家廠商 *</Label><MasterLookup source="suppliers" value={form.supplierId} onValueChange={v => setForm({ ...form, supplierId: v })} clearable={false} placeholder="集運公司、貨運行" /></div>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={submit} disabled={!valid || saving}>{saving ? "處理中…" : "攤進成本"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </>
   );
 }

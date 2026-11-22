@@ -127,7 +127,7 @@ export function BiError({ error, onRetry }: { error: BiApiError | null; onRetry:
       {forbidden ? <ShieldAlert className="text-amber-600" /> : <AlertTriangle className="text-destructive" />}
       <div className="text-sm font-semibold">{forbidden ? "您的角色無權檢視此頁數據" : "指標計算失敗"}</div>
       <p className="max-w-md text-xs text-muted-foreground">
-        {forbidden ? "財務指標與數據健康檢查限擁有者、管理員、財務管理員與會計；人力指標限擁有者、管理員、人資與財務管理員。" : error?.message}
+        {forbidden ? "財務指標與數據健康檢查限老闆、系統管理員、財務長與會計；人力指標限老闆、系統管理員、人資與財務長。" : error?.message}
       </p>
       {!forbidden && (
         <button type="button" onClick={onRetry} className="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted">重試</button>

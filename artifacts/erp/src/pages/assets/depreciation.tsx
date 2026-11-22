@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Play, Calculator } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -194,13 +194,17 @@ export default function DepreciationPage() {
         </Card>
       </div>
 
-      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
-        <DialogContent className="md:max-w-lg">
-          <DialogHeader><DialogTitle>批次計提折舊</DialogTitle></DialogHeader>
+      <DocWindow
+        open={batchOpen} onClose={() => setBatchOpen(false)} name="批次計提折舊"
+        footer={<>
+          <Button variant="outline" onClick={() => setBatchOpen(false)}>關閉</Button>
+          <Button onClick={runBatch}>執行批次折舊</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div><label className="text-sm font-medium">折舊期間</label><Input type="month" value={batchPeriod} onChange={e => setBatchPeriod(e.target.value)} /></div>
             {batchResults && (
-              <div className="max-h-64 overflow-y-auto">
+              <div>
                 <table className="w-full text-xs">
                   <thead><tr className="border-b bg-gray-50">
                     <th className="text-left px-2 py-1">資產</th>
@@ -220,12 +224,7 @@ export default function DepreciationPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBatchOpen(false)}>關閉</Button>
-            <Button onClick={runBatch}>執行批次折舊</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

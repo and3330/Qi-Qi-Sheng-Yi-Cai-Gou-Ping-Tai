@@ -19,6 +19,9 @@ export const vouchersTable = pgTable("vouchers", {
   employeeId: integer("employee_id"),
   journalEntryId: integer("journal_entry_id"),
   items: jsonb("items").notNull().default([]),
+  // 用了哪個收付款單模板，和模板自訂欄位填的值
+  templateId: integer("template_id"),
+  extraFields: jsonb("extra_fields").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

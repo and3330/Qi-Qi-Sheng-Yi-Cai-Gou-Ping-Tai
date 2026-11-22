@@ -237,7 +237,14 @@ export interface ApiKeyRecord {
   apiSecret?: string;
   projectId: number | null;
   projectName?: string;
-  permissions: string;
+  /** 這把金鑰代表的使用者：權限跟著這個人目前的角色 */
+  userId: number | null;
+  userName?: string | null;
+  username?: string | null;
+  userRole?: string | null;
+  userRoleLabel?: string | null;
+  userActive?: boolean | null;
+  agentConfig?: { enabled: boolean } | null;
   isActive: boolean;
   lastUsedAt: string | null;
   expiresAt: string | null;
@@ -248,7 +255,7 @@ export interface ApiKeyRecord {
 
 export const apiKeyApi = {
   list: () => apiFetch<ApiKeyRecord[]>("/api-keys"),
-  create: (data: { keyName: string; projectId?: number | null; permissions?: string; expiresAt?: string | null }) =>
+  create: (data: { keyName: string; projectId?: number | null; userId: number; expiresAt?: string | null; agentConfig?: ApiKeyRecord["agentConfig"] }) =>
     apiFetch<ApiKeyRecord>("/api-keys", { method: "POST", body: JSON.stringify(data) }),
   update: (id: number, data: Partial<ApiKeyRecord>) =>
     apiFetch<ApiKeyRecord>(`/api-keys/${id}`, { method: "PATCH", body: JSON.stringify(data) }),

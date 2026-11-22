@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
+import { RelatedDocs } from "@/components/shared/related-docs";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { call, money, selectClass } from "@/lib/call";
 
@@ -29,7 +30,11 @@ export default function LegacyDocumentsPage() {
   const [keyword, setKeyword] = useState(initial.get("q") ?? "");
   const [q, setQ] = useState(initial.get("q") ?? "");
   const [page, setPage] = useState(1);
-  const [viewingId, setViewingId] = useState<number | null>(null);
+  // 從別張單的關聯單據點過來（?open=編號）：清單有分頁，所以直接照編號打開，不從清單裡找
+  const [viewingId, setViewingId] = useState<number | null>(() => {
+    const id = Number(initial.get("open"));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
 
   const { data: types = [] } = useQuery({ queryKey: ["/legacy-documents/types"], queryFn: () => call<TypeRow[]>("legacy-documents/types") });
   const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
@@ -90,12 +95,15 @@ export default function LegacyDocumentsPage() {
         <Button variant="outline" size="sm" className="h-9" disabled={page >= pages} onClick={() => setPage(page + 1)}>下一頁<ChevronRight className="h-4 w-4 ml-1" /></Button>
       </div>
 
-      <Dialog open={viewingId !== null} onOpenChange={(o) => { if (!o) setViewingId(null); }}>
-        <DialogContent className="md:max-w-4xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{detail ? `${detail.docType}　${detail.docNumber}` : "歷史單據"}</DialogTitle>
-            <DialogDescription>{detail ? [detail.docDate, detail.partyName, detail.projectName, detail.staffName].filter(Boolean).join("・") || "Ecount 歷史單據" : "讀取中…"}</DialogDescription>
-          </DialogHeader>
+      <DocWindow
+        open={viewingId !== null}
+        onClose={() => setViewingId(null)}
+        name={detail ? detail.docType : "歷史單據"}
+        number={detail?.docNumber}
+        description={detail ? [detail.docDate, detail.partyName, detail.projectName, detail.staffName].filter(Boolean).join("・") || "Ecount 歷史單據" : "讀取中…"}
+        wide
+        footer={<Button variant="outline" onClick={() => setViewingId(null)}>關閉</Button>}
+      >
           {loadingDetail || !detail ? <p className="py-8 text-center text-sm text-muted-foreground">讀取中…</p> : (
             <div className="space-y-3 min-w-0">
               {detail.total !== null && <p className="text-sm">金額合計：<span className="font-semibold tabular-nums">{money(detail.total)}</span></p>}
@@ -106,11 +114,10 @@ export default function LegacyDocumentsPage() {
                 </table>
               </div>
               <p className="text-xs text-muted-foreground">這是從 Ecount 搬過來的原始內容，欄位名稱照舊系統。</p>
+              <RelatedDocs type="legacy_document" id={detail.id} onNavigate={() => setViewingId(null)} />
             </div>
           )}
-          <DialogFooter><Button variant="outline" onClick={() => setViewingId(null)}>關閉</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

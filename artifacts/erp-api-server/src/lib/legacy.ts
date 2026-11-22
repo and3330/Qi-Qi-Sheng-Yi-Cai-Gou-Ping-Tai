@@ -4,14 +4,15 @@
  * 這些單據直接放在現行的單據表裡（銷貨單清單裡就看得到舊銷貨單），用 orderSource = "ecount" 辨識。
  * 它們的帳已經由舊系統的會計傳票搬進來了，所以：
  *   - 不再自動認列營收、不再扣庫存（否則會重複入帳）
- *   - 不能修改、刪除、開發票、建立出貨單（唯讀）
+ *   - 不能修改、刪除、建立出貨單（唯讀）
+ *   - 舊系統沒開過發票的可以補開發票（老闆 2026-11-18），補開的發票只是稅務憑證，不再入帳
  *   - 搬進來之前已經收到的錢記在 extraFields.legacyPaid，未收金額＝總額 − legacyPaid − 之後在新系統收的錢
  */
 export const LEGACY_SOURCE = "ecount";
 
 export const isLegacySource = (source: unknown): boolean => source === LEGACY_SOURCE;
 
-export const LEGACY_READONLY_MESSAGE = "這是從舊系統（Ecount）搬過來的歷史單據，帳已經入過了，不能刪除、開發票或出貨（標題、專案、備註可以用「編輯」補）。要收款請直接開收款單沖這張單";
+export const LEGACY_READONLY_MESSAGE = "這是從舊系統（Ecount）搬過來的歷史單據，帳已經入過了，不能刪除或出貨（標題、專案、備註可以用「編輯」補；舊系統沒開過發票的可以補開）。要收款請直接開收款單沖這張單";
 
 /**
  * 報價單、採購單、進貨單沒有 orderSource 欄位，改用 extraFields.legacy = true 辨識歷史單。

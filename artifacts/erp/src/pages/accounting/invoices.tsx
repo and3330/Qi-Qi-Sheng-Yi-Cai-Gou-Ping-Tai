@@ -10,7 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocStatus, DocWindow } from "@/components/shared/doc-window";
+import { useOpenFromUrl } from "@/components/shared/related-docs";
 import { InvoiceCreateDialog, InvoiceEditDialog } from "@/components/accounting/invoice-doc";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search, Ban, HandCoins, FileX2, Undo2, Mail, FileText, RefreshCw } from "lucide-react";
@@ -143,6 +144,8 @@ export default function AllInvoicesPage() {
 
   const openCreate = () => setCreateOpen(true);
   const openEdit = (inv: any) => setEditing(inv);
+  // 從別張單的「關聯單據」連過來時帶 ?open=發票 id，直接打開那張
+  useOpenFromUrl(invoices as any[], row => setEditing(row));
 
   const handleDelete = async (inv: any) => {
     if (!confirm(`確定刪除發票「${inv.invoiceNumber}」？`)) return;
@@ -370,9 +373,13 @@ export default function AllInvoicesPage() {
       <PageHeader title="所有發票" description="完整發票登記簿" hint={<PageHint hintKey="accounting-invoices">這裡集中查看銷項與進項發票，方便追蹤開立、收取及付款狀態。一般先由出貨或進貨流程帶入，再核對日期、金額與稅額。小提醒：發票號碼與稅別填錯會影響營業稅申報，送出前務必核對憑證。</PageHint>}>
         <div className="flex items-center gap-2">
           <ExportMenu getExportOptions={buildExport} />
-          <Button onClick={openCreate}><Plus size={16} className="mr-1" />新增發票</Button>
+          <Button onClick={openCreate}><Plus size={16} className="mr-1" />登記發票（不送綠界）</Button>
         </div>
       </PageHeader>
+
+      <p role="note" className="text-sm text-muted-foreground">
+        此處新增的是 ERP 發票登記，不會自動向綠界開票。要開立電子發票，請到「銷貨單」使用「開立綠界電子發票」；只有取得綠界發票號碼才代表成功。
+      </p>
 
       <Card>
         <CardContent className="py-4">
@@ -410,6 +417,7 @@ export default function AllInvoicesPage() {
           <DataTable
             isLoading={isLoading}
             data={filtered}
+            onRowClick={(r: any) => openEdit(r)}
             columns={[
               { header: "發票編號", accessor: "invoiceNumber" },
               {
@@ -437,7 +445,7 @@ export default function AllInvoicesPage() {
               {
                 header: "操作",
                 accessor: (r) => (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     {(r.invoiceType === "Sales" || r.invoiceType === "Sales Invoice") && r.status !== "Paid" && r.status !== "Cancelled" && r.status !== "WrittenOff" && !r.ecpayVoidedAt && Number(r.totalAmount) > Number(r.paidAmount) && (
                       <Button variant="ghost" size="icon" onClick={() => { setReceiptInvoice(r); setReceiptOpen(true); }} title="收款">
                         <HandCoins size={14} className="text-emerald-600" />
@@ -493,10 +501,16 @@ export default function AllInvoicesPage() {
 
       <SendEmailDialog docType="invoice" docId={emailInvoiceId} open={emailInvoiceId != null} onOpenChange={(v) => !v && setEmailInvoiceId(null)} />
 
-      <Dialog open={ecpayOpen} onOpenChange={(open) => { setEcpayOpen(open); if (!open) setVoidTarget(null); }}>
-        <DialogContent className="md:max-w-3xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>綠界電子發票管理 — {ecpayInvoice?.invoiceNumber}</DialogTitle></DialogHeader>
-          <div className="space-y-5 py-2">
+      <DocWindow
+        open={ecpayOpen}
+        onClose={() => { setEcpayOpen(false); setVoidTarget(null); }}
+        name="綠界電子發票管理"
+        number={ecpayInvoice?.invoiceNumber}
+        status={ecpayInvoice?.ecpayVoidedAt ? <DocStatus label="已作廢" tone="destructive" /> : undefined}
+        wide
+        footer={<Button variant="outline" onClick={() => setEcpayOpen(false)}>關閉</Button>}
+      >
+          <div className="space-y-5">
             <div className="rounded-lg border bg-muted/30 p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div><span className="text-muted-foreground">綠界發票號碼：</span><span className="font-mono font-medium" data-testid="text-ecpay-invoice-number">{ecpayInvoice?.ecpayInvoiceNumber}</span></div>
@@ -567,9 +581,7 @@ export default function AllInvoicesPage() {
             {!ecpayInvoice?.ecpayVoidedAt && <Button variant="outline" className="text-destructive" disabled={(allowanceQuery.data || []).some(a => !["Voided", "Failed"].includes(a.status))} onClick={() => { setVoidTarget({ kind: "invoice", number: ecpayInvoice?.ecpayInvoiceNumber || "" }); setVoidReason(""); }} data-testid="button-void-ecpay-invoice"><Ban size={14} className="mr-1" />作廢整張綠界發票</Button>}
             {voidTarget && <div className="rounded-md border border-destructive/40 p-3"><Label>作廢原因（必填）— {voidTarget.number}</Label><Input className="mt-2" value={voidReason} onChange={e => setVoidReason(e.target.value)} placeholder="請說明作廢原因" data-testid="input-ecpay-void-reason" /><div className="mt-2 flex gap-2"><Button variant="destructive" size="sm" onClick={handleVoidEcpay} disabled={ecpayPending || !voidReason.trim()} data-testid="button-confirm-ecpay-void">{ecpayPending ? "處理中..." : "確認作廢"}</Button><Button variant="outline" size="sm" onClick={() => setVoidTarget(null)}>取消</Button></div></div>}
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setEcpayOpen(false)}>關閉</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       {/* 新增、編輯發票：全系統同一個視窗（components/accounting/invoice-doc） */}
       <InvoiceCreateDialog open={createOpen} onOpenChange={setCreateOpen} />

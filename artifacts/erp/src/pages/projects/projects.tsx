@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectLabel, projectPickerLabel } from "@/lib/select-options";
 import { useListProjects, useCreateProject, useUpdateProject, useDeleteProject } from "@workspace/erp-api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/shared/data-table";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Power, TrendingUp, ChevronRight, ChevronDown, FolderPlus } from "lucide-react";
 import { useLocation } from "wouter";
@@ -54,7 +55,8 @@ export default function ProjectsPage() {
     const kids = childrenOf(p.id);
     return [{ ...p, childCount: kids.length }, ...(expanded.has(p.id) ? kids.map((k: any) => ({ ...k, isChild: true })) : [])];
   });
-  const parentChoices = (projects || []).filter((p: any) => !p.parentId && p.isActive !== false);
+  // 可以當主專案的選項：沒停用、還沒結束的主專案；目前掛著的那個一定列出
+  const parentChoices = (current?: string) => selectableProjects(projects, current).filter((p: any) => !p.parentId);
   const batch = useBatchSelection(visibleProjects);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -65,7 +67,7 @@ export default function ProjectsPage() {
     const base = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
     fetch(`/erp-api/departments`, { credentials: "include" })
       .then(response => response.ok ? response.json() : [])
-      .then(rows => setDepartments(rows.filter((row: any) => row.isActive !== false)))
+      .then(rows => setDepartments(Array.isArray(rows) ? rows : []))
       .catch(() => setDepartments([]));
   }, []);
 
@@ -140,9 +142,9 @@ export default function ProjectsPage() {
           ids={batch.ids}
           batchFields={[
             {key:"status",label:"狀態",type:"select",options:[{value:"Open",label:"進行中"},{value:"Completed",label:"已完成"},{value:"Cancelled",label:"已取消"}]},
-            {key:"departmentId",label:"所屬部門",type:"select",clearable:true,options:departments.map((d: any) => ({ value: String(d.id), label: d.name }))},
+            {key:"departmentId",label:"所屬部門",type:"select",clearable:true,options:selectableDepartments(departments).map((d: any) => ({ value: String(d.id), label: d.name }))},
             // 移動專案：掛到某個主專案底下；清空＝變回獨立的主專案
-            {key:"parentId",label:"主專案（移動專案）",type:"select",clearable:true,options:parentChoices.filter((p: any) => !batch.ids.includes(p.id)).map((p: any) => ({ value: String(p.id), label: p.name }))},
+            {key:"parentId",label:"主專案（移動專案）",type:"select",clearable:true,options:parentChoices().filter((p: any) => !batch.ids.includes(p.id)).map((p: any) => ({ value: String(p.id), label: projectLabel(p) }))},
           ] as BatchField[]}
           onClear={batch.clearSelection}
           onComplete={() => queryClient.invalidateQueries({ queryKey: ["/erp-api/projects"] })}
@@ -153,6 +155,7 @@ export default function ProjectsPage() {
           <DataTable
             isLoading={isLoading}
             data={visibleProjects}
+            onRowClick={openEdit}
             columns={[
               { header: () => <CheckboxHeader checked={batch.allSelected} indeterminate={batch.someSelected} onChange={batch.toggleAll} />, accessor: (r: any) => <CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} />, className: "w-10" },
               { header: "專案名稱", accessor: (r: any) => (
@@ -193,7 +196,7 @@ export default function ProjectsPage() {
               {
                 header: "操作",
                 accessor: (r) => (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" title={r.isActive === false ? "啟用" : "停用"} onClick={() => toggleActive(r)}>
                       <Power size={14} className={r.isActive === false ? "text-gray-400" : "text-emerald-600"} />
                     </Button>
@@ -212,22 +215,31 @@ export default function ProjectsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-lg max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯專案" : "新增專案"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-2">
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "專案" : "新增專案"}
+        status={editing ? <DocStatus label={statusMap[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
+            {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
+          </Button>
+        </>}
+      >
+          <div className="grid gap-4">
             <div><Label>專案名稱 *</Label><Input value={form.name} onChange={F("name")} placeholder={form.parentId ? "例如：2027 夏令營" : ""} /></div>
             <div><Label>主專案</Label>
               <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.parentId} onChange={F("parentId")} data-testid="select-parent-project" disabled={!!editing && (projects || []).some((p: any) => p.parentId === editing.id)}>
                 <option value="">（沒有，這是獨立專案或主專案）</option>
-                {parentChoices.filter((p: any) => !editing || p.id !== editing.id).map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {parentChoices(form.parentId).filter((p: any) => !editing || p.id !== editing.id).map((p: any) => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
               </select>
               <p className="mt-1 text-xs text-muted-foreground">{!!editing && (projects || []).some((p: any) => p.parentId === editing.id) ? "這個專案底下已經有子專案，所以不能再掛到別的主專案底下。" : "每年都會辦的活動，可以建一個主專案（例如「夏令營」），每年各建一個子專案掛在它底下。主專案的損益會自動加總所有子專案。"}</p>
             </div>
             <div><Label>所屬部門</Label>
               <LookupSelect className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.departmentId} onChange={F("departmentId")}>
                 <option value="">未分配</option>
-                {departments.map((department: any) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                {selectableDepartments(departments, form.departmentId).map((department: any) => <option key={department.id} value={department.id}>{departmentLabel(department)}</option>)}
               </LookupSelect>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -249,14 +261,7 @@ export default function ProjectsPage() {
             </div>
             <div><Label>說明</Label><textarea className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]" value={form.description} onChange={F("description")} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
-              {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

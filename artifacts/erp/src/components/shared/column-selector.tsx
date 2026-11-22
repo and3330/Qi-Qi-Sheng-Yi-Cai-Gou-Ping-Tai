@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Settings2 } from "lucide-react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { listLayoutPrefix } from "@/components/shared/data-table";
+import { useUiLayouts, type LayoutItem } from "@/components/shared/doc-window";
 
 export interface ColumnDef {
   key: string;
@@ -83,7 +86,14 @@ export function ColumnSelector({ storageKey, columns, visibleKeys, onChange }: C
     onChange(next);
   };
 
-  const selectAll = () => onChange(new Set(columns.map(c => c.key)));
+  // 公司替這一頁清單做的設定（管理者在表格下方「調整欄位」改的）：這裡跟著顯示新的欄名；
+  // 公司已經隱藏的欄，個人勾了也不會出現，所以標出來、不給勾。對應方式是欄位名稱相同。
+  const [location] = useLocation();
+  const { data: layouts } = useUiLayouts();
+  const prefix = listLayoutPrefix(location);
+  const company: Record<string, LayoutItem> = Object.assign({}, ...Object.entries(layouts ?? {}).filter(([k]) => k.startsWith(prefix)).map(([, config]) => config.columns ?? {}));
+
+  const selectAll =() => onChange(new Set(columns.map(c => c.key)));
   const resetDefaults = () => onChange(new Set(columns.filter(c => c.defaultVisible !== false).map(c => c.key)));
 
   return (
@@ -111,22 +121,29 @@ export function ColumnSelector({ storageKey, columns, visibleKeys, onChange }: C
             <Button variant="ghost" size="sm" className="h-7 text-xs flex-1" onClick={resetDefaults}>預設</Button>
           </div>
           <div className="p-1.5 overflow-y-auto flex-1">
-            {columns.map(col => (
-              <label
-                key={col.key}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 text-sm cursor-pointer ${col.alwaysVisible ? "opacity-60" : ""}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={visibleKeys.has(col.key)}
-                  onChange={() => toggle(col.key)}
-                  disabled={col.alwaysVisible}
-                  className="rounded border-gray-300"
-                />
-                <span>{col.label}</span>
-                {col.alwaysVisible && <span className="text-xs text-muted-foreground ml-auto">固定</span>}
-              </label>
-            ))}
+            {columns.map(col => {
+              const rule = company[col.label];
+              const companyHidden = !!rule?.hidden;
+              return (
+                <label
+                  key={col.key}
+                  className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 text-sm cursor-pointer ${col.alwaysVisible || companyHidden ? "opacity-60" : ""}`}
+                  title={companyHidden ? "公司已經把這一欄隱藏，要顯示請管理者在表格下方的「調整欄位」打開" : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={visibleKeys.has(col.key) && !companyHidden}
+                    onChange={() => toggle(col.key)}
+                    disabled={col.alwaysVisible || companyHidden}
+                    className="rounded border-gray-300"
+                  />
+                  <span>{rule?.label || col.label}</span>
+                  {companyHidden
+                    ? <span className="text-xs text-muted-foreground ml-auto">公司已隱藏</span>
+                    : col.alwaysVisible && <span className="text-xs text-muted-foreground ml-auto">固定</span>}
+                </label>
+              );
+            })}
           </div>
         </div>,
         document.body

@@ -12,12 +12,13 @@ import { approvalProgress, requestContent } from "./my-requests";
 import { documentAttachments, sendAttachment } from "../lib/document-attachments";
 import { registerChangeHandler, submitChangeRequest } from "../lib/change-requests";
 import { assertPeriodOpen } from "../lib/auto-journal";
+import { machineOnly } from "../lib/api-key-user";
 
 /** 誰可以做哪個動作：核准、駁回要主管以上；付款（會動到帳）只有財務 */
 const APPROVE_ROLES = ["owner", "admin", "finance_admin", "manager"];
 const PAY_ROLES = ["owner", "admin", "finance_admin", "accountant"];
 function hasRole(req: any, roles: string[]): boolean {
-  if (req.apiKeyAuth) return true;
+  if (machineOnly(req)) return true;
   const role = req.session?.user?.role;
   return role === "super_admin" || roles.includes(role);
 }

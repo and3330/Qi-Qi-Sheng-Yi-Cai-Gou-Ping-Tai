@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 import { MobileCard, MobileCardHeader, MobileCardGrid, MobileCardItem, MobileTotalCard } from "@/components/shared/mobile-card";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
@@ -60,6 +61,9 @@ export default function BuReportPage() {
   const [rows, setRows] = useState<BuRow[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
+  // 畫面上的數字是哪一段期間查出來的（日期欄改了還沒按查詢時，明細要跟著畫面上的數字走）
+  const [shownRange, setShownRange] = useState({ start: initial.start, end: initial.end });
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
   const { toast } = useToast();
 
   const fetchReport = async (start = startDate, end = endDate) => {
@@ -70,6 +74,7 @@ export default function BuReportPage() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "無法取得 BU 報表");
       setRows(body);
+      setShownRange({ start, end });
     } catch (error: any) {
       setRows([]);
       toast({ title: "查詢失敗", description: error.message, variant: "destructive" });
@@ -104,6 +109,15 @@ export default function BuReportPage() {
     style: "currency", currency: "TWD", maximumFractionDigits: 0,
   }).format(value);
   const tone = (value: number) => value >= 0 ? "text-emerald-700" : "text-red-600";
+  // 營收、費用點下去看分錄明細（不含內部轉撥，跟報表算法一致）；未歸屬部門那一列沒有部門可以篩，不能點
+  const drillCell = (value: number, kind: "Income" | "Expense", name: string, dim: { departmentId?: number | null; projectId?: number }) => {
+    if (dim.departmentId == null && dim.projectId == null) return money(value);
+    return (
+      <DrillAmount onClick={() => setDrill({ title: `${name} ${kind === "Income" ? "營收" : "費用"}`, accountTypes: [kind], ...dim, startDate: shownRange.start, endDate: shownRange.end, excludeInternal: true, note: "不含內部轉撥" })}>
+        {money(value)}
+      </DrillAmount>
+    );
+  };
 
   return (
     <div className="space-y-6" data-report>
@@ -147,8 +161,8 @@ export default function BuReportPage() {
                   />
                   {row.departmentId == null && <div className="text-xs text-amber-700 mb-2">請為專案指定所屬部門，以利正確歸屬 BU。</div>}
                   <MobileCardGrid>
-                    <MobileCardItem label="營收" value={money(row.revenue)} />
-                    <MobileCardItem label="費用" value={money(row.expense)} />
+                    <MobileCardItem label="營收" value={drillCell(row.revenue, "Income", row.name, { departmentId: row.departmentId })} />
+                    <MobileCardItem label="費用" value={drillCell(row.expense, "Expense", row.name, { departmentId: row.departmentId })} />
                     <MobileCardItem label="內部轉出" value={money(row.internalTransferOut)} />
                     <MobileCardItem label="內部轉入" value={money(row.internalTransferIn)} />
                     <MobileCardItem label="損益" value={money(row.netProfit)} valueClass={tone(row.netProfit)} />
@@ -166,8 +180,8 @@ export default function BuReportPage() {
                                 <span className={tone(project.net)}>{money(project.net)}</span>
                               </div>
                               <div className="flex justify-between text-xs text-gray-500">
-                                <span>營收: {money(project.revenue)}</span>
-                                <span>費用: {money(project.expense)}</span>
+                                <span>營收: {drillCell(project.revenue, "Income", project.name, { projectId: project.projectId })}</span>
+                                <span>費用: {drillCell(project.expense, "Expense", project.name, { projectId: project.projectId })}</span>
                               </div>
                             </div>
                           ))}
@@ -207,8 +221,8 @@ export default function BuReportPage() {
                           </button>
                           {row.departmentId == null && <p className="ml-6 mt-1 text-xs text-amber-700">請為專案指定所屬部門，以利正確歸屬 BU。</p>}
                         </td>
-                        <td className="px-4 py-3 text-right">{money(row.revenue)}</td>
-                        <td className="px-4 py-3 text-right">{money(row.expense)}</td>
+                        <td className="px-4 py-3 text-right">{drillCell(row.revenue, "Income", row.name, { departmentId: row.departmentId })}</td>
+                        <td className="px-4 py-3 text-right">{drillCell(row.expense, "Expense", row.name, { departmentId: row.departmentId })}</td>
                         <td className={`px-4 py-3 text-right font-medium ${tone(row.netProfit)}`}>{money(row.netProfit)}</td>
                         <td className="px-4 py-3 text-right">{money(row.internalTransferOut)}</td>
                         <td className="px-4 py-3 text-right">{money(row.internalTransferIn)}</td>
@@ -219,7 +233,7 @@ export default function BuReportPage() {
                           {row.projects.length === 0 ? <p className="text-muted-foreground">此 BU 尚無專案</p> : (
                             <table className="w-full">
                               <thead><tr className="text-muted-foreground"><th className="py-2 text-left">專案</th><th className="py-2 text-right">營收</th><th className="py-2 text-right">費用</th><th className="py-2 text-right">損益</th></tr></thead>
-                              <tbody>{row.projects.map(project => <tr key={project.projectId} className="border-t"><td className="py-2">{project.name}</td><td className="py-2 text-right">{money(project.revenue)}</td><td className="py-2 text-right">{money(project.expense)}</td><td className={`py-2 text-right ${tone(project.net)}`}>{money(project.net)}</td></tr>)}</tbody>
+                              <tbody>{row.projects.map(project => <tr key={project.projectId} className="border-t"><td className="py-2">{project.name}</td><td className="py-2 text-right">{drillCell(project.revenue, "Income", project.name, { projectId: project.projectId })}</td><td className="py-2 text-right">{drillCell(project.expense, "Expense", project.name, { projectId: project.projectId })}</td><td className={`py-2 text-right ${tone(project.net)}`}>{money(project.net)}</td></tr>)}</tbody>
                             </table>
                           )}
                         </td></tr>
@@ -233,6 +247,7 @@ export default function BuReportPage() {
           </div>
         </CardContent>
       </Card>
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

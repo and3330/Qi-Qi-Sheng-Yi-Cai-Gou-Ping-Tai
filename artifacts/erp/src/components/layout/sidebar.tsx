@@ -89,8 +89,8 @@ export const navGroups: NavGroup[] = [
           { label: "客戶", path: "/sales/customers", icon: <UserPlus size={16} /> },
           { label: "銷售訂單", path: "/sales/orders", icon: <ClipboardList size={16} /> },
           { label: "快速錄單", path: "/sales/quick-entry", icon: <FileSpreadsheet size={16} /> },
-          { label: "送貨單", path: "/sales/delivery-notes", icon: <PackageCheck size={16} /> },
-          { label: "銷售退貨", path: "/sales/returns", icon: <RotateCcw size={16} /> },
+          { label: "出貨單", path: "/sales/delivery-notes", icon: <PackageCheck size={16} /> },
+          { label: "銷貨退回", path: "/sales/returns", icon: <RotateCcw size={16} /> },
           { label: "銷售發票", path: "/sales/invoices", icon: <Receipt size={16} /> },
         ]
       },
@@ -110,7 +110,7 @@ export const navGroups: NavGroup[] = [
           { label: "詢價單", path: "/purchasing/rfqs", icon: <ClipboardList size={16} /> },
           { label: "採購訂單", path: "/purchasing/orders", icon: <ClipboardList size={16} /> },
           { label: "進貨單", path: "/purchasing/receipts", icon: <PackageCheck size={16} /> },
-          { label: "採購退貨", path: "/purchasing/returns", icon: <RotateCcw size={16} /> },
+          { label: "進貨退出", path: "/purchasing/returns", icon: <RotateCcw size={16} /> },
           { label: "採購發票", path: "/purchasing/invoices", icon: <Receipt size={16} /> },
         ],
       },
@@ -239,6 +239,7 @@ export const navGroups: NavGroup[] = [
         children: [
           { label: "收款單", path: "/accounting/receipts", icon: <Banknote size={16} /> },
           { label: "付款單", path: "/accounting/payments", icon: <CreditCard size={16} /> },
+          { label: "收付款單模板", path: "/accounting/voucher-templates", icon: <CreditCard size={16} />, roles: FINANCE_ROLES },
           { label: "我的申請", path: "/hr/my-requests", icon: <Send size={16} /> },
           { label: "付款申請", path: "/accounting/payment-requests", icon: <Send size={16} /> },
           { label: "員工請款單", path: "/accounting/reimbursement", icon: <HandCoins size={16} /> },

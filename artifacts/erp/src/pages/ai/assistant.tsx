@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -397,7 +398,7 @@ function DocumentDraftCard({ initial }: { initial: DocumentDraft }) {
       <div className="text-sm">請問這張報價單屬於哪一個<span className="font-medium">部門</span>？</div>
       <LookupSelect className="w-full border rounded-md px-3 py-2 text-sm" value={departmentId || ""} onChange={e => setDepartmentId(Number(e.target.value) || null)} data-testid="select-import-department">
         <option value="">請選擇部門</option>
-        {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        {selectableDepartments(departments, departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
       </LookupSelect>
       <div className="flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={() => setStep("project")}>略過</Button>
@@ -413,7 +414,7 @@ function DocumentDraftCard({ initial }: { initial: DocumentDraft }) {
       <div className="text-sm">請問要歸在哪一個<span className="font-medium">專案</span>？{draft.projectName && !draft.projectId && <span className="text-muted-foreground">（報價單上寫的是「{draft.projectName}」，系統找不到相符專案）</span>}</div>
       <select className="w-full border rounded-md px-3 py-2 text-sm" value={draft.projectId || ""} onChange={e => setDraft(d => ({ ...d, projectId: Number(e.target.value) || null }))} data-testid="select-import-project">
         <option value="">無（不歸專案）</option>
-        {projects.filter((p: any) => (p as any).isActive !== false || p.id === draft.projectId).map(p => <option key={p.id} value={p.id}>{p.name}{(p as any).isActive === false ? "（已停用）" : ""}</option>)}
+        {selectableProjects(projects, draft.projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
       </select>
       <div className="flex justify-between">
         <Button variant="outline" size="sm" onClick={() => setStep("department")}>上一步</Button>
@@ -448,8 +449,8 @@ function DocumentDraftCard({ initial }: { initial: DocumentDraft }) {
         <div><Label>客戶</Label><LookupSelect className="w-full border rounded-md px-3 py-2 text-sm" value={draft.customerId || ""} onChange={e => { const id = Number(e.target.value) || null; setDraft(d => ({ ...d, customerId: id })); if (id) setCreateNewCustomer(false); }}><option value="">{createNewCustomer ? `（自動新建：${draft.newCustomer?.name}）` : "請選擇"}</option>{customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</LookupSelect></div>
         <div><Label>日期</Label><Input type="date" value={draft.date} onChange={e => setDraft(d => ({ ...d, date: e.target.value }))} /></div>
         {isImport && <div><Label>有效期限</Label><Input type="date" value={draft.validUntil || ""} onChange={e => setDraft(d => ({ ...d, validUntil: e.target.value }))} /></div>}
-        {isImport && <div><Label>部門</Label><LookupSelect className="w-full border rounded-md px-3 py-2 text-sm" value={departmentId || ""} onChange={e => setDepartmentId(Number(e.target.value) || null)}><option value="">無</option>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</LookupSelect></div>}
-        <div className={isImport ? "" : "md:col-span-3"}><Label>專案</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={draft.projectId || ""} onChange={e => setDraft(d => ({ ...d, projectId: Number(e.target.value) || null }))}><option value="">無</option>{projects.filter((p: any) => (p as any).isActive !== false || p.id === draft.projectId).map(p => <option key={p.id} value={p.id}>{p.name}{(p as any).isActive === false ? "（已停用）" : ""}</option>)}</select></div>
+        {isImport && <div><Label>部門</Label><LookupSelect className="w-full border rounded-md px-3 py-2 text-sm" value={departmentId || ""} onChange={e => setDepartmentId(Number(e.target.value) || null)}><option value="">無</option>{selectableDepartments(departments, departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}</LookupSelect></div>}
+        <div className={isImport ? "" : "md:col-span-3"}><Label>專案</Label><select className="w-full border rounded-md px-3 py-2 text-sm" value={draft.projectId || ""} onChange={e => setDraft(d => ({ ...d, projectId: Number(e.target.value) || null }))}><option value="">無</option>{selectableProjects(projects, draft.projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}</select></div>
       </div>
       <div className="space-y-2">
         <div className="grid grid-cols-[1fr_80px_120px_36px] gap-2 text-xs text-muted-foreground"><span>品項</span><span>數量</span><span>單價</span><span /></div>
@@ -699,7 +700,7 @@ function ReimbursementCard({ initial }: { initial: ReimburseDraft }) {
       <div className="text-sm">請問這筆費用屬於哪一個<span className="font-medium">部門</span>？</div>
       <LookupSelect className="w-full border rounded-md px-3 py-2 text-sm" value={departmentId || ""} onChange={e => setDepartmentId(Number(e.target.value) || null)} data-testid="select-reimburse-department">
         <option value="">請選擇部門</option>
-        {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        {selectableDepartments(departments, departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
       </LookupSelect>
       <div className="flex justify-end gap-2">
         <Button variant="outline" size="sm" onClick={() => setStep("project")}>略過</Button>
@@ -714,7 +715,7 @@ function ReimbursementCard({ initial }: { initial: ReimburseDraft }) {
       <div className="text-sm">請問要歸在哪一個<span className="font-medium">專案</span>？（可跳過）</div>
       <select className="w-full border rounded-md px-3 py-2 text-sm" value={projectId || ""} onChange={e => setProjectId(Number(e.target.value) || null)} data-testid="select-reimburse-project">
         <option value="">無（不歸專案）</option>
-        {projects.filter((p: any) => p.isActive !== false || p.id === projectId).map(p => <option key={p.id} value={p.id}>{p.name}{p.isActive === false ? "（已停用）" : ""}</option>)}
+        {selectableProjects(projects, projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
       </select>
       <div className="flex justify-between">
         <Button variant="outline" size="sm" onClick={() => setStep("department")}>上一步</Button>

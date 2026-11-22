@@ -1,11 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 
-interface ProjectOption { id: number; name: string; isActive?: boolean; parentId?: number | null }
+import { selectableProjects, projectPickerLabel } from "@/lib/select-options";
+
+interface ProjectOption { id: number; name: string; isActive?: boolean; parentId?: number | null; startDate?: string | null; endDate?: string | null }
 
 /**
  * 「歸屬專案」欄位。專案是收支統計的單位，每一筆收入與支出都要選。
- * 停用的專案不列出，除非目前選的就是它（編輯舊資料時才看得到原本的值）。
+ * 停用或已結束的專案不列出，除非目前選的就是它（編輯舊資料時才看得到原本的值）。
+ * 名稱後面帶專案期間。
  */
 export function ProjectField({ value, onChange, label = "歸屬專案", required = true, className }: {
   value: string;
@@ -23,12 +26,12 @@ export function ProjectField({ value, onChange, label = "歸屬專案", required
     },
     staleTime: 60_000,
   });
-  const usable = (Array.isArray(data) ? data : []).filter((p) => p.isActive !== false || String(p.id) === value);
+  const usable = selectableProjects(data, value);
   // 主專案在前，它的子專案緊跟在後面並縮排；主專案沒列出來的子專案當成一般專案
   const ids = new Set(usable.map(p => p.id));
   const byName = (a: ProjectOption, b: ProjectOption) => a.name.localeCompare(b.name, "zh-Hant");
   const projects = usable.filter(p => !p.parentId || !ids.has(p.parentId)).sort(byName)
-    .flatMap(p => [{ ...p, label: p.name }, ...usable.filter(c => c.parentId === p.id).sort(byName).map(c => ({ ...c, label: `　└ ${c.name}` }))]);
+    .flatMap(p => [{ ...p, label: projectPickerLabel(p) }, ...usable.filter(c => c.parentId === p.id).sort(byName).map(c => ({ ...c, label: `　└ ${projectPickerLabel(c)}` }))]);
 
   return (
     <div className={className}>

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Shield, ShieldCheck, Link2 } from "lucide-react";
 import { adminApi, type AdminUser } from "@/lib/api";
 import { useListEmployees } from "@workspace/erp-api-client-react";
-import { ROLE_LABELS } from "@/lib/roles";
+import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/roles";
 
 import { LookupSelect } from "@/components/shared/lookup-select";
 const roleLabels = ROLE_LABELS;
@@ -198,14 +198,7 @@ export default function PermissionsPage() {
                   <span className="font-medium text-sm">{label}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {key === "super_admin" && "擁有系統所有權限，包括管理員帳號管理"}
-                  {key === "owner" && "公司負責人，與管理員相同的全功能權限"}
-                  {key === "admin" && "系統管理員，可管理職稱、職級及一般行政設定"}
-                  {key === "manager" && "部門主管，可管理所屬部門業務"}
-                  {key === "hr_admin" && "可管理員工、部門、出勤及請假相關功能"}
-                  {key === "finance_admin" && "可管理會計、發票及財務相關功能"}
-                  {key === "accountant" && "會計人員，可處理日記簿、傳票、發票"}
-                  {key === "viewer" && "一般員工，僅可檢視資料，無法新增、修改或刪除"}
+                  {ROLE_DESCRIPTIONS[key]}
                 </p>
               </div>
             ))}

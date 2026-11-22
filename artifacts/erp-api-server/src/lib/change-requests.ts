@@ -19,6 +19,10 @@ const sameCompany = () => sql`${adminUsersTable.tenantId} = current_setting('app
 export interface SubmitChange {
   kind: ChangeKind; targetType: string; targetId: number | null; targetNumber: string | null;
   title: string; payload?: Record<string, unknown>; original?: Record<string, unknown> | null; reason: string;
+  /** 同一種申請可以同時有好幾張在審（AI 助理送的沒有固定單據時用） */
+  allowParallel?: boolean;
+  /** 就算沒有其他審核人也不自動執行（AI 助理送的一定要有人按） */
+  neverAutoApply?: boolean;
 }
 
 /**
@@ -40,7 +44,7 @@ export async function submitChangeRequest(tx: any, input: SubmitChange, user: { 
   if (!input.reason.trim()) throw Object.assign(new Error("請寫原因，審核的人才知道為什麼要改"), { status: 400 });
   const pendingSame = await tx.select({ id: changeRequestsTable.id, requestNumber: changeRequestsTable.requestNumber }).from(changeRequestsTable)
     .where(and(eq(changeRequestsTable.targetType, input.targetType), input.targetId == null ? eq(changeRequestsTable.kind, input.kind) : eq(changeRequestsTable.targetId, input.targetId), eq(changeRequestsTable.status, "Pending")));
-  if (pendingSame.length > 0) throw Object.assign(new Error(`這張已經有一張異動申請 ${pendingSame[0].requestNumber} 在審核中，請等審核完再送`), { status: 400 });
+  if (pendingSame.length > 0 && !(input.allowParallel && input.targetId == null)) throw Object.assign(new Error(`這張已經有一張異動申請 ${pendingSame[0].requestNumber} 在審核中，請等審核完再送`), { status: 400 });
 
   const requestNumber = await nextDocNumber(tx, "change_requests", "request_number", "CHG", () => `CHG-${Date.now()}`);
   const [cr] = await tx.insert(changeRequestsTable).values({
@@ -58,7 +62,7 @@ export async function submitChangeRequest(tx: any, input: SubmitChange, user: { 
   }).returning();
 
   // 沒有其他人可以審（例如公司只有一個擁有者帳號）：直接執行，申請單和紀錄照留
-  if (steps.length === 0 && !(await hasOtherReviewer(tx, user))) {
+  if (!input.neverAutoApply && steps.length === 0 && !(await hasOtherReviewer(tx, user))) {
     await tx.update(approvalRequestsTable).set({ status: "Approved", comments: NO_REVIEWER_NOTE, approvers: [{ name: user.username, action: "Approved", step: 1, at: new Date().toISOString(), comments: NO_REVIEWER_NOTE }] }).where(eq(approvalRequestsTable.id, approval.id));
     await applyChangeDecision(tx, cr.id, "Approved", user.username, "", {}, true);
     const [done] = await tx.select().from(changeRequestsTable).where(eq(changeRequestsTable.id, cr.id));
@@ -89,6 +93,8 @@ const handlers = new Map<string, ChangeHandler>();
 export function registerChangeHandler(targetType: string, kind: ChangeKind, handler: ChangeHandler) { handlers.set(`${targetType}:${kind}`, handler); }
 /** 一般單據（targetType「doc:資料表」）共用的執行方式：重送原本的請求 */
 export function registerDocReplayHandler(handler: ChangeHandler) { handlers.set(`${DOC_TARGET_PREFIX}*:replay`, handler); }
+/** 跟一般單據一樣「最後才重送請求」的申請種類（AI 助理送的動作） */
+export function registerLateChangeHandler(targetType: string, handler: ChangeHandler) { handlers.set(`${targetType}:late`, handler); }
 
 /** 審核人改內容時先檢查（例如分錄借貸要平衡）。回傳 null＝沒問題 */
 export type PayloadCheck = (payload: unknown) => Promise<string | null>;
@@ -139,7 +145,7 @@ export async function applyChangeDecision(tx: any, changeRequestId: number, deci
     return;
   }
   const own = handlers.get(`${cr.targetType}:${cr.kind}`);
-  const replay = !own && String(cr.targetType).startsWith(DOC_TARGET_PREFIX) ? handlers.get(`${DOC_TARGET_PREFIX}*:replay`) : undefined;
+  const replay = own ? undefined : String(cr.targetType).startsWith(DOC_TARGET_PREFIX) ? handlers.get(`${DOC_TARGET_PREFIX}*:replay`) : handlers.get(`${cr.targetType}:late`);
   if (!own && !replay) throw Object.assign(new Error("系統還不支援這種異動，請聯絡管理員"), { status: 400 });
   // 自己的資料表異動（分錄、傳票、鎖帳）在同一筆交易裡做，先做再記
   let result: string | void = own ? await own(tx, cr, ctx) : `已${cr.title}`;

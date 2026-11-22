@@ -1,4 +1,5 @@
 import { eq, and, desc, isNotNull, sql } from "drizzle-orm";
+import { ROLE_LABEL } from "../lib/role-defaults";
 import { db, approvalWorkflowsTable, approvalRequestsTable, notificationsTable, adminUsersTable, employeesTable, departmentsTable } from "@workspace/erp-db";
 
 /** 帳號表沒有自動分公司：找主管、找審批人都要限定同一家公司，不然會找到別家公司同名或同角色的帳號 */
@@ -6,16 +7,16 @@ const sameCompany = () => sql`${adminUsersTable.tenantId} = current_setting('app
 
 /**
  * 審批流程的一關。
- * approverRole：這一關由哪個「角色」審（主管、會計、財務管理員…），有這個角色的人都可以審。
+ * approverRole：這一關由哪個「角色」審（主管、會計、財務長…），有這個角色的人都可以審。
  * approverName：另外可以指定某一個人的登入帳號（選填）；有填就只有那個人能審。
  * note：職務說明，只是給人看的文字。
  */
 export interface ApprovalStep { stepNumber?: number; approverName?: string; approverRole?: string; note?: string; /** 換人審時給人看的說明 */ label?: string }
 
-/** 可以當審批關卡的角色（老闆 2026-11-15：審批步驟應該是選角色） */
-export const APPROVER_ROLES: Record<string, string> = {
-  manager: "主管", accountant: "會計", finance_admin: "財務管理員", hr_admin: "人資管理員", admin: "管理員", owner: "擁有者（老闆）",
-};
+/** 可以當審批關卡的角色（老闆 2026-11-15：審批步驟應該是選角色）；名稱跟「角色與權限」同一份 */
+export const APPROVER_ROLES: Record<string, string> = Object.fromEntries(
+  ["manager", "accountant", "finance_admin", "hr_admin", "admin", "owner"].map((role) => [role, ROLE_LABEL[role]]),
+);
 export const stepRole = (step: ApprovalStep | undefined): string | null => (step?.approverRole && APPROVER_ROLES[step.approverRole] ? step.approverRole : null);
 /** 這一關要給人看的名稱：指定的人 > 角色 > 沒指定 */
 export const stepLabel = (step: ApprovalStep | undefined): string =>

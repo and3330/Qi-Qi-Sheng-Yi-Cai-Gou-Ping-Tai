@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { retainChatScope } from "@/lib/ai-chat-session";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       userScopeRef.current = nextScope;
     }
+    retainChatScope(nextScope);
     setUser(nextUser);
   };
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { Input } from "@/components/ui/input";
 
 /**
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
  * 調整後的內容透過 onChange 交回去，核准時一起送出，後端會再檢查一次（借貸要平衡等）。
  */
 interface Change { kind: string; targetType: string; targetId: number | null; payload: any; original: any }
-type Opt = { id: number; name: string };
+type Opt = { id: number; name: string; isActive?: boolean | null; startDate?: string | null; endDate?: string | null };
 
 const lockText = (d: string | null) => {
   if (!d) return "未鎖帳";
@@ -45,8 +46,8 @@ export function ChangeReview({ change, editable, onChange }: { change: Change; e
   const isEntry = change.targetType === "journal_entry" && change.kind === "edit";
   const isVoucher = change.targetType === "voucher" && change.kind === "edit";
   const accounts = useOptions("accounts", isEntry, (a: any) => a.isGroup ? null : { id: a.id, name: `${a.accountNumber ?? ""} ${a.accountName}`.trim() });
-  const projects = useOptions("projects", isEntry || isVoucher, (p: any) => ({ id: p.id, name: p.name }));
-  const departments = useOptions("departments", isEntry || isVoucher, (d: any) => ({ id: d.id, name: d.name }));
+  const projects = useOptions("projects", isEntry || isVoucher, (p: any) => ({ id: p.id, name: p.name, isActive: p.isActive, startDate: p.startDate, endDate: p.endDate }));
+  const departments = useOptions("departments", isEntry || isVoucher, (d: any) => ({ id: d.id, name: d.name, isActive: d.isActive }));
   const nameOf = (list: Opt[], id: unknown) => list.find(o => o.id === Number(id))?.name ?? (id ? `#${id}` : "（不指定）");
 
   const set = (patch: any) => { const next = { ...draft, ...patch }; setDraft(next); onChange(next); };
@@ -103,8 +104,8 @@ export function ChangeReview({ change, editable, onChange }: { change: Change; e
           <thead className="text-xs text-muted-foreground"><tr><th className="w-14"></th><th>改之前</th><th>改之後{editable && "（可直接調整）"}</th></tr></thead>
           <tbody>
             <tr><td className="text-muted-foreground">備註</td><td>{o.description || "（空白）"}</td><td>{editable ? <Input value={draft.description ?? ""} onChange={e => set({ description: e.target.value })} /> : draft.description || "（空白）"}</td></tr>
-            <tr><td className="text-muted-foreground">專案</td><td>{nameOf(projects, o.projectId)}</td><td>{editable ? <select className={sel} value={draft.projectId ?? ""} onChange={e => set({ projectId: e.target.value ? Number(e.target.value) : null })}><option value="">（不指定）</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select> : nameOf(projects, draft.projectId)}</td></tr>
-            <tr><td className="text-muted-foreground">部門</td><td>{nameOf(departments, o.departmentId)}</td><td>{editable ? <select className={sel} value={draft.departmentId ?? ""} onChange={e => set({ departmentId: e.target.value ? Number(e.target.value) : null })}><option value="">（不指定）</option>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select> : nameOf(departments, draft.departmentId)}</td></tr>
+            <tr><td className="text-muted-foreground">專案</td><td>{nameOf(projects, o.projectId)}</td><td>{editable ? <select className={sel} value={draft.projectId ?? ""} onChange={e => set({ projectId: e.target.value ? Number(e.target.value) : null })}><option value="">（不指定）</option>{selectableProjects(projects, draft.projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}</select> : nameOf(projects, draft.projectId)}</td></tr>
+            <tr><td className="text-muted-foreground">部門</td><td>{nameOf(departments, o.departmentId)}</td><td>{editable ? <select className={sel} value={draft.departmentId ?? ""} onChange={e => set({ departmentId: e.target.value ? Number(e.target.value) : null })}><option value="">（不指定）</option>{selectableDepartments(departments, draft.departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}</select> : nameOf(departments, draft.departmentId)}</td></tr>
           </tbody>
         </table>
       </div>
@@ -140,7 +141,7 @@ export function ChangeReview({ change, editable, onChange }: { change: Change; e
             <div className="mb-2 grid gap-2 sm:grid-cols-3">
               <Input type="date" value={draft.entryDate ?? ""} onChange={e => set({ entryDate: e.target.value })} aria-label="日期" />
               <Input value={draft.description ?? ""} onChange={e => set({ description: e.target.value })} aria-label="說明" placeholder="說明" />
-              <select className={sel} value={draft.projectId ?? ""} onChange={e => set({ projectId: e.target.value ? Number(e.target.value) : null })} aria-label="專案"><option value="">（不指定專案）</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+              <select className={sel} value={draft.projectId ?? ""} onChange={e => set({ projectId: e.target.value ? Number(e.target.value) : null })} aria-label="專案"><option value="">（不指定專案）</option>{selectableProjects(projects, draft.projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}</select>
             </div>
           ) : <p className="mb-1 text-xs">{draft.entryDate}　{draft.description}　{nameOf(projects, draft.projectId)}</p>}
           <div className="overflow-x-auto rounded-md border">{lineTable(draft.lines ?? [], editable)}</div>

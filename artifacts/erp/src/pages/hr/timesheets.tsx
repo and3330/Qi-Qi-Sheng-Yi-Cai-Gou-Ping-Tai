@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { selectableProjects, projectPickerLabel } from "@/lib/select-options";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Plus, Trash2, X } from "lucide-react";
@@ -20,7 +21,8 @@ interface Sheet {
 }
 interface Options {
   canApprove: boolean; ownEmployeeId: number | null;
-  projects: Array<{ id: number; name: string }>; tasks: Array<{ id: number; title: string; projectId: number | null }>;
+  // 目前 /timesheets/options 只回 id、name；等它補上 isActive、startDate、endDate，下面的選單就會自動照規則隱藏
+  projects: Array<{ id: number; name: string; isActive?: boolean; startDate?: string | null; endDate?: string | null }>; tasks: Array<{ id: number; title: string; projectId: number | null }>;
   workOrders: Array<{ id: number; workOrderNumber: string }>; employees: Array<{ id: number; name: string }>;
 }
 interface Summary { projects: Array<{ projectId: number; projectName: string; approvedHours: number; approvedCost: number; pendingHours: number; people: number }>; totals: { approvedHours: number; approvedCost: number; pendingHours: number } }
@@ -190,9 +192,15 @@ export default function TimesheetsPage() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-md max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>填工時</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name="填工時"
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={save} disabled={saving || !valid}>{saving ? "處理中…" : "登錄"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             {canApprove && (
               <div className="space-y-1.5">
@@ -212,7 +220,7 @@ export default function TimesheetsPage() {
               <Label htmlFor="tsf-project">專案 *</Label>
               <select id="tsf-project" className={selectClass} value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value, taskId: "" })}>
                 <option value="">請選擇專案</option>
-                {options?.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {selectableProjects(options?.projects, form.projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
@@ -234,12 +242,7 @@ export default function TimesheetsPage() {
             )}
             <div className="space-y-1.5"><Label htmlFor="tsf-desc">做了什麼</Label><Input id="tsf-desc" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={save} disabled={saving || !valid}>{saving ? "處理中…" : "登錄"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "wouter";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import { Printer, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
@@ -6,6 +7,7 @@ import { PageHint } from "@/components/page-hint";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 
@@ -36,12 +38,18 @@ function previousMonth() {
 
 const money = (value: number) => `NT$ ${Number(value || 0).toLocaleString("zh-TW", { maximumFractionDigits: 0 })}`;
 
+/** 每張卡片的數字都要點得進去：從分錄算的開明細視窗（drill），其他的連到算出這個數字的報表（href） */
+interface DigestCard { label: string; value: string; note: ReactNode; href?: string; drill?: DrillTarget }
+/** 連到來源報表的數字，長相跟「點數字看明細」的數字一樣 */
+const linkClass = "rounded-sm underline decoration-dotted decoration-muted-foreground/50 underline-offset-4 hover:text-primary hover:decoration-primary print:no-underline";
+
 export default function MonthlyDigestPage() {
   const reloadKey = useAutoReloadKey();
   const [selectedMonth, setSelectedMonth] = useState(previousMonth);
   const [data, setData] = useState<Digest | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
 
   const load = async () => {
     const [year, month] = selectedMonth.split("-");
@@ -63,13 +71,13 @@ export default function MonthlyDigestPage() {
 
   useEffect(() => { load(); }, [reloadKey]);
 
-  const cards = data ? [
-    ["未稅營收", money(data.revenue), "依銷項發票"],
-    ["銷售毛利", money(data.grossProfit), "確認／完成訂單，移動平均成本"],
-    ["本月費用", money(data.expenses), "已過帳費用科目"],
-    ["營業稅預估", money(data.vatEstimate), `${data.vatPeriod.startDate} ～ ${data.vatPeriod.endDate}`],
-    ["應收未收", money(data.receivablesOutstanding), `逾期 30 天以上 ${money(data.receivablesOverdue30)}`],
-    ["應付未付", money(data.payablesOutstanding), `截至 ${data.endDate}`],
+  const cards: DigestCard[] = data ? [
+    { label: "未稅營收", value: money(data.revenue), note: "依銷項發票", href: "/reports/sales-analysis" },
+    { label: "銷售毛利", value: money(data.grossProfit), note: "確認／完成訂單，移動平均成本", href: "/reports/sales-analysis" },
+    { label: "本月費用", value: money(data.expenses), note: "已過帳費用科目", drill: { title: "本月費用", accountTypes: ["Expense"], startDate: data.startDate, endDate: data.endDate } },
+    { label: "營業稅預估", value: money(data.vatEstimate), note: `${data.vatPeriod.startDate} ～ ${data.vatPeriod.endDate}`, href: "/accounting/vat-report" },
+    { label: "應收未收", value: money(data.receivablesOutstanding), note: <>逾期 30 天以上 <Link href="/reports/ar-aging" className={linkClass} title="到應收帳齡看是哪些單">{money(data.receivablesOverdue30)}</Link></>, href: "/reports/ar-aging" },
+    { label: "應付未付", value: money(data.payablesOutstanding), note: `截至 ${data.endDate}`, href: "/reports/ap-aging" },
   ] : [];
 
   return (
@@ -103,11 +111,15 @@ export default function MonthlyDigestPage() {
       {data && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:grid-cols-3">
-            {cards.map(([label, value, note]) => (
+            {cards.map(({ label, value, note, href, drill: target }) => (
               <Card className="print-card" key={label}>
                 <CardContent className="p-4">
                   <div className="text-sm text-muted-foreground">{label}</div>
-                  <div className="mt-1 text-2xl font-bold tracking-tight">{value}</div>
+                  <div className="mt-1 text-2xl font-bold tracking-tight">
+                    {target ? <DrillAmount onClick={() => setDrill(target)}>{value}</DrillAmount>
+                      : href ? <Link href={href} className={linkClass} title="點一下看這個數字的來源報表">{value}</Link>
+                      : value}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">{note}</div>
                 </CardContent>
               </Card>
@@ -122,7 +134,7 @@ export default function MonthlyDigestPage() {
                   {data.topCustomers.map((customer, index) => (
                     <li className="flex items-center justify-between border-b pb-1.5 text-sm last:border-0" key={`${customer.id}-${customer.name}`}>
                       <span><span className="mr-2 text-muted-foreground">{index + 1}.</span>{customer.name}</span>
-                      <strong>{money(customer.revenue)}</strong>
+                      <strong>{customer.id != null ? <Link href={`/accounting/customer-statement/${customer.id}`} className={linkClass} title="看這個客戶的對帳單">{money(customer.revenue)}</Link> : money(customer.revenue)}</strong>
                     </li>
                   ))}
                   {!data.topCustomers.length && <li className="py-4 text-center text-sm text-muted-foreground">本月尚無銷項發票</li>}
@@ -136,7 +148,7 @@ export default function MonthlyDigestPage() {
                   {data.topProjects.map((project, index) => (
                     <li className="flex items-center justify-between border-b pb-1.5 text-sm last:border-0" key={`${project.id}-${project.name}`}>
                       <span><span className="mr-2 text-muted-foreground">{index + 1}.</span>{project.name}</span>
-                      <span className="text-right"><strong>{money(project.net)}</strong><span className="ml-2 text-xs text-muted-foreground">營收 {money(project.revenue)}</span></span>
+                      <span className="text-right"><strong>{project.id != null ? <Link href={`/projects/financials?id=${project.id}`} className={linkClass} title="看這個專案的損益">{money(project.net)}</Link> : money(project.net)}</strong><span className="ml-2 text-xs text-muted-foreground">營收 {money(project.revenue)}</span></span>
                     </li>
                   ))}
                   {!data.topProjects.length && <li className="py-4 text-center text-sm text-muted-foreground">本月尚無確認或完成訂單</li>}
@@ -154,6 +166,7 @@ export default function MonthlyDigestPage() {
           </Card>
         </>
       )}
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

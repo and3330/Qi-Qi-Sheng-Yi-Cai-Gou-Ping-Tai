@@ -64,8 +64,9 @@ export async function approvalProgress(ids: number[]): Promise<Map<number, Appro
 /** 表單要用的選項：專案、部門、付款對象（只給編號與名稱，不含廠商的聯絡與銀行資料） */
 router.get("/my-requests/options", async (req, res): Promise<void> => {
   const [projects, departments, payees] = await Promise.all([
-    db.select({ id: projectsTable.id, name: projectsTable.name, parentId: projectsTable.parentId }).from(projectsTable).where(eq(projectsTable.isActive, true)).orderBy(projectsTable.name),
-    db.select({ id: departmentsTable.id, name: departmentsTable.name }).from(departmentsTable).orderBy(departmentsTable.name),
+    // 專案帶期間、部門帶是否停用：下拉選單靠這些把已結束的專案、停用的部門藏起來
+    db.select({ id: projectsTable.id, name: projectsTable.name, parentId: projectsTable.parentId, isActive: projectsTable.isActive, startDate: projectsTable.startDate, endDate: projectsTable.endDate }).from(projectsTable).where(eq(projectsTable.isActive, true)).orderBy(projectsTable.name),
+    db.select({ id: departmentsTable.id, name: departmentsTable.name, isActive: departmentsTable.isActive }).from(departmentsTable).orderBy(departmentsTable.name),
     db.select({ id: suppliersTable.id, name: suppliersTable.name }).from(suppliersTable).where(eq(suppliersTable.isActive, true)).orderBy(suppliersTable.name),
   ]);
   res.json({ me: me(req), categories: CATEGORIES, projects, departments, payees, finance: isFinance(req) });
@@ -115,6 +116,9 @@ router.post("/my-requests", async (req, res): Promise<void> => {
   if (bad >= 0) { res.status(400).json({ error: `第 ${bad + 1} 行要填摘要，金額要大於 0` }); return; }
   const noPayee = lines.findIndex(line => line.payTo === "other" && !line.payeeId && !line.payeeName);
   if (noPayee >= 0) { res.status(400).json({ error: `第 ${noPayee + 1} 行請選擇或填寫要付給誰` }); return; }
+  // 老闆 2026-11-17：一張付款申請只能付給一個對象（供應商、客戶或人員），不同對象要分開送
+  const payeeKey = (line: RequestLine) => (line.payTo === "self" ? "self" : line.payeeId ? `id:${line.payeeId}` : `name:${line.payeeName}`);
+  if (new Set(lines.map(payeeKey)).size > 1) { res.status(400).json({ error: "一張付款申請只能付給一個對象；要付給不同的人，請一人送一張" }); return; }
   const total = round2(lines.reduce((sum, line) => sum + line.amount, 0));
   const requestDate = typeof body.requestDate === "string" && body.requestDate ? body.requestDate : todayTaipei();
   if (!isRealDate(requestDate) || requestDate > todayTaipei()) { res.status(400).json({ error: "日期格式不正確，或填在未來" }); return; }

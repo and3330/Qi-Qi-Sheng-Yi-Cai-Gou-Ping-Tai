@@ -81,7 +81,9 @@ describe("CM生活+ 與 AI 大學的轉接", () => {
     expect(ncaiOrderToEvent({ id: 1, status: "completed", paymentGateway: "Stripe", amount: 1000 })).toBeNull();
   });
   it("只有設定過轉接的來源代號可以主動抓資料", () => {
-    expect(adapterInfo("cm-life")).toMatchObject({ canPull: true, envKey: "CM_LIFE_ERP_API_KEY" });
+    // 七期網站只載入「七期商城」這個轉接；公司專用的 CM生活+ 等沒有載入
+    expect(adapterInfo("qiqi-shop").canPull).toBe(true);
+    expect(adapterInfo("cm-life")).toEqual({ canPull: false, configured: false });
     expect(adapterInfo("icta-pro")).toEqual({ canPull: false, configured: false });
   });
 });

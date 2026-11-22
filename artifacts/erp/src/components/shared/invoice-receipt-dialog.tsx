@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 
 /**
@@ -80,10 +80,19 @@ export function InvoiceReceiptDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="md:max-w-md">
-        <DialogHeader><DialogTitle>收款 — {invoice?.invoiceNumber}</DialogTitle></DialogHeader>
-        <div className="grid gap-4 py-2">
+    <DocWindow
+      open={open}
+      onClose={() => onOpenChange(false)}
+      name="收款"
+      number={invoice?.invoiceNumber}
+      footer={<>
+        <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+        <Button onClick={handleSubmit} disabled={submitting || outstanding <= 0} data-testid="button-confirm-receipt">
+          {submitting ? "處理中..." : "確認收款"}
+        </Button>
+      </>}
+    >
+        <div className="grid gap-4">
           <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
             <div className="flex justify-between"><span className="text-muted-foreground">客戶</span><span>{invoice?.customerName || "-"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">發票總額</span><span>NT$ {total.toLocaleString()}</span></div>
@@ -100,13 +109,6 @@ export function InvoiceReceiptDialog({
           <div><Label>收款日期</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} /></div>
           <div><Label>備註</Label><Input value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="例如：匯款、現金…" /></div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button onClick={handleSubmit} disabled={submitting || outstanding <= 0} data-testid="button-confirm-receipt">
-            {submitting ? "處理中..." : "確認收款"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </DocWindow>
   );
 }

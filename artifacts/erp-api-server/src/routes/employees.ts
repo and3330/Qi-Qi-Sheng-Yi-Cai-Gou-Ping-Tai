@@ -8,6 +8,9 @@ import { accountName } from "../lib/company-identity";
 import { requireAuth, requireRole } from "../middleware/require-auth";
 import { isDateString, seniorityText, taipeiToday } from "../lib/hr-rules";
 import { reqTenantId } from "../middleware/tenant-context";
+import { BUILTIN_ROLES } from "../lib/role-defaults";
+import { removeUserFromCustomRoles } from "../lib/custom-roles";
+import { machineOnly } from "../lib/api-key-user";
 import {
   ListEmployeesQueryParams,
   CreateEmployeeBody,
@@ -140,7 +143,7 @@ router.get("/employees", async (req, res): Promise<void> => {
     .orderBy(employeesTable.createdAt);
 
   const u = req.session?.user;
-  const isHr = (req as any).apiKeyAuth || (u && (u.role === "super_admin" || ["owner","admin","hr_admin","finance_admin"].includes(u.role)));
+  const isHr = machineOnly(req) || (u && (u.role === "super_admin" || ["owner","admin","hr_admin","finance_admin"].includes(u.role)));
   const today = taipeiToday();
   res.json(employees.map(e => ({
     ...e,
@@ -369,7 +372,7 @@ router.get("/employees/:id", async (req, res): Promise<void> => {
 
   if (!emp) { res.status(404).json({ error: "Employee not found" }); return; }
   const u2 = req.session?.user;
-  const isHr2 = (req as any).apiKeyAuth || (u2 && (u2.role === "super_admin" || ["owner","admin","hr_admin","finance_admin"].includes(u2.role)));
+  const isHr2 = machineOnly(req) || (u2 && (u2.role === "super_admin" || ["owner","admin","hr_admin","finance_admin"].includes(u2.role)));
   res.json({ ...emp, salary: isHr2 ? (emp.salary ? Number(emp.salary) : null) : null });
 });
 
@@ -457,6 +460,13 @@ router.post("/employees/:id/account", requireRole("owner", "admin", "super_admin
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { username, password, role } = req.body;
   if (!password || String(password).length < 6) { res.status(400).json({ error: "密碼至少 6 字元" }); return; }
+  // 角色只收系統認得的值；老闆只能由老闆指派，系統管理員只能由老闆或系統管理員指派（人資不能替人升權）
+  const actorRole = (req as any).session?.user?.role;
+  if (role !== undefined && role !== null && role !== "") {
+    if (typeof role !== "string" || !(BUILTIN_ROLES as readonly string[]).includes(role)) { res.status(400).json({ error: "角色不正確" }); return; }
+    if (role === "owner" && !["owner", "super_admin"].includes(actorRole)) { res.status(403).json({ error: "只有老闆可以指派老闆角色" }); return; }
+    if (role === "admin" && !["owner", "admin", "super_admin"].includes(actorRole)) { res.status(403).json({ error: "只有老闆或系統管理員可以指派系統管理員" }); return; }
+  }
 
   const [emp] = await db.select().from(employeesTable).where(eq(employeesTable.id, id));
   if (!emp) { res.status(404).json({ error: "Employee not found" }); return; }
@@ -499,6 +509,7 @@ router.delete("/employees/:id/account", requireRole("owner", "admin", "super_adm
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const result = await db.delete(adminUsersTable).where(eq(adminUsersTable.employeeId, id)).returning({ id: adminUsersTable.id });
   if (result.length === 0) { res.status(404).json({ error: "此員工未綁定登入帳號" }); return; }
+  for (const account of result) await removeUserFromCustomRoles(reqTenantId(req), account.id);
   res.sendStatus(204);
 });
 

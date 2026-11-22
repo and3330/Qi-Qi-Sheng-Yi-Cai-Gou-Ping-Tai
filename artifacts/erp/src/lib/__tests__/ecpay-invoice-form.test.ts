@@ -1,8 +1,38 @@
 import { describe, expect, it } from "vitest";
 import {
   getEcpayInvoiceFormErrors,
+  getEcpayOrderId,
+  toTaxIncludedInvoiceItem,
+  invoiceIntegerErrors,
   type EcpayInvoiceForm,
 } from "../ecpay-invoice-form";
+
+describe("integer tax included invoice items", () => {
+  it("derives the included price from the original subtotal without changing total", () => {
+    const item = toTaxIncludedInvoiceItem({ itemName: "材料費", quantity: 14, rate: 2390.4761905, amount: 35140 });
+    expect(item).toEqual({ name: "材料費", count: 14, unitPrice: 2510, amount: 35140 });
+    expect(invoiceIntegerErrors([item])).toEqual([]);
+  });
+  it("preserves non-divisible amounts and blocks instead of rounding", () => {
+    const item = toTaxIncludedInvoiceItem({ quantity: 3, rate: 30, amount: 100 });
+    expect(item.amount).toBe(100);
+    expect(invoiceIntegerErrors([item])).toHaveLength(1);
+    expect(invoiceIntegerErrors([{ count: 2, unitPrice: 50, amount: 101 }])).toHaveLength(1);
+    expect(invoiceIntegerErrors([{ count: 1.5, unitPrice: 20, amount: 30 }])).toHaveLength(1);
+  });
+});
+
+describe("getEcpayOrderId", () => {
+  it("opens a specific order preview independent of list filters", () => {
+    expect(getEcpayOrderId("?ecpay=32922")).toBe(32922);
+    expect(getEcpayOrderId("customerId=1&ecpay=42")).toBe(42);
+  });
+  it("rejects missing, invalid, non-positive and unsafe order ids", () => {
+    for (const query of ["", "ecpay=", "ecpay=0", "ecpay=-1", "ecpay=1.5", "ecpay=1/issue", "ecpay=abc", "ecpay=9007199254740992"]) {
+      expect(getEcpayOrderId(query)).toBeNull();
+    }
+  });
+});
 
 const completePersonal: EcpayInvoiceForm = {
   invoiceType: "personal",

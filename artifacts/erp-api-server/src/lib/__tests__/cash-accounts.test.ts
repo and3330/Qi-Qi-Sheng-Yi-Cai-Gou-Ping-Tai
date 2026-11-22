@@ -95,6 +95,46 @@ describe("收付款分錄", () => {
   });
 });
 
+describe("收付款單的手續費與每一行的科目", () => {
+  const FEE = { accountId: 61, accountNumber: "6131", accountName: "銀行手續費" };
+  const INTEREST = { accountId: 71, accountNumber: "7101", accountName: "利息收入" };
+  const shape = (lines: { accountName: string; debit: number; credit: number }[]) => lines.map(l => [l.accountName, l.debit, l.credit]);
+
+  it("收款有手續費：銀行只進（金額 − 手續費），手續費記費用，應收照全額沖掉", () => {
+    const lines = settlementJournalLines({ kind: "receipt", voucherNumber: "RC-9", cash: BANK, parts: [{ amount: 1000 }], fee: 15, feeAccount: FEE });
+    expect(shape(lines)).toEqual([["銀行存款-國泰板橋", 985, 0], ["銀行手續費", 15, 0], ["應收帳款", 0, 1000]]);
+  });
+
+  it("付款有手續費：銀行付出（金額 ＋ 手續費），應付只沖金額", () => {
+    const lines = settlementJournalLines({ kind: "payment", voucherNumber: "PY-9", cash: BANK, parts: [{ amount: 1000 }], fee: 30, feeAccount: FEE });
+    expect(shape(lines)).toEqual([["應付帳款", 1000, 0], ["銀行手續費", 30, 0], ["銀行存款-國泰板橋", 0, 1030]]);
+  });
+
+  it("這一行自己選了科目就記那個科目，不記應收；同一張單其他行照舊沖應收", () => {
+    const lines = settlementJournalLines({ kind: "receipt", voucherNumber: "RC-10", cash: BANK, parts: [{ amount: 5000 }, { amount: 120, account: INTEREST }], fee: 15, feeAccount: FEE });
+    expect(shape(lines)).toEqual([["銀行存款-國泰板橋", 5105, 0], ["銀行手續費", 15, 0], ["應收帳款", 0, 5000], ["利息收入", 0, 120]]);
+    expect(sum(lines, "debit")).toBe(sum(lines, "credit"));
+  });
+
+  it("外幣收款同時有手續費和實際入帳的台幣：差額扣掉手續費後才是兌換損益", () => {
+    // 發票 1,000 美元、入帳匯率 31（應收 31,000）；銀行實際進 31,485，另外被扣 15 手續費 → 兌換利益 500
+    const lines = settlementJournalLines({ kind: "receipt", voucherNumber: "RC-11", cash: BANK, parts: [{ amount: 1000, invoiceRate: 31 }], actualCash: 31485, fee: 15, feeAccount: FEE });
+    expect(lines.find(l => l.accountName === "銀行存款-國泰板橋")).toMatchObject({ debit: 31485 });
+    expect(lines.find(l => l.accountName === "兌換利益")).toMatchObject({ credit: 500 });
+    expect(sum(lines, "debit")).toBe(sum(lines, "credit"));
+  });
+
+  it("有手續費卻沒有手續費科目、或手續費吃掉整筆收款，都不入帳", () => {
+    expect(() => settlementJournalLines({ kind: "receipt", voucherNumber: "RC-12", cash: BANK, parts: [{ amount: 100 }], fee: 15 })).toThrow("手續費");
+    expect(() => settlementJournalLines({ kind: "receipt", voucherNumber: "RC-13", cash: BANK, parts: [{ amount: 100 }], fee: 100, feeAccount: FEE })).toThrow("手續費不能大於或等於");
+  });
+
+  it("沒填手續費、沒選科目時，分錄和原本一模一樣", () => {
+    expect(shape(settlementJournalLines({ kind: "payment", voucherNumber: "PY-10", cash: BANK, parts: [{ amount: 700 }], fee: 0, feeAccount: null })))
+      .toEqual([["應付帳款", 700, 0], ["銀行存款-國泰板橋", 0, 700]]);
+  });
+});
+
 describe("開帳分錄", () => {
   it("資產在借方、負債與權益在貸方，負數放到反方向", () => {
     const built = openingEntryLines([

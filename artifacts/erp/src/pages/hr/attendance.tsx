@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LookupSelect } from "@/components/shared/lookup-select";
 import { useToast } from "@/hooks/use-toast";
@@ -83,7 +83,7 @@ export default function AttendancePage() {
       {view === "daily" ? (
         <Card>
           <CardContent className="p-0 overflow-x-auto">
-            <DataTable
+            <DataTable layoutId="attendance-records"
               isLoading={isLoading}
               data={rows}
               emptyMessage={onlyProblems ? "這個月沒有異常紀錄" : "這個月還沒有打卡紀錄"}
@@ -142,7 +142,7 @@ export default function AttendancePage() {
           )}
           <Card>
             <CardContent className="p-0 overflow-x-auto">
-              <DataTable
+              <DataTable layoutId="attendance-summary"
                 isLoading={summaryLoading}
                 data={summary?.rows.map(r => ({ ...r, id: r.employeeId }))}
                 defaultPageSize={0}
@@ -164,9 +164,16 @@ export default function AttendancePage() {
         </>
       )}
 
-      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) setEditing(null); }}>
-        <DialogContent className="md:max-w-md">
-          <DialogHeader><DialogTitle>{editing?.record ? `更正打卡 — ${editing.record.employeeName} ${editing.record.date}` : "補登打卡"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        name={editing?.record ? "更正打卡" : "補登打卡"}
+        description={editing?.record ? `${editing.record.employeeName} ${editing.record.date}` : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
+          <Button onClick={save} disabled={saving || !editing?.reason.trim() || !editing?.checkIn || (!editing?.record && !editing?.employeeId)}>儲存</Button>
+        </>}
+      >
           {editing && (
             <div className="space-y-4">
               {!editing.record && (
@@ -191,12 +198,7 @@ export default function AttendancePage() {
               <p className="text-xs text-muted-foreground">遲到、工時、加班會依班別重新計算；原本的時間與經手人會留在備註。</p>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
-            <Button onClick={save} disabled={saving || !editing?.reason.trim() || !editing?.checkIn || (!editing?.record && !editing?.employeeId)}>儲存</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

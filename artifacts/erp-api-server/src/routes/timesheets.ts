@@ -70,7 +70,8 @@ router.get("/timesheets/options", async (req, res): Promise<void> => {
   const scope = sessionEmployeeScope(req);
   const approver = isApprover(req);
   const [projects, tasks, workOrders, employees] = await Promise.all([
-    db.select({ id: projectsTable.id, name: projectsTable.name }).from(projectsTable).orderBy(projectsTable.name),
+    // 下拉選單要靠這些欄位把停用、已結束的專案藏起來，並顯示專案期間
+    db.select({ id: projectsTable.id, name: projectsTable.name, isActive: projectsTable.isActive, startDate: projectsTable.startDate, endDate: projectsTable.endDate }).from(projectsTable).orderBy(projectsTable.name),
     db.select({ id: tasksTable.id, title: tasksTable.title, projectId: tasksTable.projectId }).from(tasksTable).orderBy(desc(tasksTable.id)).limit(500),
     db.select({ id: workOrdersTable.id, workOrderNumber: workOrdersTable.workOrderNumber }).from(workOrdersTable)
       .where(sql`${workOrdersTable.status} NOT IN ('Completed', 'Cancelled')`).orderBy(desc(workOrdersTable.id)).limit(200),

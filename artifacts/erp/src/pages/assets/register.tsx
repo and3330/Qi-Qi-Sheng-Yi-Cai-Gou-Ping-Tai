@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { selectableDepartments, departmentLabel } from "@/lib/select-options";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, DocFields, DocLines, DocSection, DocNote, statusTone } from "@/components/shared/doc-window";
+import { RelatedDocs } from "@/components/shared/related-docs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, Trash2, Check, Search, Package, DollarSign, TrendingDown, ArrowRightLeft, Pencil } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -32,7 +34,7 @@ interface AssetDetail extends Asset {
   adjustments: { id: number; adjustmentDate: string; previousValue: number; newValue: number; adjustmentAmount: number; reason: string }[];
 }
 interface Category { id: number; name: string; depreciationMethod: string; defaultUsefulLifeYears: number }
-interface Department { id: number; name: string }
+interface Department { id: number; name: string; isActive?: boolean }
 interface Employee { id: number; fullName: string }
 
 const statusMap: Record<string, string> = { Draft: "草稿", Submitted: "已確認", "In Use": "使用中", Scrapped: "已報廢", Sold: "已出售" };
@@ -262,12 +264,16 @@ export default function AssetRegisterPage() {
         </LookupSelect>
         <LookupSelect className="border rounded-md px-3 py-2 text-sm" value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)}>
           <option value="">所有部門</option>
-          {departments.map((d: any) => <option key={d.id} value={d.id}>{d.name}{d.isActive === false ? "（已停用）" : ""}</option>)}
+          {departments.map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
         </LookupSelect>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />新增資產</Button></DialogTrigger>
-          <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-            <DialogHeader><DialogTitle>新增固定資產</DialogTitle></DialogHeader>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增資產</Button>
+        <DocWindow
+          open={open} onClose={() => setOpen(false)} name="新增固定資產"
+          footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} disabled={!form.name || !form.categoryId || !form.purchaseCost}>建立</Button>
+          </>}
+        >
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label className="text-sm font-medium">資產名稱 *</label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="資產名稱" /></div>
@@ -299,7 +305,7 @@ export default function AssetRegisterPage() {
                   <label className="text-sm font-medium">部門</label>
                   <select className="w-full border rounded-md px-3 py-2 text-sm" value={form.departmentId} onChange={e => setForm(p => ({ ...p, departmentId: e.target.value }))}>
                     <option value="">選擇部門</option>
-                    {departments.filter((d: any) => d.isActive !== false || String(d.id) === String(form.departmentId)).map((d: any) => <option key={d.id} value={d.id}>{d.name}{d.isActive === false ? "（已停用）" : ""}</option>)}
+                    {selectableDepartments(departments, form.departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -330,12 +336,7 @@ export default function AssetRegisterPage() {
                 </Card>
               )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-              <Button onClick={handleCreate} disabled={!form.name || !form.categoryId || !form.purchaseCost}>建立</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </DocWindow>
       </div>
 
       <Card>
@@ -391,162 +392,122 @@ export default function AssetRegisterPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!detailItem} onOpenChange={v => { if (!v) setDetailItem(null); }}>
-        <DialogContent className="md:max-w-3xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>資產明細 - {detailItem?.assetNumber}</DialogTitle></DialogHeader>
-          {detailItem && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div><span className="text-gray-500">名稱：</span><span className="font-medium">{detailItem.name}</span></div>
-                <div><span className="text-gray-500">類別：</span><span>{detailItem.categoryName}</span></div>
-                <div><span className="text-gray-500">狀態：</span><Badge variant={statusColor(detailItem.status)}>{statusMap[detailItem.status] || detailItem.status}</Badge></div>
-                <div><span className="text-gray-500">購入日期：</span><span>{detailItem.purchaseDate}</span></div>
-                <div><span className="text-gray-500">購入成本：</span><span className="font-mono">${detailItem.purchaseCost.toLocaleString()}</span></div>
-                <div><span className="text-gray-500">帳面價值：</span><span className="font-mono font-bold">${detailItem.currentValue.toLocaleString()}</span></div>
-                <div><span className="text-gray-500">折舊方式：</span><span>{methodMap[detailItem.depreciationMethod]}</span></div>
-                <div><span className="text-gray-500">使用年限：</span><span>{detailItem.usefulLifeYears} 年</span></div>
-                <div><span className="text-gray-500">殘值：</span><span className="font-mono">${detailItem.salvageValue.toLocaleString()}</span></div>
-                <div><span className="text-gray-500">累計折舊：</span><span className="font-mono">${detailItem.accumulatedDepreciation.toLocaleString()}</span></div>
-                <div><span className="text-gray-500">部門：</span><span>{detailItem.departmentName || "-"}</span></div>
-                <div><span className="text-gray-500">指派給：</span><span>{detailItem.assignedToName || "-"}</span></div>
-                {detailItem.location && <div><span className="text-gray-500">位置：</span><span>{detailItem.location}</span></div>}
-                {detailItem.serialNumber && <div><span className="text-gray-500">序號：</span><span>{detailItem.serialNumber}</span></div>}
-                {detailItem.warrantyExpiry && <div><span className="text-gray-500">保固到期：</span><span>{detailItem.warrantyExpiry}</span></div>}
-                {detailItem.disposalDate && <div><span className="text-gray-500">處分日期：</span><span>{detailItem.disposalDate}</span></div>}
-                {detailItem.disposalAmount !== null && <div><span className="text-gray-500">處分金額：</span><span className="font-mono">${detailItem.disposalAmount.toLocaleString()}</span></div>}
-                {detailItem.remarks && <div className="col-span-3"><span className="text-gray-500">備註：</span><span>{detailItem.remarks}</span></div>}
-              </div>
-
-              {detailItem.depreciationEntries.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">折舊紀錄</h4>
-                  <table className="w-full text-xs">
-                    <thead><tr className="border-b bg-gray-50">
-                      <th className="text-left px-2 py-1">期間</th>
-                      <th className="text-right px-2 py-1">折舊額</th>
-                      <th className="text-right px-2 py-1">累計折舊</th>
-                      <th className="text-right px-2 py-1">帳面價值</th>
-                      <th className="text-left px-2 py-1">日記帳</th>
-                    </tr></thead>
-                    <tbody>
-                      {detailItem.depreciationEntries.map(e => (
-                        <tr key={e.id} className="border-b">
-                          <td className="px-2 py-1">{e.period}</td>
-                          <td className="px-2 py-1 text-right font-mono">${e.depreciationAmount.toLocaleString()}</td>
-                          <td className="px-2 py-1 text-right font-mono">${e.accumulatedAmount.toLocaleString()}</td>
-                          <td className="px-2 py-1 text-right font-mono">${e.bookValue.toLocaleString()}</td>
-                          <td className="px-2 py-1">{e.journalEntryId ? <Badge variant="secondary">JE#{e.journalEntryId}</Badge> : "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {detailItem.movements.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">調撥紀錄</h4>
-                  <table className="w-full text-xs">
-                    <thead><tr className="border-b bg-gray-50">
-                      <th className="text-left px-2 py-1">日期</th>
-                      <th className="text-left px-2 py-1">從</th>
-                      <th className="text-left px-2 py-1">至</th>
-                      <th className="text-left px-2 py-1">原因</th>
-                    </tr></thead>
-                    <tbody>
-                      {detailItem.movements.map(m => (
-                        <tr key={m.id} className="border-b">
-                          <td className="px-2 py-1">{m.movementDate}</td>
-                          <td className="px-2 py-1">{m.fromDeptName || m.fromLocation || "-"}</td>
-                          <td className="px-2 py-1">{m.toDeptName || m.toLocation || "-"}</td>
-                          <td className="px-2 py-1">{m.reason || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {detailItem.adjustments.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">價值調整紀錄</h4>
-                  <table className="w-full text-xs">
-                    <thead><tr className="border-b bg-gray-50">
-                      <th className="text-left px-2 py-1">日期</th>
-                      <th className="text-right px-2 py-1">原值</th>
-                      <th className="text-right px-2 py-1">新值</th>
-                      <th className="text-right px-2 py-1">調整額</th>
-                      <th className="text-left px-2 py-1">原因</th>
-                    </tr></thead>
-                    <tbody>
-                      {detailItem.adjustments.map(a => (
-                        <tr key={a.id} className="border-b">
-                          <td className="px-2 py-1">{a.adjustmentDate}</td>
-                          <td className="px-2 py-1 text-right font-mono">${a.previousValue.toLocaleString()}</td>
-                          <td className="px-2 py-1 text-right font-mono">${a.newValue.toLocaleString()}</td>
-                          <td className="px-2 py-1 text-right font-mono">${a.adjustmentAmount.toLocaleString()}</td>
-                          <td className="px-2 py-1">{a.reason}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {detailItem.maintenance.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-2">維護紀錄</h4>
-                  <table className="w-full text-xs">
-                    <thead><tr className="border-b bg-gray-50">
-                      <th className="text-left px-2 py-1">類型</th>
-                      <th className="text-left px-2 py-1">排程日期</th>
-                      <th className="text-left px-2 py-1">狀態</th>
-                      <th className="text-right px-2 py-1">費用</th>
-                    </tr></thead>
-                    <tbody>
-                      {detailItem.maintenance.map(m => (
-                        <tr key={m.id} className="border-b">
-                          <td className="px-2 py-1">{m.maintenanceType}</td>
-                          <td className="px-2 py-1">{m.scheduledDate}</td>
-                          <td className="px-2 py-1"><Badge variant="secondary">{m.status}</Badge></td>
-                          <td className="px-2 py-1 text-right font-mono">${m.cost.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              <div className="flex gap-2 justify-end flex-wrap">
-                {(detailItem.status === "Draft" || detailItem.status === "Submitted") && (
-                  <Button variant="outline" onClick={() => openEdit()}><Pencil className="h-3 w-3 mr-1" />編輯</Button>
-                )}
-                {detailItem.status === "Draft" && (
-                  <>
-                    <Button onClick={() => updateStatus(detailItem.id, "Submitted")}>確認資產</Button>
-                    <Button variant="destructive" onClick={() => handleDelete(detailItem.id)}>刪除</Button>
-                  </>
-                )}
-                {detailItem.status === "Submitted" && (
-                  <Button onClick={() => updateStatus(detailItem.id, "In Use")}>啟用</Button>
-                )}
-                {detailItem.status === "In Use" && (
-                  <>
-                    <Button variant="outline" onClick={() => openEdit()}><Pencil className="h-3 w-3 mr-1" />編輯</Button>
-                    <Button variant="outline" onClick={() => { setTransferForm({ toDepartmentId: "", toLocation: "", reason: "", movementDate: new Date().toISOString().slice(0, 10) }); setTransferOpen(true); }}><ArrowRightLeft className="h-3 w-3 mr-1" />調撥</Button>
-                    <Button variant="outline" onClick={() => { setAdjustForm({ newValue: String(detailItem.currentValue), reason: "", adjustmentDate: new Date().toISOString().slice(0, 10) }); setAdjustOpen(true); }}><DollarSign className="h-3 w-3 mr-1" />調整價值</Button>
-                    <Button variant="destructive" onClick={() => { setDisposeForm({ disposalDate: new Date().toISOString().slice(0, 10), disposalAmount: "0", type: "Scrapped" }); setDisposeOpen(true); }}>報廢/出售</Button>
-                  </>
-                )}
-              </div>
-            </div>
+      {/* 資產明細：標題列 → 表頭欄位 → 折舊／調撥／價值調整／維護紀錄 → 底部按鈕列 */}
+      <DocWindow
+        open={!!detailItem} onClose={() => setDetailItem(null)} wide
+        name="資產" number={detailItem?.assetNumber}
+        status={detailItem ? <DocStatus label={statusMap[detailItem.status] || detailItem.status} tone={statusTone(detailItem.status)} /> : undefined}
+        footer={detailItem && <>
+          {detailItem.status === "Draft" && <Button variant="destructive" className="mr-auto" onClick={() => handleDelete(detailItem.id)}>刪除</Button>}
+          {detailItem.status === "In Use" && <Button variant="destructive" className="mr-auto" onClick={() => { setDisposeForm({ disposalDate: new Date().toISOString().slice(0, 10), disposalAmount: "0", type: "Scrapped" }); setDisposeOpen(true); }}>報廢/出售</Button>}
+          <Button variant="outline" onClick={() => setDetailItem(null)}>關閉</Button>
+          {(detailItem.status === "Draft" || detailItem.status === "Submitted" || detailItem.status === "In Use") && (
+            <Button variant="outline" onClick={() => openEdit()}><Pencil className="h-3 w-3 mr-1" />編輯</Button>
           )}
-        </DialogContent>
-      </Dialog>
+          {detailItem.status === "In Use" && (
+            <>
+              <Button variant="outline" onClick={() => { setTransferForm({ toDepartmentId: "", toLocation: "", reason: "", movementDate: new Date().toISOString().slice(0, 10) }); setTransferOpen(true); }}><ArrowRightLeft className="h-3 w-3 mr-1" />調撥</Button>
+              <Button variant="outline" onClick={() => { setAdjustForm({ newValue: String(detailItem.currentValue), reason: "", adjustmentDate: new Date().toISOString().slice(0, 10) }); setAdjustOpen(true); }}><DollarSign className="h-3 w-3 mr-1" />調整價值</Button>
+            </>
+          )}
+          {detailItem.status === "Draft" && <Button onClick={() => updateStatus(detailItem.id, "Submitted")}>確認資產</Button>}
+          {detailItem.status === "Submitted" && <Button onClick={() => updateStatus(detailItem.id, "In Use")}>啟用</Button>}
+        </>}
+      >
+        {detailItem && (
+          <>
+            <DocFields items={[
+              ["名稱", detailItem.name],
+              ["類別", detailItem.categoryName],
+              ["購入日期", detailItem.purchaseDate],
+              ["購入成本", <span className="font-mono">${detailItem.purchaseCost.toLocaleString()}</span>],
+              ["帳面價值", <span className="font-mono font-bold">${detailItem.currentValue.toLocaleString()}</span>],
+              ["折舊方式", methodMap[detailItem.depreciationMethod]],
+              ["使用年限", `${detailItem.usefulLifeYears} 年`],
+              ["殘值", <span className="font-mono">${detailItem.salvageValue.toLocaleString()}</span>],
+              ["累計折舊", <span className="font-mono">${detailItem.accumulatedDepreciation.toLocaleString()}</span>],
+              ["部門", detailItem.departmentName || "-"],
+              ["指派給", detailItem.assignedToName || "-"],
+              ["位置", detailItem.location],
+              ["序號", detailItem.serialNumber],
+              ["保固到期", detailItem.warrantyExpiry],
+              ["處分日期", detailItem.disposalDate],
+              detailItem.disposalAmount !== null && ["處分金額", <span className="font-mono">${detailItem.disposalAmount.toLocaleString()}</span>],
+            ]} />
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>編輯資產 - {detailItem?.assetNumber}</DialogTitle></DialogHeader>
+            {detailItem.depreciationEntries.length > 0 && (
+              <DocSection title="折舊紀錄">
+                <DocLines
+                  columns={[
+                    { header: "期間", cell: (e: AssetDetail["depreciationEntries"][number]) => e.period },
+                    { header: "折舊額", align: "right", cell: (e: AssetDetail["depreciationEntries"][number]) => `$${e.depreciationAmount.toLocaleString()}` },
+                    { header: "累計折舊", align: "right", cell: (e: AssetDetail["depreciationEntries"][number]) => `$${e.accumulatedAmount.toLocaleString()}` },
+                    { header: "帳面價值", align: "right", cell: (e: AssetDetail["depreciationEntries"][number]) => `$${e.bookValue.toLocaleString()}` },
+                    { header: "日記帳", cell: (e: AssetDetail["depreciationEntries"][number]) => e.journalEntryId ? <Badge variant="secondary">JE#{e.journalEntryId}</Badge> : "-" },
+                  ]}
+                  rows={detailItem.depreciationEntries}
+                />
+              </DocSection>
+            )}
+
+            {detailItem.movements.length > 0 && (
+              <DocSection title="調撥紀錄">
+                <DocLines
+                  columns={[
+                    { header: "日期", cell: (m: AssetDetail["movements"][number]) => m.movementDate },
+                    { header: "從", cell: (m: AssetDetail["movements"][number]) => m.fromDeptName || m.fromLocation || "-" },
+                    { header: "至", cell: (m: AssetDetail["movements"][number]) => m.toDeptName || m.toLocation || "-" },
+                    { header: "原因", cell: (m: AssetDetail["movements"][number]) => m.reason || "-" },
+                  ]}
+                  rows={detailItem.movements}
+                />
+              </DocSection>
+            )}
+
+            {detailItem.adjustments.length > 0 && (
+              <DocSection title="價值調整紀錄">
+                <DocLines
+                  columns={[
+                    { header: "日期", cell: (a: AssetDetail["adjustments"][number]) => a.adjustmentDate },
+                    { header: "原值", align: "right", cell: (a: AssetDetail["adjustments"][number]) => `$${a.previousValue.toLocaleString()}` },
+                    { header: "新值", align: "right", cell: (a: AssetDetail["adjustments"][number]) => `$${a.newValue.toLocaleString()}` },
+                    { header: "調整額", align: "right", cell: (a: AssetDetail["adjustments"][number]) => `$${a.adjustmentAmount.toLocaleString()}` },
+                    { header: "原因", cell: (a: AssetDetail["adjustments"][number]) => a.reason },
+                  ]}
+                  rows={detailItem.adjustments}
+                />
+              </DocSection>
+            )}
+
+            {detailItem.maintenance.length > 0 && (
+              <DocSection title="維護紀錄">
+                <DocLines
+                  columns={[
+                    { header: "類型", cell: (m: AssetDetail["maintenance"][number]) => m.maintenanceType },
+                    { header: "排程日期", cell: (m: AssetDetail["maintenance"][number]) => m.scheduledDate },
+                    { header: "狀態", cell: (m: AssetDetail["maintenance"][number]) => <Badge variant="secondary">{m.status}</Badge> },
+                    { header: "費用", align: "right", cell: (m: AssetDetail["maintenance"][number]) => `$${m.cost.toLocaleString()}` },
+                  ]}
+                  rows={detailItem.maintenance}
+                />
+              </DocSection>
+            )}
+
+            <DocNote>{detailItem.remarks}</DocNote>
+            <RelatedDocs type="asset" id={detailItem.id} onNavigate={() => setDetailItem(null)} />
+          </>
+        )}
+      </DocWindow>
+
+      <DocWindow
+        open={editOpen} onClose={() => setEditOpen(false)}
+        name="編輯資產" number={detailItem?.assetNumber}
+        status={detailItem ? <DocStatus label={statusMap[detailItem.status] || detailItem.status} tone={statusTone(detailItem.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setEditOpen(false)}>取消</Button>
+          <Button onClick={handleEdit} disabled={!editForm.name}>更新</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><label className="text-sm font-medium">資產名稱 *</label><Input value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} /></div>
@@ -573,7 +534,7 @@ export default function AssetRegisterPage() {
                 <label className="text-sm font-medium">部門</label>
                 <select className="w-full border rounded-md px-3 py-2 text-sm" value={editForm.departmentId} onChange={e => setEditForm(p => ({ ...p, departmentId: e.target.value }))}>
                   <option value="">無</option>
-                  {departments.filter((d: any) => d.isActive !== false || String(d.id) === String(editForm.departmentId)).map((d: any) => <option key={d.id} value={d.id}>{d.name}{d.isActive === false ? "（已停用）" : ""}</option>)}
+                  {selectableDepartments(departments, editForm.departmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
                 </select>
               </div>
               <div>
@@ -593,16 +554,16 @@ export default function AssetRegisterPage() {
               <div><label className="text-sm font-medium">備註</label><Input value={editForm.remarks} onChange={e => setEditForm(p => ({ ...p, remarks: e.target.value }))} /></div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>取消</Button>
-            <Button onClick={handleEdit} disabled={!editForm.name}>更新</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={disposeOpen} onOpenChange={setDisposeOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>資產處分 - {detailItem?.name}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={disposeOpen} onClose={() => setDisposeOpen(false)}
+        name="資產處分" number={detailItem?.assetNumber} description={detailItem?.name}
+        footer={<>
+          <Button variant="outline" onClick={() => setDisposeOpen(false)}>取消</Button>
+          <Button variant="destructive" onClick={handleDispose}>確認處分</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">處分方式</label>
@@ -630,38 +591,38 @@ export default function AssetRegisterPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDisposeOpen(false)}>取消</Button>
-            <Button variant="destructive" onClick={handleDispose}>確認處分</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>資產調撥 - {detailItem?.name}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={transferOpen} onClose={() => setTransferOpen(false)}
+        name="資產調撥" number={detailItem?.assetNumber} description={detailItem?.name}
+        footer={<>
+          <Button variant="outline" onClick={() => setTransferOpen(false)}>取消</Button>
+          <Button onClick={handleTransfer} disabled={!transferForm.toDepartmentId && !transferForm.toLocation}>確認調撥</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">目標部門</label>
               <select className="w-full border rounded-md px-3 py-2 text-sm" value={transferForm.toDepartmentId} onChange={e => setTransferForm(p => ({ ...p, toDepartmentId: e.target.value }))}>
                 <option value="">選擇部門</option>
-                {departments.filter((d: any) => d.isActive !== false || String(d.id) === String(transferForm.toDepartmentId)).map((d: any) => <option key={d.id} value={d.id}>{d.name}{d.isActive === false ? "（已停用）" : ""}</option>)}
+                {selectableDepartments(departments, transferForm.toDepartmentId).map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
               </select>
             </div>
             <div><label className="text-sm font-medium">目標位置</label><Input value={transferForm.toLocation} onChange={e => setTransferForm(p => ({ ...p, toLocation: e.target.value }))} placeholder="新位置" /></div>
             <div><label className="text-sm font-medium">調撥日期</label><Input type="date" value={transferForm.movementDate} onChange={e => setTransferForm(p => ({ ...p, movementDate: e.target.value }))} /></div>
             <div><label className="text-sm font-medium">調撥原因</label><Input value={transferForm.reason} onChange={e => setTransferForm(p => ({ ...p, reason: e.target.value }))} placeholder="調撥原因" /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTransferOpen(false)}>取消</Button>
-            <Button onClick={handleTransfer} disabled={!transferForm.toDepartmentId && !transferForm.toLocation}>確認調撥</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>價值調整 - {detailItem?.name}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={adjustOpen} onClose={() => setAdjustOpen(false)}
+        name="價值調整" number={detailItem?.assetNumber} description={detailItem?.name}
+        footer={<>
+          <Button variant="outline" onClick={() => setAdjustOpen(false)}>取消</Button>
+          <Button onClick={handleAdjust} disabled={!adjustForm.newValue || !adjustForm.reason}>確認調整</Button>
+        </>}
+      >
           <div className="space-y-4">
             {detailItem && <div className="text-sm text-gray-500">目前帳面價值：${detailItem.currentValue.toLocaleString()}</div>}
             <div><label className="text-sm font-medium">新帳面價值 *</label><Input type="number" min="0" value={adjustForm.newValue} onChange={e => setAdjustForm(p => ({ ...p, newValue: e.target.value }))} /></div>
@@ -675,12 +636,7 @@ export default function AssetRegisterPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAdjustOpen(false)}>取消</Button>
-            <Button onClick={handleAdjust} disabled={!adjustForm.newValue || !adjustForm.reason}>確認調整</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

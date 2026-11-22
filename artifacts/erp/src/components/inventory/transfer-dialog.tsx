@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRightLeft } from "lucide-react";
 import { MasterLookup } from "@/components/shared/master-lookup";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -49,12 +49,16 @@ export function TransferButton() {
   return (
     <>
       <Button variant="outline" onClick={() => { setForm(empty); setOpen(true); }} data-testid="button-transfer"><ArrowRightLeft className="mr-1.5 h-4 w-4" />倉庫調撥</Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[92dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>倉庫調撥</DialogTitle>
-            <DialogDescription>把東西從一間倉庫搬到另一間。總庫存與成本不變，不會產生分錄。</DialogDescription>
-          </DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name="倉庫調撥"
+        description="把東西從一間倉庫搬到另一間。總庫存與成本不變，不會產生分錄。"
+        footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={submit} disabled={!valid || saving}>{saving ? "處理中…" : "調撥"}</Button>
+        </>}
+      >
           <div className="grid gap-4">
             <div>
               <Label>品項 *</Label>
@@ -81,12 +85,7 @@ export function TransferButton() {
             </div>
             <div><Label htmlFor="transfer-note">備註</Label><Input id="transfer-note" value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={submit} disabled={!valid || saving}>{saving ? "處理中…" : "調撥"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </>
   );
 }

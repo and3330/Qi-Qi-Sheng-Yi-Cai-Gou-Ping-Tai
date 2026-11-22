@@ -1,4 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import { looseFilter } from "../lib/loose-match";
 import { currentTenantId } from "@workspace/erp-db";
 import { todayTaipei } from "../lib/inventory-journal";
 import { requireAuth } from "../middleware/require-auth";
@@ -11,6 +12,7 @@ import {
   TOOL_RESULT_PREFIX, type AgentMsg, type ChatImage, type FindKind, type PendingItem, type PendingState,
 } from "../lib/ai-agent";
 import { judgeRequest, trimResult } from "../mcp/admin-guard";
+import { needsReceiptReview, submitStaffReceiptReview } from "../mcp/agent-review";
 import aiAssistantRouter, { chatJson } from "./ai-assistant";
 import aiAnomaliesRouter from "./ai-anomalies";
 import aiMonthlyReportRouter from "./ai-monthly-report";
@@ -311,9 +313,26 @@ async function runAgent(req: Request, trace: AgentMsg[], ctx: AgentContext): Pro
         ctx.steps.push(`讀取 ${step.path}`);
         const result = await erpCall(req, "GET", step.path, step.query);
         if (!result.ok) { feed({ ok: false, status: result.status, error: result.error }); break; }
-        const trimmed = trimResult(result.data, 60);
-        if (step.show) ctx.table = tableFrom(result.data) ?? ctx.table;
-        feed({ ok: true, data: trimmed.data, ...(trimmed.truncated ? { truncated: true, total: trimmed.total } : {}) });
+        // 帶了關鍵字：不管那個清單本身支不支援搜尋，都用相近的意思再篩一次，不要把不相干的資料丟給使用者
+        const keyword = ["search", "keyword", "q", "name"].map(k => (step.query as Record<string, unknown> | undefined)?.[k]).find(v => typeof v === "string" && v.trim()) as string | undefined;
+        let data = result.data;
+        let searchNote: Record<string, unknown> = {};
+        if (keyword) {
+          const listKey = Array.isArray(data) ? null : ["data", "rows", "items"].find(k => Array.isArray((data as any)?.[k])) ?? undefined;
+          const list: unknown[] | null = Array.isArray(data) ? data : listKey ? (data as any)[listKey] : null;
+          if (list) {
+            const hits = looseFilter(keyword, list);
+            if (hits.length > 0) data = Array.isArray(data) ? hits : { ...(data as object), [listKey as string]: hits };
+            else if (list.length > 20) {
+              feed({ ok: true, data: [], matches: 0, note: `這個清單裡沒有跟「${keyword}」相近的資料（共看了 ${list.length} 筆）。如果這是客戶或供應商的名稱，請先 find 找到它，再用 customerId 或 supplierId 查。` });
+              break;
+            }
+            searchNote = { searchedFor: keyword, matches: hits.length };
+          }
+        }
+        const trimmed = trimResult(data, 60);
+        if (step.show) ctx.table = tableFrom(data) ?? ctx.table;
+        feed({ ok: true, data: trimmed.data, ...searchNote, ...(trimmed.truncated ? { truncated: true, total: trimmed.total } : {}) });
         break;
       }
       case "quotation_pdf": {
@@ -389,6 +408,28 @@ async function executeItem(req: Request, item: PendingItem): Promise<ErpResult> 
   if (!verdict.allowed) return { ok: false, status: 403, error: verdict.reason };
 
   let body = item.body;
+  // 員工用 AI 開收款單：先送財務確認款項有沒有進來，核准後才開單入帳（老闆 2026-11-18）
+  const me = sessionUser(req);
+  if (me && needsReceiptReview(item.method, item.path, body, me.role)) {
+    // 收款單一定要有專案，不然財務核准時才失敗
+    if (!(Number(body.projectId) > 0)) return { ok: false, status: 400, error: "收款單要指定專案（projectId）。請先查這筆收款算哪個專案，或問使用者。" };
+    try {
+      const customerId = Number(body.customerId);
+      const customer = customerId > 0 ? await erpCall(req, "GET", `/customers/${customerId}`) : null;
+      const lines = Array.isArray(body.items) ? body.items as Array<{ amount?: unknown; fee?: unknown }> : [];
+      const amount = lines.reduce((sum, line) => sum + (Number(line?.amount) || 0), 0);
+      const cr: any = await submitStaffReceiptReview(
+        { username: me.username || `user-${me.id}`, displayName: me.displayName, role: me.role },
+        body, { customerName: (customer?.data as any)?.name ?? null, amount },
+      );
+      return { ok: true, status: 202, data: {
+        requestNumber: cr?.requestNumber ?? null, status: "待財務確認",
+        message: "收款單還沒入帳：已送給財務確認款項有沒有收到，核准後系統才會開單入帳。請告訴使用者審批單號，並說明要等財務核准。",
+      } };
+    } catch (error: any) {
+      return { ok: false, status: 400, error: `送財務審核失敗：${String(error?.message || error).slice(0, 200)}` };
+    }
+  }
   // 報銷：明細少算稅額時由系統補齊，不讓使用者為了這個多按一次確認
   if (item.method === "POST" && item.path === "/reimbursement/confirm") body = reconcileReimbursementItems(body);
   // 報價單：AI 只給品項編號、數量、單價，品名與合計由系統依品項主檔算出來，不讓 AI 自己算

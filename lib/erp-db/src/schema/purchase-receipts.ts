@@ -7,6 +7,7 @@ import { suppliersTable } from "./suppliers";
 import { warehousesTable } from "./warehouses";
 import { departmentsTable } from "./departments";
 import { projectsTable } from "./projects";
+import { employeesTable } from "./employees";
 
 export const purchaseReceiptsTable = pgTable("purchase_receipts", {
   tenantId: integer("tenant_id").notNull().default(sql`(current_setting('app.tenant_id'::text))::integer`),
@@ -24,6 +25,8 @@ export const purchaseReceiptsTable = pgTable("purchase_receipts", {
   extraFields: jsonb("extra_fields").default({}),
   departmentId: integer("department_id").references(() => departmentsTable.id),
   projectId: integer("project_id").references(() => projectsTable.id),
+  // 照 Ecount 進貨單補的表頭欄位：承辦人
+  handlerId: integer("handler_id").references(() => employeesTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 }, (t) => [

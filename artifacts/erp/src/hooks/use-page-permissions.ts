@@ -5,7 +5,6 @@ import { menuPathForLocation } from "@/components/layout/sidebar";
 export interface PagePermissions { create: boolean; edit: boolean; delete: boolean }
 
 const ALL: PagePermissions = { create: true, edit: true, delete: true };
-const NONE: PagePermissions = { create: false, edit: false, delete: false };
 
 /**
  * 目前這一頁，登入的人可以做哪些動作。
@@ -16,6 +15,7 @@ export function usePagePermissions(): PagePermissions {
   const { user } = useAuth();
   if (!user) return ALL;
 
+  // 自訂角色與內建角色（財務長、業務、倉管…）都由後端算好勾選表放在這裡
   const custom = user.customRole?.permissions;
   if (custom) {
     const menuPath = menuPathForLocation(location);
@@ -24,7 +24,5 @@ export function usePagePermissions(): PagePermissions {
     const actions = custom[menuPath] || [];
     return { create: actions.includes("create"), edit: actions.includes("edit"), delete: actions.includes("delete") };
   }
-  // 內建的「一般員工」只能檢視
-  if (user.role === "viewer") return NONE;
   return ALL;
 }

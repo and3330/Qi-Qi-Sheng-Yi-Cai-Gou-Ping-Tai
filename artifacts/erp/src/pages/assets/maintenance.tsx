@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Check, Trash2, AlertTriangle, Pencil } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -145,10 +145,14 @@ export default function AssetMaintenancePage() {
       )}
 
       <div className="flex justify-end">
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />新增維護排程</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>新增維護排程</DialogTitle></DialogHeader>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增維護排程</Button>
+        <DocWindow
+          open={open} onClose={() => setOpen(false)} name="新增維護排程"
+          footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} disabled={!form.assetId || !form.scheduledDate}>建立</Button>
+          </>}
+        >
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">資產 *</label>
@@ -175,12 +179,7 @@ export default function AssetMaintenancePage() {
               <div><label className="text-sm font-medium">維護廠商</label><MasterLookup source="suppliers" valueKey="name" value={form.vendor} onValueChange={v => setForm(p => ({ ...p, vendor: v }))} placeholder="選擇供應商" /></div>
               <div><label className="text-sm font-medium">備註</label><Input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註" /></div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-              <Button onClick={handleCreate} disabled={!form.assetId || !form.scheduledDate}>建立</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </DocWindow>
       </div>
 
       <Card>
@@ -239,9 +238,15 @@ export default function AssetMaintenancePage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!editItem} onOpenChange={o => { if (!o) setEditItem(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>編輯維護紀錄</DialogTitle></DialogHeader>
+      <DocWindow
+        open={!!editItem} onClose={() => setEditItem(null)}
+        name="編輯維護紀錄"
+        status={editItem ? <DocStatus label={statusMap[editItem.status] || editItem.status} tone={statusTone(editItem.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setEditItem(null)}>取消</Button>
+          <Button onClick={handleEdit} disabled={!editForm.scheduledDate}>更新</Button>
+        </>}
+      >
           {editItem && (
             <div className="space-y-4">
               <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
@@ -266,12 +271,7 @@ export default function AssetMaintenancePage() {
               <div><label className="text-sm font-medium">備註</label><Input value={editForm.remarks} onChange={e => setEditForm(p => ({ ...p, remarks: e.target.value }))} /></div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>取消</Button>
-            <Button onClick={handleEdit} disabled={!editForm.scheduledDate}>更新</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

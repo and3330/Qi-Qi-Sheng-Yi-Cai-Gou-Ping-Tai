@@ -5,10 +5,12 @@ import { summarizeMonth, taipeiToday } from "../lib/hr-rules";
 import { loadHolidays } from "../lib/hr-data";
 import { listCashAccounts } from "../lib/cash-accounts";
 import { agingParts } from "../lib/payment-terms";
+import { daysSince, unbilledOrderReceivables } from "../lib/unbilled-receivables";
 import { db, vouchersTable, leavesTable, journalEntriesTable, accountsTable, projectsTable, departmentsTable, invoicesTable, customersTable, suppliersTable, salesOrdersTable, purchaseOrdersTable, quotationsTable, itemsTable, warehousesTable, stockEntriesTable, attendanceTable, employeesTable, salarySlipsTable, shiftTypesTable, deliveryNotesTable } from "@workspace/erp-db";
 import { eq, lte, gte, and, ne, or, lt, gt, desc, sql, inArray, type SQL } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middleware/require-auth";
 import { finiteReportNumber, ReportDataIntegrityError, safeJournalLines, validateReportQuery } from "./report-guards";
+import { machineOnly } from "../lib/api-key-user";
 
 const router: IRouter = Router();
 router.use("/reports", requireAuth);
@@ -500,9 +502,9 @@ router.get("/reports/cash-flow", ...financeReportAccess, async (req, res): Promi
   const allAccounts = await db.select().from(accountsTable).orderBy(accountsTable.accountNumber);
   const accountMap = new Map(allAccounts.map(a => [a.id, a]));
 
-  const operating: { accountName: string; accountNumber: string; amount: number }[] = [];
-  const investing: { accountName: string; accountNumber: string; amount: number }[] = [];
-  const financing: { accountName: string; accountNumber: string; amount: number }[] = [];
+  const operating: { accountId: number; accountName: string; accountNumber: string; amount: number }[] = [];
+  const investing: { accountId: number; accountName: string; accountNumber: string; amount: number }[] = [];
+  const financing: { accountId: number; accountName: string; accountNumber: string; amount: number }[] = [];
 
   const totals: Record<number, number> = {};
   for (const entry of entries) {
@@ -540,7 +542,7 @@ router.get("/reports/cash-flow", ...financeReportAccess, async (req, res): Promi
     if (!acc) continue;
     // 複式簿記：一個科目借方增加，現金那一邊就是流出。所以每個非現金科目對現金的影響都是「貸方 − 借方」。
     // 原本只有收入的方向是對的，費用和應收的正負號都反了。
-    const item = { accountName: acc.accountName, accountNumber: acc.accountNumber, amount: Math.round(-net * 100) / 100 };
+    const item = { accountId: id, accountName: acc.accountName, accountNumber: acc.accountNumber, amount: Math.round(-net * 100) / 100 };
     const category = categoryOf(acc);
     if (category === "operating") operating.push(item);
     else if (category === "investing") investing.push(item);
@@ -589,7 +591,7 @@ router.get("/reports/cash-flow", ...financeReportAccess, async (req, res): Promi
   });
 });
 
-router.get("/reports/trial-balance", async (req, res): Promise<void> => {
+router.get("/reports/trial-balance", ...financeReportAccess, async (req, res): Promise<void> => {
   const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
   const allAccounts = await db.select().from(accountsTable).orderBy(accountsTable.accountNumber);
 
@@ -658,7 +660,7 @@ router.get("/reports/trial-balance", async (req, res): Promise<void> => {
  * 總分類帳（多科目版，照 Ecount）：科目可以複選；選上層科目會帶出底下全部科目。
  * 可再依部門、專案篩選。有篩部門或專案時，期初只算篩得到的分錄（科目的開帳餘額沒有分部門，不算進去）。
  */
-router.get("/reports/general-ledger/multi", async (req, res): Promise<void> => {
+router.get("/reports/general-ledger/multi", ...financeReportAccess, async (req, res): Promise<void> => {
   const q = req.query as Record<string, string | undefined>;
   let ids = String(q.accountIds || "").split(",").map(Number).filter(n => Number.isInteger(n) && n > 0);
   // 跟 Ecount 一樣：沒選科目就查全部科目（比較慢，前端會先提醒）
@@ -667,6 +669,14 @@ router.get("/reports/general-ledger/multi", async (req, res): Promise<void> => {
   const startDate = q.startDate || undefined, endDate = q.endDate || undefined;
   const departmentId = Number(q.departmentId) || null, projectId = Number(q.projectId) || null;
   const hideEmpty = q.hideEmpty !== "0";
+  // 報表「點數字看明細」用的額外條件，讓明細的合計跟報表上那個數字算法一致：
+  //   accountTypes  只看這幾類科目（Income,Expense…），搭配 all=1
+  //   exactDimension 部門只認分錄自己掛的部門，不把「專案屬於這個部門」算進來
+  //   excludeInternal 不含內部轉撥分錄（BU 報表的營收、費用不算內部轉撥）
+  //   party          只看這個對象的行（分錄行說明「對象｜摘要」的對象）
+  const accountTypes = String(q.accountTypes || "").split(",").map(t => t.trim()).filter(Boolean);
+  const exactDimension = q.exactDimension === "1", excludeInternal = q.excludeInternal === "1";
+  const partyFilter = typeof q.party === "string" && q.party.trim() ? q.party.trim() : null;
 
   const all = await db.select().from(accountsTable);
   const childrenOf = new Map<number, number[]>();
@@ -682,12 +692,16 @@ router.get("/reports/general-ledger/multi", async (req, res): Promise<void> => {
   ids.forEach(id => expand(id));
   const byId = new Map(all.map(a => [a.id, a]));
   const targets = [...leaf].map(id => byId.get(id)).filter((a): a is NonNullable<typeof a> => !!a)
+    .filter(a => accountTypes.length === 0 || accountTypes.includes(String(a.accountType)))
     .sort((a, b) => String(a.accountNumber).localeCompare(String(b.accountNumber), "zh-Hant", { numeric: true }));
 
   const conditions: SQL[] = [ne(journalEntriesTable.status, "Draft")];
   if (endDate) conditions.push(lte(journalEntriesTable.entryDate, endDate));
-  if (departmentId) conditions.push(sql`(${journalEntriesTable.departmentId} = ${departmentId} OR ${journalEntriesTable.projectId} IN (SELECT id FROM projects WHERE department_id = ${departmentId}))`);
+  if (departmentId) conditions.push(exactDimension
+    ? eq(journalEntriesTable.departmentId, departmentId)
+    : sql`(${journalEntriesTable.departmentId} = ${departmentId} OR ${journalEntriesTable.projectId} IN (SELECT id FROM projects WHERE department_id = ${departmentId}))`);
   if (projectId) conditions.push(eq(journalEntriesTable.projectId, projectId));
+  if (excludeInternal) conditions.push(sql`${journalEntriesTable.isInternalTransfer} IS NOT TRUE`);
   const entries = await db.select().from(journalEntriesTable).where(and(...conditions)).orderBy(journalEntriesTable.entryDate, journalEntriesTable.id);
   const projects = new Map((await db.select({ id: projectsTable.id, name: projectsTable.name, departmentId: projectsTable.departmentId }).from(projectsTable)).map(p => [p.id, p]));
   const departments = new Map((await db.select({ id: departmentsTable.id, name: departmentsTable.name }).from(departmentsTable)).map(d => [d.id, d.name]));
@@ -697,7 +711,7 @@ router.get("/reports/general-ledger/multi", async (req, res): Promise<void> => {
   type Row = { date: string; entryId: number; reference: string | null; party: string | null; summary: string; debit: number; credit: number; balance: number; department: string | null; project: string | null };
   const sections = new Map(targets.map(a => [a.id, {
     account: { id: a.id, accountNumber: a.accountNumber, accountName: a.accountName, accountType: a.accountType },
-    openingBalance: filtered ? 0 : finiteReportNumber(a.balance), balance: filtered ? 0 : finiteReportNumber(a.balance),
+    openingBalance: filtered || partyFilter !== null ? 0 : finiteReportNumber(a.balance), balance: filtered || partyFilter !== null ? 0 : finiteReportNumber(a.balance),
     totalDebit: 0, totalCredit: 0, rows: [] as Row[],
   }]));
 
@@ -721,6 +735,10 @@ router.get("/reports/general-ledger/multi", async (req, res): Promise<void> => {
     for (const line of safeJournalLines(entry.lines)) {
       const s = sections.get(line.accountId);
       if (!s) continue;
+      if (partyFilter !== null) {
+        const text = String((line as any).description || "");
+        if ((text.includes("｜") ? text.split("｜")[0].trim() : "") !== partyFilter) continue;
+      }
       const natural = s.account.accountType === "Asset" || s.account.accountType === "Expense";
       s.balance = money(s.balance + (natural ? line.debit - line.credit : line.credit - line.debit));
       if (before) { s.openingBalance = s.balance; continue; }
@@ -750,7 +768,7 @@ router.get("/reports/general-ledger/multi", async (req, res): Promise<void> => {
   res.json({ startDate: startDate ?? null, endDate: endDate ?? null, filteredByDimension: filtered, accounts });
 });
 
-router.get("/reports/general-ledger", async (req, res): Promise<void> => {
+router.get("/reports/general-ledger", ...financeReportAccess, async (req, res): Promise<void> => {
   const { accountId, startDate, endDate } = req.query as { accountId?: string; startDate?: string; endDate?: string };
   if (!accountId) { res.json({ rows: [], account: null }); return; }
   const parsedAccountId = Number(accountId);
@@ -814,16 +832,20 @@ router.get("/reports/ar-aging", async (req, res): Promise<void> => {
   const customers = await db.select().from(customersTable);
   const customerMap = new Map(customers.map(c => [c.id, c]));
 
-  const aging: Record<number, { customerName: string; customerCode: string | null; current: number; d30: number; d60: number; d90: number; d120: number; total: number }> = {};
+  const aging: Record<number, { customerId: number; customerName: string; customerCode: string | null; current: number; d30: number; d60: number; d90: number; d120: number; total: number; unbilled: number }> = {};
+  const rowOf = (custId: number) => {
+    if (!aging[custId]) {
+      const cust = customerMap.get(custId);
+      aging[custId] = { customerId: custId, customerName: cust?.name || "未指定", customerCode: cust?.customerCode || null, current: 0, d30: 0, d60: 0, d90: 0, d120: 0, total: 0, unbilled: 0 };
+    }
+    return aging[custId];
+  };
 
   for (const inv of invoices) {
     const outstanding = Number(inv.outstandingAmount);
     if (outstanding <= 0) continue;
     const custId = inv.customerId || 0;
-    if (!aging[custId]) {
-      const cust = customerMap.get(custId);
-      aging[custId] = { customerName: cust?.name || "未指定", customerCode: cust?.customerCode || null, current: 0, d30: 0, d60: 0, d90: 0, d120: 0, total: 0 };
-    }
+    rowOf(custId);
     // 有分期排程的發票，每一期各自依自己的到期日歸到帳齡區間
     for (const part of agingParts(inv, outstanding, today)) {
       const daysPast = Math.max(0, Math.floor((new Date(today).getTime() - new Date(part.dueDate).getTime()) / 86400000));
@@ -836,6 +858,19 @@ router.get("/reports/ar-aging", async (req, res): Promise<void> => {
     aging[custId].total += outstanding;
   }
 
+  // 還沒開發票的未收銷貨單（含舊系統搬來的）：沒有到期日，從單據日期起算
+  for (const order of await unbilledOrderReceivables(db)) {
+    const row = rowOf(order.customerId || 0);
+    const daysPast = daysSince(order.orderDate, today);
+    if (daysPast <= 0) row.current += order.outstanding;
+    else if (daysPast <= 30) row.d30 += order.outstanding;
+    else if (daysPast <= 60) row.d60 += order.outstanding;
+    else if (daysPast <= 90) row.d90 += order.outstanding;
+    else row.d120 += order.outstanding;
+    row.total += order.outstanding;
+    row.unbilled += order.outstanding;
+  }
+
   const rows = Object.values(aging).sort((a, b) => b.total - a.total);
   const summary = {
     current: rows.reduce((s, r) => s + r.current, 0),
@@ -844,6 +879,7 @@ router.get("/reports/ar-aging", async (req, res): Promise<void> => {
     d90: rows.reduce((s, r) => s + r.d90, 0),
     d120: rows.reduce((s, r) => s + r.d120, 0),
     total: rows.reduce((s, r) => s + r.total, 0),
+    unbilled: rows.reduce((s, r) => s + r.unbilled, 0),
   };
 
   res.json({ asOfDate: today, rows, summary });
@@ -857,7 +893,7 @@ router.get("/reports/ap-aging", async (req, res): Promise<void> => {
   const suppliers = await db.select().from(suppliersTable);
   const supplierMap = new Map(suppliers.map(s => [s.id, s]));
 
-  const aging: Record<number, { supplierName: string; supplierCode: string | null; current: number; d30: number; d60: number; d90: number; d120: number; total: number }> = {};
+  const aging: Record<number, { supplierId: number; supplierName: string; supplierCode: string | null; current: number; d30: number; d60: number; d90: number; d120: number; total: number }> = {};
 
   for (const inv of invoices) {
     const outstanding = Number(inv.outstandingAmount);
@@ -865,7 +901,7 @@ router.get("/reports/ap-aging", async (req, res): Promise<void> => {
     const supId = inv.supplierId || 0;
     if (!aging[supId]) {
       const sup = supplierMap.get(supId);
-      aging[supId] = { supplierName: sup?.name || "未指定", supplierCode: sup?.supplierCode || null, current: 0, d30: 0, d60: 0, d90: 0, d120: 0, total: 0 };
+      aging[supId] = { supplierId: supId, supplierName: sup?.name || "未指定", supplierCode: sup?.supplierCode || null, current: 0, d30: 0, d60: 0, d90: 0, d120: 0, total: 0 };
     }
     // 有分期排程的發票，每一期各自依自己的到期日歸到帳齡區間
     for (const part of agingParts(inv, outstanding, today)) {
@@ -892,7 +928,7 @@ router.get("/reports/ap-aging", async (req, res): Promise<void> => {
   res.json({ asOfDate: today, rows, summary });
 });
 
-router.get("/reports/budget-vs-actual", async (req, res): Promise<void> => {
+router.get("/reports/budget-vs-actual", ...financeReportAccess, async (req, res): Promise<void> => {
   const { startDate, endDate, dimension } = req.query as { startDate?: string; endDate?: string; dimension?: string };
   const dim = dimension === "project" ? "project" : "department";
 
@@ -1413,7 +1449,7 @@ router.get("/reports/inventory-status", async (req, res): Promise<void> => {
 });
 
 function requirePayrollOrHr(req: any, res: any): boolean {
-  if (req.apiKeyAuth) return true;
+  if (machineOnly(req)) return true;
   const u = req.session?.user;
   if (!u) { res.status(401).json({ error: "請先登入" }); return false; }
   if (u.role === "super_admin" || ["owner","admin","hr_admin","finance_admin"].includes(u.role)) return true;
@@ -1454,6 +1490,8 @@ router.get("/reports/attendance-summary", async (req, res): Promise<void> => {
     // 應該來上班的天數＝應出勤天數扣掉請假；出勤率＝實際出勤 ÷ 應該來的天數
     const expected = Math.max(0, stats.workingDays - stats.leaveDays);
     return {
+      // 員工的資料編號（點數字看明細用）；employeeId 是畫面上顯示的員工編號
+      id: emp.id,
       employeeId: emp.employeeId,
       employeeName: `${emp.firstName}${emp.lastName}`,
       department: emp.departmentId,
@@ -1537,6 +1575,8 @@ router.get("/reports/salary-summary", async (req, res): Promise<void> => {
   const detailRows = slips.map(s => {
     const emp = empMap.get(s.employeeId);
     return {
+      // 點金額開這張薪資單用
+      id: s.id, employeeId: s.employeeId, year: s.year, month: s.month,
       employeeName: emp ? `${emp.firstName}${emp.lastName}` : `#${s.employeeId}`,
       period: `${s.year}-${String(s.month).padStart(2, "0")}`,
       grossSalary: s.grossSalary,

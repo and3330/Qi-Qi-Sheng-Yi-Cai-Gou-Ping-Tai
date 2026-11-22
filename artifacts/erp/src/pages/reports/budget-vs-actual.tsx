@@ -10,6 +10,7 @@ import { Printer, AlertTriangle } from "lucide-react";
 import { ExportMenu } from "@/components/shared/export-menu";
 import { MobileCard, MobileCardHeader, MobileCardGrid, MobileCardItem, MobileTotalCard } from "@/components/shared/mobile-card";
 import type { ExportOptions } from "@/lib/export-utils";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 import type { BudgetVsActualData, BudgetVsActualRow } from "./types";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
@@ -21,6 +22,9 @@ export default function BudgetVsActualPage() {
   const [dimension, setDimension] = useState("department");
   const [data, setData] = useState<BudgetVsActualData | null>(null);
   const [loading, setLoading] = useState(false);
+  // 畫面上的數字是用哪一組條件查出來的（改了維度或日期還沒按查詢時，明細要跟著畫面上的數字走）
+  const [shown, setShown] = useState({ dimension, startDate, endDate });
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
 
   const fetchReport = async () => {
     setLoading(true);
@@ -31,6 +35,7 @@ export default function BudgetVsActualPage() {
       const res = await fetch(`/erp-api/reports/budget-vs-actual?${params}`);
       if (!res.ok) throw new Error("API error");
       setData(await res.json());
+      setShown({ dimension, startDate, endDate });
     } catch { setData(null); }
     setLoading(false);
   };
@@ -39,6 +44,19 @@ export default function BudgetVsActualPage() {
 
   const fmt = (n: number) => fmtMoney(n, true);
   const varianceColor = (v: number) => v > 0 ? "text-green-600" : v < 0 ? "text-red-600" : "text-gray-400";
+
+  // 實際收入／實際支出點下去看分錄明細：專案看掛那個專案的分錄；部門只看分錄自己掛的部門（跟這張報表算法一致）
+  const actualCell = (r: BudgetVsActualRow, kind: "Income" | "Expense") => {
+    const value = fmt(kind === "Income" ? r.actualIncome : r.actualExpense);
+    if (!r.id) return value;
+    return (
+      <DrillAmount onClick={() => setDrill({
+        title: `${r.name} 實際${kind === "Income" ? "收入" : "支出"}`, accountTypes: [kind],
+        startDate: shown.startDate || null, endDate: shown.endDate || null,
+        ...(shown.dimension === "project" ? { projectId: r.id } : { departmentId: r.id, exactDimension: true }),
+      })}>{value}</DrillAmount>
+    );
+  };
 
   const hasBudget = data ? (data.totals.budgetIncome !== 0 || data.totals.budgetExpense !== 0) : false;
 
@@ -132,7 +150,7 @@ export default function BudgetVsActualPage() {
                       <div className="text-xs font-semibold text-gray-500 mb-2">收入</div>
                       <MobileCardGrid>
                         <MobileCardItem label="預算" value={fmt(r.budgetIncome)} valueClass="font-mono text-gray-500" />
-                        <MobileCardItem label="實際" value={fmt(r.actualIncome)} valueClass="font-mono text-green-600" />
+                        <MobileCardItem label="實際" value={actualCell(r, "Income")} valueClass="font-mono text-green-600" />
                         <MobileCardItem label="差異" value={fmt(r.varianceIncome)} valueClass={`font-mono ${varianceColor(r.varianceIncome)}`} />
                       </MobileCardGrid>
                     </div>
@@ -141,7 +159,7 @@ export default function BudgetVsActualPage() {
                       <div className="text-xs font-semibold text-gray-500 mb-2">支出</div>
                       <MobileCardGrid>
                         <MobileCardItem label="預算" value={fmt(r.budgetExpense)} valueClass="font-mono text-gray-500" />
-                        <MobileCardItem label="實際" value={fmt(r.actualExpense)} valueClass="font-mono text-red-600" />
+                        <MobileCardItem label="實際" value={actualCell(r, "Expense")} valueClass="font-mono text-red-600" />
                         <MobileCardItem label="差異" value={fmt(r.varianceExpense)} valueClass={`font-mono ${varianceColor(r.varianceExpense)}`} />
                       </MobileCardGrid>
                     </div>
@@ -205,10 +223,10 @@ export default function BudgetVsActualPage() {
                       <tr key={r.id} className="border-b hover:bg-gray-50">
                         <td className="px-4 py-2 font-medium">{r.name}</td>
                         <td className="px-3 py-2 text-right font-mono text-gray-500">{fmt(r.budgetIncome)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-green-600">{fmt(r.actualIncome)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-green-600">{actualCell(r, "Income")}</td>
                         <td className={`px-3 py-2 text-right font-mono ${varianceColor(r.varianceIncome)}`}>{fmt(r.varianceIncome)}</td>
                         <td className="px-3 py-2 text-right font-mono text-gray-500">{fmt(r.budgetExpense)}</td>
-                        <td className="px-3 py-2 text-right font-mono text-red-600">{fmt(r.actualExpense)}</td>
+                        <td className="px-3 py-2 text-right font-mono text-red-600">{actualCell(r, "Expense")}</td>
                         <td className={`px-3 py-2 text-right font-mono ${varianceColor(r.varianceExpense)}`}>{fmt(r.varianceExpense)}</td>
                         <td className={`px-4 py-2 text-right font-mono font-bold ${net >= 0 ? "text-green-700" : "text-red-700"}`}>{fmt(net)}</td>
                       </tr>
@@ -233,6 +251,7 @@ export default function BudgetVsActualPage() {
       )}
 
       {!data && !loading && <Card><CardContent className="py-12 text-center text-gray-400">點擊查詢以產生報表</CardContent></Card>}
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

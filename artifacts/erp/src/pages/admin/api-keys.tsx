@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { selectableProjects, projectPickerLabel } from "@/lib/select-options";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiKeyApi, type ApiKeyRecord } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,45 @@ import { useToast } from "@/hooks/use-toast";
 import { Key, Plus, Trash2, RefreshCw, Copy, Eye, EyeOff, Check, X } from "lucide-react";
 
 import { LookupSelect } from "@/components/shared/lookup-select";
+import { AgentKeySettings, McpHowTo, agentSummary, DEFAULT_AGENT, type AgentConfig } from "@/components/admin/agent-key-settings";
+import { useAuth } from "@/contexts/auth-context";
+import { ROLE_LABELS } from "@/lib/roles";
+
+interface UserOption { id: number; username: string; displayName: string; role: string; isActive: boolean; customRoleName?: string | null }
+const roleText = (u: UserOption) => u.customRoleName || ROLE_LABELS[u.role] || u.role;
+const userLabel = (u: UserOption) => `${u.displayName}（${u.username}）・${roleText(u)}`;
+
+/** 金鑰代表誰：權限跟著這個人的角色（老闆 2026-11-19）。系統管理員不能選老闆或平台管理員。 */
+function UserPicker({ users, value, onChange, myRole }: { users: UserOption[]; value: string; onChange: (v: string) => void; myRole?: string }) {
+  const selectable = users.filter(u => u.isActive && (myRole === "owner" || myRole === "super_admin" || (u.role !== "owner" && u.role !== "super_admin")));
+  const picked = users.find(u => String(u.id) === value);
+  return (
+    <div>
+      <label className="text-sm text-muted-foreground">代表哪一個使用者 *</label>
+      <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={value} onChange={(e) => onChange(e.target.value)} data-testid="select-key-user">
+        <option value="">請選擇</option>
+        {selectable.map(u => <option key={u.id} value={u.id}>{userLabel(u)}</option>)}
+      </select>
+      <p className="mt-1 text-xs text-muted-foreground">
+        金鑰沒有自己的權限：能做什麼完全跟著{picked ? `「${picked.displayName}」目前的角色（${roleText(picked)}）` : "這個人目前的角色"}，跟他自己登入 ERP 一樣。之後他的角色改了，金鑰也跟著變；帳號停用，金鑰就不能用。
+      </p>
+    </div>
+  );
+}
 export default function ApiKeys() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [newKey, setNewKey] = useState<ApiKeyRecord | null>(null);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
-  const [form, setForm] = useState({ keyName: "", projectId: "", permissions: "read", expiresAt: "" });
+  const { user: me } = useAuth();
+  const [form, setForm] = useState({ keyName: "", projectId: "", userId: "", expiresAt: "" });
+  const [agent, setAgent] = useState<AgentConfig>(DEFAULT_AGENT);
+  const [editing, setEditing] = useState<{ id: number; keyName: string; userId: string; config: AgentConfig } | null>(null);
+  const { data: users = [] } = useQuery<UserOption[]>({
+    queryKey: ["/erp-api/admin/users"],
+    queryFn: () => fetch(`/erp-api/admin/users`).then((r) => r.json()),
+  });
 
   const { data: keys = [], isLoading } = useQuery({ queryKey: ["/erp-api/api-keys"], queryFn: apiKeyApi.list });
   const { data: projects = [] } = useQuery({
@@ -27,11 +60,18 @@ export default function ApiKeys() {
     onSuccess: (data) => {
       setNewKey(data);
       setShowCreate(false);
-      setForm({ keyName: "", projectId: "", permissions: "read", expiresAt: "" });
+      setForm({ keyName: "", projectId: "", userId: "", expiresAt: "" });
+      setAgent(DEFAULT_AGENT);
       qc.invalidateQueries({ queryKey: ["/erp-api/api-keys"] });
       toast({ title: "API 金鑰已建立", description: "請立即複製並保存 Secret，此後將無法再次查看。" });
     },
     onError: (e: Error) => toast({ title: "建立失敗", description: e.message, variant: "destructive" }),
+  });
+
+  const agentMut = useMutation({
+    mutationFn: ({ id, userId, config }: { id: number; userId: string; config: AgentConfig }) => apiKeyApi.update(id, { agentConfig: config, ...(userId ? { userId: Number(userId) } : {}) }),
+    onSuccess: () => { setEditing(null); qc.invalidateQueries({ queryKey: ["/erp-api/api-keys"] }); toast({ title: "金鑰設定已儲存" }); },
+    onError: (e: Error) => toast({ title: "儲存失敗", description: e.message, variant: "destructive" }),
   });
 
   const toggleMut = useMutation({
@@ -65,8 +105,9 @@ export default function ApiKeys() {
     createMut.mutate({
       keyName: form.keyName,
       projectId: form.projectId ? Number(form.projectId) : null,
-      permissions: form.permissions,
+      userId: Number(form.userId || me?.id),
       expiresAt: form.expiresAt || null,
+      agentConfig: agent,
     });
   };
 
@@ -120,6 +161,12 @@ export default function ApiKeys() {
               </div>
             )}
           </div>
+          {newKey.apiSecret && newKey.agentConfig?.enabled && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+              <McpHowTo token={showSecrets["new"] ? `${newKey.apiKey}:${newKey.apiSecret}` : undefined} />
+              {!showSecrets["new"] && <p className="mt-2 text-xs">按上面的眼睛顯示 Secret 後，這裡會變成可以直接複製的完整內容。</p>}
+            </div>
+          )}
           <Button variant="outline" size="sm" onClick={() => setNewKey(null)}>
             我已保存，關閉提示
           </Button>
@@ -149,22 +196,10 @@ export default function ApiKeys() {
                 onChange={(e) => setForm({ ...form, projectId: e.target.value })}
               >
                 <option value="">全域（不限專案）</option>
-                {(projects as any[]).map((p: any) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                {selectableProjects(projects as any[], form.projectId).map((p: any) => (
+                  <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>
                 ))}
               </LookupSelect>
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground">權限</label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                value={form.permissions}
-                onChange={(e) => setForm({ ...form, permissions: e.target.value })}
-              >
-                <option value="read">唯讀 (Read)</option>
-                <option value="readwrite">讀寫 (Read/Write)</option>
-                <option value="admin">管理員 (Admin)</option>
-              </select>
             </div>
             <div>
               <label className="text-sm text-muted-foreground">有效期限（選填）</label>
@@ -175,10 +210,30 @@ export default function ApiKeys() {
               />
             </div>
           </div>
+          <UserPicker users={users} value={form.userId || (me ? String(me.id) : "")} onChange={(v) => setForm({ ...form, userId: v })} myRole={me?.role} />
+          <AgentKeySettings value={agent} onChange={setAgent} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>取消</Button>
-            <Button onClick={handleCreate} disabled={!form.keyName || createMut.isPending}>建立</Button>
+            <Button onClick={handleCreate} disabled={!form.keyName || !(form.userId || me?.id) || createMut.isPending}>建立</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(open) => { if (!open) setEditing(null); }}>
+        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto" data-testid="dialog-agent-settings">
+          <DialogHeader>
+            <DialogTitle>金鑰設定：{editing?.keyName}</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-4">
+              <UserPicker users={users} value={editing.userId} onChange={(userId) => setEditing({ ...editing, userId })} myRole={me?.role} />
+              <AgentKeySettings value={editing.config} onChange={(config) => setEditing({ ...editing, config })} />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>取消</Button>
+            <Button onClick={() => editing && agentMut.mutate({ id: editing.id, userId: editing.userId, config: editing.config })} disabled={agentMut.isPending || !editing?.userId}>儲存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -191,7 +246,8 @@ export default function ApiKeys() {
                 <th className="text-left px-4 py-3 font-medium">名稱</th>
                 <th className="text-left px-4 py-3 font-medium">API Key</th>
                 <th className="text-left px-4 py-3 font-medium">專案</th>
-                <th className="text-left px-4 py-3 font-medium">權限</th>
+                <th className="text-left px-4 py-3 font-medium">代表的使用者（權限跟著角色）</th>
+                <th className="text-left px-4 py-3 font-medium">AI 助理</th>
                 <th className="text-left px-4 py-3 font-medium">狀態</th>
                 <th className="text-left px-4 py-3 font-medium">最後使用</th>
                 <th className="text-right px-4 py-3 font-medium">操作</th>
@@ -199,9 +255,9 @@ export default function ApiKeys() {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">載入中...</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">載入中...</td></tr>
               ) : keys.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-8 text-muted-foreground">尚未建立任何 API 金鑰</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-muted-foreground">尚未建立任何 API 金鑰</td></tr>
               ) : (
                 keys.map((k) => (
                   <tr key={k.id} className="border-b hover:bg-muted/30">
@@ -216,13 +272,29 @@ export default function ApiKeys() {
                     </td>
                     <td className="px-4 py-3">{k.projectName}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${
-                        k.permissions === "admin" ? "bg-red-100 text-red-700" :
-                        k.permissions === "readwrite" ? "bg-blue-100 text-blue-700" :
-                        "bg-gray-100 text-gray-700"
-                      }`}>
-                        {k.permissions === "admin" ? "管理員" : k.permissions === "readwrite" ? "讀寫" : "唯讀"}
-                      </span>
+                      {k.userId ? (
+                        <button type="button" className="text-left hover:underline" onClick={() => setEditing({ id: k.id, keyName: k.keyName, userId: String(k.userId), config: (k.agentConfig as AgentConfig) ?? DEFAULT_AGENT })}>
+                          <div className="font-medium">{k.userName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {k.userRoleLabel}{k.userActive === false && <span className="ml-1 text-red-600">・帳號已停用，金鑰暫停</span>}
+                          </div>
+                        </button>
+                      ) : (
+                        <button type="button" className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800 hover:underline" data-testid={`key-no-user-${k.id}`}
+                          onClick={() => setEditing({ id: k.id, keyName: k.keyName, userId: "", config: (k.agentConfig as AgentConfig) ?? DEFAULT_AGENT })}>
+                          還沒指定，暫停使用・指定
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setEditing({ id: k.id, keyName: k.keyName, userId: k.userId ? String(k.userId) : "", config: (k.agentConfig as AgentConfig) ?? DEFAULT_AGENT })}
+                        className={`inline-flex min-h-8 items-center rounded-full px-2.5 py-0.5 text-xs underline-offset-2 hover:underline ${k.agentConfig?.enabled ? "bg-violet-100 text-violet-700" : "bg-gray-100 text-gray-600"}`}
+                        data-testid={`button-agent-settings-${k.id}`}
+                      >
+                        {agentSummary(k.agentConfig as AgentConfig)}・設定
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <button
@@ -273,7 +345,9 @@ export default function ApiKeys() {
             X-API-Key: &lt;API_KEY&gt;<br />
             X-API-Secret: &lt;API_SECRET&gt;
           </code>
-          <p className="text-xs mt-2">所有 API 端點皆位於 <code>/erp-api/</code> 路徑下。驗證通過後即可使用所有模組的 API。</p>
+          <p className="text-xs mt-2">所有 API 端點皆位於 <code>/erp-api/</code> 路徑下。金鑰能用哪些 API，跟它代表的使用者自己登入時一樣；帳號、金鑰、備份這些管理功能不開放給金鑰。</p>
+          <hr className="border-blue-200 dark:border-blue-800" />
+          <McpHowTo />
         </div>
       </div>
     </div>

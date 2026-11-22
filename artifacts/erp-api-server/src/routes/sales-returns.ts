@@ -81,15 +81,15 @@ router.get("/sales-returns", async (_req, res): Promise<void> => {
 router.post("/sales-returns", async (req, res): Promise<void> => {
   const { deliveryNoteId, customerId, warehouseId, returnDate, reason, items, remarks, departmentId, projectId } = req.body;
   if (!deliveryNoteId || !customerId || !returnDate || !items?.length) {
-    res.status(400).json({ error: "缺少必填欄位（需指定送貨單）" }); return;
+    res.status(400).json({ error: "缺少必填欄位（需指定出貨單）" }); return;
   }
 
   const [dn] = await db.select().from(deliveryNotesTable).where(eq(deliveryNotesTable.id, deliveryNoteId));
-  if (!dn) { res.status(400).json({ error: "送貨單不存在" }); return; }
+  if (!dn) { res.status(400).json({ error: "出貨單不存在" }); return; }
   if (dn.status !== "Submitted" && dn.status !== "Completed") {
-    res.status(400).json({ error: "送貨單必須為已確認或已完成狀態" }); return;
+    res.status(400).json({ error: "出貨單必須為已確認或已完成狀態" }); return;
   }
-  if (dn.customerId !== customerId) { res.status(400).json({ error: "客戶與送貨單不符" }); return; }
+  if (dn.customerId !== customerId) { res.status(400).json({ error: "客戶與出貨單不符" }); return; }
 
   const dnItems = dn.items as ReturnItem[];
   const deliveredQty: Record<number, number> = {};
@@ -131,7 +131,7 @@ router.post("/sales-returns", async (req, res): Promise<void> => {
       const [lockedDn] = await tx.select().from(deliveryNotesTable)
         .where(eq(deliveryNotesTable.id, deliveryNoteId)).for("update");
       if (!lockedDn || !["Submitted", "Completed"].includes(lockedDn.status) || lockedDn.customerId !== customerId) {
-        throw new Error("送貨單狀態或客戶已變更，請重新整理後再試");
+        throw new Error("出貨單狀態或客戶已變更，請重新整理後再試");
       }
       const siblings = await tx.select({ items: salesReturnsTable.items }).from(salesReturnsTable)
         .where(and(eq(salesReturnsTable.deliveryNoteId, deliveryNoteId), sql`${salesReturnsTable.status} IN ('Submitted','Completed')`));
@@ -145,7 +145,7 @@ router.post("/sales-returns", async (req, res): Promise<void> => {
       }).returning();
       const [cust] = await tx.select({ name: customersTable.name }).from(customersTable).where(eq(customersTable.id, customerId));
       await tx.insert(activitiesTable).values({
-        type: "create", title: "銷售退貨單已建立",
+        type: "create", title: "銷貨退回單已建立",
         description: `${ret.returnNumber} - ${cust?.name || "客戶"} - $${totalAmount.toFixed(2)}`, module: "Sales",
       });
       return { ret, customerName: cust?.name || "Unknown" };
@@ -193,14 +193,14 @@ router.patch("/sales-returns/:id", async (req, res): Promise<void> => {
 
     if (status === "Submitted" && existing.status === "Draft") {
       const sourceId = existing.deliveryNoteId;
-      if (!sourceId) { res.status(400).json({ error: "退貨單未連結來源送貨單，無法確認" }); return; }
-      // 單一交易 + 鎖定退貨列：庫存、反轉送貨單、折讓單、分錄與狀態一起提交，避免部分生效與併發重複確認
+      if (!sourceId) { res.status(400).json({ error: "退貨單未連結來源出貨單，無法確認" }); return; }
+      // 單一交易 + 鎖定退貨列：庫存、反轉出貨單、折讓單、分錄與狀態一起提交，避免部分生效與併發重複確認
       let updatedRow: typeof salesReturnsTable.$inferSelect;
       try {
         updatedRow = await db.transaction(async (tx) => {
           const [lockedDn] = await tx.select().from(deliveryNotesTable)
             .where(eq(deliveryNotesTable.id, sourceId)).for("update");
-          if (!lockedDn) throw new Error("來源送貨單不存在，無法確認退貨");
+          if (!lockedDn) throw new Error("來源出貨單不存在，無法確認退貨");
           const [locked] = await tx.select().from(salesReturnsTable)
             .where(eq(salesReturnsTable.id, id)).for("update");
           if (!locked || locked.status !== "Draft") {
@@ -268,7 +268,7 @@ router.patch("/sales-returns/:id", async (req, res): Promise<void> => {
           }).returning();
 
           await tx.insert(activitiesTable).values({
-            type: "create", title: "反轉送貨單已自動建立",
+            type: "create", title: "反轉出貨單已自動建立",
             description: `${reverseDN.noteNumber} - 來自退貨 ${locked.returnNumber}`, module: "Sales",
           });
 
@@ -320,8 +320,8 @@ router.patch("/sales-returns/:id", async (req, res): Promise<void> => {
 
     if (status === "Cancelled" && existing.status === "Submitted") {
       const sourceId = existing.deliveryNoteId;
-      if (!sourceId) { res.status(400).json({ error: "退貨單未連結來源送貨單，無法取消" }); return; }
-      // 取消已確認的退貨：同步作廢自動建立的折讓單、分錄與反轉送貨單，並回沖庫存
+      if (!sourceId) { res.status(400).json({ error: "退貨單未連結來源出貨單，無法取消" }); return; }
+      // 取消已確認的退貨：同步作廢自動建立的折讓單、分錄與反轉出貨單，並回沖庫存
       // 找到折讓單（新資料有連結；舊資料透過活動紀錄回查）
       let creditNote = null as (typeof invoicesTable.$inferSelect) | null;
       if (existing.creditNoteInvoiceId) {
@@ -343,7 +343,7 @@ router.patch("/sales-returns/:id", async (req, res): Promise<void> => {
         updatedRow = await db.transaction(async (tx) => {
           const [lockedDn] = await tx.select().from(deliveryNotesTable)
             .where(eq(deliveryNotesTable.id, sourceId)).for("update");
-          if (!lockedDn) throw new Error("來源送貨單不存在，無法取消退貨");
+          if (!lockedDn) throw new Error("來源出貨單不存在，無法取消退貨");
           const [locked] = await tx.select().from(salesReturnsTable)
             .where(eq(salesReturnsTable.id, id)).for("update");
           if (!locked || locked.status !== "Submitted") {
@@ -411,7 +411,7 @@ router.patch("/sales-returns/:id", async (req, res): Promise<void> => {
             ],
           });
 
-          // 作廢反轉送貨單
+          // 作廢反轉出貨單
           if (locked.reverseDeliveryNoteId) {
             await tx.update(deliveryNotesTable).set({ status: "Cancelled" })
               .where(eq(deliveryNotesTable.id, locked.reverseDeliveryNoteId));

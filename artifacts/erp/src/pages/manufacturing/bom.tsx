@@ -5,9 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, DocFields, DocSection, DocNote, DocFormRows, DocFormRow, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Eye, Trash2, X, Pencil, Search } from "lucide-react";
+import { Plus, Eye, Trash2, Pencil, Search, RotateCcw } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
 import { BatchActionBar, type BatchField } from "@/components/shared/batch-action-bar";
 import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
@@ -19,14 +19,18 @@ import { LookupSelect } from "@/components/shared/lookup-select";
  * 開工單時會把當下的原料抄一份到工單，所以之後改清單不會動到已經開出去的工單。
  */
 interface BomListItem { id: number; bomNumber: string; itemId: number; itemName: string; itemCode: string; version: number; quantity: number; unit: string; status: string; remarks: string | null; componentCount: number; materialCost: number }
-interface BomLine { id: number; itemId: number; itemName: string; itemCode: string; quantity: number; rate: number; amount: number; unit: string; currentUnitCost: number; currentCost: number }
+interface BomLine { id: number; itemId: number; itemName: string; itemCode: string; specification?: string; quantity: number; rate: number; amount: number; unit: string; remarks?: string | null; currentUnitCost: number; currentCost: number }
 interface BomDetail extends BomListItem { items: BomLine[]; estimatedMaterialCost: number; estimatedUnitCost: number }
-interface Item { id: number; itemName: string; itemCode: string; buyingPrice: number; unit?: string; status?: string }
-type FormLine = { itemId: string; quantity: string; rate: string; unit: string };
+interface Item { id: number; itemName: string; itemCode: string; buyingPrice: number; unit?: string; status?: string; specification?: string | null }
+type FormLine = { itemId: string; quantity: string; rate: string; unit: string; remarks: string };
 
 const statusMap: Record<string, string> = { Draft: "草稿", Active: "啟用", Inactive: "已停用" };
 const money = (n: number) => `$${(Math.round((Number(n) || 0) * 100) / 100).toLocaleString()}`;
 const emptyForm = { itemId: "", quantity: "1", remarks: "" };
+const blankLine = (): FormLine => ({ itemId: "", quantity: "", rate: "", unit: "", remarks: "" });
+/** 新增時先給三行空白；沒選品項的行存檔時會略過 */
+const blankLines = (): FormLine[] => [blankLine(), blankLine(), blankLine()];
+const cellClass = "h-10 md:h-10";
 
 export default function BomPage() {
   const reloadKey = useAutoReloadKey();
@@ -62,7 +66,7 @@ export default function BomPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll, reloadKey]);
 
-  const addItem = () => setFormItems(p => [...p, { itemId: "", quantity: "1", rate: "0", unit: "" }]);
+  const addItem = () => setFormItems(p => [...p, blankLine()]);
   const removeItem = (i: number) => setFormItems(p => p.filter((_, idx) => idx !== i));
   const updateItem = (i: number, field: keyof FormLine, value: string) => {
     setFormItems(p => p.map((item, idx) => {
@@ -70,13 +74,16 @@ export default function BomPage() {
       const updated = { ...item, [field]: value };
       if (field === "itemId") {
         const found = items.find(it => it.id === Number(value));
-        if (found) { updated.rate = String(found.buyingPrice ?? 0); updated.unit = found.unit || ""; }
+        if (found) { updated.rate = String(found.buyingPrice ?? 0); updated.unit = found.unit || ""; if (!updated.quantity) updated.quantity = "1"; }
+        else if (!value) { updated.unit = ""; }
       }
       return updated;
     }));
   };
 
-  const openCreate = () => { setEditing(null); setForm(emptyForm); setFormItems([{ itemId: "", quantity: "1", rate: "0", unit: "" }]); setOpen(true); };
+  const resetForm = () => { setForm(emptyForm); setFormItems(blankLines()); };
+  const hasFormInput = !!form.itemId || !!form.remarks || form.quantity !== emptyForm.quantity || formItems.some(fi => fi.itemId || fi.remarks || fi.quantity || fi.rate);
+  const openCreate = () => { setEditing(null); resetForm(); setOpen(true); };
   const fetchDetail = async (id: number): Promise<BomDetail | null> => { const res = await fetch(`/erp-api/boms/${id}`); return res.ok ? res.json() : null; };
   const viewDetail = async (id: number) => { const d = await fetchDetail(id); if (d) setDetail(d); };
   const openEdit = async (id: number) => {
@@ -85,12 +92,13 @@ export default function BomPage() {
     setDetail(null);
     setEditing(d);
     setForm({ itemId: String(d.itemId), quantity: String(d.quantity), remarks: d.remarks || "" });
-    setFormItems(d.items.map(l => ({ itemId: String(l.itemId), quantity: String(l.quantity), rate: String(l.rate), unit: l.unit })));
+    setFormItems(d.items.length > 0 ? d.items.map(l => ({ itemId: String(l.itemId), quantity: String(l.quantity), rate: String(l.rate), unit: l.unit, remarks: l.remarks || "" })) : blankLines());
     setOpen(true);
   };
 
   const handleSave = async () => {
-    const lines = formItems.filter(fi => fi.itemId).map(fi => ({ itemId: Number(fi.itemId), quantity: Number(fi.quantity), rate: Number(fi.rate), unit: fi.unit }));
+    // 沒選品項的空白行不送出
+    const lines = formItems.filter(fi => fi.itemId).map(fi => ({ itemId: Number(fi.itemId), quantity: Number(fi.quantity), rate: Number(fi.rate) || 0, unit: fi.unit, remarks: fi.remarks.trim() || null }));
     setSaving(true);
     try {
       const res = editing
@@ -114,7 +122,7 @@ export default function BomPage() {
     else { const err = await res.json().catch(() => ({})); toast({ title: err.error || "刪除失敗", variant: "destructive" }); }
   };
 
-  const totalCost = formItems.reduce((s, fi) => s + (Number(fi.quantity) || 0) * (Number(fi.rate) || 0), 0);
+  const totalCost = formItems.reduce((s, fi) => s + (fi.itemId ? (Number(fi.quantity) || 0) * (Number(fi.rate) || 0) : 0), 0);
   const perUnit = Number(form.quantity) > 0 ? totalCost / Number(form.quantity) : 0;
   const usableItems = (currentId: string) => items.filter(i => (i.status !== "Inactive" && i.status !== "停用") || String(i.id) === currentId);
   const chip = (active: boolean) => `shrink-0 rounded-full border px-3 py-1.5 text-sm transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`;
@@ -186,115 +194,163 @@ export default function BomPage() {
       </Card>
 
       {/* 新增／編輯 */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-3xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? `編輯物料清單 ${editing.bomNumber}` : "新增物料清單"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open} onClose={() => setOpen(false)} wide
+        name={editing ? "編輯物料清單" : "新增物料清單"} number={editing?.bomNumber}
+        status={editing ? <DocStatus label={statusMap[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          {!editing && (
+            <Button variant="outline" disabled={saving} onClick={() => { if (!hasFormInput || window.confirm("把這張單已經填的內容全部清掉，重新輸入？")) resetForm(); }} data-testid="button-reset-bom">
+              <RotateCcw className="mr-1 h-4 w-4" />重新輸入
+            </Button>
+          )}
+          <Button onClick={handleSave} disabled={saving || (!editing && !form.itemId)} data-testid="button-save-bom">{saving ? "儲存中..." : "儲存"}</Button>
+        </>}
+      >
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium">成品 *</label>
-                {editing ? <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm">{editing.itemCode} - {editing.itemName}</div> : (
-                  <LookupSelect className="w-full border rounded-md px-3 py-2 text-sm" value={form.itemId} onChange={e => setForm(p => ({ ...p, itemId: e.target.value }))}>
-                    <option value="">選擇成品</option>
+            {/* 表頭：一個欄位一列（老闆 2026-11-18：照 Ecount「修改BOM」的輸入畫面） */}
+            <DocFormRows data-testid="bom-header">
+              <DocFormRow label="生產品項" required>
+                {editing ? <div className="flex min-h-10 items-center rounded-md border bg-muted/40 px-3 py-2 text-sm">{editing.itemCode} - {editing.itemName}</div> : (
+                  <LookupSelect className="w-full h-10" value={form.itemId} onChange={e => setForm(p => ({ ...p, itemId: e.target.value }))} data-testid="select-bom-item">
+                    <option value="">選擇要生產的品項</option>
                     {usableItems(form.itemId).map(i => <option key={i.id} value={i.id}>{i.itemCode} - {i.itemName}</option>)}
                   </LookupSelect>
                 )}
-              </div>
-              <div><label className="text-sm font-medium">一批做出幾個 *</label><Input type="number" min="1" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))} /></div>
+              </DocFormRow>
+              <DocFormRow label="BOM版本" hint={editing ? undefined : "同一個品項的第幾版，存檔時自動編號。"}>
+                <div className="flex h-10 items-center rounded-md border border-dashed bg-muted/40 px-3 text-sm text-muted-foreground md:w-48" data-testid="bom-version">{editing ? `v${editing.version}` : "儲存時產生"}</div>
+              </DocFormRow>
+              <DocFormRow label="生產數量" htmlFor="bom-quantity" required hint="一批做出幾個。下面表格的數量，就是做這一批要用掉的量。">
+                <Input id="bom-quantity" type="number" inputMode="decimal" min="1" className="h-10 md:h-10 md:w-48" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))} />
+              </DocFormRow>
+              <DocFormRow label="備註" htmlFor="bom-remarks">
+                <Input id="bom-remarks" className="h-10 md:h-10" value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="整張清單的備註（選填）" />
+              </DocFormRow>
+            </DocFormRows>
+
+            {/* 輸入表格：一行一個原料。欄位多，表格在自己的框裡左右捲，整個視窗不會跟著跑 */}
+            <div className="max-w-full overflow-x-auto rounded-md border" data-testid="bom-lines">
+              <table className="w-full min-w-[980px] text-sm">
+                <thead className="bg-muted/60 text-xs text-muted-foreground">
+                  <tr>
+                    <th className="w-9 px-2 py-2 text-center font-medium">#</th>
+                    <th className="w-[280px] px-1 py-2 text-left font-medium">品項編碼／名稱</th>
+                    <th className="w-28 px-2 py-2 text-left font-medium">規格</th>
+                    <th className="w-24 px-1 py-2 text-right font-medium">數量</th>
+                    <th className="w-16 px-2 py-2 text-left font-medium">單位</th>
+                    <th className="w-28 px-1 py-2 text-right font-medium">單價</th>
+                    <th className="w-28 px-2 py-2 text-right font-medium">小計</th>
+                    <th className="px-1 py-2 text-left font-medium">摘要（位置）</th>
+                    <th className="w-12"><span className="sr-only">刪除這一行</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formItems.map((fi, i) => {
+                    // 規格跟著品項主檔走；編輯時原料已停用（選單裡沒有）就用這張清單原本帶的
+                    const spec = items.find(it => String(it.id) === fi.itemId)?.specification || editing?.items.find(l => String(l.itemId) === fi.itemId)?.specification;
+                    return (
+                      <tr key={i} className="border-t">
+                        <td className="px-2 text-center text-xs text-muted-foreground">{i + 1}</td>
+                        <td className="px-1 py-1">
+                          <LookupSelect className="w-full h-10" value={fi.itemId} onChange={e => updateItem(i, "itemId", e.target.value)} data-testid={`select-bom-line-item-${i}`}>
+                            <option value="">選擇原料</option>
+                            {usableItems(fi.itemId).filter(it => String(it.id) !== form.itemId).map(it => <option key={it.id} value={it.id}>{it.itemCode} - {it.itemName}</option>)}
+                          </LookupSelect>
+                        </td>
+                        <td className="px-2 text-xs text-muted-foreground">{spec || "-"}</td>
+                        <td className="px-1 py-1"><Input type="number" inputMode="decimal" min="0" step="any" className={`${cellClass} text-right`} value={fi.quantity} onChange={e => updateItem(i, "quantity", e.target.value)} placeholder="數量" aria-label={`第 ${i + 1} 行數量`} /></td>
+                        <td className="px-2 text-muted-foreground">{fi.unit && fi.unit !== "Nos" ? fi.unit : "-"}</td>
+                        <td className="px-1 py-1"><Input type="number" inputMode="decimal" min="0" step="any" className={`${cellClass} text-right`} value={fi.rate} onChange={e => updateItem(i, "rate", e.target.value)} placeholder="單價" aria-label={`第 ${i + 1} 行單價`} /></td>
+                        <td className="px-2 text-right tabular-nums">{fi.itemId ? money((Number(fi.quantity) || 0) * (Number(fi.rate) || 0)) : ""}</td>
+                        <td className="px-1 py-1"><Input className={cellClass} value={fi.remarks} onChange={e => updateItem(i, "remarks", e.target.value)} placeholder="用在哪裡、放哪個位置（選填）" aria-label={`第 ${i + 1} 行摘要（位置）`} data-testid={`input-bom-line-remarks-${i}`} /></td>
+                        <td className="px-1 py-1"><Button type="button" variant="ghost" size="icon" className="h-10 w-10" disabled={formItems.length <= 1} onClick={() => removeItem(i)} aria-label={`刪除第 ${i + 1} 行`} title="刪除這一行"><Trash2 className="h-4 w-4 text-red-500" /></Button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 bg-muted/30 font-semibold">
+                    <td className="px-2 py-2.5 text-right" colSpan={6}>一批材料成本</td>
+                    <td className="px-2 py-2.5 text-right tabular-nums" data-testid="bom-total-cost">{money(totalCost)}</td>
+                    <td className="px-2 py-2.5" colSpan={2}>平均一個 <span className="tabular-nums" data-testid="bom-unit-cost">{money(perUnit)}</span></td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-            <div><label className="text-sm font-medium">備註</label><Input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} /></div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-semibold">原料（做這一批要用的）</label>
-                <Button size="sm" variant="outline" onClick={addItem}><Plus className="h-3 w-3 mr-1" />新增原料</Button>
-              </div>
-              <div className="hidden md:grid grid-cols-[1fr_90px_70px_100px_100px_36px] gap-2 px-1 pb-1 text-xs text-muted-foreground"><span>品項</span><span className="text-right">數量</span><span>單位</span><span className="text-right">單價</span><span className="text-right">小計</span><span /></div>
-              {formItems.map((fi, i) => (
-                <div key={i} className="grid grid-cols-2 md:grid-cols-[1fr_90px_70px_100px_100px_36px] gap-2 mb-2 items-center rounded-md border p-2 md:border-0 md:p-0">
-                  <div className="col-span-2 md:col-span-1">
-                    <LookupSelect className="w-full border rounded-md px-2 py-1.5 text-sm" value={fi.itemId} onChange={e => updateItem(i, "itemId", e.target.value)}>
-                      <option value="">選擇原料</option>
-                      {usableItems(fi.itemId).filter(it => String(it.id) !== form.itemId).map(it => <option key={it.id} value={it.id}>{it.itemCode} - {it.itemName}</option>)}
-                    </LookupSelect>
-                  </div>
-                  <Input type="number" min="0" step="any" className="text-right" value={fi.quantity} onChange={e => updateItem(i, "quantity", e.target.value)} placeholder="數量" aria-label="數量" />
-                  <span className="text-sm text-muted-foreground">{fi.unit && fi.unit !== "Nos" ? fi.unit : "-"}</span>
-                  <Input type="number" min="0" step="any" className="text-right" value={fi.rate} onChange={e => updateItem(i, "rate", e.target.value)} placeholder="單價" aria-label="單價" />
-                  <span className="text-right text-sm tabular-nums">{money((Number(fi.quantity) || 0) * (Number(fi.rate) || 0))}</span>
-                  <Button size="sm" variant="ghost" onClick={() => removeItem(i)} aria-label="移除這筆原料"><X className="h-3 w-3" /></Button>
-                </div>
-              ))}
-              {formItems.length === 0 && <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">還沒有原料，按「新增原料」加入</p>}
-              <div className="mt-2 flex flex-wrap justify-end gap-x-6 text-sm"><span>一批材料成本：<b className="tabular-nums">{money(totalCost)}</b></span><span>平均一個：<b className="tabular-nums">{money(perUnit)}</b></span></div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button type="button" variant="outline" className="min-h-10" onClick={addItem} data-testid="button-add-bom-line"><Plus className="h-4 w-4 mr-1" />新增一行</Button>
+              <p className="text-xs text-muted-foreground">沒選品項的空白行，存檔時會自動略過。</p>
             </div>
             {editing && <p className="text-xs text-muted-foreground">已經開出去的工單不會跟著變，改的內容從下一張工單開始生效。</p>}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={saving || (!editing && !form.itemId)}>{saving ? "處理中..." : editing ? "更新" : "建立"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       {/* 明細 */}
-      <Dialog open={!!detail} onOpenChange={v => { if (!v) setDetail(null); }}>
-        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>物料清單 {detail?.bomNumber}</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-4">
-              <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <div className="col-span-2"><dt className="text-xs text-muted-foreground">成品</dt><dd><a className="text-primary hover:underline" href={`/inventory/items?q=${encodeURIComponent(detail.itemCode)}`}>{detail.itemCode} - {detail.itemName}</a></dd></div>
-                <div><dt className="text-xs text-muted-foreground">版本</dt><dd>v{detail.version}</dd></div>
-                <div><dt className="text-xs text-muted-foreground">狀態</dt><dd><Badge variant={detail.status === "Active" ? "default" : "secondary"}>{statusMap[detail.status] || detail.status}</Badge></dd></div>
-                <div><dt className="text-xs text-muted-foreground">一批做出</dt><dd>{detail.quantity} {detail.unit !== "Nos" ? detail.unit : ""}</dd></div>
-                <div><dt className="text-xs text-muted-foreground">目前一批材料成本</dt><dd className="tabular-nums">{money(detail.estimatedMaterialCost)}</dd></div>
-                <div><dt className="text-xs text-muted-foreground">平均一個</dt><dd className="tabular-nums">{money(detail.estimatedUnitCost)}</dd></div>
-                {detail.remarks && <div className="col-span-2 md:col-span-4"><dt className="text-xs text-muted-foreground">備註</dt><dd>{detail.remarks}</dd></div>}
-              </dl>
-              <div>
-                <h4 className="text-sm font-semibold mb-2">原料</h4>
-                {detail.items.length === 0 ? <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">這張清單還沒有原料，按「編輯」加上後才能啟用</p> : (
-                  <div className="overflow-x-auto">
+      <DocWindow
+        open={!!detail} onClose={() => setDetail(null)}
+        name="物料清單" number={detail?.bomNumber}
+        status={detail ? <DocStatus label={statusMap[detail.status] || detail.status} tone={statusTone(detail.status)} /> : undefined}
+        footer={detail && <>
+          {detail.status === "Draft" && <Button variant="destructive" className="mr-auto" onClick={() => handleDelete(detail.id)}>刪除</Button>}
+          <Button variant="outline" onClick={() => setDetail(null)}>關閉</Button>
+          <Button variant="outline" onClick={() => openEdit(detail.id)}><Pencil className="h-3 w-3 mr-1" />編輯</Button>
+          {detail.status === "Active" && <Button variant="outline" onClick={() => updateStatus(detail.id, "Inactive")}>停用</Button>}
+          {detail.status === "Draft" && <Button onClick={() => updateStatus(detail.id, "Active")}>啟用</Button>}
+          {detail.status === "Inactive" && <Button onClick={() => updateStatus(detail.id, "Active")}>重新啟用</Button>}
+        </>}
+      >
+        {detail && (
+          <>
+            <DocFields items={[
+              ["成品", <a className="text-primary hover:underline" href={`/inventory/items?q=${encodeURIComponent(detail.itemCode)}`}>{detail.itemCode} - {detail.itemName}</a>],
+              ["版本", `v${detail.version}`],
+              ["一批做出", `${detail.quantity} ${detail.unit !== "Nos" ? detail.unit : ""}`],
+              ["目前一批材料成本", <span className="tabular-nums">{money(detail.estimatedMaterialCost)}</span>],
+              ["平均一個", <span className="tabular-nums">{money(detail.estimatedUnitCost)}</span>],
+            ]} />
+            <DocNote>{detail.remarks}</DocNote>
+            <DocSection title="原料">
+              {detail.items.length === 0 ? <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">這張清單還沒有原料，按「編輯」加上後才能啟用</p> : (
+                <>
+                  <div className="overflow-x-auto rounded-md border">
                     <table className="w-full text-sm">
-                      <thead><tr className="border-b bg-gray-50">
-                        <th className="text-left px-2 py-1.5">品項</th>
-                        <th className="text-right px-2 py-1.5">數量</th>
-                        <th className="text-right px-2 py-1.5">設定單價</th>
-                        <th className="text-right px-2 py-1.5">設定金額</th>
-                        <th className="text-right px-2 py-1.5">目前成本</th>
+                      <thead className="bg-muted text-xs text-muted-foreground"><tr>
+                        <th className="text-left px-3 py-1.5 font-medium">品項</th>
+                        <th className="text-right px-3 py-1.5 font-medium">數量</th>
+                        <th className="text-right px-3 py-1.5 font-medium">設定單價</th>
+                        <th className="text-right px-3 py-1.5 font-medium">設定金額</th>
+                        <th className="text-right px-3 py-1.5 font-medium">目前成本</th>
+                        {detail.items.some(i => i.remarks) && <th className="text-left px-3 py-1.5 font-medium">摘要（位置）</th>}
                       </tr></thead>
                       <tbody>
                         {detail.items.map(i => (
-                          <tr key={i.id} className="border-b">
-                            <td className="px-2 py-1.5"><a className="text-primary hover:underline" href={`/inventory/items?q=${encodeURIComponent(i.itemCode)}`}>{i.itemCode} - {i.itemName}</a></td>
-                            <td className="px-2 py-1.5 text-right tabular-nums">{i.quantity} {i.unit !== "Nos" ? i.unit : ""}</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums">{money(i.rate)}</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums">{money(i.amount)}</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums">{money(i.currentCost)}</td>
+                          <tr key={i.id} className="border-t">
+                            <td className="px-3 py-1.5"><a className="text-primary hover:underline" href={`/inventory/items?q=${encodeURIComponent(i.itemCode)}`}>{i.itemCode} - {i.itemName}</a></td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">{i.quantity} {i.unit !== "Nos" ? i.unit : ""}</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">{money(i.rate)}</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">{money(i.amount)}</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">{money(i.currentCost)}</td>
+                            {detail.items.some(x => x.remarks) && <td className="px-3 py-1.5 text-muted-foreground">{i.remarks || ""}</td>}
                           </tr>
                         ))}
-                        <tr className="font-semibold">
-                          <td className="px-2 py-1.5" colSpan={3}>合計</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{money(detail.items.reduce((s, i) => s + i.amount, 0))}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{money(detail.estimatedMaterialCost)}</td>
+                        <tr className="border-t-2 font-semibold">
+                          <td className="px-3 py-1.5" colSpan={3}>合計</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{money(detail.items.reduce((s, i) => s + i.amount, 0))}</td>
+                          <td className="px-3 py-1.5 text-right tabular-nums">{money(detail.estimatedMaterialCost)}</td>
+                          {detail.items.some(i => i.remarks) && <td />}
                         </tr>
                       </tbody>
                     </table>
-                    <p className="mt-1 text-xs text-muted-foreground">「目前成本」用各原料現在的平均進貨成本算，跟設定單價不同是正常的。</p>
                   </div>
-                )}
-              </div>
-              <div className="flex gap-2 justify-end flex-wrap">
-                <Button variant="outline" onClick={() => openEdit(detail.id)}><Pencil className="h-3 w-3 mr-1" />編輯</Button>
-                {detail.status === "Draft" && <Button onClick={() => updateStatus(detail.id, "Active")}>啟用</Button>}
-                {detail.status === "Active" && <Button variant="outline" onClick={() => updateStatus(detail.id, "Inactive")}>停用</Button>}
-                {detail.status === "Inactive" && <Button onClick={() => updateStatus(detail.id, "Active")}>重新啟用</Button>}
-                {detail.status === "Draft" && <Button variant="destructive" onClick={() => handleDelete(detail.id)}>刪除</Button>}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                  <p className="text-xs text-muted-foreground">「目前成本」用各原料現在的平均進貨成本算，跟設定單價不同是正常的。</p>
+                </>
+              )}
+            </DocSection>
+          </>
+        )}
+      </DocWindow>
     </div>
   );
 }

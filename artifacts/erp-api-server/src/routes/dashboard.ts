@@ -9,6 +9,8 @@ import {
   quotationsTable,
 } from "@workspace/erp-db";
 import { GetRecentActivityQueryParams } from "@workspace/erp-api-zod";
+import { daysSince, unbilledOrderReceivables } from "../lib/unbilled-receivables";
+import { todayTaipei } from "../lib/inventory-journal";
 
 const router: IRouter = Router();
 router.use("/dashboard", requireAuth);
@@ -31,33 +33,45 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     year !== null ? sql`substr(${invoicesTable.invoiceDate}, 1, 4) = ${String(year)}` : undefined,
     month !== null ? sql`substr(${invoicesTable.invoiceDate}, 6, 2) = ${String(month).padStart(2, "0")}` : undefined,
   );
-  const [empCount] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(employeesTable);
-  const [custCount] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(customersTable);
-  const [supCount] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(suppliersTable);
-  const [openSO] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(salesOrdersTable).where(eq(salesOrdersTable.status, "Draft"));
-  const [openPO] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(purchaseOrdersTable).where(eq(purchaseOrdersTable.status, "Draft"));
-  const [pendingLeaves] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(leavesTable).where(eq(leavesTable.status, "Pending"));
-  const [activeProj] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(projectsTable).where(eq(projectsTable.status, "Open"));
-  const [openLeads] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(leadsTable).where(eq(leadsTable.status, "New"));
-  const [openOpps] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(opportunitiesTable).where(eq(opportunitiesTable.status, "Open"));
+  const count = (table: any, where?: any) => {
+    const q = db.select({ count: sql<number>`COUNT(*)::int` }).from(table);
+    return where ? q.where(where) : q;
+  };
+  const sum = (table: any, where: any) => db.select({ total: sql<number>`COALESCE(SUM(total_amount::numeric), 0)::float` }).from(table).where(where);
+  const orderPeriod = (col: any) => [
+    year !== null ? sql`substr(${col}, 1, 4) = ${String(year)}` : undefined,
+    month !== null ? sql`substr(${col}, 6, 2) = ${String(month).padStart(2, "0")}` : undefined,
+  ];
 
-  const [revenue] = await db.select({
-    total: sql<number>`COALESCE(SUM(total_amount::numeric), 0)::float`,
-  }).from(invoicesTable).where(periodCond("Sales"));
-
-  // 未開發票但已成立（Confirmed/Completed）的銷貨單也認列營收，避免與已開票訂單重複計算
-  const [orderRevenue] = await db.select({
-    total: sql<number>`COALESCE(SUM(total_amount::numeric), 0)::float`,
-  }).from(salesOrdersTable).where(and(
-    sql`${salesOrdersTable.status} IN ('Confirmed', 'To Deliver', 'Completed')`,
-    sql`NOT EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = ${salesOrdersTable.id} AND i.invoice_type = 'Sales' AND i.status != 'Cancelled')`,
-    year !== null ? sql`substr(${salesOrdersTable.orderDate}, 1, 4) = ${String(year)}` : undefined,
-    month !== null ? sql`substr(${salesOrdersTable.orderDate}, 6, 2) = ${String(month).padStart(2, "0")}` : undefined,
-  ));
-
-  const [expenses] = await db.select({
-    total: sql<number>`COALESCE(SUM(total_amount::numeric), 0)::float`,
-  }).from(invoicesTable).where(periodCond("Purchase"));
+  // 一次全部送出去查，不要一個等一個（儀表板每 15 秒重抓一次）
+  const [
+    [empCount], [custCount], [supCount], [openSO], [openPO], [pendingLeaves], [activeProj], [openLeads], [openOpps],
+    [revenue], [orderRevenue], [invoiceExpenses], [orderExpenses],
+  ] = await Promise.all([
+    count(employeesTable), count(customersTable), count(suppliersTable),
+    count(salesOrdersTable, eq(salesOrdersTable.status, "Draft")),
+    count(purchaseOrdersTable, eq(purchaseOrdersTable.status, "Draft")),
+    count(leavesTable, eq(leavesTable.status, "Pending")),
+    count(projectsTable, eq(projectsTable.status, "Open")),
+    count(leadsTable, eq(leadsTable.status, "New")),
+    count(opportunitiesTable, eq(opportunitiesTable.status, "Open")),
+    sum(invoicesTable, periodCond("Sales")),
+    // 未開發票但已成立的銷貨單也認列營收；已開票的不重複算
+    sum(salesOrdersTable, and(
+      sql`${salesOrdersTable.status} IN ('Confirmed', 'To Deliver', 'Completed')`,
+      sql`NOT EXISTS (SELECT 1 FROM invoices i WHERE i.sales_order_id = ${salesOrdersTable.id} AND i.invoice_type = 'Sales' AND i.status != 'Cancelled')`,
+      ...orderPeriod(salesOrdersTable.orderDate),
+    )),
+    sum(invoicesTable, periodCond("Purchase")),
+    // 支出跟營收用同一套算法：未收到進項發票但已成立的採購單也算，已開票的不重複算。
+    // 少了這段，還沒登進項發票的公司支出永遠是 0，毛利會等於營收。
+    sum(purchaseOrdersTable, and(
+      sql`${purchaseOrdersTable.status} IN ('Confirmed', 'To Receive', 'Completed')`,
+      sql`NOT EXISTS (SELECT 1 FROM invoices i WHERE i.purchase_order_id = ${purchaseOrdersTable.id} AND i.invoice_type = 'Purchase' AND i.status != 'Cancelled')`,
+      ...orderPeriod(purchaseOrdersTable.orderDate),
+    )),
+  ]);
+  const expenses = { total: invoiceExpenses.total + orderExpenses.total };
 
   res.json({
     totalRevenue: revenue.total + orderRevenue.total,
@@ -160,10 +174,19 @@ router.get("/dashboard/todos", async (req, res): Promise<void> => {
       .where(and(eq(salesOrdersTable.status, "Draft"), lte(salesOrdersTable.createdAt, draftCutoff))),
   ]);
 
+  // 逾期應收也算還沒開發票的未收銷貨單（含舊系統搬來的）：單據日期起超過 30 天，跟發票的算法一樣
+  const today = todayTaipei();
+  const lateOrders = (await unbilledOrderReceivables(db)).filter(o => daysSince(o.orderDate, today) > 30);
+  const lateOrderTotal = lateOrders.reduce((sum, o) => sum + o.outstanding, 0);
+
   const vatRow = vat[0] || { outputTax: 0, inputTax: 0 };
   res.json({
     pendingApprovals: { count: pendingSummary[0]?.count || 0, rows: pendingRows },
-    overdueReceivables: { count: overdueSummary[0]?.count || 0, total: overdueSummary[0]?.total || 0, rows: overdueRows },
+    overdueReceivables: {
+      count: (overdueSummary[0]?.count || 0) + lateOrders.length,
+      total: Math.round(((overdueSummary[0]?.total || 0) + lateOrderTotal) * 100) / 100,
+      rows: overdueRows, unbilledOrders: lateOrders.length, unbilledTotal: Math.round(lateOrderTotal * 100) / 100,
+    },
     lowStock: { count: lowStockSummary[0]?.count || 0, rows: lowStockRows },
     vatEstimate: {
       periodStart, periodEnd,
@@ -215,11 +238,20 @@ router.get("/dashboard/revenue-chart", async (req, res): Promise<void> => {
       .where(sql`invoice_type = 'Purchase' AND status != 'Cancelled' AND invoice_date IS NOT NULL AND invoice_date != '' AND substr(invoice_date, 1, 4) = ${String(year)}`)
       .groupBy(sql`EXTRACT(MONTH FROM TO_DATE(invoice_date, 'YYYY-MM-DD'))`);
 
+    const orderPurchasesByMonth = await db.select({
+      monthNum: sql<number>`EXTRACT(MONTH FROM TO_DATE(order_date, 'YYYY-MM-DD'))::int`,
+      total: sql<number>`COALESCE(SUM(total_amount::numeric), 0)::float`,
+    }).from(purchaseOrdersTable)
+      .where(sql`status IN ('Confirmed', 'To Receive', 'Completed') AND order_date IS NOT NULL AND order_date != '' AND substr(order_date, 1, 4) = ${String(year)}
+        AND NOT EXISTS (SELECT 1 FROM invoices i WHERE i.purchase_order_id = ${purchaseOrdersTable.id} AND i.invoice_type = 'Purchase' AND i.status != 'Cancelled')`)
+      .groupBy(sql`EXTRACT(MONTH FROM TO_DATE(order_date, 'YYYY-MM-DD'))`);
+
     const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
     const salesMap = new Map(salesByMonth.map(r => [r.monthNum, r.total]));
     for (const r of orderSalesByMonth) salesMap.set(r.monthNum, (salesMap.get(r.monthNum) || 0) + r.total);
     const purchMap = new Map(purchasesByMonth.map(r => [r.monthNum, r.total]));
+    for (const r of orderPurchasesByMonth) purchMap.set(r.monthNum, (purchMap.get(r.monthNum) || 0) + r.total);
 
     const data = months.map((month, idx) => {
       const m = idx + 1;
@@ -231,9 +263,10 @@ router.get("/dashboard/revenue-chart", async (req, res): Promise<void> => {
     });
 
     res.json(data);
-  } catch {
-    const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-    res.json(months.map(month => ({ month, revenue: 0, expenses: 0 })));
+  } catch (err) {
+    // 以前失敗時回一整年的 0，畫面看起來像「今年沒有營收」；現在老實回錯誤，讓畫面說讀不出來
+    req.log?.error?.({ err }, "dashboard revenue-chart failed");
+    res.status(500).json({ error: "營收圖表讀取失敗" });
   }
 });
 

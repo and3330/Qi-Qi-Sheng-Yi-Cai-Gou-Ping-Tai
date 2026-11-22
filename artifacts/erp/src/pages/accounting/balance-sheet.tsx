@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
+import { projectLabel } from "@/lib/select-options";
 import { ReportHeader } from "@/components/shared/report-header";
 import { useListProjects, useListDepartments } from "@workspace/erp-api-client-react";
 import { PageHeader } from "@/components/shared/page-header";
@@ -12,6 +13,7 @@ import { buildVerticalBalanceExport, buildCrossBalanceExport } from "@/lib/expor
 import { percentOf, scaledMoney } from "@/lib/statement-display";
 
 import { LookupSelect } from "@/components/shared/lookup-select";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
 type FilterMode = "all" | "project" | "department";
@@ -67,6 +69,16 @@ interface CrossRow {
 
 interface CrossColumn { id: string; name: string; }
 
+/** 這次查詢實際用的條件（點數字看明細時要用同一組，不能用畫面上還沒按查詢的新條件） */
+interface Queried { endDate: string; compareEnd: string; projectId?: number; departmentId?: number; filterLabel?: string }
+
+const idsOf = (groups?: GroupSection[]) => (groups ?? []).flatMap(g => g.items.map(i => i.accountId));
+
+/** 金額不是 0 才可以點開明細 */
+function Drillable({ on, onClick, children }: { on: boolean; onClick: () => void; children: ReactNode }) {
+  return on ? <DrillAmount onClick={onClick}>{children}</DrillAmount> : <>{children}</>;
+}
+
 interface CrossData {
   endDate: string | null;
   dimension: string;
@@ -103,6 +115,8 @@ export default function BalanceSheetPage() {
   // Ecount 的顯示選項：千單位、百分比欄
   const [thousand, setThousand] = useState(false);
   const [showPct, setShowPct] = useState(false);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const [queried, setQueried] = useState<Queried>({ endDate, compareEnd: "" });
 
   const { data: projects } = useListProjects();
   const { data: departments } = useListDepartments();
@@ -125,6 +139,12 @@ export default function BalanceSheetPage() {
         const [json, compareJson] = await Promise.all([res.json(), compareRes.json()]);
         setData(json);
         setCompareData(compareJson);
+        setQueried({
+          endDate, compareEnd: compareEndDate,
+          projectId: filterMode === "project" && projectId ? projectId : undefined,
+          departmentId: filterMode === "department" && departmentId ? departmentId : undefined,
+          filterLabel: filterLabel !== "全部" ? filterLabel : undefined,
+        });
         setCrossData(null);
         const expanded: Record<string, boolean> = {};
         [...json.assets.groups, ...json.liabilities.groups, ...json.equity.groups].forEach((g: GroupSection) => {
@@ -138,6 +158,7 @@ export default function BalanceSheetPage() {
         const res = await fetch(`/erp-api/reports/balance-sheet/cross?${params}`);
         const json = await res.json();
         setCrossData(json);
+        setQueried({ endDate, compareEnd: "" });
         setData(null);
         setCompareData(null);
       }
@@ -173,6 +194,36 @@ export default function BalanceSheetPage() {
   const hasData = data || crossData;
   /** (%)(標準)：佔資產總計的比例 */
   const pctCell = (value: number, base: number) => showPct ? <td className="px-3 py-2 text-right font-mono text-xs text-gray-500">{percentOf(value, base)}</td> : null;
+
+  // 點數字看明細：資產負債表是「到截止日為止」的餘額，所以只帶截止日
+  const openDrill = (title: string, accountIds: number[], compare = false, note?: string) => {
+    if (accountIds.length === 0) return;
+    setDrill({
+      title, accountIds,
+      endDate: compare ? queried.compareEnd : queried.endDate,
+      projectId: queried.projectId,
+      departmentId: queried.departmentId,
+      note: [queried.filterLabel, note].filter(Boolean).join("・") || undefined,
+    });
+  };
+  const openCrossDrill = (row: CrossRow, col?: CrossColumn) => setDrill({
+    title: `${row.accountNumber} ${row.accountName}`,
+    accountIds: [row.accountId],
+    endDate: queried.endDate,
+    ...(col
+      ? crossData?.dimension === "department"
+        ? { departmentId: Number(col.id), exactDimension: true, note: `部門：${col.name}` }
+        : { projectId: Number(col.id), note: `專案：${col.name}` }
+      : {}),
+  });
+  const assetIds = idsOf(data?.assets.groups);
+  const liabilityIds = idsOf(data?.liabilities.groups);
+  const equityIds = idsOf(data?.equity.groups);
+  const compareAssetIds = idsOf(compareData?.assets.groups);
+  const compareLiabilityIds = idsOf(compareData?.liabilities.groups);
+  const compareEquityIds = idsOf(compareData?.equity.groups);
+  /** 權益合計含「本期損益（保留盈餘）」，那一塊不是權益科目的分錄，明細裡看不到 */
+  const equityNote = (retained?: number) => retained ? "不含本期損益（保留盈餘）" : undefined;
 
   return (
     <div className="space-y-6" data-report>
@@ -215,7 +266,7 @@ export default function BalanceSheetPage() {
           {viewMode === "vertical" && filterMode === "project" && (
             <LookupSelect value={projectId} onChange={e => setProjectId(e.target.value ? Number(e.target.value) : "")} className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
               <option value="">請選擇專案</option>
-              {projects?.map((p: any) => <option key={p.id} value={p.id}>{p.name}{p.isActive === false ? "（已停用）" : ""}</option>)}
+              {projects?.map((p: any) => <option key={p.id} value={p.id}>{projectLabel(p)}{p.isActive === false ? "（已停用）" : ""}</option>)}
             </LookupSelect>
           )}
 
@@ -364,42 +415,42 @@ export default function BalanceSheetPage() {
                     <tbody>
                       <tr className="bg-blue-50/50 border-b">
                         <td colSpan={2} className="px-4 py-2.5 font-bold text-blue-800">壹、資產</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-blue-800">{fmt(data.totalAssets)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-blue-800"><Drillable on={data.totalAssets !== 0 && assetIds.length > 0} onClick={() => openDrill("資產合計", assetIds)}>{fmt(data.totalAssets)}</Drillable></td>
                         {pctCell(data.totalAssets, data.totalAssets)}
-                        <td className="px-4 py-2.5 text-right text-gray-600">{fmt(compareData?.totalAssets || 0)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600"><Drillable on={(compareData?.totalAssets || 0) !== 0 && compareAssetIds.length > 0} onClick={() => openDrill("資產合計", compareAssetIds, true)}>{fmt(compareData?.totalAssets || 0)}</Drillable></td>
                         {pctCell(compareData?.totalAssets || 0, compareData?.totalAssets || 0)}
                         <td className="px-4 py-2.5 text-right">{fmt(data.totalAssets - (compareData?.totalAssets || 0))}</td>
                       </tr>
                       {data.assets.groups.map(group => (
-                        <SectionRows key={group.groupNumber} group={group} compareGroups={compareData?.assets.groups} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-blue-700" fmt={fmt} pctCell={pctCell} base={data.totalAssets} compareBase={compareData?.totalAssets || 0} />
+                        <SectionRows key={group.groupNumber} group={group} compareGroups={compareData?.assets.groups} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-blue-700" fmt={fmt} pctCell={pctCell} base={data.totalAssets} compareBase={compareData?.totalAssets || 0} onDrill={openDrill} />
                       ))}
                       {data.assets.groups.length === 0 && (
                         <tr><td colSpan={5} className="px-8 py-2 text-gray-400">無資產資料</td></tr>
                       )}
                       <tr className="bg-orange-50/50 border-b border-t-2">
                         <td colSpan={2} className="px-4 py-2.5 font-bold text-orange-800">貳、負債</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-orange-800">{fmt(data.liabilities.total)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-orange-800"><Drillable on={data.liabilities.total !== 0 && liabilityIds.length > 0} onClick={() => openDrill("負債合計", liabilityIds)}>{fmt(data.liabilities.total)}</Drillable></td>
                         {pctCell(data.liabilities.total, data.totalAssets)}
-                        <td className="px-4 py-2.5 text-right text-gray-600">{fmt(compareData?.liabilities.total || 0)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600"><Drillable on={(compareData?.liabilities.total || 0) !== 0 && compareLiabilityIds.length > 0} onClick={() => openDrill("負債合計", compareLiabilityIds, true)}>{fmt(compareData?.liabilities.total || 0)}</Drillable></td>
                         {pctCell(compareData?.liabilities.total || 0, compareData?.totalAssets || 0)}
                         <td className="px-4 py-2.5 text-right">{fmt(data.liabilities.total - (compareData?.liabilities.total || 0))}</td>
                       </tr>
                       {data.liabilities.groups.map(group => (
-                        <SectionRows key={group.groupNumber} group={group} compareGroups={compareData?.liabilities.groups} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-orange-700" fmt={fmt} pctCell={pctCell} base={data.totalAssets} compareBase={compareData?.totalAssets || 0} />
+                        <SectionRows key={group.groupNumber} group={group} compareGroups={compareData?.liabilities.groups} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-orange-700" fmt={fmt} pctCell={pctCell} base={data.totalAssets} compareBase={compareData?.totalAssets || 0} onDrill={openDrill} />
                       ))}
                       {data.liabilities.groups.length === 0 && (
                         <tr><td colSpan={3} className="px-8 py-2 text-gray-400">無負債資料</td></tr>
                       )}
                       <tr className="bg-purple-50/50 border-b border-t-2">
                         <td colSpan={2} className="px-4 py-2.5 font-bold text-purple-800">參、權益</td>
-                        <td className="px-4 py-2.5 text-right font-bold text-purple-800">{fmt(data.equity.totalWithRetainedEarnings)}</td>
+                        <td className="px-4 py-2.5 text-right font-bold text-purple-800"><Drillable on={data.equity.total !== 0 && equityIds.length > 0} onClick={() => openDrill("權益合計", equityIds, false, equityNote(data.equity.retainedEarnings))}>{fmt(data.equity.totalWithRetainedEarnings)}</Drillable></td>
                         {pctCell(data.equity.totalWithRetainedEarnings, data.totalAssets)}
-                        <td className="px-4 py-2.5 text-right text-gray-600">{fmt(compareData?.equity.totalWithRetainedEarnings || 0)}</td>
+                        <td className="px-4 py-2.5 text-right text-gray-600"><Drillable on={(compareData?.equity.total || 0) !== 0 && compareEquityIds.length > 0} onClick={() => openDrill("權益合計", compareEquityIds, true, equityNote(compareData?.equity.retainedEarnings))}>{fmt(compareData?.equity.totalWithRetainedEarnings || 0)}</Drillable></td>
                         {pctCell(compareData?.equity.totalWithRetainedEarnings || 0, compareData?.totalAssets || 0)}
                         <td className="px-4 py-2.5 text-right">{fmt(data.equity.totalWithRetainedEarnings - (compareData?.equity.totalWithRetainedEarnings || 0))}</td>
                       </tr>
                       {data.equity.groups.map(group => (
-                        <SectionRows key={group.groupNumber} group={group} compareGroups={compareData?.equity.groups} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-purple-700" fmt={fmt} pctCell={pctCell} base={data.totalAssets} compareBase={compareData?.totalAssets || 0} />
+                        <SectionRows key={group.groupNumber} group={group} compareGroups={compareData?.equity.groups} expanded={expandedGroups[group.groupNumber]} onToggle={() => toggleGroup(group.groupNumber)} colorClass="text-purple-700" fmt={fmt} pctCell={pctCell} base={data.totalAssets} compareBase={compareData?.totalAssets || 0} onDrill={openDrill} />
                       ))}
                       {data.equity.retainedEarnings !== 0 && (
                         <tr className="border-b bg-purple-50/30">
@@ -472,6 +523,7 @@ export default function BalanceSheetPage() {
                         totalBgClass="bg-blue-100/50"
                         emptyLabel="無資產資料"
                         fmt={fmtCross}
+                        onDrill={openCrossDrill}
                       />
                       <CrossSectionBlock
                         label="貳、負債"
@@ -485,6 +537,7 @@ export default function BalanceSheetPage() {
                         totalBgClass="bg-orange-100/50"
                         emptyLabel="無負債資料"
                         fmt={fmtCross}
+                        onDrill={openCrossDrill}
                         borderTop
                       />
 
@@ -501,7 +554,7 @@ export default function BalanceSheetPage() {
                         })}
                       </tr>
                       {crossData.equityRows.map(row => (
-                        <CrossRowTr key={row.accountId} row={row} cols={crossData.columns} fmt={fmtCross} />
+                        <CrossRowTr key={row.accountId} row={row} cols={crossData.columns} fmt={fmtCross} onDrill={openCrossDrill} />
                       ))}
                       {crossData.retainedEarnings.totalAmount !== 0 && (
                         <tr className="border-b bg-purple-50/30">
@@ -554,24 +607,31 @@ export default function BalanceSheetPage() {
           </CardContent>
         </Card>
       )}
+
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }
 
-function CrossRowTr({ row, cols, fmt }: { row: CrossRow; cols: CrossColumn[]; fmt: (n: number) => string }) {
+function CrossRowTr({ row, cols, fmt, onDrill }: { row: CrossRow; cols: CrossColumn[]; fmt: (n: number) => string; onDrill: (row: CrossRow, col?: CrossColumn) => void }) {
   return (
     <tr className="border-b hover:bg-gray-50">
       <td className="px-3 py-1.5 font-mono text-xs text-gray-400 sticky left-0 bg-white z-10 border-r">{row.accountNumber}</td>
       <td className="px-3 py-1.5 text-gray-600 sticky left-[80px] bg-white z-10 border-r truncate max-w-[160px]" title={row.accountName}>{row.accountName}</td>
-      <td className="px-3 py-1.5 text-right font-mono text-gray-800 bg-blue-50/30 border-r">{fmt(row.totalAmount)}</td>
-      {cols.map(c => (
-        <td key={c.id} className="px-3 py-1.5 text-right font-mono text-gray-600 border-r last:border-r-0">{fmt(row.breakdown[c.id] || 0)}</td>
-      ))}
+      <td className="px-3 py-1.5 text-right font-mono text-gray-800 bg-blue-50/30 border-r"><Drillable on={row.totalAmount !== 0} onClick={() => onDrill(row)}>{fmt(row.totalAmount)}</Drillable></td>
+      {cols.map(c => {
+        const value = row.breakdown[c.id] || 0;
+        // 「未指定」那一欄沒有對應的專案／部門，不開明細
+        const canDrill = value !== 0 && c.id !== "__none__" && Number.isFinite(Number(c.id));
+        return (
+          <td key={c.id} className="px-3 py-1.5 text-right font-mono text-gray-600 border-r last:border-r-0"><Drillable on={canDrill} onClick={() => onDrill(row, c)}>{fmt(value)}</Drillable></td>
+        );
+      })}
     </tr>
   );
 }
 
-function CrossSectionBlock({ label, rows, total, cols, colTotalKey, columnTotals, bgClass, textClass, totalBgClass, emptyLabel, fmt, borderTop }: {
+function CrossSectionBlock({ label, rows, total, cols, colTotalKey, columnTotals, bgClass, textClass, totalBgClass, emptyLabel, fmt, borderTop, onDrill }: {
   label: string;
   rows: CrossRow[];
   total: number;
@@ -584,6 +644,7 @@ function CrossSectionBlock({ label, rows, total, cols, colTotalKey, columnTotals
   emptyLabel: string;
   fmt: (n: number) => string;
   borderTop?: boolean;
+  onDrill: (row: CrossRow, col?: CrossColumn) => void;
 }) {
   return (
     <>
@@ -597,7 +658,7 @@ function CrossSectionBlock({ label, rows, total, cols, colTotalKey, columnTotals
         ))}
       </tr>
       {rows.map(row => (
-        <CrossRowTr key={row.accountId} row={row} cols={cols} fmt={fmt} />
+        <CrossRowTr key={row.accountId} row={row} cols={cols} fmt={fmt} onDrill={onDrill} />
       ))}
       {rows.length === 0 && (
         <tr><td colSpan={3 + cols.length} className="px-3 py-2 text-gray-400 text-center">{emptyLabel}</td></tr>
@@ -606,7 +667,7 @@ function CrossSectionBlock({ label, rows, total, cols, colTotalKey, columnTotals
   );
 }
 
-function SectionRows({ group, compareGroups, expanded, onToggle, colorClass, fmt, pctCell, base, compareBase }: {
+function SectionRows({ group, compareGroups, expanded, onToggle, colorClass, fmt, pctCell, base, compareBase, onDrill }: {
   group: GroupSection;
   compareGroups?: GroupSection[];
   expanded: boolean;
@@ -616,8 +677,11 @@ function SectionRows({ group, compareGroups, expanded, onToggle, colorClass, fmt
   pctCell: (value: number, base: number) => ReactNode;
   base: number;
   compareBase: number;
+  onDrill: (title: string, accountIds: number[], compare?: boolean) => void;
 }) {
   const compareGroup = compareGroups?.find(item => item.groupNumber === group.groupNumber);
+  const groupIds = group.items.map(i => i.accountId);
+  const compareGroupIds = (compareGroup?.items ?? []).map(i => i.accountId);
   return (
     <>
       <tr className="border-b cursor-pointer hover:bg-gray-50/50" onClick={onToggle}>
@@ -626,9 +690,9 @@ function SectionRows({ group, compareGroups, expanded, onToggle, colorClass, fmt
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           {group.groupName}
         </td>
-        <td className={`px-4 py-2 text-right font-semibold ${colorClass}`}>{fmt(group.subtotal)}</td>
+        <td className={`px-4 py-2 text-right font-semibold ${colorClass}`}><Drillable on={group.subtotal !== 0 && groupIds.length > 0} onClick={() => onDrill(group.groupName, groupIds)}>{fmt(group.subtotal)}</Drillable></td>
         {pctCell(group.subtotal, base)}
-        <td className="px-4 py-2 text-right text-gray-500">{fmt(compareGroup?.subtotal || 0)}</td>
+        <td className="px-4 py-2 text-right text-gray-500"><Drillable on={(compareGroup?.subtotal || 0) !== 0 && compareGroupIds.length > 0} onClick={() => onDrill(group.groupName, compareGroupIds, true)}>{fmt(compareGroup?.subtotal || 0)}</Drillable></td>
         {pctCell(compareGroup?.subtotal || 0, compareBase)}
         <td className="px-4 py-2 text-right text-gray-500">{fmt(group.subtotal - (compareGroup?.subtotal || 0))}</td>
       </tr>
@@ -638,9 +702,9 @@ function SectionRows({ group, compareGroups, expanded, onToggle, colorClass, fmt
         <tr key={item.accountId} className="border-b hover:bg-gray-50">
           <td className="px-4 py-1.5 pl-8 font-mono text-xs text-gray-400">{item.accountNumber}</td>
           <td className="px-4 py-1.5 pl-10 text-gray-600">{item.accountName}</td>
-          <td className="px-4 py-1.5 text-right font-mono text-gray-700">{fmt(item.amount)}</td>
+          <td className="px-4 py-1.5 text-right font-mono text-gray-700"><Drillable on={item.amount !== 0} onClick={() => onDrill(`${item.accountNumber} ${item.accountName}`, [item.accountId])}>{fmt(item.amount)}</Drillable></td>
           {pctCell(item.amount, base)}
-          <td className="px-4 py-1.5 text-right font-mono text-gray-500">{fmt(prior)}</td>
+          <td className="px-4 py-1.5 text-right font-mono text-gray-500"><Drillable on={prior !== 0} onClick={() => onDrill(`${item.accountNumber} ${item.accountName}`, [item.accountId], true)}>{fmt(prior)}</Drillable></td>
           {pctCell(prior, compareBase)}
           <td className="px-4 py-1.5 text-right font-mono text-gray-500">{fmt(item.amount - prior)}</td>
         </tr>

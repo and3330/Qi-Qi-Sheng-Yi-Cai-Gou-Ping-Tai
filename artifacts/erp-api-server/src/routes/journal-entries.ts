@@ -15,7 +15,7 @@ import { isRealDate, openingEntryLines } from "../lib/cash-accounts";
 import { accountingSettingsTable } from "@workspace/erp-db";
 import { ne } from "drizzle-orm";
 import { auditLogsTable } from "@workspace/erp-db";
-import { journalHistoryRows, reversalOriginalId } from "../lib/journal-history";
+import { journalHistoryRows, pickAutoActor, reversalOriginalId } from "../lib/journal-history";
 import { registerChangeHandler, registerPayloadCheck, submitChangeRequest } from "../lib/change-requests";
 
 const OPENING_PREFIX = "JE-OPEN-";
@@ -738,7 +738,22 @@ router.get("/journal-entries/:id/history", async (req, res): Promise<void> => {
     if (log) reversedBy = { log, originalNumber: original?.entryNumber ?? "" };
   }
   const split = splitDescription(e.description);
-  res.json({ entryNumber: e.entryNumber, rows: journalHistoryRows({ id: e.id, entryNumber: e.entryNumber, createdAt: e.createdAt, sourceNumber: split.sourceNumber }, logs, reversedBy) });
+  // 單據入帳時自動開的分錄（收付款單、付款申請、發票…）：寫出是哪張單開的、當時是誰建立或核准的
+  let auto: { source: string | null; actor: string | null } | null = null;
+  const hasCreate = logs.some(l => l.action === "create" && !(Number((l.newValues as any)?.id) && Number((l.newValues as any)?.id) !== id));
+  if (!hasCreate && !reversedBy && !split.sourceNumber && e.createdAt) {
+    const voucherNumber = await voucherOfEntry(db, id).catch(() => null);
+    const found = voucherNumber ? null : await autoEntryText(db, e.entryNumber).catch(() => null);
+    const sourceNumber = voucherNumber ?? found?.sourceNumber ?? null;
+    const source = voucherNumber ? `收付款單 ${voucherNumber}` : found ? `${found.sourceLabel} ${found.sourceNumber}` : null;
+    const made = new Date(e.createdAt).getTime();
+    const nearby = await db.select({ userName: auditLogsTable.userName, createdAt: auditLogsTable.createdAt, documentNumber: auditLogsTable.documentNumber, newValues: auditLogsTable.newValues })
+      .from(auditLogsTable)
+      .where(and(gte(auditLogsTable.createdAt, new Date(made - 2000)), lte(auditLogsTable.createdAt, new Date(made + 30000))))
+      .orderBy(auditLogsTable.createdAt).limit(80);
+    auto = { source, actor: pickAutoActor({ entryNumber: e.entryNumber, createdAt: e.createdAt }, sourceNumber, nearby) };
+  }
+  res.json({ entryNumber: e.entryNumber, rows: journalHistoryRows({ id: e.id, entryNumber: e.entryNumber, createdAt: e.createdAt, sourceNumber: split.sourceNumber }, logs, reversedBy, auto) });
 });
 
 router.get("/journal-entries/:id", async (req, res): Promise<void> => {

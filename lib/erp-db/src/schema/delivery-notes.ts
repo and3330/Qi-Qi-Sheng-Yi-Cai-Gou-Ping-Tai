@@ -7,6 +7,7 @@ import { customersTable } from "./customers";
 import { warehousesTable } from "./warehouses";
 import { departmentsTable } from "./departments";
 import { projectsTable } from "./projects";
+import { employeesTable } from "./employees";
 
 export const deliveryNotesTable = pgTable("delivery_notes", {
   tenantId: integer("tenant_id").notNull().default(sql`(current_setting('app.tenant_id'::text))::integer`),
@@ -22,6 +23,10 @@ export const deliveryNotesTable = pgTable("delivery_notes", {
   remarks: text("remarks"),
   departmentId: integer("department_id").references(() => departmentsTable.id),
   projectId: integer("project_id").references(() => projectsTable.id),
+  // 照 Ecount 理貨單補的表頭欄位：承辦人、聯繫方式、送貨地址
+  handlerId: integer("handler_id").references(() => employeesTable.id),
+  contactInfo: text("contact_info"),
+  shippingAddress: text("shipping_address"),
   // 提交出貨時自動產生的銷貨成本分錄（銷貨成本/存貨），作廢時據此沖回
   cogsJournalEntryId: integer("cogs_journal_entry_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

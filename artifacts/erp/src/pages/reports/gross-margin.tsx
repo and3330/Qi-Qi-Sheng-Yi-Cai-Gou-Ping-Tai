@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
+import { projectLabel } from "@/lib/select-options";
+import { Link } from "wouter";
 import { ReportHeader } from "@/components/shared/report-header";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import { PageHeader } from "@/components/shared/page-header";
@@ -98,7 +100,7 @@ export default function GrossMarginPage() {
               <label className="text-sm font-medium mb-1 block">專案</label>
               <LookupSelect className="w-full h-10 border rounded-md px-3 bg-background text-sm" value={projectId} onChange={event => setProjectId(event.target.value)}>
                 <option value="">全部專案</option>
-                {projects.map(project => <option key={project.id} value={project.id}>{project.name}</option>)}
+                {projects.map(project => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}
               </LookupSelect>
             </div>
             <Button className="w-full sm:w-auto" onClick={fetchReport} disabled={loading}>{loading ? "查詢中..." : "查詢"}</Button>
@@ -126,7 +128,7 @@ export default function GrossMarginPage() {
                 {data.rows.map(order => (
                   <MobileCard key={order.id}>
                     <MobileCardHeader 
-                      title={`${order.orderNumber}・${order.customerName}`}
+                      title={<><Link href={`/sales/orders/${order.id}`} className="text-primary hover:underline">{order.orderNumber}</Link>・{order.customerName}</>}
                       value={order.marginPct.toFixed(1) + "%"}
                       titleClass="text-gray-900"
                       valueClass="text-blue-700 font-mono"
@@ -176,7 +178,7 @@ export default function GrossMarginPage() {
                   {data.rows.map(order => (
                     <Fragment key={order.id}>
                       <TableRow className="bg-muted/40 font-semibold">
-                        <TableCell>{order.orderNumber}</TableCell><TableCell>{order.orderDate}・{order.customerName}</TableCell>
+                        <TableCell><Link href={`/sales/orders/${order.id}`} className="text-primary hover:underline">{order.orderNumber}</Link></TableCell><TableCell>{order.orderDate}・{order.customerName}</TableCell>
                         <TableCell />
                         <TableCell className="text-right">{money(order.revenue)}</TableCell>
                         <TableCell className="text-right">{money(order.cost)}</TableCell>

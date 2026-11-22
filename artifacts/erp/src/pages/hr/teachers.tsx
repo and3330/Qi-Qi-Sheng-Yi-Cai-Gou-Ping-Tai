@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, DocFields, DocNote } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search, Eye, GraduationCap, Users, UserCheck, UserX } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -164,12 +164,7 @@ export default function TeachersPage() {
     return "bg-gray-100 text-gray-700";
   };
 
-  const F = ({ label, value }: { label: string; value: string }) => (
-    <div>
-      <Label className="text-xs text-gray-500">{label}</Label>
-      <div className="mt-0.5">{value || "-"}</div>
-    </div>
-  );
+  const teacherStatus = (t: { status: string }) => <DocStatus label={t.status === "Active" ? "在職" : "離職"} tone={t.status === "Active" ? "default" : "secondary"} />;
 
   return (
     <div className="space-y-6">
@@ -290,46 +285,55 @@ export default function TeachersPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>老師詳細資料 — {detailTeacher?.name}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        name="老師"
+        number={detailTeacher?.teacherId}
+        status={detailTeacher ? teacherStatus(detailTeacher) : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setDetailOpen(false)}>關閉</Button>
+          <Button onClick={() => { setDetailOpen(false); if (detailTeacher) openEdit(detailTeacher); }}>編輯</Button>
+        </>}
+      >
           {detailTeacher && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <F label="編號" value={detailTeacher.teacherId} />
-              <F label="姓名" value={detailTeacher.name} />
-              <F label="職位" value={detailTeacher.position} />
-              <F label="狀態" value={detailTeacher.status === "Active" ? "在職" : "離職"} />
-              <F label="電話" value={detailTeacher.phone} />
-              <F label="Email" value={detailTeacher.email} />
-              <F label="專業技能" value={detailTeacher.skills} />
-              <F label="期望教課區域" value={detailTeacher.preferredArea} />
-              <F label="出生日期" value={detailTeacher.dateOfBirth} />
-              <F label="通訊住址" value={detailTeacher.address} />
-              <F label="戶籍地址" value={detailTeacher.registeredAddress} />
-              <F label="銀行" value={detailTeacher.bankName} />
-              <F label="戶頭名稱" value={detailTeacher.bankAccountName} />
-              <F label="銀行帳號" value={detailTeacher.bankAccountNumber} />
-              <F label="分行" value={detailTeacher.bankBranch} />
-              <F label="其他配合職位" value={detailTeacher.otherPositions} />
-              <F label="推薦人" value={detailTeacher.referrer} />
-              <div className="col-span-2">
-                <F label="教學經歷" value={detailTeacher.teachingExperience} />
-              </div>
-              <div className="col-span-2">
-                <F label="備註" value={detailTeacher.notes} />
-              </div>
-            </div>
+            <>
+              <DocFields items={[
+                ["姓名", detailTeacher.name],
+                ["職位", detailTeacher.position],
+                ["電話", detailTeacher.phone],
+                ["Email", detailTeacher.email],
+                ["專業技能", detailTeacher.skills],
+                ["教課區域", detailTeacher.preferredArea],
+                ["出生日期", detailTeacher.dateOfBirth],
+                ["通訊住址", detailTeacher.address],
+                ["戶籍地址", detailTeacher.registeredAddress],
+                ["銀行", detailTeacher.bankName],
+                ["戶頭名稱", detailTeacher.bankAccountName],
+                ["銀行帳號", detailTeacher.bankAccountNumber],
+                ["分行", detailTeacher.bankBranch],
+                ["其他職位", detailTeacher.otherPositions],
+                ["推薦人", detailTeacher.referrer],
+              ]} />
+              <DocNote label="教學經歷">{detailTeacher.teachingExperience}</DocNote>
+              <DocNote>{detailTeacher.notes}</DocNote>
+            </>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailOpen(false)}>關閉</Button>
-            <Button onClick={() => { setDetailOpen(false); if (detailTeacher) openEdit(detailTeacher); }}>編輯</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯老師" : "新增老師"}</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "老師" : "新增老師"}
+        number={editing ? editing.teacherId : undefined}
+        status={editing ? teacherStatus(editing) : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={saveMut.isPending}>
+            {saveMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
+          </Button>
+        </>}
+      >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div><Label>編號</Label><Input value={form.teacherId} onChange={e => setForm(p => ({ ...p, teacherId: e.target.value }))} /></div>
             <div><Label>姓名 *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
@@ -368,14 +372,7 @@ export default function TeachersPage() {
             <div className="col-span-2"><Label>教學經歷</Label><textarea className="w-full border rounded-md px-3 py-2 text-sm min-h-[80px]" value={form.teachingExperience} onChange={e => setForm(p => ({ ...p, teachingExperience: e.target.value }))} /></div>
             <div className="col-span-2"><Label>備註</Label><Input value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={saveMut.isPending}>
-              {saveMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

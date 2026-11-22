@@ -4,7 +4,7 @@ import { ProjectField } from "@/components/shared/project-field";
 import { useListInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useListCustomers, useListItems } from "@workspace/erp-api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Printer } from "lucide-react";
 import { DataTable } from "@/components/shared/data-table";
 import { PageHeader } from "@/components/shared/page-header";
 import { PrintButton } from "@/components/shared/print-button";
@@ -17,6 +17,7 @@ import { DocWindow, DocStatus, statusTone, DocFields, DocNote, DocSection, DocRe
 import { RelatedDocs, useOpenFromUrl } from "@/components/shared/related-docs";
 import { InvoiceCreateDialog, InvoiceEditDialog } from "@/components/accounting/invoice-doc";
 import { useToast } from "@/hooks/use-toast";
+import { useInvoicePermissions } from "@/hooks/use-invoice-permissions";
 import { Plus, Pencil, Trash2, Ban, HandCoins, FileX2, Undo2 } from "lucide-react";
 import { InvoiceReceiptDialog } from "@/components/shared/invoice-receipt-dialog";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -32,6 +33,7 @@ type TaxType = "taxable" | "zero_rated" | "exempt" | "unclassified";
 const taxOptions = [{ value: "taxable", label: "應稅 5%" }, { value: "zero_rated", label: "零稅率" }, { value: "exempt", label: "免稅" }];
 
 export default function SalesInvoicesPage() {
+  const { canPrintInvoice } = useInvoicePermissions();
   const qc = useQueryClient();
   const { data: allInvoices, isLoading } = useListInvoices();
   const { data: customers } = useListCustomers();
@@ -66,6 +68,40 @@ export default function SalesInvoicesPage() {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const openCreate = () => setCreateOpen(true);
   const openEdit = (inv: any) => setEditing(inv);
+  const [printingId, setPrintingId] = useState<number | null>(null);
+  const [printStyle, setPrintStyle] = useState<1 | 4>(1);
+  const printStyleSelect = <select aria-label="綠界發票列印格式" className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={printStyle} disabled={printingId !== null} onChange={e => setPrintStyle(Number(e.target.value) as 1 | 4)}>
+    <option value={1}>一般格式</option>
+    <option value={4}>公司發票 A4（限有買方統編）</option>
+  </select>;
+  const handlePrintEcpay = async (inv: any) => {
+    if (!canPrintInvoice) { toast({ title: "角色未授權列印／下載發票 PDF", variant: "destructive" }); return; }
+    if (printingId !== null) return;
+    if (!inv.ecpayInvoiceNumber || inv.ecpayVoidedAt || inv.status === "Cancelled") {
+      toast({ title: "無法列印", description: "此紀錄尚未開立綠界電子發票，或已作廢。", variant: "destructive" }); return;
+    }
+    setPrintingId(inv.id);
+    try {
+      const response = await fetch(`/erp-api/invoices/${inv.id}/ecpay-pdf`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ printStyle }) });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "下載綠界發票 PDF 失敗");
+      }
+      if (!response.headers.get("Content-Type")?.includes("application/pdf")) throw new Error("伺服器未回傳 PDF 檔案");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${inv.ecpayInvoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      toast({ title: "已產生發票 PDF", description: "下載後可使用 PDF 閱讀器列印；手機可能開啟 PDF 預覽，請選擇儲存到檔案。" });
+    } catch (err: any) {
+      toast({ title: "無法下載 PDF", description: err.message, variant: "destructive" });
+    } finally { setPrintingId(null); }
+  };
 
   const handleDelete = async (inv: any) => {
     if (!confirm(`確定刪除發票「${inv.invoiceNumber}」？`)) return;
@@ -136,8 +172,9 @@ export default function SalesInvoicesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <PageHeader title="銷售發票" description="營收追蹤" />
+        <PageHeader title="銷售發票" description="綠界已開立發票可逐筆列印／另存 PDF；清單列印不是正式電子發票。" />
         <div className="flex gap-2">
+          {printStyleSelect}
           <PrintButton title="銷售發票清單" contentId="invoices-table" />
           <Button onClick={openCreate}><Plus size={16} className="mr-1" />新增銷售發票</Button>
         </div>
@@ -229,6 +266,9 @@ export default function SalesInvoicesPage() {
                         <Ban size={14} className="text-orange-600" />
                       </Button>
                     )}
+                    <Button variant="ghost" size="sm" disabled={!canPrintInvoice || printingId !== null || !r.ecpayInvoiceNumber || !!r.ecpayVoidedAt || r.status === "Cancelled"} onClick={() => handlePrintEcpay(r)} title={!canPrintInvoice ? "角色未授權列印／下載發票 PDF" : !r.ecpayInvoiceNumber ? "尚未開立綠界電子發票" : "下載正式發票 PDF，下載後可列印"}>
+                      <Printer size={14} className="mr-1" />{printingId === r.id ? "產生 PDF…" : "下載 PDF"}
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Pencil size={14} /></Button>
                     {!r.ecpayInvoiceNumber && <Button variant="ghost" size="icon" onClick={() => handleDelete(r)}><Trash2 size={14} className="text-destructive" /></Button>}
                   </div>
@@ -254,7 +294,11 @@ export default function SalesInvoicesPage() {
           </>
         ) : <DocStatus label={statusMap[viewing.status] || viewing.status} tone={statusTone(viewing.status)} />)}
         description={viewing?.legacy ? "這是在舊系統 Ecount 開的發票，只供查看；不列入現在的應收帳款與營業稅報表。" : undefined}
-        footer={<Button variant="outline" onClick={() => setViewing(null)}>關閉</Button>}
+        footer={<>
+          {viewing && !viewing.legacy && printStyleSelect}
+          {viewing && !viewing.legacy && <Button disabled={!canPrintInvoice || printingId !== null || !viewing.ecpayInvoiceNumber || !!viewing.ecpayVoidedAt || viewing.status === "Cancelled"} onClick={() => handlePrintEcpay(viewing)}><Printer size={14} className="mr-1" />{printingId === viewing.id ? "正在產生 PDF…" : "下載發票 PDF"}</Button>}
+          <Button variant="outline" onClick={() => setViewing(null)}>關閉</Button>
+        </>}
       >
         {viewing && (
           <>

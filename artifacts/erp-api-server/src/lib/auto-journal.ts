@@ -226,9 +226,15 @@ export async function createInvoiceJournalEntry(tx: any, inv: {
   id: number; invoiceNumber: string; invoiceType: string; invoiceDate: string;
   totalAmount: string | number; exchangeRate?: string | number | null; status?: string;
   taxType?: string | null; taxAmount?: string | number | null;
-  items?: unknown; purchaseReceiptId?: number | null; purchaseOrderId?: number | null;
+  items?: unknown; purchaseReceiptId?: number | null; purchaseOrderId?: number | null; salesOrderId?: number | null;
 }, opts?: { bypassLockDate?: boolean }): Promise<number | null> {
   if (inv.status === "Cancelled") return null;
+  // 老闆 2026-11-18：舊系統（Ecount）搬來、當時沒開發票的歷史銷貨單，現在可以補開發票。
+  // 這張單的營收與應收已經由舊系統的傳票入過帳，補開的發票只是稅務憑證，不再做一次分錄（否則營收重複）
+  if (inv.salesOrderId && (inv.invoiceType === "Sales" || inv.invoiceType === "Sales Invoice")) {
+    const [order] = await tx.select({ orderSource: salesOrdersTable.orderSource }).from(salesOrdersTable).where(eq(salesOrdersTable.id, inv.salesOrderId));
+    if (order?.orderSource === "ecount") return null;
+  }
   // This central guard applies to every invoice creation path and makes the
   // enclosing invoice transaction roll back when its accounting period is locked.
   // bypassLockDate is reserved for the admin historical backfill (includeLocked),

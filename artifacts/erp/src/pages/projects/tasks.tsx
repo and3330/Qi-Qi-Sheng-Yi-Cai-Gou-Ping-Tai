@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { selectableProjects, projectLabel, projectPickerLabel } from "@/lib/select-options";
 import { useListTasks, useCreateTask, useUpdateTask, useDeleteTask, useListProjects } from "@workspace/erp-api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/shared/data-table";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -124,7 +125,7 @@ export default function TasksPage() {
     { key: "taskGroup", label: "組別（放進同一組）", type: "text", suggestions: groups, clearable: true },
     { key: "status", label: "狀態", type: "select", options: statusOptions.map(s => ({ value: s, label: statusMap[s] })) },
     { key: "priority", label: "優先級", type: "select", options: priorityOptions.map(s => ({ value: s, label: priorityMap[s] })) },
-    { key: "projectId", label: "所屬專案", type: "select", options: [{ value: "__none__", label: "（不屬於任何專案）" }, ...(projects || []).filter((p: any) => p.isActive !== false).map((p: any) => ({ value: String(p.id), label: p.name }))] },
+    { key: "projectId", label: "所屬專案", type: "select", options: [{ value: "__none__", label: "（不屬於任何專案）" }, ...selectableProjects(projects).map((p: any) => ({ value: String(p.id), label: projectLabel(p) }))] },
     { key: "assignedTo", label: "負責人", type: "select", options: [{ value: "__none__", label: "（不指定）" }, ...activeEmployees.map((e: any) => ({ value: String(e.id), label: e.fullName || e.name }))] },
     { key: "dueDate", label: "到期日", type: "date", clearable: true },
   ];
@@ -148,7 +149,7 @@ export default function TasksPage() {
         </select>
         <select className={`${selectClass} md:w-56`} value={projectFilter} onChange={e => setProjectFilter(e.target.value)} aria-label="專案">
           <option value="">全部專案</option>
-          {usedProjects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {usedProjects.map((p: any) => <option key={p.id} value={p.id}>{projectLabel(p)}</option>)}
         </select>
         <span className="text-sm text-muted-foreground md:ml-auto">共 {filtered.length} 筆</span>
       </div>
@@ -214,16 +215,25 @@ export default function TasksPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-lg max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯任務" : "新增任務"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-2">
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "任務" : "新增任務"}
+        status={editing ? <DocStatus label={statusMap[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
+            {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
+          </Button>
+        </>}
+      >
+          <div className="grid gap-4">
             <div><Label>任務主題 *</Label><Input value={form.subject} onChange={F("subject")} /></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><Label>所屬專案</Label>
                 <select className={selectClass} value={form.projectId} onChange={F("projectId")}>
                   <option value="">無</option>
-                  {(projects || []).filter((p: any) => p.isActive !== false || String(p.id) === String(form.projectId)).map((p: any) => <option key={p.id} value={p.id}>{p.name}{p.isActive === false ? "（已停用）" : ""}</option>)}
+                  {selectableProjects(projects, form.projectId).map((p: any) => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
                 </select>
               </div>
               <div><Label>組別</Label>
@@ -252,14 +262,7 @@ export default function TasksPage() {
             </div>
             <div><Label>說明</Label><textarea className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[60px]" value={form.description} onChange={F("description")} /></div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
-              {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

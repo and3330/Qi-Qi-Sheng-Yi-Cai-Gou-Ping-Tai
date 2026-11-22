@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { selectableProjects, projectPickerLabel } from "@/lib/select-options";
 import { templateMeta, type TemplateMeta } from "@/lib/template-fields";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -373,8 +374,8 @@ export default function OrderTemplatesPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="global">全域（所有專案）</SelectItem>
-                  {projects.filter((p: any) => p.isActive !== false || String(p.id) === formProjectId).map((p: any) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.name}{p.isActive === false ? "（已停用）" : ""}</SelectItem>
+                  {selectableProjects(projects, formProjectId).map((p: any) => (
+                    <SelectItem key={p.id} value={String(p.id)}>{projectPickerLabel(p)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

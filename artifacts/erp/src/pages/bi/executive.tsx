@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Activity } from "lucide-react";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 import { Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BiFrame } from "@/components/bi/bi-frame";
 import { BI_COLORS, EmptyState, MetricCard, Panel, fmtCompact, fmtMoney, fmtNum, fmtPct, tooltipStyle } from "@/components/bi/bi-ui";
@@ -14,7 +16,10 @@ function waterfallRows(w: ExecutiveResponse["waterfall"]) {
 }
 
 export default function ExecutiveCockpit() {
+  // 事業部的營收、費用可以點進去看是哪些分錄
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
   return (
+    <>
     <BiFrame page="executive" title="營運總覽" subtitle="損益、實際收付款、事業部貢獻與營運資本週轉" icon={<Activity size={18} />}>
       {(d) => {
         const s = d.summary;
@@ -76,8 +81,8 @@ export default function ExecutiveCockpit() {
                         {d.buContributions.map((b) => (
                           <tr key={String(b.departmentId)} className="border-b last:border-0">
                             <td className="py-2 font-medium">{b.name}</td>
-                            <td className="bi-figure text-right">{fmtMoney(b.revenue)}</td>
-                            <td className="bi-figure text-right">{fmtMoney(b.expense)}</td>
+                            <td className="bi-figure text-right">{b.departmentId ? <DrillAmount onClick={() => setDrill({ title: `${b.name} 營收`, accountTypes: ["Income"], departmentId: b.departmentId, startDate: d.period.startDate, endDate: d.period.endDate, excludeInternal: true })}>{fmtMoney(b.revenue)}</DrillAmount> : fmtMoney(b.revenue)}</td>
+                            <td className="bi-figure text-right">{b.departmentId ? <DrillAmount onClick={() => setDrill({ title: `${b.name} 費用`, accountTypes: ["Expense"], departmentId: b.departmentId, startDate: d.period.startDate, endDate: d.period.endDate, excludeInternal: true })}>{fmtMoney(b.expense)}</DrillAmount> : fmtMoney(b.expense)}</td>
                             <td className={`bi-figure text-right ${b.netProfit < 0 ? "text-rose-600" : ""}`}>{fmtMoney(b.netProfit)}</td>
                             <td className={`bi-figure text-right ${b.adjustedNet < 0 ? "text-rose-600" : ""}`}>{fmtMoney(b.adjustedNet)}</td>
                             <td className="bi-figure text-right">{fmtPct(b.margin)}</td>
@@ -105,5 +110,7 @@ export default function ExecutiveCockpit() {
         );
       }}
     </BiFrame>
+    <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
+    </>
   );
 }

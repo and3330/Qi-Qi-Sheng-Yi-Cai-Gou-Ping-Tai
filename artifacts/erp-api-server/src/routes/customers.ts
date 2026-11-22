@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { looseSqlMatch } from "../lib/loose-match";
 import { todayTaipei } from "../lib/inventory-journal";
 import { eq, ilike, or, sql, and, ne, lte, asc } from "drizzle-orm";
 import { db, customersTable, activitiesTable, invoicesTable, invoiceSettlementsTable, vouchersTable } from "@workspace/erp-db";
@@ -22,6 +23,8 @@ router.get("/customers", async (req, res): Promise<void> => {
       ilike(customersTable.customerCode, `%${search}%`),
       ilike(customersTable.shortName, `%${search}%`),
       ilike(customersTable.contactPerson, `%${search}%`),
+      // 打簡稱也找得到：每個字照順序出現就算（樂善國小 → 樂善國民小學）
+      looseSqlMatch(search, [sql`${customersTable.name}`, sql`COALESCE(${customersTable.shortName}, '')`]),
     ));
   }
   if (category) conditions.push(eq(customersTable.category, category));
@@ -46,6 +49,7 @@ router.get("/customers", async (req, res): Promise<void> => {
       paymentTermId: customersTable.paymentTermId,
       creditLimit: customersTable.creditLimit,
       category: customersTable.category,
+      remarks: customersTable.remarks,
       isActive: customersTable.isActive,
       createdAt: customersTable.createdAt,
       totalOrders: sql<number>`(SELECT COUNT(*) FROM sales_orders WHERE customer_id = "customers"."id")::int`,
@@ -152,7 +156,7 @@ router.patch("/customers/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const updates: Record<string, unknown> = {};
-  const fields = ["name", "customerCode", "shortName", "email", "phone", "mobile", "contactPerson", "salesPerson", "address", "city", "country", "taxId", "category"];
+  const fields = ["name", "customerCode", "shortName", "email", "phone", "mobile", "contactPerson", "salesPerson", "address", "city", "country", "taxId", "category", "remarks"];
   for (const f of fields) {
     if (req.body[f] !== undefined) updates[f] = req.body[f];
   }

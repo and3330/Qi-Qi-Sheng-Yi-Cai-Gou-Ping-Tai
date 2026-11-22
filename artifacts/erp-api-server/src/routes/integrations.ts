@@ -14,6 +14,7 @@ import { isRealDate } from "../lib/cash-accounts";
 import { listCashAccounts } from "../lib/cash-accounts";
 import { pgErrorCode } from "../lib/pg-error";
 import { logger } from "../lib/logger";
+import { machineOnly } from "../lib/api-key-user";
 
 const router: IRouter = Router();
 router.use("/integrations", requireAuth);
@@ -225,7 +226,7 @@ router.post("/integrations/events", async (req, res): Promise<void> => {
   if (batch.length > 200) { res.status(400).json({ error: "一次最多送 200 筆" }); return; }
   // 登入的使用者要有管理或財務角色；API 金鑰要有寫入權限（唯讀金鑰在更前面就被擋掉了）
   const sessionRole = req.session?.user?.role;
-  if (!(req as any).apiKeyAuth && !["owner", "admin", "finance_admin", "accountant", "super_admin"].includes(sessionRole || "")) {
+  if (!machineOnly(req) && !["owner", "admin", "finance_admin", "accountant", "super_admin"].includes(sessionRole || "")) {
     res.status(403).json({ error: "權限不足" }); return;
   }
   const results = await ingestEvents(db as any, batch, { actor: actorOf(req), apiKeyId: (req as any).apiKeyAuth ? Number((req as any).apiKey?.id) || null : null });

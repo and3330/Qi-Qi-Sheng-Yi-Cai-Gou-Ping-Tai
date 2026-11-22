@@ -112,6 +112,18 @@ describe("voucher money invariants", () => {
   });
 
   it.each([
+    ["收款單", { description: "貨款", amount: 100, fee: 100 }, "手續費不能大於或等於金額"],
+    ["付款單", { description: "貨款", amount: 100, fee: -5 }, "手續費不可為負數"],
+    ["請款單", { description: "車資", amount: 100, fee: 5 }, "只有收款單、付款單可以填手續費"],
+  ])("rejects a bad line fee on %s before persistence", async (voucherType, item, message) => {
+    const response = await request("POST", "/vouchers", { voucherType, voucherDate: "2026-08-15", items: [item] });
+
+    expect(response.status).toBe(400);
+    expect((await response.json() as { error: string }).error).toContain(message);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
     [{ totalAmount: "1" }, "總金額"],
     [{ status: "Cancelled" }, "狀態"],
   ])("refuses in-place posted voucher mutation %j", async (body, field) => {

@@ -188,7 +188,10 @@ export function auditLogger(req: Request, res: Response, next: NextFunction) {
   // 只信任 session 身分，不採信 client header（避免偽造稽核身分）
   const sessionUser = (req as any).session?.user;
   const apiKeyAuth = (req as any).apiKeyAuth;
-  const userName = sessionUser?.displayName || sessionUser?.username || (apiKeyAuth ? `apikey:${(req as any).apiKey?.keyName || "未命名"}` : "system");
+  // 用金鑰操作時記成「那個人（金鑰：名稱）」，看得出是本人還是他的金鑰做的
+  const keyLabel = apiKeyAuth ? `金鑰：${(req as any).apiKey?.keyName || "未命名"}` : "";
+  const baseName = sessionUser?.displayName || sessionUser?.username || "";
+  const userName = baseName ? (keyLabel ? `${baseName}（${keyLabel}）` : baseName) : (apiKeyAuth ? `apikey:${(req as any).apiKey?.keyName || "未命名"}` : "system");
   const userId = sessionUser?.id ? String(sessionUser.id) : undefined;
 
   const tableName = getTableNameFromPath(apiPath);

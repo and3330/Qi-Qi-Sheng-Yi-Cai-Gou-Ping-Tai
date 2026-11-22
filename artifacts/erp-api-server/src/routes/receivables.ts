@@ -9,6 +9,7 @@ import { todayTaipei } from "../lib/inventory-journal";
 import { agingParts } from "../lib/payment-terms";
 import { creditCheck, customerExposures } from "../lib/credit-limit";
 import { round2 } from "../lib/order-payments";
+import { daysSince, unbilledOrderReceivables } from "../lib/unbilled-receivables";
 
 /**
  * 應收帳款總覽：一頁看完每個客戶還欠多少、逾期多少、信用額度用了多少、上次什麼時候付錢。
@@ -98,18 +99,41 @@ router.get("/receivables/overview", async (_req, res): Promise<void> => {
   }
 });
 
+/**
+ * 應收沖帳清單：全公司還沒收清、還沒開發票的銷貨單，一張一列（含舊系統帶過來的）。
+ * 在這裡勾選同一個客戶的幾張單，就可以開一張收款單把它們沖掉。算法跟帳齡表、儀表板同一套。
+ */
+router.get("/receivables/open-items", async (_req, res): Promise<void> => {
+  try {
+    const today = todayTaipei();
+    const [orders, customers] = await Promise.all([
+      unbilledOrderReceivables(db),
+      db.select({ id: customersTable.id, name: customersTable.name, customerCode: customersTable.customerCode }).from(customersTable),
+    ]);
+    const byId = new Map(customers.map(c => [c.id, c]));
+    const rows = orders.map(o => ({
+      id: o.id, orderNumber: o.orderNumber, orderDate: o.orderDate, label: o.label, legacy: o.legacy, projectId: o.projectId,
+      customerId: o.customerId, customerCode: byId.get(o.customerId)?.customerCode ?? null, customerName: byId.get(o.customerId)?.name ?? "未指定",
+      outstanding: o.outstanding, days: daysSince(o.orderDate, today),
+    }));
+    res.json({ asOfDate: today, count: rows.length, total: round2(rows.reduce((sum, r) => sum + r.outstanding, 0)), rows });
+  } catch (err: any) {
+    res.status(500).json({ error: `應收沖帳清單產生失敗：${err?.message || "未知錯誤"}` });
+  }
+});
+
 /** 某個客戶還沒收清的銷貨單（一張一張列出來，含舊系統帶過來的） */
 router.get("/receivables/customers/:id/open-orders", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "客戶編號格式不正確" }); return; }
-  const orders = await db.select({ id: salesOrdersTable.id, orderNumber: salesOrdersTable.orderNumber, orderDate: salesOrdersTable.orderDate, totalAmount: salesOrdersTable.totalAmount, orderSource: salesOrdersTable.orderSource, label: salesOrdersTable.label })
+  const orders = await db.select({ id: salesOrdersTable.id, orderNumber: salesOrdersTable.orderNumber, orderDate: salesOrdersTable.orderDate, totalAmount: salesOrdersTable.totalAmount, projectId: salesOrdersTable.projectId, orderSource: salesOrdersTable.orderSource, label: salesOrdersTable.label })
     .from(salesOrdersTable).where(and(eq(salesOrdersTable.customerId, id), inArray(salesOrdersTable.status, REVENUE_ORDER_STATUSES)));
   const payments = orders.length > 0 ? await orderPaymentSummaries(db, "sales", orders.map(o => o.id)) : new Map();
   const today = todayTaipei();
   res.json(orders.map(order => {
     const total = Number(order.totalAmount), outstanding = orderOutstanding(total, payments.get(order.id));
     return {
-      id: order.id, orderNumber: order.orderNumber, orderDate: order.orderDate, label: order.label, legacy: order.orderSource === "ecount",
+      id: order.id, orderNumber: order.orderNumber, orderDate: order.orderDate, label: order.label, legacy: order.orderSource === "ecount", projectId: order.projectId ?? null,
       totalAmount: total, paidAmount: round2(total - outstanding), outstanding,
       days: Math.max(0, Math.floor((new Date(today).getTime() - new Date(order.orderDate).getTime()) / 86400000)),
     };

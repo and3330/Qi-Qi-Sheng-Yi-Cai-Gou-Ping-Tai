@@ -12,16 +12,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus } from "@/components/shared/doc-window";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, Package, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Eye } from "lucide-react";
 import type { ExportOptions } from "@/lib/export-utils";
 import { MasterLookup } from "@/components/shared/master-lookup";
+import { ItemImageEditor, ItemThumb, useItemImages } from "@/components/inventory/item-image";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 const api = (path: string) => `/erp-api/${path}`;
@@ -64,6 +65,7 @@ export default function ItemsPage() {
     queryFn: () => fetch(api("item-categories"), { credentials: "include" }).then(r => r.json()),
   });
   const groups = useMemo(() => categories.map((c) => c.name), [categories]);
+  const itemImages = useItemImages();
 
   const { data: itemTypes = [] } = useQuery<{ id: number; name: string; label: string | null; colorClass: string | null }[]>({
     queryKey: ["item-types"],
@@ -304,10 +306,11 @@ export default function ItemsPage() {
                   ))
                 ) : paged.length > 0 ? (
                   paged.map((item: any) => (
-                    <TableRow key={item.id} className="hover:bg-muted/30">
+                    <TableRow key={item.id} className="cursor-pointer hover:bg-muted/30" onClick={(e) => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; openDetail(item); }}>
                       <TableCell className="px-2"><CheckboxCell checked={batch.selectedIds.has(item.id)} onChange={() => batch.toggle(item.id)} /></TableCell>
                       <TableCell className="font-mono text-xs">{item.itemCode}</TableCell>
                       <TableCell className="max-w-[300px] truncate">
+                        <ItemThumb attachmentId={itemImages.get(item.id)} name={item.itemName} />
                         {item.itemName}
                         {item.status === "Inactive" && <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-normal text-muted-foreground">已停用</span>}
                         {item.isVirtual && <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700 align-middle">虛擬服務</span>}
@@ -349,11 +352,21 @@ export default function ItemsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle className="flex items-center gap-2"><Package size={18} />{detailItem?.itemName}</DialogTitle></DialogHeader>
+      {/* 品項內容：外框用全系統共用的單據視窗 */}
+      <DocWindow
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        name={detailItem?.itemName ? `品項：${detailItem.itemName}` : "品項"} layoutKey="品項"
+        number={detailItem?.itemCode}
+        status={detailItem?.status === "Inactive" ? <DocStatus label="已停用" tone="outline" /> : undefined}
+        footer={<>
+            <Button variant="outline" onClick={() => setDetailOpen(false)}>關閉</Button>
+            <Button onClick={() => { setDetailOpen(false); openEdit(detailItem); }}>編輯</Button>
+        </>}
+      >
           {detailItem && (
             <div className="space-y-4">
+              <ItemImageEditor itemId={detailItem.id} name={detailItem.itemName} attachmentId={itemImages.get(detailItem.id)} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><Label className="text-muted-foreground text-xs">品項編碼</Label><div className="font-mono">{detailItem.itemCode}</div></div>
                 <div><Label className="text-muted-foreground text-xs">品項類型</Label><div>{detailItem.itemType ? <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[detailItem.itemType] || ""}`}>{detailItem.itemType}</span> : "-"}</div></div>
@@ -404,16 +417,21 @@ export default function ItemsPage() {
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailOpen(false)}>關閉</Button>
-            <Button onClick={() => { setDetailOpen(false); openEdit(detailItem); }}>編輯</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "編輯品項" : "新增品項"}</DialogTitle></DialogHeader>
+      {/* 新增／編輯品項 */}
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name={editing ? "編輯品項" : "新增品項"}
+        number={editing?.itemCode}
+        footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
+              {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
+            </Button>
+        </>}
+      >
           <Tabs defaultValue="basic">
             <TabsList className="w-full">
               <TabsTrigger value="basic" className="flex-1">基本資訊</TabsTrigger>
@@ -504,14 +522,7 @@ export default function ItemsPage() {
               </div>
             </TabsContent>
           </Tabs>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
-              {createMut.isPending || updateMut.isPending ? "處理中..." : editing ? "更新" : "建立"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

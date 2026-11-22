@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, FileText, Calendar, Building2, FolderKanban, Truck, Coins, Phone, Mail, User, Hash, PackageCheck, Plus } from "lucide-react";
+import { ArrowLeft, FileText, Calendar, Building2, FolderKanban, Truck, Coins, Phone, Mail, User, Hash, PackageCheck, Plus, Warehouse } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 
@@ -179,7 +179,7 @@ export default function PurchaseOrderDetail() {
 
       {order.extraFields?.legacy === true && (
         <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          這是從舊系統 Ecount 搬過來的歷史採購單（原單號 {order.extraFields.legacyDocNumber || "—"}{order.extraFields.legacyStaff ? `・承辦人 ${order.extraFields.legacyStaff}` : ""}{order.extraFields.legacyNote ? `・${order.extraFields.legacyNote}` : ""}）。可以按「編輯」補專案、部門、到貨日、標題與備註；供應商、品項、金額不能改。
+          這是從舊系統 Ecount 搬過來的歷史採購單（原單號 {order.extraFields.legacyDocNumber || "—"}{order.extraFields.legacyStaff ? `・承辦人 ${order.extraFields.legacyStaff}` : ""}{order.extraFields.legacyNote ? `・${order.extraFields.legacyNote}` : ""}）。可以按「編輯」補專案、部門、承辦人、收貨倉庫、交付日期、標題與備註；供應商、品項、金額不能改。
           舊系統的採購單和進貨單沒有互相連結，所以這裡看不到收貨進度；進貨紀錄請到進貨單查。
           {order.extraFields.legacyTitle && <div className="mt-1">標題：{order.extraFields.legacyTitle}</div>}
           {order.extraFields.legacyRemarks && <div className="mt-1 whitespace-pre-wrap">備註：{order.extraFields.legacyRemarks}</div>}
@@ -190,8 +190,15 @@ export default function PurchaseOrderDetail() {
         <InfoCard icon={FileText} label="採購單號" value={order.orderNumber} />
         <InfoCard icon={Calendar} label="訂單日期" value={order.orderDate} />
         <InfoCard icon={Truck} label="供應商" value={order.supplierName} />
-        <InfoCard icon={Calendar} label="預計到貨日" value={order.expectedDate} />
+        <InfoCard icon={Calendar} label="交付日期" value={order.expectedDate} />
       </div>
+
+      {(order.handlerName || order.warehouseName) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <InfoCard icon={User} label="承辦人" value={order.handlerName} />
+          <InfoCard icon={Warehouse} label="收貨倉庫" value={order.warehouseName} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <InfoCard icon={Building2} label="部門" value={deptName} />

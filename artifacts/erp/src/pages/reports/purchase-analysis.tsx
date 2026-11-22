@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { ReportHeader } from "@/components/shared/report-header";
 import { fmtMoney } from "@/lib/report-format";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
@@ -11,8 +11,11 @@ import { ExportMenu } from "@/components/shared/export-menu";
 import { MobileCard, MobileCardHeader, MobileCardGrid, MobileCardItem } from "@/components/shared/mobile-card";
 import type { ExportOptions } from "@/lib/export-utils";
 import type { PurchaseAnalysisData } from "./types";
+import { DrillAmount } from "@/components/shared/account-drill";
+import { DocListDrillDialog, type DocListTarget } from "@/components/shared/doc-list-drill";
 
 interface PurchaseRow {
+  id?: number;
   name?: string;
   month?: string;
   itemName?: string;
@@ -30,6 +33,7 @@ export default function PurchaseAnalysisPage() {
   const [groupBy, setGroupBy] = useState("supplier");
   const [data, setData] = useState<PurchaseAnalysisData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
 
   const fetchReport = async () => {
     setLoading(true);
@@ -47,6 +51,17 @@ export default function PurchaseAnalysisPage() {
   useEffect(() => { fetchReport(); }, [reloadKey]);
 
   const fmt = (n: number) => fmtMoney(n);
+  // 點數字看算進去的單：條件用「查出這份報表時」的期間和分組（data 裡的），不是畫面上還沒按查詢的選項
+  const drill = (n: number | undefined, shown: ReactNode, r?: PurchaseRow, label?: string) => {
+    if (!data || !n) return shown;
+    const dim = data.dimension;
+    if (r && (dim === "supplier" ? r.id : dim === "month" ? r.month : r.itemName) === undefined) return shown;
+    return (
+      <DrillAmount onClick={() => setDocs({ kind: "purchase-orders", title: r ? (label || "未指定") : "全部採購單", startDate: data.startDate || undefined, endDate: data.endDate || undefined, ...(r ? (dim === "supplier" ? { supplierId: r.id } : dim === "month" ? { month: r.month } : { itemName: r.itemName }) : {}) })}>
+        {shown}
+      </DrillAmount>
+    );
+  };
 
   const buildExport = (): ExportOptions => {
     if (groupBy === "supplier") {
@@ -97,13 +112,13 @@ export default function PurchaseAnalysisPage() {
             <Card>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"><ShoppingBag className="h-5 w-5 text-orange-600" /></div>
-                <div><div className="text-sm text-gray-500">採購單數</div><div className="text-2xl font-bold">{data.totalOrders}</div></div>
+                <div><div className="text-sm text-gray-500">採購單數</div><div className="text-2xl font-bold">{drill(data.totalOrders, data.totalOrders)}</div></div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="flex items-center gap-4 py-4">
                 <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center"><DollarSign className="h-5 w-5 text-red-600" /></div>
-                <div><div className="text-sm text-gray-500">採購總額</div><div className="text-2xl font-bold text-red-600">{fmt(data.totalAmount)}</div></div>
+                <div><div className="text-sm text-gray-500">採購總額</div><div className="text-2xl font-bold text-red-600">{drill(data.totalAmount, fmt(data.totalAmount))}</div></div>
               </CardContent>
             </Card>
           </div>
@@ -121,12 +136,12 @@ export default function PurchaseAnalysisPage() {
                     <MobileCard key={idx}>
                       <MobileCardHeader 
                         title={label}
-                        value={fmt(r.totalAmount)}
+                        value={drill(r.totalAmount, fmt(r.totalAmount), r, label)}
                         titleClass="text-gray-900"
                         valueClass="text-red-700 font-mono"
                       />
                       <MobileCardGrid>
-                        <MobileCardItem label={groupBy === "item" ? "數量" : "訂單數"} value={count} valueClass="font-mono text-gray-600" />
+                        <MobileCardItem label={groupBy === "item" ? "數量" : "訂單數"} value={drill(count, count, r, label)} valueClass="font-mono text-gray-600" />
                         <MobileCardItem label="佔比" value={`${pct}%`} valueClass="font-mono text-gray-500" />
                       </MobileCardGrid>
                     </MobileCard>
@@ -154,8 +169,8 @@ export default function PurchaseAnalysisPage() {
                       return (
                         <tr key={idx} className="border-b hover:bg-gray-50">
                           <td className="px-4 py-2 font-medium">{label}</td>
-                          <td className="px-4 py-2 text-right">{count}</td>
-                          <td className="px-4 py-2 text-right font-mono">{fmt(r.totalAmount)}</td>
+                          <td className="px-4 py-2 text-right">{drill(count, count, r, label)}</td>
+                          <td className="px-4 py-2 text-right font-mono">{drill(r.totalAmount, fmt(r.totalAmount), r, label)}</td>
                           <td className="px-4 py-2 text-right text-gray-500">{pct}%</td>
                         </tr>
                       );
@@ -170,6 +185,7 @@ export default function PurchaseAnalysisPage() {
       )}
 
       {!data && !loading && <Card><CardContent className="py-12 text-center text-gray-400">點擊查詢以產生採購分析</CardContent></Card>}
+      <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
     </div>
   );
 }

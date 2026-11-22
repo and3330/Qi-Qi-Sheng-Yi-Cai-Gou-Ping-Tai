@@ -7,11 +7,13 @@ router.use(apiKeyAuth);
 
 router.get("/info", (req, res) => {
   const apiKey = (req as any).apiKey;
+  const user = req.session?.user;
   res.json({
     message: "API 連線成功",
     keyName: apiKey?.keyName,
     projectId: apiKey?.projectId,
-    permissions: apiKey?.permissions,
+    // 金鑰沒有自己的權限：能做什麼完全跟著這個使用者目前的角色
+    actingAs: user ? { id: user.id, username: user.username, displayName: user.displayName, role: user.role } : null,
   });
 });
 

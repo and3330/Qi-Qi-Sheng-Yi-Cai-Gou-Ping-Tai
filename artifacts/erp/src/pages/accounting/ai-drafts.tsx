@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { aiDraftsApi, aiCustomerDraftsApi, type AiDraftStatus } from "@/lib/api";
@@ -289,16 +289,30 @@ export default function AiDraftsPage() {
         </ul>
       )}
 
-      <Dialog open={!!action} onOpenChange={(o) => { if (!o && !mutation.isPending) setAction(null); }}>
-        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+      {/* 確認／駁回 AI 草稿：標題會跟著動作變，所以版面固定存在「AI 草稿確認」底下 */}
+      <DocWindow
+        open={!!action}
+        onClose={() => { if (!mutation.isPending) setAction(null); }}
+        name={action ? (action.kind === "confirm" ? confirmLabel(action.draft.kind) : "駁回 AI 草稿") : "AI 草稿確認"}
+        layoutKey="AI 草稿確認"
+        number={action ? `${docLabel(action.draft.docType)} #${action.draft.id}` : undefined}
+        description={action ? (action.draft.summary || "（無摘要）") : undefined}
+        footer={action && (
+          <>
+            <Button variant="outline" onClick={() => setAction(null)} disabled={mutation.isPending}>取消</Button>
+            <Button
+              variant={action.kind === "reject" ? "destructive" : "default"}
+              disabled={mutation.isPending}
+              onClick={() => { if (!mutation.isPending) mutation.mutate({ kind: action.kind, id: action.draft.id, draftKind: action.draft.kind }); }}
+            >
+              {mutation.isPending && <Loader2 size={14} className="mr-1.5 animate-spin" aria-hidden="true" />}
+              {action.kind === "confirm" ? confirmLabel(action.draft.kind) : "確認駁回"}
+            </Button>
+          </>
+        )}
+      >
           {action && (
             <>
-              <DialogHeader>
-                <DialogTitle>{action.kind === "confirm" ? confirmLabel(action.draft.kind) : "駁回 AI 草稿"}</DialogTitle>
-                <DialogDescription>
-                  {docLabel(action.draft.docType)} #{action.draft.id}：{action.draft.summary || "（無摘要）"}
-                </DialogDescription>
-              </DialogHeader>
               {action.kind === "confirm" ? (
                 <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-900 p-3 text-sm flex gap-2" role="note">
                   <AlertTriangle size={18} className="shrink-0 mt-0.5" aria-hidden="true" />
@@ -313,21 +327,9 @@ export default function AiDraftsPage() {
               <div className="border rounded-md p-3">
                 <PayloadView payload={action.draft.payload} />
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAction(null)} disabled={mutation.isPending}>取消</Button>
-                <Button
-                  variant={action.kind === "reject" ? "destructive" : "default"}
-                  disabled={mutation.isPending}
-                  onClick={() => { if (!mutation.isPending) mutation.mutate({ kind: action.kind, id: action.draft.id, draftKind: action.draft.kind }); }}
-                >
-                  {mutation.isPending && <Loader2 size={14} className="mr-1.5 animate-spin" aria-hidden="true" />}
-                  {action.kind === "confirm" ? confirmLabel(action.draft.kind) : "確認駁回"}
-                </Button>
-              </DialogFooter>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

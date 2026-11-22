@@ -1,4 +1,5 @@
 import { useState, Fragment } from "react";
+import { selectableDepartments, departmentLabel } from "@/lib/select-options";
 import { useListDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment, useListEmployees } from "@workspace/erp-api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Users, Building2, Power, PowerOff, TrendingUp } from "lucide-react";
 import { useLocation } from "wouter";
@@ -89,6 +90,7 @@ export default function DepartmentsPage() {
     refetch();
   };
 
+  const editingDept: any = editingId ? (departments || []).find(d => d.id === editingId) : null;
   const visibleDepts = (departments || []).filter((d: any) => showInactive || d.isActive !== false);
   const topLevel = visibleDepts.filter((d: any) => !d.parentId);
   const getChildren = (parentId: number) => visibleDepts.filter((d: any) => d.parentId === parentId);
@@ -156,7 +158,7 @@ export default function DepartmentsPage() {
                   <>
                     {topLevel.map(d => (
                       <Fragment key={d.id}>
-                        <tr className="border-b hover:bg-gray-50 bg-blue-50/30">
+                        <tr className="border-b hover:bg-gray-50 bg-blue-50/30 cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; openEdit(d); }}>
                           <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(d.id)} onChange={() => batch.toggle(d.id)} /></td>
                           <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-2">
@@ -182,7 +184,7 @@ export default function DepartmentsPage() {
                           </td>
                         </tr>
                         {getChildren(d.id).map(child => (
-                          <tr key={child.id} className="border-b hover:bg-gray-50">
+                          <tr key={child.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; openEdit(child); }}>
                             <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(child.id)} onChange={() => batch.toggle(child.id)} /></td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2 pl-6">
@@ -212,7 +214,7 @@ export default function DepartmentsPage() {
                       </Fragment>
                     ))}
                     {departments.filter(d => d.parentId && !departments.some(p => p.id === d.parentId && !p.parentId)).length > 0 && departments.filter(d => d.parentId && !topLevel.some(p => p.id === d.parentId)).map(d => (
-                      <tr key={d.id} className="border-b hover:bg-gray-50">
+                      <tr key={d.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; openEdit(d); }}>
                         <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(d.id)} onChange={() => batch.toggle(d.id)} /></td>
                         <td className="px-4 py-3 font-medium">{d.name}</td>
                         <td className="px-4 py-3 hidden sm:table-cell">{d.description || "-"}</td>
@@ -237,11 +239,17 @@ export default function DepartmentsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingId ? "編輯部門" : "新增部門"}</DialogTitle>
-          </DialogHeader>
+      <DocWindow
+        open={showDialog}
+        onClose={() => setShowDialog(false)}
+        name={editingId ? "部門" : "新增部門"}
+        number={editingDept?.costCenter}
+        status={editingDept ? <DocStatus label={editingDept.isActive === false ? "已停用" : "啟用中"} tone={editingDept.isActive === false ? "secondary" : "default"} /> : undefined}
+        footer={<>
+          <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
+          <Button onClick={handleSave}>{editingId ? "更新" : "建立"}</Button>
+        </>}
+      >
           <div className="grid gap-4">
             <div><Label>部門名稱 *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div><Label>說明</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
@@ -253,7 +261,7 @@ export default function DepartmentsPage() {
                   onValueChange={parentId => setForm(f => ({ ...f, parentId }))}
                   options={[
                     { value: "", label: "無" },
-                    ...(departments || []).filter(d => d.id !== editingId).map(d => ({ value: String(d.id), label: d.name })),
+                    ...selectableDepartments(departments, form.parentId).filter(d => d.id !== editingId).map(d => ({ value: String(d.id), label: departmentLabel(d) })),
                   ]}
                   searchPlaceholder="搜尋部門..."
                   emptyText="找不到部門"
@@ -286,12 +294,7 @@ export default function DepartmentsPage() {
               <span className="text-xs text-muted-foreground ml-2">停用後不會出現在新增表單下拉選單，但會計報表仍可看到歷史數據</span>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
-            <Button onClick={handleSave}>{editingId ? "更新" : "建立"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

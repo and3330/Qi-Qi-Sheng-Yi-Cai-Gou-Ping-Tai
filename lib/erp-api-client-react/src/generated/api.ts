@@ -57,10 +57,12 @@ import type {
   EcpayInvoiceAllowanceInput,
   EcpayInvoiceAllowanceResult,
   EcpayInvoiceIssueInput,
+  EcpayPrintOptions,
   EcpayVoidInput,
   Employee,
   EnrollRecoveryEmailBody,
   ForgotPasswordBody,
+  GetEcpayInvoicePrint200,
   GetRecentActivityParams,
   GetRecoveryEmail200,
   HealthStatus,
@@ -12265,6 +12267,256 @@ export const useDeleteInvoice = <
   TContext
 > => {
   return useMutation(getDeleteInvoiceMutationOptions(options), queryClient);
+};
+
+export const getGetEcpayInvoicePrintUrl = (id: number) => {
+  return `/api/invoices/${id}/ecpay-print`;
+};
+
+/**
+ * @summary Get an official ECPay print URL without issuing an invoice
+ */
+export const getEcpayInvoicePrint = async (
+  id: number,
+  ecpayPrintOptions?: EcpayPrintOptions,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<GetEcpayInvoicePrint200> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<GetEcpayInvoicePrint200>(getGetEcpayInvoicePrintUrl(id), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(ecpayPrintOptions),
+  });
+};
+
+export const getGetEcpayInvoicePrintMutationKey = () =>
+  ["getEcpayInvoicePrint"] as const;
+
+export const getGetEcpayInvoicePrintMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof getEcpayInvoicePrint>>,
+    TError,
+    GetEcpayInvoicePrintMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof getEcpayInvoicePrint>>,
+  TError,
+  GetEcpayInvoicePrintMutationVariables,
+  TContext
+> => {
+  const mutationKey = getGetEcpayInvoicePrintMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof getEcpayInvoicePrint>>,
+    GetEcpayInvoicePrintMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return getEcpayInvoicePrint(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GetEcpayInvoicePrintMutationResult = NonNullable<
+  Awaited<ReturnType<typeof getEcpayInvoicePrint>>
+>;
+export type GetEcpayInvoicePrintMutationBody =
+  BodyType<EcpayPrintOptions> | undefined;
+export type GetEcpayInvoicePrintMutationError = ErrorType<void>;
+export type GetEcpayInvoicePrintMutationVariables = {
+  id: number;
+  data?: BodyType<EcpayPrintOptions>;
+};
+
+/**
+ * @summary Get an official ECPay print URL without issuing an invoice
+ */
+export const useGetEcpayInvoicePrint = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof getEcpayInvoicePrint>>,
+      TError,
+      GetEcpayInvoicePrintMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof getEcpayInvoicePrint>>,
+  TError,
+  GetEcpayInvoicePrintMutationVariables,
+  TContext
+> => {
+  return useMutation(
+    getGetEcpayInvoicePrintMutationOptions(options),
+    queryClient,
+  );
+};
+
+export const getDownloadEcpayInvoicePdfUrl = (id: number) => {
+  return `/api/invoices/${id}/ecpay-pdf`;
+};
+
+/**
+ * @summary Download the official ECPay print page as PDF without issuing an invoice
+ */
+export const downloadEcpayInvoicePdf = async (
+  id: number,
+  ecpayPrintOptions?: EcpayPrintOptions,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<Blob> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<
+      string | readonly string[] | undefined
+    >(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<Blob>(getDownloadEcpayInvoicePdfUrl(id), {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(options?.headers),
+    },
+    body: JSON.stringify(ecpayPrintOptions),
+  });
+};
+
+export const getDownloadEcpayInvoicePdfMutationKey = () =>
+  ["downloadEcpayInvoicePdf"] as const;
+
+export const getDownloadEcpayInvoicePdfMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof downloadEcpayInvoicePdf>>,
+    TError,
+    DownloadEcpayInvoicePdfMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof downloadEcpayInvoicePdf>>,
+  TError,
+  DownloadEcpayInvoicePdfMutationVariables,
+  TContext
+> => {
+  const mutationKey = getDownloadEcpayInvoicePdfMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof downloadEcpayInvoicePdf>>,
+    DownloadEcpayInvoicePdfMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return downloadEcpayInvoicePdf(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DownloadEcpayInvoicePdfMutationResult = NonNullable<
+  Awaited<ReturnType<typeof downloadEcpayInvoicePdf>>
+>;
+export type DownloadEcpayInvoicePdfMutationBody =
+  BodyType<EcpayPrintOptions> | undefined;
+export type DownloadEcpayInvoicePdfMutationError = ErrorType<void>;
+export type DownloadEcpayInvoicePdfMutationVariables = {
+  id: number;
+  data?: BodyType<EcpayPrintOptions>;
+};
+
+/**
+ * @summary Download the official ECPay print page as PDF without issuing an invoice
+ */
+export const useDownloadEcpayInvoicePdf = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof downloadEcpayInvoicePdf>>,
+      TError,
+      DownloadEcpayInvoicePdfMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof downloadEcpayInvoicePdf>>,
+  TError,
+  DownloadEcpayInvoicePdfMutationVariables,
+  TContext
+> => {
+  return useMutation(
+    getDownloadEcpayInvoicePdfMutationOptions(options),
+    queryClient,
+  );
 };
 
 export const getSyncEcpayInvoiceUrl = (id: number) => {

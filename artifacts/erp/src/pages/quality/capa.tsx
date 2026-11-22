@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus, DocFields, DocNote, statusTone } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Eye, Search } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -95,10 +95,14 @@ export default function CapaPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input className="pl-9" placeholder="搜尋..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" />新增 CAPA</Button></DialogTrigger>
-          <DialogContent className="md:max-w-lg max-h-[85dvh] overflow-y-auto">
-            <DialogHeader><DialogTitle>新增 CAPA</DialogTitle></DialogHeader>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增 CAPA</Button>
+        <DocWindow
+          open={open} onClose={() => setOpen(false)} name="新增 CAPA"
+          footer={<>
+            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+            <Button onClick={handleCreate} disabled={!form.title || !form.description}>建立</Button>
+          </>}
+        >
             <div className="space-y-4">
               <div><label className="text-sm font-medium">標題 *</label><Input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} /></div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -122,12 +126,7 @@ export default function CapaPage() {
               <div><label className="text-sm font-medium">描述 *</label><textarea className="w-full border rounded-md px-3 py-2 text-sm min-h-[80px]" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></div>
               <div><label className="text-sm font-medium">負責人</label><MasterLookup source="employees" valueKey="name" value={form.assignedTo} onValueChange={v => setForm(p => ({ ...p, assignedTo: v }))} placeholder="選擇員工" /></div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-              <Button onClick={handleCreate} disabled={!form.title || !form.description}>建立</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </DocWindow>
       </div>
 
       <Card>
@@ -148,8 +147,8 @@ export default function CapaPage() {
               {loading ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">載入中...</td></tr>
               : filtered.length === 0 ? <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
               : filtered.map(c => (
-                <tr key={c.id} className="border-b hover:bg-gray-50">
-                  <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(c.id)} onChange={() => batch.toggle(c.id)} /></td>
+                <tr key={c.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={e => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(c.id); }} data-testid={`capa-row-${c.id}`}>
+                  <td className="px-2" onClick={e => e.stopPropagation()}><CheckboxCell checked={batch.selectedIds.has(c.id)} onChange={() => batch.toggle(c.id)} /></td>
                   <td className="px-4 py-2 font-mono">{c.capaNumber}</td>
                   <td className="px-4 py-2">{c.title}</td>
                   <td className="px-4 py-2 text-center"><Badge variant="outline">{typeMap[c.type]}</Badge></td>
@@ -165,33 +164,34 @@ export default function CapaPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!detail} onOpenChange={v => { if (!v) setDetail(null); }}>
-        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>CAPA - {detail?.capaNumber}</DialogTitle></DialogHeader>
-          {detail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div><span className="text-gray-500">標題：</span>{detail.title}</div>
-                <div><span className="text-gray-500">類型：</span><Badge variant="outline">{typeMap[detail.type]}</Badge></div>
-                <div><span className="text-gray-500">狀態：</span><Badge variant={statusColor(detail.status)}>{statusMap[detail.status]}</Badge></div>
-                <div><span className="text-gray-500">優先順序：</span>{priorityMap[detail.priority]}</div>
-                <div><span className="text-gray-500">負責人：</span>{detail.assignedTo || "-"}</div>
-                <div><span className="text-gray-500">到期日：</span>{detail.dueDate || "-"}</div>
-                <div><span className="text-gray-500">完成日期：</span>{detail.completedDate || "-"}</div>
-                {detail.ncrNumber && <div><span className="text-gray-500">NCR：</span>{detail.ncrNumber}</div>}
-              </div>
-              <div><h4 className="text-sm font-semibold">描述</h4><p className="text-sm text-gray-700 whitespace-pre-wrap">{detail.description}</p></div>
-              {detail.verificationResult && <div><h4 className="text-sm font-semibold">驗證結果</h4><p className="text-sm text-gray-700 whitespace-pre-wrap">{detail.verificationResult}</p></div>}
-              <div className="flex gap-2 justify-end">
-                {detail.status === "Open" && <Button onClick={() => updateStatus(detail.id, "In Progress")}>開始執行</Button>}
-                {detail.status === "In Progress" && <Button onClick={() => updateStatus(detail.id, "Pending Verification")}>提交驗證</Button>}
-                {detail.status === "Pending Verification" && <Button onClick={() => updateStatus(detail.id, "Closed")}>驗證通過結案</Button>}
-                {(detail.status === "Open" || detail.status === "In Progress") && <Button variant="destructive" onClick={() => updateStatus(detail.id, "Cancelled")}>取消</Button>}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <DocWindow
+        open={!!detail} onClose={() => setDetail(null)}
+        name="CAPA" number={detail?.capaNumber}
+        status={detail ? <DocStatus label={statusMap[detail.status] || detail.status} tone={statusTone(detail.status)} /> : undefined}
+        footer={detail && <>
+          {(detail.status === "Open" || detail.status === "In Progress") && <Button variant="destructive" className="mr-auto" onClick={() => updateStatus(detail.id, "Cancelled")}>取消</Button>}
+          <Button variant="outline" onClick={() => setDetail(null)}>關閉</Button>
+          {detail.status === "Open" && <Button onClick={() => updateStatus(detail.id, "In Progress")}>開始執行</Button>}
+          {detail.status === "In Progress" && <Button onClick={() => updateStatus(detail.id, "Pending Verification")}>提交驗證</Button>}
+          {detail.status === "Pending Verification" && <Button onClick={() => updateStatus(detail.id, "Closed")}>驗證通過結案</Button>}
+        </>}
+      >
+        {detail && (
+          <>
+            <DocFields items={[
+              ["標題", detail.title],
+              ["類型", <Badge variant="outline">{typeMap[detail.type]}</Badge>],
+              ["優先順序", priorityMap[detail.priority]],
+              ["負責人", detail.assignedTo || "-"],
+              ["到期日", detail.dueDate || "-"],
+              ["完成日期", detail.completedDate || "-"],
+              ["NCR", detail.ncrNumber],
+            ]} />
+            <DocNote label="描述">{detail.description}</DocNote>
+            <DocNote label="驗證結果">{detail.verificationResult}</DocNote>
+          </>
+        )}
+      </DocWindow>
     </div>
   );
 }

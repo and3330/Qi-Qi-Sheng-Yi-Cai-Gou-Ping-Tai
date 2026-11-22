@@ -6,7 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { call, money, post } from "@/lib/call";
-import { Plus } from "lucide-react";
+import { Plus, HandCoins } from "lucide-react";
+import { ReceiptRequestBadge, ReceiptRequestForm, ReceiptRequestWindow, type ReceiptRequest } from "@/components/accounting/receipt-request-doc";
 import { PaymentRequestForm, PaymentRequestView, RequestStatusBadge, approvalSteps, payeesText, type RequestDoc } from "@/components/accounting/payment-request-doc";
 
 /**
@@ -21,6 +22,10 @@ export default function MyRequestsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [viewing, setViewing] = useState<RequestDoc | null>(null);
+  // 收款申請：收到客戶的錢，送財務確認（老闆 2026-11-18）
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [viewingReceipt, setViewingReceipt] = useState<ReceiptRequest | null>(null);
+  const { data: receipts = [] } = useQuery({ queryKey: ["/my-receipt-requests"], queryFn: () => call<ReceiptRequest[]>("my-receipt-requests") });
 
   const { data: requests, isLoading } = useQuery({ queryKey: ["/my-requests"], queryFn: () => call<RequestDoc[]>("my-requests") });
 
@@ -40,8 +45,11 @@ export default function MyRequestsPage() {
   const waiting = list.filter(r => r.status === "Pending" || r.status === "Approved");
   return (
     <div className="space-y-4 md:space-y-6">
-      <PageHeader title="我的申請" description="請款、付款申請從這裡送出。送出後由主管與財務審批，這裡可以看進度。"
-        action={<Button onClick={() => setOpen(true)} data-testid="button-new-request"><Plus className="h-4 w-4 mr-1" />新增申請</Button>} />
+      <PageHeader title="我的申請" description="請款、付款申請，以及收到客戶款項的收款申請，都從這裡送出。送出後由主管與財務審批，這裡可以看進度。"
+        action={<div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setReceiptOpen(true)} data-testid="button-new-receipt-request"><HandCoins className="h-4 w-4 mr-1" />收款申請</Button>
+          <Button onClick={() => setOpen(true)} data-testid="button-new-request"><Plus className="h-4 w-4 mr-1" />新增申請</Button>
+        </div>} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">處理中</p><p className="text-2xl font-semibold tabular-nums">{waiting.length} 張</p><p className="text-xs text-muted-foreground">{money(waiting.reduce((s, r) => s + r.amount, 0))}</p></CardContent></Card>
@@ -71,6 +79,30 @@ export default function MyRequestsPage() {
           ))}
         </div>
       )}
+
+      {receipts.length > 0 && (
+        <div className="space-y-3" data-testid="receipt-requests">
+          <h2 className="text-sm font-semibold text-muted-foreground">收款申請</h2>
+          {receipts.map(r => (
+            <button key={r.id} type="button" onClick={() => setViewingReceipt(r)} className="block w-full rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 active:bg-muted/60" data-testid={`card-receipt-request-${r.id}`}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">收款：{r.customerName ?? "客戶"}</p>
+                  <p className="text-xs text-muted-foreground">{r.requestNumber}・{r.voucherDate ?? ""}{r.orders.length ? `・${r.orders.join("、")}` : ""}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold tabular-nums">{money(r.amount)}</p>
+                  <span className="mt-1 inline-block"><ReceiptRequestBadge status={r.status} /></span>
+                </div>
+              </div>
+              {r.status === "Rejected" && r.decisionNote && <p className="mt-1 text-xs text-destructive">退回原因：{r.decisionNote}</p>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <ReceiptRequestForm open={receiptOpen} onOpenChange={setReceiptOpen} onCreated={() => queryClient.invalidateQueries({ queryKey: ["/my-receipt-requests"] })} />
+      <ReceiptRequestWindow request={viewingReceipt} onClose={() => setViewingReceipt(null)} />
 
       <PaymentRequestForm open={open} onOpenChange={setOpen} onCreated={() => queryClient.invalidateQueries({ queryKey: ["/my-requests"] })} />
 

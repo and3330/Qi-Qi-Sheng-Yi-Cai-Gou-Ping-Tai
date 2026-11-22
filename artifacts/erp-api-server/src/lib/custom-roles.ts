@@ -1,6 +1,8 @@
 import { eq, like } from "drizzle-orm";
 import { db } from "@workspace/erp-db";
 import { menuPermissionsTable } from "@workspace/erp-db/schema";
+import { FOUNDATION_PATHS, MODULE_API_MAP } from "../middleware/module-guard";
+import { FULL_ACCESS_ROLES, cleanPermissions, defaultRolePermissions, isEditableBuiltinRole, withInvoicePermissions, type RolePermissions } from "./role-defaults";
 
 /**
  * 自訂角色。
@@ -20,7 +22,17 @@ export const PERMISSION_ACTIONS = ["view", "create", "edit", "delete"] as const;
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 
 /** 可以當作基礎的內建角色（擁有者、管理員擁有全部權限，不能拿來做受限角色） */
-export const BASE_ROLES = ["manager", "hr_admin", "finance_admin", "accountant", "viewer"] as const;
+export const BASE_ROLES = ["manager", "hr_admin", "finance_admin", "accountant", "sales", "warehouse", "viewer"] as const;
+
+/**
+ * 內建角色（財務長、會計、主管、業務、倉管、人資、一般職員）也有一張勾選表：
+ * 沒改過就用 role-defaults.ts 的預設；改過的存在同一張表，path 是 "@role/builtin-<角色>"，
+ * 讀自訂角色時會跳過這些列。
+ */
+export const BUILTIN_ROW_ID_PREFIX = "builtin-";
+const SELF_SERVICE_MENU_PATHS = ["/hr/me", "/hr/my-requests", "/hr/clock-in", "/hr/leaves", "/hr/timesheets", "/ai/chat", "/ai/assistant"];
+/** 所有可以勾選的功能頁 */
+export const ALL_MENU_PATHS: readonly string[] = [...new Set([...Object.keys(MODULE_API_MAP), ...FOUNDATION_PATHS, ...SELF_SERVICE_MENU_PATHS])];
 
 export interface CustomRole {
   id: string;
@@ -36,6 +48,7 @@ export interface CustomRole {
 export const isRoleRow = (path: string) => path.startsWith(ROLE_ROW_PREFIX);
 
 function parseRow(row: { path: string; roles: string[] | null }): CustomRole | null {
+  if (row.path.startsWith(ROLE_ROW_PREFIX + BUILTIN_ROW_ID_PREFIX)) return null;
   try {
     const data = JSON.parse(row.roles?.[0] || "");
     if (!data || typeof data.name !== "string") return null;
@@ -48,7 +61,7 @@ function parseRow(row: { path: string; roles: string[] | null }): CustomRole | n
       name: data.name,
       description: typeof data.description === "string" ? data.description : "",
       baseRole: (BASE_ROLES as readonly string[]).includes(data.baseRole) ? data.baseRole : "viewer",
-      permissions,
+      permissions: withInvoicePermissions(data.baseRole, permissions),
       userIds: Array.isArray(data.userIds) ? data.userIds.map(Number).filter((n: number) => Number.isInteger(n) && n > 0) : [],
     };
   } catch {
@@ -79,6 +92,10 @@ export async function customRoleForUser(tenantId: number, userId: number): Promi
   return roles.find((r) => r.userIds.includes(userId)) || null;
 }
 
+/** 全部權限的角色與員工自助帳號不套用自訂角色（名單上有殘留也不算） */
+export const customRoleApplies = (accountRole: string | undefined): boolean =>
+  !!accountRole && !FULL_ACCESS_ROLES.includes(accountRole) && accountRole !== "employee";
+
 export async function saveCustomRole(tenantId: number, role: CustomRole, executor: any = db): Promise<void> {
   const { id, ...data } = role;
   const path = ROLE_ROW_PREFIX + id;
@@ -93,8 +110,62 @@ export async function deleteCustomRole(tenantId: number, id: string, executor: a
   invalidateCustomRoles(tenantId);
 }
 
+/**
+ * 帳號的角色被改掉或帳號被刪除時，把他從自訂角色移出。
+ * 套用自訂角色的人，帳號角色一定等於那個自訂角色的基礎角色；改成別的角色就不再屬於它，
+ * 不然同一個人會同時掛在兩種身分底下（例如帳號是系統管理員，名單上卻還在受限角色裡）。
+ * keepBaseRole：新角色剛好等於基礎角色的自訂角色保留。
+ */
+export async function removeUserFromCustomRoles(tenantId: number, userId: number, keepBaseRole?: string, executor: any = db): Promise<number> {
+  let removed = 0;
+  for (const role of await loadCustomRoles(tenantId, executor, true)) {
+    if (!role.userIds.includes(userId) || (keepBaseRole !== undefined && role.baseRole === keepBaseRole)) continue;
+    await saveCustomRole(tenantId, { ...role, userIds: role.userIds.filter((id) => id !== userId) }, executor);
+    removed++;
+  }
+  return removed;
+}
+
 export function newRoleId(): string {
   return "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// ───────── 內建角色的勾選表 ─────────
+const builtinCache = new Map<number, { overrides: Record<string, RolePermissions>; at: number }>();
+
+/** 這家公司改過的內建角色勾選表（沒改過的角色不會出現在裡面） */
+export async function loadBuiltinOverrides(tenantId: number, executor: any = db, fresh = false): Promise<Record<string, RolePermissions>> {
+  const hit = builtinCache.get(tenantId);
+  if (!fresh && hit && Date.now() - hit.at < CACHE_MS) return hit.overrides;
+  const rows = await executor.select().from(menuPermissionsTable).where(like(menuPermissionsTable.path, `${ROLE_ROW_PREFIX}${BUILTIN_ROW_ID_PREFIX}%`));
+  const overrides: Record<string, RolePermissions> = {};
+  for (const row of rows as { path: string; roles: string[] | null }[]) {
+    const role = row.path.slice((ROLE_ROW_PREFIX + BUILTIN_ROW_ID_PREFIX).length);
+    if (!isEditableBuiltinRole(role)) continue;
+    try { overrides[role] = withInvoicePermissions(role, cleanPermissions(JSON.parse(row.roles?.[0] || "{}").permissions, ALL_MENU_PATHS)); } catch { /* 壞掉的列當作沒改過 */ }
+  }
+  builtinCache.set(tenantId, { overrides, at: Date.now() });
+  return overrides;
+}
+
+/** 內建角色目前生效的勾選表：改過的用改過的，沒改過用預設 */
+export async function builtinRolePermissions(tenantId: number, role: string, executor: any = db): Promise<RolePermissions | null> {
+  if (!isEditableBuiltinRole(role)) return null;
+  const overrides = await loadBuiltinOverrides(tenantId, executor);
+  return overrides[role] ?? defaultRolePermissions(role, ALL_MENU_PATHS);
+}
+
+export async function saveBuiltinOverride(tenantId: number, role: string, permissions: RolePermissions, updatedBy: string, executor: any = db): Promise<void> {
+  const path = ROLE_ROW_PREFIX + BUILTIN_ROW_ID_PREFIX + role;
+  const roles = [JSON.stringify({ permissions, updatedBy, updatedAt: new Date().toISOString() })];
+  await executor.insert(menuPermissionsTable).values({ path, roles })
+    .onConflictDoUpdate({ target: [menuPermissionsTable.tenantId, menuPermissionsTable.path], set: { roles, updatedAt: new Date() } });
+  builtinCache.delete(tenantId);
+}
+
+export async function resetBuiltinOverride(tenantId: number, role: string, executor: any = db): Promise<void> {
+  await executor.delete(menuPermissionsTable).where(eq(menuPermissionsTable.path, ROLE_ROW_PREFIX + BUILTIN_ROW_ID_PREFIX + role));
+  builtinCache.delete(tenantId);
 }
 
 /** 這個角色能不能對某個功能頁做某個動作 */

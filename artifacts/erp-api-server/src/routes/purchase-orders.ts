@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
+import { looseSqlMatch } from "../lib/loose-match";
 import { nextDocNumber } from "../lib/doc-number";
 import { randomUUID } from "node:crypto";
 import { eq, and, sql } from "drizzle-orm";
-import { db, purchaseOrdersTable, suppliersTable, itemsTable, activitiesTable, notificationsTable, purchaseReceiptsTable, invoicesTable } from "@workspace/erp-db";
+import { db, purchaseOrdersTable, suppliersTable, itemsTable, activitiesTable, notificationsTable, purchaseReceiptsTable, invoicesTable, employeesTable, warehousesTable } from "@workspace/erp-db";
 import { desc } from "drizzle-orm";
 import { createApprovalRequest, approvalBlockReason } from "../utils/approval-helper";
 import {
@@ -25,6 +26,38 @@ function lineExtras(raw: any): { deliveryDate?: string; note?: string } {
   if (/^d{4}-d{2}-d{2}$/.test(d)) out.deliveryDate = d;
   const note = typeof raw?.note === "string" ? raw.note.trim().slice(0, 200) : "";
   if (note) out.note = note;
+  return out;
+}
+
+/**
+ * 承辦人（員工）與收貨倉庫：兩個都可以不填。有送才處理——正整數就檢查主檔有沒有這一筆，
+ * 空白或 null 當成清掉；格式不對或找不到就回傳錯誤訊息（字串）。
+ */
+async function readHandlerAndWarehouse(body: any): Promise<{ handlerId?: number | null; warehouseId?: number | null } | string> {
+  const optionalId = (raw: unknown): number | null | undefined => {
+    if (raw === null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isInteger(n) && n > 0 ? n : undefined;
+  };
+  const out: { handlerId?: number | null; warehouseId?: number | null } = {};
+  if (body?.handlerId !== undefined) {
+    const handlerId = optionalId(body.handlerId);
+    if (handlerId === undefined) return "承辦人格式不正確";
+    if (handlerId !== null) {
+      const [employee] = await db.select({ id: employeesTable.id }).from(employeesTable).where(eq(employeesTable.id, handlerId));
+      if (!employee) return "承辦人不存在";
+    }
+    out.handlerId = handlerId;
+  }
+  if (body?.warehouseId !== undefined) {
+    const warehouseId = optionalId(body.warehouseId);
+    if (warehouseId === undefined) return "收貨倉庫格式不正確";
+    if (warehouseId !== null) {
+      const [warehouse] = await db.select({ id: warehousesTable.id }).from(warehousesTable).where(eq(warehousesTable.id, warehouseId));
+      if (!warehouse) return "收貨倉庫不存在";
+    }
+    out.warehouseId = warehouseId;
+  }
   return out;
 }
 
@@ -78,6 +111,10 @@ router.get("/purchase-orders", async (req, res): Promise<void> => {
   const conditions = [];
   if (query.success && query.data.status) conditions.push(eq(purchaseOrdersTable.status, query.data.status));
   if (query.success && query.data.supplierId) conditions.push(eq(purchaseOrdersTable.supplierId, query.data.supplierId));
+  // 關鍵字：單號、供應商名稱／簡稱／編號；打簡稱也找得到
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const searchMatch = search ? looseSqlMatch(search, [sql`${purchaseOrdersTable.orderNumber}`, sql`${suppliersTable.name}`, sql`COALESCE(${suppliersTable.shortName}, '')`, sql`COALESCE(${suppliersTable.supplierCode}, '')`]) : undefined;
+  if (searchMatch) conditions.push(searchMatch);
 
   const orders = await db
     .select({
@@ -91,6 +128,8 @@ router.get("/purchase-orders", async (req, res): Promise<void> => {
       extraFields: purchaseOrdersTable.extraFields,
       departmentId: purchaseOrdersTable.departmentId,
       projectId: purchaseOrdersTable.projectId,
+      handlerId: purchaseOrdersTable.handlerId,
+      warehouseId: purchaseOrdersTable.warehouseId,
       createdAt: purchaseOrdersTable.createdAt,
     })
     .from(purchaseOrdersTable)
@@ -150,6 +189,9 @@ router.post("/purchase-orders", async (req, res): Promise<void> => {
   const tplErr = await validateTemplateForProject(req.body.templateId, projectId, req.body.extraFields ?? {});
   if (tplErr) { res.status(400).json({ error: tplErr }); return; }
 
+  const handlerAndWarehouse = await readHandlerAndWarehouse(req.body);
+  if (typeof handlerAndWarehouse === "string") { res.status(400).json({ error: handlerAndWarehouse }); return; }
+
   const [order] = await db.insert(purchaseOrdersTable).values({
     orderNumber: await nextDocNumber(db, "purchase_orders", "order_number", "PO", generatePONumber),
     supplierId: parsed.data.supplierId,
@@ -163,6 +205,8 @@ router.post("/purchase-orders", async (req, res): Promise<void> => {
     extraFields: req.body.extraFields || {},
     departmentId,
     projectId,
+    handlerId: handlerAndWarehouse.handlerId ?? null,
+    warehouseId: handlerAndWarehouse.warehouseId ?? null,
   }).returning();
 
   const [sup] = await db.select({ name: suppliersTable.name }).from(suppliersTable).where(eq(suppliersTable.id, parsed.data.supplierId));
@@ -223,7 +267,7 @@ router.post("/purchase-orders/legacy-import", requireRole("owner", "admin"), asy
 router.get("/purchase-orders/:id", async (req, res): Promise<void> => {
   const params = GetPurchaseOrderParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: friendlyValidationError(params.error) }); return; }
-  const [order] = await db
+  const [row] = await db
     .select({
       id: purchaseOrdersTable.id, orderNumber: purchaseOrdersTable.orderNumber,
       supplierId: purchaseOrdersTable.supplierId, supplierName: suppliersTable.name,
@@ -240,15 +284,26 @@ router.get("/purchase-orders/:id", async (req, res): Promise<void> => {
       extraFields: purchaseOrdersTable.extraFields,
       departmentId: purchaseOrdersTable.departmentId,
       projectId: purchaseOrdersTable.projectId,
+      handlerId: purchaseOrdersTable.handlerId,
+      handlerFirstName: employeesTable.firstName,
+      handlerLastName: employeesTable.lastName,
+      warehouseId: purchaseOrdersTable.warehouseId,
+      warehouseName: warehousesTable.name,
       createdAt: purchaseOrdersTable.createdAt,
     })
     .from(purchaseOrdersTable)
     .innerJoin(suppliersTable, eq(purchaseOrdersTable.supplierId, suppliersTable.id))
+    .leftJoin(employeesTable, eq(purchaseOrdersTable.handlerId, employeesTable.id))
+    .leftJoin(warehousesTable, eq(purchaseOrdersTable.warehouseId, warehousesTable.id))
     .where(eq(purchaseOrdersTable.id, params.data.id));
-  if (!order) { res.status(404).json({ error: "找不到採購訂單" }); return; }
+  if (!row) { res.status(404).json({ error: "找不到採購訂單" }); return; }
+  const { handlerFirstName, handlerLastName, ...order } = row;
+  // 承辦人姓名：中文姓名直接相連，英文姓名中間空一格（和銷貨單畫面的顯示方式一樣）
+  const handlerName = order.handlerId == null ? null
+    : `${handlerFirstName || ""}${/^[A-Za-z]/.test(handlerLastName || "") ? " " : ""}${handlerLastName || ""}`.trim() || null;
   const exRate = Number(order.exchangeRate) || 1;
   const total = Number(order.totalAmount);
-  res.json({ ...order, totalAmount: total, exchangeRate: exRate, totalAmountTWD: Math.round(total * exRate * 100) / 100 });
+  res.json({ ...order, handlerName, totalAmount: total, exchangeRate: exRate, totalAmountTWD: Math.round(total * exRate * 100) / 100 });
 });
 
 router.get("/purchase-orders/:id/receipts", async (req, res): Promise<void> => {
@@ -280,8 +335,8 @@ router.patch("/purchase-orders/:id", async (req, res): Promise<void> => {
   const [existing] = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, params.data.id));
   if (!existing) { res.status(404).json({ error: "找不到採購訂單" }); return; }
   if (isLegacyDoc(existing.extraFields)) {
-    // 歷史採購單：可以改專案、部門、預計到貨日、標題、備註；其他不能改
-    const allowed = new Set(["projectId", "departmentId", "expectedDate", "legacyTitle", "legacyRemarks"]);
+    // 歷史採購單：可以改專案、部門、承辦人、收貨倉庫、交付日期、標題、備註（都不影響帳）；其他不能改
+    const allowed = new Set(["projectId", "departmentId", "handlerId", "warehouseId", "expectedDate", "legacyTitle", "legacyRemarks"]);
     const keys = Object.keys(req.body || {});
     if (keys.length === 0 || keys.some(key => !allowed.has(key))) { res.status(400).json({ error: LEGACY_EDIT_LIMIT_MESSAGE }); return; }
     const positive = (value: unknown): number | null => (Number.isInteger(Number(value)) && Number(value) > 0 ? Number(value) : null);
@@ -291,6 +346,9 @@ router.patch("/purchase-orders/:id", async (req, res): Promise<void> => {
       set.projectId = positive(req.body.projectId);
     }
     if (req.body.departmentId !== undefined) set.departmentId = positive(req.body.departmentId);
+    const legacyHandlerAndWarehouse = await readHandlerAndWarehouse(req.body);
+    if (typeof legacyHandlerAndWarehouse === "string") { res.status(400).json({ error: legacyHandlerAndWarehouse }); return; }
+    Object.assign(set, legacyHandlerAndWarehouse);
     if (req.body.expectedDate !== undefined) set.expectedDate = /^\d{4}-\d{2}-\d{2}$/.test(String(req.body.expectedDate || "")) ? String(req.body.expectedDate) : null;
     if (req.body.legacyTitle !== undefined || req.body.legacyRemarks !== undefined) {
       const extra = { ...(existing.extraFields as Record<string, unknown>) };
@@ -315,7 +373,7 @@ router.patch("/purchase-orders/:id", async (req, res): Promise<void> => {
   }
 
   // 草稿限定的完整編輯欄位（品項與表頭）；已確認/已完成/已取消不可修改內容
-  const draftOnlyFields = ["supplierId", "orderDate", "currency", "exchangeRate", "departmentId", "projectId", "templateId", "extraFields", "items"] as const;
+  const draftOnlyFields = ["supplierId", "orderDate", "currency", "exchangeRate", "departmentId", "projectId", "handlerId", "warehouseId", "templateId", "extraFields", "items"] as const;
   const wantsContentEdit = draftOnlyFields.some(f => req.body[f] !== undefined);
   if (wantsContentEdit && existing.status !== "Draft") {
     res.status(400).json({ error: `僅草稿狀態的採購訂單可編輯內容（目前狀態：${existing.status}）` }); return;
@@ -349,6 +407,9 @@ router.patch("/purchase-orders/:id", async (req, res): Promise<void> => {
     }
     if (req.body.departmentId !== undefined) extra["departmentId"] = req.body.departmentId === null ? null : Number(req.body.departmentId);
     if (req.body.projectId !== undefined) extra["projectId"] = req.body.projectId === null ? null : Number(req.body.projectId);
+    const handlerAndWarehouse = await readHandlerAndWarehouse(req.body);
+    if (typeof handlerAndWarehouse === "string") { res.status(400).json({ error: handlerAndWarehouse }); return; }
+    Object.assign(extra, handlerAndWarehouse);
     if (req.body.items !== undefined) {
       if (!Array.isArray(req.body.items) || req.body.items.length === 0) { res.status(400).json({ error: "至少需要一個品項" }); return; }
       const orderItems = [];

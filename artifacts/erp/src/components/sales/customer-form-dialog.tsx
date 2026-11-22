@@ -43,11 +43,11 @@ export async function readJsonResponse<T>(res: Response, fallbackMessage: string
 type CustForm = {
   customerCode: string; name: string; shortName: string; email: string;
   phone: string; mobile: string; contactPerson: string; salesPerson: string;
-  address: string; city: string; country: string; taxId: string; category: string; paymentTermId: string; creditLimit: string;
+  address: string; city: string; country: string; taxId: string; category: string; paymentTermId: string; creditLimit: string; remarks: string;
 };
 const emptyForm: CustForm = {
   customerCode: "", name: "", shortName: "", email: "", phone: "", mobile: "",
-  contactPerson: "", salesPerson: "", address: "", city: "", country: "", paymentTermId: "", creditLimit: "", taxId: "", category: "一般客戶",
+  contactPerson: "", salesPerson: "", address: "", city: "", country: "", paymentTermId: "", creditLimit: "", taxId: "", category: "一般客戶", remarks: "",
 };
 
 /** 要編輯的客戶；兩個頁面拿到的資料型別不同，這裡只列表單會用到的欄位 */
@@ -91,12 +91,13 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSaved }: {
       taxId: text(c.taxId), category: text(c.category) || "一般客戶",
       paymentTermId: c.paymentTermId ? String(c.paymentTermId) : "",
       creditLimit: c.creditLimit != null && Number(c.creditLimit) > 0 ? String(Number(c.creditLimit)) : "",
+      remarks: text(c.remarks),
     });
     // 只在打開、或換了一個客戶時重設，避免清單重新整理把打到一半的內容蓋掉
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing?.id]);
 
-  const F = (key: keyof CustForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm(p => ({ ...p, [key]: e.target.value }));
+  const F = (key: keyof CustForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setForm(p => ({ ...p, [key]: e.target.value }));
 
   const done = () => {
     qc.invalidateQueries({ queryKey: ["/erp-api/customers"] });
@@ -191,6 +192,14 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSaved }: {
             <Label htmlFor="customer-credit-limit">信用額度</Label>
             <Input id="customer-credit-limit" type="number" inputMode="decimal" min="0" value={form.creditLimit} onChange={F("creditLimit")} placeholder="空白是不限" />
             <p className="mt-1 text-xs text-muted-foreground">這個客戶最多可以欠多少。欠款加上新訂單超過就不能成立訂單，老闆或財務可以個別放行。</p>
+          </div>
+          <div>
+            <Label htmlFor="customer-remarks">備註</Label>
+            <textarea
+              id="customer-remarks" rows={3} maxLength={2000} value={form.remarks} onChange={F("remarks")}
+              placeholder="例如：聯絡注意事項、開票習慣、特殊約定"
+              className="flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
           </div>
         </div>
     </DocWindow>

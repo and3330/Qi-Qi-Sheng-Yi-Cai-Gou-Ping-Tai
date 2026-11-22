@@ -1,4 +1,21 @@
 export type InvoiceType = "personal" | "company" | "donation";
+/** 小計為來源含稅金額；不可把來源未稅單價直接送往綠界。 */
+export function toTaxIncludedInvoiceItem(it: any) {
+  const count = Number(it.quantity ?? it.count ?? 1);
+  const rate = Number(it.rate ?? it.unitPrice ?? 0);
+  const amount = Number(it.amount ?? count * rate);
+  const includedPrice = count > 0 ? amount / count : rate;
+  return { name: String(it.itemName || it.name || "商品"), count, unitPrice: includedPrice, amount };
+}
+
+export function invoiceIntegerErrors(items: { count: number; unitPrice: number; amount: number }[]): string[] {
+  return items.flatMap((it, i) =>
+    !Number.isSafeInteger(it.count) || it.count <= 0 ||
+    !Number.isSafeInteger(it.unitPrice) || it.unitPrice < 0 ||
+    !Number.isSafeInteger(it.amount) || it.amount < 0 ||
+    it.count * it.unitPrice !== it.amount
+      ? [`第 ${i + 1} 項無法以整數含稅單價 × 整數數量對上小計，請核對；系統不會自動四捨五入改總額。`] : []);
+}
 export type InvoiceCarrierType = "" | "phone_barcode" | "citizen_certificate" | "ecpay_carrier";
 
 export interface EcpayInvoiceForm {
@@ -18,6 +35,14 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_BARCODE_PATTERN = /^\/[0-9A-Z.+-]{7}$/;
 const CITIZEN_CERTIFICATE_PATTERN = /^[A-Z]{2}\d{14}$/;
 const LOVE_CODE_PATTERN = /^\d{3,7}$/;
+
+/** 導覽只允許一個正整數單號，不接受路徑或任意查詢內容。 */
+export function getEcpayOrderId(search: string): number | null {
+  const value = new URLSearchParams(search).get("ecpay");
+  if (!value || !/^[1-9]\d*$/.test(value)) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) ? id : null;
+}
 
 export function getEcpayInvoiceFormErrors(form: EcpayInvoiceForm): string[] {
   const errors: string[] = [];

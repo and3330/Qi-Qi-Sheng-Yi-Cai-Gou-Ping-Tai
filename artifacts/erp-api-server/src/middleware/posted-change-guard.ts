@@ -14,9 +14,16 @@ import { logger } from "../lib/logger";
  * 原本各單據的檢查（關帳月份、狀態能不能換、分錄同步）全部照走。重送失敗，整筆核准退回。
  */
 
-const REPLAY_HEADER = "x-change-replay";
+export const REPLAY_HEADER = "x-change-replay";
 const REASON_HEADER = "x-change-reason";
 const replayTokens = new Map<string, { method: string; path: string; expires: number }>();
+
+/** 已經有人核准過的請求：發一張一分鐘內有效、只能用一次、只對這個網址有效的通行證 */
+export function issueReplayToken(method: string, path: string): string {
+  const token = randomUUID();
+  replayTokens.set(token, { method: method.toUpperCase(), path, expires: Date.now() + 60_000 });
+  return token;
+}
 
 function takeReplayToken(req: Request): boolean {
   const token = req.get(REPLAY_HEADER);

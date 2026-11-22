@@ -16,7 +16,9 @@ import { JournalEntryDialog } from "@/components/accounting/journal-entry-dialog
 export type RelatedDocType =
   | "quotation" | "sales_order" | "delivery_note" | "sales_return"
   | "rfq" | "purchase_order" | "purchase_receipt" | "purchase_return"
-  | "invoice" | "payment_request" | "voucher" | "advance" | "stock_count" | "work_order";
+  | "invoice" | "payment_request" | "voucher" | "advance" | "stock_count" | "work_order"
+  | "material_request" | "subcontract_order" | "service_fee" | "asset" | "stock_entry" | "salary_slip"
+  | "recurring_invoice" | "legacy_document";
 
 interface RelatedDoc {
   group: "source" | "next" | "entry"; type: string; id: number; label: string; number: string;
@@ -29,6 +31,7 @@ const STATUS: Record<string, string> = {
   Posted: "已入帳", Paid: "已付款", Unpaid: "未付款", "Partially Paid": "部分付款", Overdue: "逾期", Settled: "已結清",
   Cancelled: "已取消", Voided: "已作廢", Reversed: "已沖銷", WrittenOff: "已沖呆帳", Awarded: "已選定", Accepted: "已接受", Expired: "已過期",
   Sent: "已送出", Ordered: "已轉訂單", "In Progress": "進行中", Returned: "已退回", open: "未還清", settled: "已還清", voided: "已作廢",
+  InUse: "使用中", Disabled: "已停用",
 };
 const GROUPS: Array<{ key: RelatedDoc["group"]; title: string }> = [
   { key: "source", title: "來源單據" },

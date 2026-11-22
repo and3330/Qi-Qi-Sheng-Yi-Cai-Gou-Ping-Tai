@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { Boxes } from "lucide-react";
+import { DrillAmount } from "@/components/shared/account-drill";
+import { DocListDrillDialog, type DocListTarget } from "@/components/shared/doc-list-drill";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BiFrame } from "@/components/bi/bi-frame";
 import { BI_COLORS, EmptyState, MetricCard, Panel, fmtCompact, fmtMoney, fmtNum, fmtPct, tooltipStyle } from "@/components/bi/bi-ui";
@@ -13,7 +16,10 @@ const STATUS_CLS: Record<StockStatus, string> = {
 };
 
 export default function InventoryBi() {
+  // 料件的庫存數量可以點進去看每一筆進出
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
   return (
+    <>
     <BiFrame page="inventory" title="庫存與供應鏈" subtitle="存貨價值、庫齡、可供應天數與供應商交期表現" icon={<Boxes size={18} />}>
       {(d) => {
         const s = d.summary;
@@ -49,7 +55,7 @@ export default function InventoryBi() {
                         {d.health.map((h) => (
                           <tr key={h.itemId} className="border-b last:border-0">
                             <td className="py-2"><span className="font-mono text-muted-foreground">{h.code}</span> {h.name}</td>
-                            <td className="bi-figure text-right">{fmtNum(h.stock, 2)}</td>
+                            <td className="bi-figure text-right"><DrillAmount onClick={() => setDocs({ kind: "stock-entries", itemId: h.itemId, title: `${h.code} ${h.name}` })}>{fmtNum(h.stock, 2)}</DrillAmount></td>
                             <td className="bi-figure text-right">{fmtMoney(h.value)}</td>
                             <td className="bi-figure text-right">{fmtNum(h.outboundQty, 2)}</td>
                             <td className="bi-figure text-right">{h.daysOfSupply == null ? "—" : fmtNum(h.daysOfSupply, 1)}</td>
@@ -88,5 +94,7 @@ export default function InventoryBi() {
         );
       }}
     </BiFrame>
+    <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
+    </>
   );
 }

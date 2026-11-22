@@ -30,12 +30,6 @@ import {
 } from "@workspace/api-zod";
 import { requireStaff, requireOps } from "../middlewares/requireMember";
 import { reindex, removeFromIndex } from "../lib/aiIndex";
-import {
-  autoPost,
-  postShopOrderPaid,
-  postShopOrderRefund,
-  postProfitShare,
-} from "../lib/erpAutoPost";
 import { syncSalesOrderStatusForOrder } from "../lib/erpSync";
 import { getDefaultWarehouseId, increaseWarehouseStock, syncMirrorStock } from "../lib/warehouseStock";
 import {
@@ -647,24 +641,6 @@ export async function applyOrderStatusChange(
     await run(outerTx);
   } else {
     await db.transaction(run);
-  }
-
-  // 會計自動立帳（fire-and-forget、冪等；失敗不阻斷訂單流程）
-  if (target === "paid") {
-    autoPost(`shop_order_paid:${id}`, () => postShopOrderPaid(id));
-  }
-  if (target === "cancelled" || target === "returned") {
-    autoPost(`shop_order_refund:${id}`, () => postShopOrderRefund(id));
-  }
-  if (target === "completed") {
-    autoPost(`profit_share:${id}`, async () => {
-      const [psr] = await db
-        .select()
-        .from(profitShareRecordsTable)
-        .where(eq(profitShareRecordsTable.orderId, id))
-        .limit(1);
-      if (psr) await postProfitShare(psr.id, psr.orderNo, psr.amount);
-    });
   }
 }
 

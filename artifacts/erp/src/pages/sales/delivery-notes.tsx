@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { PageHeader } from "@/components/shared/page-header";
 import { PageHint } from "@/components/page-hint";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,27 +8,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Check, X, Eye, Search, FileText, Ban, Pencil } from "lucide-react";
+import { Plus, Trash2, Check, X, Eye, Search, FileText, Ban, Pencil, RotateCcw } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
 import { BatchActionBar, type BatchField } from "@/components/shared/batch-action-bar";
 import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import { DateRangePresets } from "@/components/shared/date-range-presets";
-import { DocWindow, DocStatus, statusTone, DocFields, DocLines, DocSection } from "@/components/shared/doc-window";
+import { DocWindow, DocStatus, statusTone, DocFields, DocLines, DocSection, DocFormRows, DocFormRow } from "@/components/shared/doc-window";
+import { DocItemLines, blankLines, filledLines, linesPayload, linesFromSaved, type ItemLine } from "@/components/shared/doc-item-lines";
 import { RelatedDocs, useOpenFromUrl } from "@/components/shared/related-docs";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
-interface DNItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number }
+interface DNItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number; specification?: string; note?: string }
 interface DeliveryNote {
   id: number; noteNumber: string; salesOrderId: number | null; customerId: number;
   customerName: string; deliveryDate: string; status: string; totalAmount: number;
   items: DNItem[]; remarks: string | null; createdAt: string;
   departmentId?: number | null; projectId?: number | null;
+  warehouseId?: number | null; handlerId?: number | null; contactInfo?: string | null; shippingAddress?: string | null;
+  handlerName?: string | null; warehouseName?: string | null; salesOrderNumber?: string | null;
 }
 interface Customer { id: number; name: string }
-interface Item { id: number; itemName: string; sellingPrice: string }
+interface Item { id: number; itemName: string; sellingPrice: string; itemCode?: string | null; specification?: string | null }
+/** 「從銷貨單帶入」選單裡的一張銷貨單 */
+interface OpenOrder { id: number; orderNumber: string; customerId: number; customerName: string; orderDate: string; label: string | null }
+const empName = (e: any) => e ? (e.fullName || e.name || `${e.firstName || ""}${/^[A-Za-z]/.test(e.lastName || "") ? " " : ""}${e.lastName || ""}`.trim()) : "";
+const today = () => new Date().toISOString().slice(0, 10);
+const emptyForm = () => ({ salesOrderId: "", customerId: "", deliveryDate: today(), handlerId: "", warehouseId: "", contactInfo: "", shippingAddress: "", remarks: "", departmentId: "", projectId: "" });
 
 const statusMap: Record<string, string> = { Draft: "草稿", Submitted: "已確認", Completed: "已完成", Cancelled: "已取消" };
 const statusColor = (s: string) => s === "Submitted" || s === "Completed" ? "default" : s === "Cancelled" ? "destructive" : "secondary";
@@ -78,8 +87,11 @@ export default function DeliveryNotesPage() {
     {key:"status",label:"狀態",type:"select",options:[{value:"Draft",label:"草稿"},{value:"Submitted",label:"已提交"},{value:"Completed",label:"已完成"}]},
   ];
 
-  const [form, setForm] = useState({ customerId: "", deliveryDate: new Date().toISOString().slice(0, 10), remarks: "", departmentId: "", projectId: "" });
-  const [lineItems, setLineItems] = useState<{ itemId: string; quantity: string; rate: string }[]>([{ itemId: "", quantity: "1", rate: "" }]);
+  const [form, setForm] = useState(emptyForm);
+  const [lineItems, setLineItems] = useState<ItemLine[]>(() => blankLines());
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [openOrders, setOpenOrders] = useState<OpenOrder[]>([]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -93,40 +105,66 @@ export default function DeliveryNotesPage() {
     setDepts(await deptRes.json());
     setProjs(await projRes.json());
     setLoading(false);
+    // 表單才用得到的選單：讀不到不影響列表
+    const list = async (path: string) => { try { const r = await fetch(path); const d = r.ok ? await r.json() : []; return Array.isArray(d) ? d : []; } catch { return []; } };
+    const [emps, whs, orders] = await Promise.all([list(`/erp-api/employees`), list(`/erp-api/warehouses`), list(`/erp-api/delivery-notes/open-orders`)]);
+    setEmployees(emps); setWarehouses(whs); setOpenOrders(orders);
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll, reloadKey]);
 
-  const addLine = () => setLineItems(prev => [...prev, { itemId: "", quantity: "1", rate: "" }]);
-  const removeLine = (i: number) => setLineItems(prev => prev.filter((_, idx) => idx !== i));
-  const updateLine = (i: number, field: string, val: string) => {
-    setLineItems(prev => {
-      const copy = [...prev];
-      copy[i] = { ...copy[i], [field]: val };
-      if (field === "itemId") {
-        const found = items.find(it => it.id === Number(val));
-        if (found) copy[i].rate = String(found.sellingPrice);
-      }
-      return copy;
-    });
+  const resetForm = () => {
+    setForm(emptyForm());
+    setLineItems(blankLines());
+    setEditing(null);
+  };
+  const formHasContent = () => !!(form.salesOrderId || form.customerId || form.remarks || form.contactInfo || form.shippingAddress || filledLines(lineItems).length > 0);
+  /** 重新輸入：清空整張表單（跟 Ecount 的「重新輸入」一樣） */
+  const clearForm = () => {
+    if (formHasContent() && !window.confirm("要清空目前填的內容、重新輸入嗎？")) return;
+    setForm(emptyForm()); setLineItems(blankLines());
   };
 
-  const resetForm = () => {
-    setForm({ customerId: "", deliveryDate: new Date().toISOString().slice(0, 10), remarks: "", departmentId: "", projectId: "" });
-    setLineItems([{ itemId: "", quantity: "1", rate: "" }]);
-    setEditing(null);
+  /** 從銷貨單帶入：把這張銷貨單還沒出貨的品項與數量帶進來，數量可以再改少（分批出貨） */
+  const pullFromOrder = async (orderId: string) => {
+    if (!orderId) {
+      setForm(p => ({ ...p, salesOrderId: "" }));
+      setLineItems(prev => prev.map(l => ({ ...l, remaining: undefined })));
+      return;
+    }
+    const res = await fetch(`/erp-api/delivery-notes/order-remaining/${orderId}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { toast({ title: data.error || "讀不到這張銷貨單", variant: "destructive" }); return; }
+    if (!data.lines?.length) { toast({ title: "這張銷貨單的品項都已經排進出貨單了", variant: "destructive" }); return; }
+    const o = data.order;
+    setForm(p => ({
+      ...p, salesOrderId: orderId, customerId: String(o.customerId),
+      departmentId: o.departmentId ? String(o.departmentId) : p.departmentId,
+      projectId: o.projectId ? String(o.projectId) : p.projectId,
+      handlerId: o.handlerId ? String(o.handlerId) : p.handlerId,
+      warehouseId: o.warehouseId ? String(o.warehouseId) : p.warehouseId,
+      contactInfo: p.contactInfo || o.contactInfo || "",
+      shippingAddress: p.shippingAddress || o.shippingAddress || "",
+    }));
+    setLineItems(data.lines.map((l: any) => ({ itemId: String(l.itemId), quantity: String(l.quantity), rate: String(l.rate), specification: l.specification || "", note: l.note || "", remaining: Number(l.quantity) })));
+    toast({ title: `已帶入 ${o.orderNumber} 還沒出貨的 ${data.lines.length} 個品項`, description: "只出一部分的話，把數量改少或刪掉那一行就可以。" });
   };
 
   const openEdit = (n: DeliveryNote) => {
     setEditing(n);
     setForm({
+      salesOrderId: n.salesOrderId != null ? String(n.salesOrderId) : "",
       customerId: String(n.customerId),
       deliveryDate: n.deliveryDate,
+      handlerId: n.handlerId != null ? String(n.handlerId) : "",
+      warehouseId: n.warehouseId != null ? String(n.warehouseId) : "",
+      contactInfo: n.contactInfo || "",
+      shippingAddress: n.shippingAddress || "",
       remarks: n.remarks || "",
       departmentId: n.departmentId != null ? String(n.departmentId) : "",
       projectId: n.projectId != null ? String(n.projectId) : "",
     });
-    setLineItems((n.items || []).map(it => ({ itemId: String(it.itemId), quantity: String(it.quantity), rate: String(it.rate) })));
+    setLineItems(linesFromSaved(n.items));
     setDetailNote(null);
     setOpen(true);
   };
@@ -135,17 +173,25 @@ export default function DeliveryNotesPage() {
     if (!form.departmentId || !form.projectId) {
       toast({ title: "請選擇部門與專案", description: "部門與專案為必填欄位", variant: "destructive" }); return;
     }
+    if (filledLines(lineItems).some(l => !(Number(l.quantity) > 0))) {
+      toast({ title: "數量要大於 0", description: "不出貨的品項請把那一行刪掉。", variant: "destructive" }); return;
+    }
     const payload = {
       customerId: Number(form.customerId), deliveryDate: form.deliveryDate,
       remarks: form.remarks || null,
       departmentId: Number(form.departmentId), projectId: Number(form.projectId),
-      items: lineItems.filter(l => l.itemId).map(l => ({ itemId: Number(l.itemId), quantity: Number(l.quantity), rate: Number(l.rate) })),
+      handlerId: form.handlerId ? Number(form.handlerId) : null,
+      warehouseId: form.warehouseId ? Number(form.warehouseId) : null,
+      contactInfo: form.contactInfo || null, shippingAddress: form.shippingAddress || null,
+      items: linesPayload(lineItems),
+      // 來源銷貨單只在新增時送；建好之後不能換
+      ...(!editing && form.salesOrderId ? { salesOrderId: Number(form.salesOrderId) } : {}),
     };
     const res = editing
       ? await fetch(`/erp-api/delivery-notes/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
       : await fetch(`/erp-api/delivery-notes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (res.ok) {
-      toast({ title: editing ? "送貨單已更新" : "送貨單已建立" }); setOpen(false);
+      toast({ title: editing ? "出貨單已更新" : "出貨單已建立" }); setOpen(false);
       resetForm(); fetchAll();
     } else {
       const err = await res.json();
@@ -191,7 +237,7 @@ export default function DeliveryNotesPage() {
   };
 
   const cancelSubmitted = async (id: number) => {
-    if (!window.confirm("作廢此已出貨的送貨單將回沖庫存，確定嗎？")) return;
+    if (!window.confirm("作廢此已出貨的出貨單將回沖庫存，確定嗎？")) return;
     const res = await fetch(`/erp-api/delivery-notes/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Cancelled" }),
     });
@@ -208,16 +254,20 @@ export default function DeliveryNotesPage() {
     }
   };
 
-  const total = lineItems.reduce((s, l) => s + Number(l.quantity) * Number(l.rate || 0), 0);
+  // 「從銷貨單帶入」的選項：先選了客戶就只列那個客戶的單
+  const orderOptions = openOrders
+    .filter(o => !form.customerId || form.salesOrderId === String(o.id) || String(o.customerId) === form.customerId)
+    .map(o => ({ value: String(o.id), label: `${o.orderNumber}｜${o.customerName}${o.label ? `｜${o.label}` : ""}` }));
+  const linkedOrder = !!form.salesOrderId;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="送貨單" description="管理出貨流程，確認後自動扣除庫存" hint={<PageHint hintKey="delivery-notes">這裡記錄實際交付給客戶的品項。通常由已確認的銷售訂單轉入，核對出貨日期與數量後再確認。小提醒：確認會扣除庫存，若出貨有變更應先修正數量再送出。</PageHint>} />
+      <PageHeader title="出貨單" description="管理出貨流程，確認後自動扣除庫存" hint={<PageHint hintKey="delivery-notes">這裡記錄實際交付給客戶的品項。通常由已確認的銷售訂單轉入，核對出貨日期與數量後再確認。小提醒：確認會扣除庫存，若出貨有變更應先修正數量再送出。</PageHint>} />
 
       {batch.count > 0 && (
         <BatchActionBar
           count={batch.count}
-          entityName="送貨單"
+          entityName="出貨單"
           entityEndpoint="delivery-notes"
           ids={batch.ids}
           batchFields={dnBatchFields}
@@ -226,125 +276,117 @@ export default function DeliveryNotesPage() {
         />
       )}
       <div className="flex justify-end">
-        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增送貨單</Button>
-        {/* 新增／編輯送貨單：外框用全系統共用的單據視窗 */}
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增出貨單</Button>
+        {/* 新增／編輯出貨單：外框用全系統共用的單據視窗 */}
         <DocWindow
           open={open}
           onClose={() => { setOpen(false); resetForm(); }}
-          name={editing ? "編輯送貨單" : "新增送貨單"}
+          name={editing ? "編輯出貨單" : "新增出貨單"}
           number={editing?.noteNumber}
           status={editing ? <DocStatus label={statusMap[editing.status] || editing.status} tone={statusTone(editing.status)} /> : undefined}
-          wide
+          extraWide
           footer={<>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={handleCreate} disabled={!form.customerId || lineItems.every(l => !l.itemId)}>{editing ? "儲存變更" : "建立"}</Button>
+            <Button variant="outline" onClick={() => { setOpen(false); resetForm(); }}>取消</Button>
+            {!editing && <Button variant="outline" onClick={clearForm}><RotateCcw className="mr-1 h-4 w-4" />重新輸入</Button>}
+            <Button onClick={handleCreate} disabled={!form.customerId || filledLines(lineItems).length === 0}>儲存</Button>
           </>}
         >
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">客戶 *</label>
-                  <SearchableSelect
-                    value={form.customerId}
-                    onValueChange={v => setForm(p => ({ ...p, customerId: v }))}
-                    options={customers.map(c => ({ value: String(c.id), label: c.name }))}
-                    placeholder="選擇客戶"
-                    searchPlaceholder="輸入客戶名稱搜尋..."
-                    emptyText="找不到符合的客戶"
-                    disabled={!!editing?.salesOrderId}
-                    title={editing?.salesOrderId ? "此送貨單由銷售訂單建立，客戶不可變更" : undefined}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">出貨日期 *</label>
-                  <Input type="date" value={form.deliveryDate} onChange={e => setForm(p => ({ ...p, deliveryDate: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">部門 <span className="text-red-500">*</span></label>
-                  <SearchableSelect
-                    value={form.departmentId}
-                    onValueChange={v => setForm(p => ({ ...p, departmentId: v }))}
-                    options={depts.filter(d => (d as any).isActive !== false || String(d.id) === String(form.departmentId)).map(d => ({ value: String(d.id), label: `${d.name}${(d as any).isActive === false ? "（已停用）" : ""}` }))}
-                    placeholder="請選擇部門"
-                    searchPlaceholder="輸入部門名稱搜尋..."
-                    emptyText="找不到符合的部門"
-                    triggerClassName={!form.departmentId ? "border-red-300 bg-red-50" : undefined}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">專案 <span className="text-red-500">*</span></label>
-                  <SearchableSelect
-                    value={form.projectId}
-                    onValueChange={v => setForm(p => ({ ...p, projectId: v }))}
-                    options={projs.filter(p => (p as any).isActive !== false || String(p.id) === String(form.projectId)).map(p => ({ value: String(p.id), label: `${p.name}${(p as any).isActive === false ? "（已停用）" : ""}` }))}
-                    placeholder="請選擇專案"
-                    searchPlaceholder="輸入專案名稱搜尋..."
-                    emptyText="找不到符合的專案"
-                    triggerClassName={!form.projectId ? "border-red-300 bg-red-50" : undefined}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">備註</label>
-                <Input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註說明" />
-              </div>
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="text-sm font-medium">品項明細</label>
-                  <Button size="sm" variant="outline" onClick={addLine}><Plus className="h-3 w-3 mr-1" />新增</Button>
-                </div>
-                {/* 手機版：卡片式品項編輯 */}
-                <div className="md:hidden space-y-3">
-                  {lineItems.map((line, i) => (
-                    <div key={i} className="rounded-lg border p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">項目 {i + 1}</span>
-                        {lineItems.length > 1 && (
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500" onClick={() => removeLine(i)}><Trash2 size={14} /></Button>
-                        )}
-                      </div>
-                      <SearchableSelect
-                        value={String(line.itemId || "")}
-                        onValueChange={v => updateLine(i, "itemId", v)}
-                        options={items.map(it => ({ value: String(it.id), label: it.itemName }))}
-                        placeholder="選擇品項"
-                        searchPlaceholder="輸入品項名稱搜尋..."
-                        emptyText="找不到符合的品項"
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <div><Label className="text-xs text-muted-foreground">數量</Label><Input type="number" min="1" value={line.quantity} onChange={e => updateLine(i, "quantity", e.target.value)} placeholder="數量" /></div>
-                        <div><Label className="text-xs text-muted-foreground">單價</Label><Input type="number" value={line.rate} onChange={e => updateLine(i, "rate", e.target.value)} placeholder="單價" /></div>
-                      </div>
-                      <div className="text-right text-sm font-medium">小計：${(Number(line.quantity) * Number(line.rate || 0)).toLocaleString()}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* 桌面版：列式品項編輯 */}
-                <div className="hidden md:block space-y-2">
-                  {lineItems.map((line, i) => (
-                    <div key={i} className="flex gap-2 items-end">
-                      <div className="flex-1">
-                        <SearchableSelect
-                          value={String(line.itemId || "")}
-                          onValueChange={v => updateLine(i, "itemId", v)}
-                          options={items.map(it => ({ value: String(it.id), label: it.itemName }))}
-                          placeholder="選擇品項"
-                          searchPlaceholder="輸入品項名稱搜尋..."
-                          emptyText="找不到符合的品項"
-                        />
-                      </div>
-                      <Input className="w-20" type="number" min="1" value={line.quantity} onChange={e => updateLine(i, "quantity", e.target.value)} placeholder="數量" />
-                      <Input className="w-24" type="number" value={line.rate} onChange={e => updateLine(i, "rate", e.target.value)} placeholder="單價" />
-                      <span className="w-20 text-right text-sm font-mono">${(Number(line.quantity) * Number(line.rate || 0)).toLocaleString()}</span>
-                      {lineItems.length > 1 && <Button size="sm" variant="ghost" onClick={() => removeLine(i)}><Trash2 className="h-3 w-3" /></Button>}
-                    </div>
-                  ))}
-                </div>
-                <div className="text-right mt-2 font-bold">合計：${total.toLocaleString()}</div>
-              </div>
-            </div>
+          {/* 排法照 Ecount 的輸入畫面：上面一個欄位一列，下面一張一行一筆的品項表 */}
+          <div className="space-y-4">
+            <DocFormRows>
+              <DocFormRow label="出貨單單號">
+                <p className="py-1.5 text-sm text-muted-foreground">{editing ? editing.noteNumber : "儲存時產生"}</p>
+              </DocFormRow>
+              <DocFormRow label="銷貨單" hint={editing
+                ? (linkedOrder ? "這張出貨單是從這張銷貨單帶入的，來源不能換。" : "這張出貨單沒有對應的銷貨單。")
+                : "選一張銷貨單，會把還沒出貨的品項和數量帶進下面的表格；不選也可以直接自己填。"}>
+                {editing
+                  ? <p className="py-1.5 text-sm">{editing.salesOrderNumber || (linkedOrder ? `#${form.salesOrderId}` : "（無）")}</p>
+                  : <SearchableSelect
+                      value={form.salesOrderId}
+                      onValueChange={pullFromOrder}
+                      options={[{ value: "", label: "不從銷貨單帶入" }, ...orderOptions]}
+                      placeholder="從銷貨單帶入（可不選）"
+                      searchPlaceholder="輸入銷貨單號、客戶或標題搜尋..."
+                      emptyText="找不到還沒出完的銷貨單"
+                      data-testid="dn-pull-order"
+                    />}
+              </DocFormRow>
+              <DocFormRow label="日期" htmlFor="dn-date" required>
+                <Input id="dn-date" type="date" className="md:w-56" value={form.deliveryDate} onChange={e => setForm(p => ({ ...p, deliveryDate: e.target.value }))} />
+              </DocFormRow>
+              <DocFormRow label="客戶" required hint={linkedOrder ? "客戶跟著銷貨單走，不能改。" : undefined}>
+                <SearchableSelect
+                  value={form.customerId}
+                  onValueChange={v => setForm(p => ({ ...p, customerId: v }))}
+                  options={customers.map(c => ({ value: String(c.id), label: c.name }))}
+                  placeholder="選擇客戶"
+                  searchPlaceholder="輸入客戶名稱搜尋..."
+                  emptyText="找不到符合的客戶"
+                  disabled={linkedOrder}
+                />
+              </DocFormRow>
+              <DocFormRow label="承辦人">
+                <SearchableSelect
+                  value={form.handlerId}
+                  onValueChange={v => setForm(p => ({ ...p, handlerId: v }))}
+                  options={[{ value: "", label: "不指定" }, ...employees.filter(e => !e.status || e.status === "Active" || String(e.id) === form.handlerId).map(e => ({ value: String(e.id), label: empName(e) }))]}
+                  placeholder="選擇承辦人"
+                  searchPlaceholder="輸入姓名搜尋..."
+                  emptyText="找不到符合的員工"
+                />
+              </DocFormRow>
+              <DocFormRow label="發貨倉庫" hint="確認出貨時，庫存會從這個倉庫扣。">
+                <SearchableSelect
+                  value={form.warehouseId}
+                  onValueChange={v => setForm(p => ({ ...p, warehouseId: v }))}
+                  options={[{ value: "", label: "不指定" }, ...warehouses.filter(w => w.isActive !== false || String(w.id) === form.warehouseId).map(w => ({ value: String(w.id), label: w.name }))]}
+                  placeholder="選擇倉庫"
+                  searchPlaceholder="輸入倉庫名稱搜尋..."
+                  emptyText="找不到符合的倉庫"
+                />
+              </DocFormRow>
+              <DocFormRow label="聯繫方式" htmlFor="dn-contact">
+                <Input id="dn-contact" value={form.contactInfo} onChange={e => setForm(p => ({ ...p, contactInfo: e.target.value }))} placeholder="收貨人、電話" />
+              </DocFormRow>
+              <DocFormRow label="地址" htmlFor="dn-address">
+                <Input id="dn-address" value={form.shippingAddress} onChange={e => setForm(p => ({ ...p, shippingAddress: e.target.value }))} placeholder="送貨地址" />
+              </DocFormRow>
+              <DocFormRow label="部門" required>
+                <SearchableSelect
+                  value={form.departmentId}
+                  onValueChange={v => setForm(p => ({ ...p, departmentId: v }))}
+                  options={selectableDepartments(depts, form.departmentId).map(d => ({ value: String(d.id), label: departmentLabel(d) }))}
+                  placeholder="請選擇部門"
+                  searchPlaceholder="輸入部門名稱搜尋..."
+                  emptyText="找不到符合的部門"
+                  triggerClassName={!form.departmentId ? "border-red-300 bg-red-50" : undefined}
+                />
+              </DocFormRow>
+              <DocFormRow label="專案" required>
+                <SearchableSelect
+                  value={form.projectId}
+                  onValueChange={v => setForm(p => ({ ...p, projectId: v }))}
+                  options={selectableProjects(projs, form.projectId).map(p => ({ value: String(p.id), label: projectPickerLabel(p) }))}
+                  placeholder="請選擇專案"
+                  searchPlaceholder="輸入專案名稱搜尋..."
+                  emptyText="找不到符合的專案"
+                  triggerClassName={!form.projectId ? "border-red-300 bg-red-50" : undefined}
+                />
+              </DocFormRow>
+              <DocFormRow label="備註" htmlFor="dn-remarks">
+                <Input id="dn-remarks" value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註說明" />
+              </DocFormRow>
+            </DocFormRows>
+
+            <DocItemLines
+              lines={lineItems}
+              onChange={setLineItems}
+              items={items}
+              priceOf={id => items.find(it => it.id === id)?.sellingPrice}
+              remainingLabel="銷貨單還剩"
+            />
+          </div>
         </DocWindow>
       </div>
 
@@ -419,7 +461,7 @@ export default function DeliveryNotesPage() {
       </div>
 
       <Card className="hidden md:block">
-        <CardHeader className="py-3 border-b"><CardTitle>送貨單列表</CardTitle></CardHeader>
+        <CardHeader className="py-3 border-b"><CardTitle>出貨單列表</CardTitle></CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -440,7 +482,7 @@ export default function DeliveryNotesPage() {
                 ) : filteredNotes.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
                 ) : filteredNotes.map(n => (
-                  <tr key={n.id} className="border-b hover:bg-gray-50 cursor-pointer" title="點一下看這張送貨單的內容"
+                  <tr key={n.id} className="border-b hover:bg-gray-50 cursor-pointer" title="點一下看這張出貨單的內容"
                     onClick={(e) => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(n.id); }}>
                     <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(n.id)} onChange={() => batch.toggle(n.id)} /></td>
                     <td className="px-4 py-2 font-medium">{n.noteNumber}</td>
@@ -475,12 +517,12 @@ export default function DeliveryNotesPage() {
         </CardContent>
       </Card>
 
-      {/* 送貨單明細：用全系統共用的單據視窗外框，排法跟其他單據一樣 */}
+      {/* 出貨單明細：用全系統共用的單據視窗外框，排法跟其他單據一樣 */}
       {detailNote && (
         <DocWindow
           open
           onClose={() => setDetailNote(null)}
-          name="送貨單"
+          name="出貨單"
           number={detailNote.noteNumber}
           status={<DocStatus label={statusMap[detailNote.status] || detailNote.status} tone={statusTone(detailNote.status)} />}
           footer={
@@ -517,14 +559,21 @@ export default function DeliveryNotesPage() {
             ["客戶", detailNote.customerName],
             ["出貨日期", detailNote.deliveryDate],
             ["金額", `$${detailNote.totalAmount.toLocaleString()}`],
+            ["銷貨單", detailNote.salesOrderNumber],
+            ["承辦人", detailNote.handlerName],
+            ["發貨倉庫", detailNote.warehouseName],
+            ["聯繫方式", detailNote.contactInfo],
+            ["地址", detailNote.shippingAddress],
           ]} />
 
           <DocLines<DNItem>
             rows={(detailNote.items as DNItem[]) || []}
             columns={[
               { header: "品項", cell: item => item.itemName },
+              { header: "規格", cell: item => item.specification || "" },
               { header: "數量", align: "right", cell: item => item.quantity },
               { header: "單價", align: "right", cell: item => `$${item.rate.toLocaleString()}` },
+              { header: "摘要", cell: item => item.note || "" },
               { header: "金額", align: "right", cell: item => `$${item.amount.toLocaleString()}` },
             ]}
             total={{ value: `$${detailNote.totalAmount.toLocaleString()}` }}
@@ -535,7 +584,7 @@ export default function DeliveryNotesPage() {
               <Input value={editRemarks} onChange={e => setEditRemarks(e.target.value)} placeholder="備註" />
               <Button size="sm" onClick={saveRemarks}>儲存</Button>
             </div>
-            {detailNote.status !== "Draft" && <p className="text-xs text-muted-foreground">已出貨的送貨單可以補備註；品項與數量不能改。</p>}
+            {detailNote.status !== "Draft" && <p className="text-xs text-muted-foreground">已出貨的出貨單可以補備註；品項與數量不能改。</p>}
           </DocSection>
 
           <RelatedDocs type="delivery_note" id={detailNote.id} onNavigate={() => setDetailNote(null)} />

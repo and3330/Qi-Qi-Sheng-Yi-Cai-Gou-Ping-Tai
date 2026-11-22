@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { selectableProjects, projectPickerLabel } from "@/lib/select-options";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
 import { PageHeader } from "@/components/shared/page-header";
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DocWindow } from "@/components/shared/doc-window";
 import { PayAccountDialog, type PayAccountChoice } from "@/components/shared/pay-account-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -168,7 +169,7 @@ export default function ServiceFeesPage() {
           </div>
           <Card>
             <CardContent className="p-0 overflow-x-auto">
-              <DataTable
+              <DataTable layoutId="service-fees-list"
                 isLoading={isLoading}
                 data={fees}
                 emptyMessage="這一年還沒有登錄服務費"
@@ -208,7 +209,7 @@ export default function ServiceFeesPage() {
           </Card>
           <Card>
             <CardContent className="p-0 overflow-x-auto">
-              <DataTable
+              <DataTable layoutId="service-fees-summary"
                 isLoading={summaryLoading}
                 data={summary?.rows.map((r, i) => ({ ...r, id: i + 1 }))}
                 defaultPageSize={0}
@@ -233,9 +234,15 @@ export default function ServiceFeesPage() {
         </>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="md:max-w-xl max-h-[92dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>登錄服務費</DialogTitle></DialogHeader>
+      <DocWindow
+        open={open}
+        onClose={() => setOpen(false)}
+        name="登錄服務費"
+        footer={<>
+          <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+          <Button onClick={save} disabled={saving || !form.payeeId || !form.projectId || !form.serviceDate || amount <= 0}>{saving ? "處理中…" : "登錄"}</Button>
+        </>}
+      >
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
               {[["teacher", "外聘講師"], ["employee", "公司員工"]].map(([value, label]) => (
@@ -261,7 +268,7 @@ export default function ServiceFeesPage() {
                 <Label>專案 *</Label>
                 <select className={selectClass} value={form.projectId} onChange={e => setForm({ ...form, projectId: e.target.value })}>
                   <option value="">請選擇專案</option>
-                  {(projects as any[]).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {selectableProjects(projects as any[], form.projectId).map(p => <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>)}
                 </select>
               </div>
             </div>
@@ -295,12 +302,7 @@ export default function ServiceFeesPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={save} disabled={saving || !form.payeeId || !form.projectId || !form.serviceDate || amount <= 0}>{saving ? "處理中…" : "登錄"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
 
       <PayAccountDialog
         open={!!paying}

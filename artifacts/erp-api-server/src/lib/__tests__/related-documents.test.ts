@@ -22,6 +22,18 @@ function fakeDb() {
       children("invoices", "sales_order_id", { 10: [40] }) ?? children("sales_returns", "delivery_note_id", { 20: [30] }) ??
       children("payment_requests", "invoice_id", { 40: [50] });
     if (hit) return hit;
+    // 定期發票 7 最後開出的是發票 40
+    const recurring = pointer("recurring_invoices", "last_invoice_id", { 7: 40 }) ?? children("recurring_invoices", "last_invoice_id", { 40: [7] });
+    if (recurring) return recurring;
+    // 歷史單據 800（銷貨單）是銷貨單 10 的原始單；歷史單據 810（收款單）是收款單 60 的原始單
+    const legacy = (from: string, type: string, map: Record<number, number>) =>
+      text.includes(from) && params[1] === type ? (map[id] ? [{ id: map[id] }] : []) : null;
+    const legacyHit =
+      legacy("FROM legacy_documents d JOIN sales_orders s", "銷貨單", { 10: 800 }) ?? legacy("FROM sales_orders s JOIN legacy_documents d", "銷貨單", { 800: 10 }) ??
+      legacy("FROM legacy_documents d JOIN vouchers v", "收款單", { 60: 810 }) ?? legacy("FROM vouchers v JOIN legacy_documents d", "收款單", { 810: 60 });
+    if (legacyHit) return legacyHit;
+    if (text.includes("JOIN legacy_documents d") || text.includes("FROM legacy_documents d JOIN")) return [];
+    if (text.includes("FROM legacy_documents WHERE id IN")) return params.map(p => ({ id: Number(p), number: `2021/11/01-${p}`, date: "2021-11-01", status: null, amount: "100", kind: Number(p) === 810 ? "收款單" : "銷貨單" }));
     if (text.includes("FROM invoice_settlements WHERE invoice_id")) return id === 40 ? [{ id: 60 }] : [];
     if (text.includes("FROM journal_entries WHERE entry_number ~")) return String(params[0]).includes("DN") && String(params[0]).includes("20") ? [{ id: 900 }] : [];
     if (text.includes("FROM journal_entries")) return [
@@ -54,11 +66,52 @@ describe("relatedDocuments", () => {
 
   it("出貨單：往上追到銷貨單和報價單，往下找到退回，並列出分錄和沖銷分錄", async () => {
     const list = await relatedDocuments(fakeDb(), "delivery_note", 20, true);
-    expect(list.filter(d => d.group === "source").map(d => `${d.type}:${d.id}`)).toEqual(["sales_order:10", "quotation:1"]);
+    expect(list.filter(d => d.group === "source").map(d => `${d.type}:${d.id}`)).toEqual(["sales_order:10", "quotation:1", "legacy_document:800"]);
     expect(list.filter(d => d.group === "next").map(d => `${d.type}:${d.id}`)).toEqual(["sales_return:30"]);
     expect(list.filter(d => d.group === "entry").map(d => d.label)).toEqual(["分錄", "沖銷分錄"]);
     expect(list.find(d => d.type === "sales_order")?.href).toBe("/sales/orders/10");
     expect(list.find(d => d.type === "sales_return")?.href).toBe("/sales/returns?open=30");
+  });
+
+  it("定期發票：往下找到最後開出的發票，發票也往上找得到定期發票", async () => {
+    expect(isDocType("recurring_invoice")).toBe(true);
+    const list = await relatedDocuments(fakeDb(), "recurring_invoice", 7, true);
+    expect(list.filter(d => d.group === "source")).toEqual([]);
+    expect(list.filter(d => d.group === "next").map(d => `${d.type}:${d.id}`).sort()).toEqual(["invoice:40", "payment_request:50", "voucher:60"]);
+    const back = await relatedDocuments(fakeDb(), "invoice", 40, true);
+    const tpl = back.find(d => d.type === "recurring_invoice");
+    expect(tpl).toMatchObject({ group: "source", id: 7, label: "定期發票", href: "/accounting/recurring-invoices?open=7" });
+  });
+
+  it("歷史單據：用存下來的舊單號對到搬進來的銷貨單和收款單，兩邊互相找得到", async () => {
+    expect(isDocType("legacy_document")).toBe(true);
+    const db = fakeDb();
+    const fromLegacy = await relatedDocuments(db, "legacy_document", 800, true);
+    expect(fromLegacy.filter(d => d.group === "source")).toEqual([]);
+    expect(fromLegacy.filter(d => d.group === "next").map(d => `${d.type}:${d.id}`)).toContain("sales_order:10");
+    // 連結條件是存下來的舊單號＋來源＋單據種類，不是比對名稱或金額
+    const linkQuery = db.log.find(q => q.includes("FROM sales_orders s JOIN legacy_documents d"));
+    expect(linkQuery).toContain("s.extra_fields->>'legacyDocNumber' = d.doc_number");
+    expect(linkQuery).toContain("s.extra_fields->>'legacySource' = d.source");
+    expect(linkQuery).toContain("d.doc_type =");
+
+    const fromOrder = await relatedDocuments(fakeDb(), "sales_order", 10, true);
+    const legacy = fromOrder.find(d => d.type === "legacy_document");
+    expect(legacy).toMatchObject({ group: "source", id: 800, label: "歷史銷貨單", status: null, href: "/system/legacy-documents?open=800" });
+
+    const fromReceipt = await relatedDocuments(fakeDb(), "legacy_document", 810, true);
+    expect(fromReceipt.filter(d => d.group === "next").map(d => `${d.type}:${d.id}`)).toEqual(["voucher:60"]);
+    const fromVoucher = await relatedDocuments(fakeDb(), "voucher", 60, true);
+    expect(fromVoucher.find(d => d.type === "legacy_document")).toMatchObject({ group: "source", id: 810, label: "歷史收款單" });
+  });
+
+  it("非財務角色看不到歷史單據和定期發票，也不會去查", async () => {
+    const db = fakeDb();
+    const list = await relatedDocuments(db, "sales_order", 10, false);
+    expect(list.some(d => d.type === "legacy_document" || d.type === "recurring_invoice")).toBe(false);
+    expect(await relatedDocuments(db, "legacy_document", 800, false)).toEqual([]);
+    expect(await relatedDocuments(db, "recurring_invoice", 7, false)).toEqual([]);
+    expect(db.log.some(q => q.includes("legacy_documents") || q.includes("recurring_invoices"))).toBe(false);
   });
 
   it("銷貨單：後續單據一路往下（出貨、退回、發票、付款申請、收款單），同一張不重複", async () => {

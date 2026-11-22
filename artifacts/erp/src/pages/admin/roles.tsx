@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Shield, ShieldCheck, Trash2, Users } from "lucide-react";
+import { Pencil, Plus, RotateCcw, Shield, ShieldCheck, Trash2, Users } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { navGroups, topLevelNavs, type NavGroup } from "@/components/layout/sidebar";
-import { ROLE_LABELS } from "@/lib/roles";
+import { ROLE_DESCRIPTIONS, ROLE_LABELS } from "@/lib/roles";
 
 type Action = "view" | "create" | "edit" | "delete";
 const ACTIONS: { key: Action; label: string }[] = [
@@ -29,23 +29,15 @@ interface CustomRole {
   permissions: Record<string, Action[]>;
   userIds: number[];
 }
+interface BuiltinRole { role: string; name: string; description: string; customized: boolean; userCount: number; permissions: Record<string, Action[]> }
 interface AccountRow { id: number; username: string; displayName: string; role: string; customRoleId: string | null; customRoleName: string | null }
 interface PageRow { group: string; folder: string; label: string; path: string; roles: readonly string[] | null }
 
-const BASE_ROLE_HINT: Record<string, string> = {
-  manager: "主管：可用大部分營運功能，不含薪資與會計帳",
-  hr_admin: "人資管理員：員工、出勤、薪資相關功能",
-  finance_admin: "財務管理員：會計、收付款、報表與薪資",
-  accountant: "會計：會計、收付款與財務報表",
-  viewer: "一般員工：基礎最少，適合只需要少數功能的人",
-};
-const BUILT_IN_HINT: Record<string, string> = {
-  owner: "公司負責人，全部功能都能用，不能被限制",
-  admin: "系統管理員，全部功能都能用，不能被限制",
-  ...BASE_ROLE_HINT,
-  viewer: "一般員工：只能檢視資料，不能新增、修改、刪除",
-  employee: "員工自助：只能用自己的打卡、請假與個人資料",
-};
+const BASE_ROLE_HINT: Record<string, string> = Object.fromEntries(
+  ["viewer", "sales", "warehouse", "manager", "hr_admin", "accountant", "finance_admin"].map((r) => [r, `${ROLE_LABELS[r]}：${ROLE_DESCRIPTIONS[r]}`]),
+);
+/** 全部權限或另有規則、不能改的角色 */
+const FIXED_ROLES = ["owner", "admin", "employee"];
 const UNASSIGNABLE = ["owner", "admin", "super_admin", "employee"];
 
 const api = async (path: string, init?: RequestInit) => {
@@ -75,6 +67,10 @@ function flattenPages(): PageRow[] {
   return rows.filter((row, i) => rows.findIndex((r) => r.path === row.path) === i);
 }
 
+const INVOICE_SWITCHES = [
+  { path: "/actions/invoices/issue", label: "開立綠界電子發票" },
+  { path: "/actions/invoices/print", label: "列印／下載發票 PDF" },
+];
 const emptyForm = { name: "", description: "", baseRole: "viewer", permissions: {} as Record<string, Action[]>, userIds: [] as number[] };
 
 export default function RolesPage() {
@@ -85,9 +81,13 @@ export default function RolesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [keyword, setKeyword] = useState("");
+  /** 正在編輯的內建角色（null＝編輯自訂角色） */
+  const [builtin, setBuiltin] = useState<BuiltinRole | null>(null);
 
   const { data, isLoading } = useQuery<{ roles: CustomRole[]; baseRoles: string[] }>({ queryKey: ["/erp-api/roles"], queryFn: () => api("/roles") });
   const { data: accounts = [] } = useQuery<AccountRow[]>({ queryKey: ["/erp-api/admin/users"], queryFn: () => api("/admin/users") });
+  const { data: builtinData } = useQuery<{ roles: BuiltinRole[] }>({ queryKey: ["/erp-api/roles/builtin"], queryFn: () => api("/roles/builtin") });
+  const builtinRoles = builtinData?.roles || [];
   const roles = data?.roles || [];
   const baseRoles = data?.baseRoles || Object.keys(BASE_ROLE_HINT);
 
@@ -95,8 +95,16 @@ export default function RolesPage() {
   const usable = (row: PageRow) => !row.roles || row.roles.includes(form.baseRole);
   const usablePages = pages.filter(usable);
 
-  const openCreate = () => { setEditingId(null); setForm(emptyForm); setKeyword(""); setOpen(true); };
+  const openCreate = () => { setBuiltin(null); setEditingId(null); setForm(emptyForm); setKeyword(""); setOpen(true); };
+  const openBuiltin = (role: BuiltinRole) => {
+    setBuiltin(role);
+    setEditingId(null);
+    setForm({ ...emptyForm, name: role.name, baseRole: role.role, permissions: { ...role.permissions } });
+    setKeyword("");
+    setOpen(true);
+  };
   const openEdit = (role: CustomRole) => {
+    setBuiltin(null);
     setEditingId(role.id);
     setForm({ name: role.name, description: role.description, baseRole: role.baseRole, permissions: { ...role.permissions }, userIds: [...role.userIds] });
     setKeyword("");
@@ -129,19 +137,32 @@ export default function RolesPage() {
 
   const saveMutation = useMutation({
     mutationFn: () => {
+      // 內建角色：整張表送出（包含選單上沒有列出的功能，原本的設定才不會被清掉）
+      if (builtin) return api(`/roles/builtin/${builtin.role}`, { method: "PUT", body: JSON.stringify({ permissions: form.permissions }) });
       // 只送出基礎角色用得到的頁面
       const permissions: Record<string, Action[]> = {};
       for (const row of usablePages) if (form.permissions[row.path]?.length) permissions[row.path] = form.permissions[row.path];
+      for (const { path } of INVOICE_SWITCHES) permissions[path] = form.permissions[path]?.includes("view") ? ["view"] : [];
       const body = JSON.stringify({ name: form.name, description: form.description, baseRole: form.baseRole, permissions, userIds: form.userIds });
       return editingId ? api(`/roles/${editingId}`, { method: "PATCH", body }) : api("/roles", { method: "POST", body });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/erp-api/roles"] });
+      queryClient.invalidateQueries({ queryKey: ["/erp-api/roles/builtin"] });
       queryClient.invalidateQueries({ queryKey: ["/erp-api/admin/users"] });
       setOpen(false);
-      toast({ title: editingId ? "角色已更新" : "角色已建立", description: "套用這個角色的人重新整理頁面後生效" });
+      toast({ title: builtin || editingId ? "角色已更新" : "角色已建立", description: "這個角色的人重新整理頁面後生效（最多 30 秒）" });
     },
     onError: (e: Error) => toast({ title: "儲存失敗", description: e.message, variant: "destructive" }),
+  });
+  const resetMutation = useMutation({
+    mutationFn: (role: string) => api(`/roles/builtin/${role}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/erp-api/roles/builtin"] });
+      setOpen(false);
+      toast({ title: "已恢復預設" });
+    },
+    onError: (e: Error) => toast({ title: "恢復失敗", description: e.message, variant: "destructive" }),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api(`/roles/${id}`, { method: "DELETE" }),
@@ -150,6 +171,7 @@ export default function RolesPage() {
   });
 
   const submit = () => {
+    if (builtin) { saveMutation.mutate(); return; }
     if (!form.name.trim()) { toast({ title: "請填寫角色名稱", variant: "destructive" }); return; }
     if (!usablePages.some((row) => form.permissions[row.path]?.length)) {
       toast({ title: "請至少勾選一個功能", description: "一個功能都沒勾的角色登入後什麼都不能做", variant: "destructive" });
@@ -166,7 +188,7 @@ export default function RolesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="角色管理" description="自己建立角色，逐一勾選每個功能可以檢視、新增、修改或刪除" onAdd={openCreate} addLabel="新增角色" />
+      <PageHeader title="角色管理" description="調整預設角色，或自己建立角色，逐一勾選每個功能可以檢視、新增、修改或刪除" onAdd={openCreate} addLabel="新增角色" />
 
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck size={18} className="text-primary" />自訂角色</CardTitle></CardHeader>
@@ -213,13 +235,31 @@ export default function RolesPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Shield size={18} className="text-muted-foreground" />內建角色（固定，不能修改）</CardTitle></CardHeader>
-        <CardContent>
-          <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-            {Object.entries(BUILT_IN_HINT).map(([key, hint]) => (
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base"><Shield size={18} className="text-primary" />預設角色</CardTitle>
+          <p className="text-sm text-muted-foreground">帳號一般用這些角色。點「編輯」可以逐一調整每張表單能不能檢視、新增、修改、刪除。財務帳、薪資、人事、系統設定另有保護，勾了也不會開給原本沒權限的角色。</p>
+        </CardHeader>
+        <CardContent className="space-y-2.5">
+          <ul className="space-y-2.5" data-testid="builtin-role-list">
+            {builtinRoles.map((role) => (
+              <li key={role.role} className="flex flex-wrap items-center gap-3 rounded-lg border bg-card px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-base font-semibold">{ROLE_LABELS[role.role] || role.name}</span>
+                    {role.customized ? <Badge variant="secondary">已調整</Badge> : <Badge variant="outline">預設</Badge>}
+                  </div>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{ROLE_DESCRIPTIONS[role.role] || role.description}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{role.userCount > 0 ? `${role.userCount} 個帳號` : "目前沒有帳號"}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => openBuiltin(role)}><Pencil size={14} className="mr-1" />編輯</Button>
+              </li>
+            ))}
+          </ul>
+          <dl className="grid gap-x-6 gap-y-2 pt-2 text-sm sm:grid-cols-2">
+            {FIXED_ROLES.map((key) => (
               <div key={key} className="flex gap-2">
                 <dt className="w-24 shrink-0 font-medium">{ROLE_LABELS[key] || key}</dt>
-                <dd className="text-muted-foreground">{hint.replace(/^[^：]+：/, "")}</dd>
+                <dd className="text-muted-foreground">{ROLE_DESCRIPTIONS[key]}（不能修改）</dd>
               </div>
             ))}
           </dl>
@@ -228,9 +268,11 @@ export default function RolesPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="md:max-w-4xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingId ? "編輯角色" : "新增角色"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{builtin ? `編輯預設角色「${ROLE_LABELS[builtin.role] || builtin.name}」` : editingId ? "編輯角色" : "新增角色"}</DialogTitle></DialogHeader>
 
           <div className="space-y-5">
+            {builtin && <p className="text-sm text-muted-foreground">{ROLE_DESCRIPTIONS[builtin.role]}。改完按「儲存」；想回到系統原本的設定，按「恢復預設」。</p>}
+            {!builtin && <>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="role-name">角色名稱 <span className="text-red-500">*</span></Label>
@@ -254,7 +296,22 @@ export default function RolesPage() {
               </select>
               <p className="mt-1 text-xs text-muted-foreground">基礎角色決定「最多能用到哪些功能」，下面的勾選只會再縮小範圍。灰色的功能表示這個基礎角色本來就不能用。</p>
             </div>
+            </>}
 
+            <fieldset className="space-y-3 rounded-lg border p-4">
+              <legend className="px-1 text-sm font-semibold">電子發票操作權限</legend>
+              <p className="text-xs text-muted-foreground">可獨立授權此角色開票或下載，不受原本主管／財會角色限制。仍須能進入相關功能頁；不包含作廢、退款或折讓。老闆與系統管理員保留全部權限。</p>
+              {INVOICE_SWITCHES.map(({ path, label }) => (
+                <label key={path} className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input type="checkbox" className="h-4 w-4 accent-primary" checked={has(path, "view")}
+                    onChange={event => {
+                      const checked = event.target.checked;
+                      setForm(current => ({ ...current, permissions: { ...current.permissions, [path]: checked ? ["view"] : [] } }));
+                    }} />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <Label className="mr-auto">功能權限 <span className="font-normal text-muted-foreground">（已勾 {checkedCount}／{usablePages.length} 個功能）</span></Label>
@@ -319,9 +376,9 @@ export default function RolesPage() {
               </div>
             </div>
 
-            <div>
+            {!builtin && <div>
               <Label className="flex items-center gap-1.5"><Users size={14} />套用到哪些帳號</Label>
-              <p className="mb-2 mt-1 text-xs text-muted-foreground">擁有者、管理員、員工自助帳號不能套用自訂角色，所以不會出現在這裡。一個帳號只能有一個自訂角色。</p>
+              <p className="mb-2 mt-1 text-xs text-muted-foreground">老闆、系統管理員、員工自助帳號不能套用自訂角色，所以不會出現在這裡。一個帳號只能有一個自訂角色。</p>
               {assignable.length === 0 ? (
                 <p className="rounded-md border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">目前沒有可套用的帳號，請先到「帳號管理」新增。</p>
               ) : (
@@ -342,12 +399,20 @@ export default function RolesPage() {
                   })}
                 </div>
               )}
-            </div>
+            </div>}
           </div>
 
           <DialogFooter>
+            {builtin?.customized && (
+              <Button
+                variant="outline" className="sm:mr-auto" disabled={resetMutation.isPending}
+                onClick={() => { if (confirm(`把「${ROLE_LABELS[builtin.role]}」恢復成系統預設的權限？`)) resetMutation.mutate(builtin.role); }}
+              >
+                <RotateCcw size={14} className="mr-1" />恢復預設
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-            <Button onClick={submit} disabled={saveMutation.isPending}>{saveMutation.isPending ? "儲存中…" : editingId ? "儲存" : "建立角色"}</Button>
+            <Button onClick={submit} disabled={saveMutation.isPending}>{saveMutation.isPending ? "儲存中…" : builtin || editingId ? "儲存" : "建立角色"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

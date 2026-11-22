@@ -127,6 +127,8 @@ export async function advanceAllocationForInvoices(tx: any, invoices: Array<{ id
       .filter(id => Number.isInteger(id) && id > 0)));
     if (orderIds.length === 0) continue;
     const advances = await orderAdvanceTotals(tx, kind, orderIds);
+    // 歷史單搬進來之前就收到的錢，也要算進補開的發票，發票才不會顯示成整張沒收
+    for (const [id, paid] of await legacyPaidTotals(tx, kind, orderIds)) advances.set(id, round2((advances.get(id) || 0) + paid));
     if (advances.size === 0) continue;
     const all = await orderInvoices(tx, kind, Array.from(advances.keys()));
     for (const [orderId, advance] of advances) {

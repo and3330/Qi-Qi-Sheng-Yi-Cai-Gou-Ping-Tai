@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { selectableProjects, projectPickerLabel } from "@/lib/select-options";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1124,8 +1125,8 @@ export default function QuickEntry() {
               data-testid="select-quick-entry-project"
             >
               <option value="">請選擇專案</option>
-              {(Array.isArray(projectList) ? projectList : []).filter((p: any) => p.isActive !== false || String(p.id) === quickProjectId).map((p: any) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+              {selectableProjects(projectList, quickProjectId).map((p: any) => (
+                <option key={p.id} value={p.id}>{projectPickerLabel(p)}</option>
               ))}
             </select>
           </label>

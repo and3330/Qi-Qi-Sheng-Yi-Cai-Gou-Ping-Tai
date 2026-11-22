@@ -11,7 +11,7 @@ import { countDifferences, logStockMovement, warehouseStock } from "../lib/stock
 const router: IRouter = Router();
 router.use("/stock-counts", requireAuth);
 // 過帳會動到庫存與帳務，只給管理與財務角色
-const POST_ROLES = ["owner", "admin", "finance_admin", "accountant", "manager"] as const;
+const POST_ROLES = ["owner", "admin", "finance_admin", "accountant", "manager", "warehouse"] as const;
 
 const parseId = (value: unknown): number | null => {
   const id = Number(value);

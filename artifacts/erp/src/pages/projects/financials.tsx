@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, DollarSign, Percent, Search, ChevronDown, ChevronRight, FolderOpen, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
+import { JournalEntryDialog } from "@/components/accounting/journal-entry-dialog";
 
 /**
  * 專案損益：左邊（手機在上面）用搜尋挑專案，右邊看這個專案的收入、支出、損益、毛利率，
@@ -16,6 +19,9 @@ const voucherStatusLabel: Record<string, string> = { Draft: "草稿", Submitted:
 const voucherTypeLabel: Record<string, string> = { Receipt: "收款單", Payment: "付款單", Journal: "轉帳傳票", Transfer: "轉帳傳票", Sales: "銷貨", Purchase: "進貨" };
 const money = (n: unknown) => `$${Math.round(Number(n) || 0).toLocaleString()}`;
 const PAGE = 100;
+/** 收款單、付款單各有自己的頁面，其他傳票都在報支／轉帳那一頁 */
+const voucherHref = (v: { voucherNumber: string; voucherType: string }) =>
+  `${v.voucherType === "Receipt" ? "/accounting/receipts" : v.voucherType === "Payment" ? "/accounting/payments" : "/accounting/reimbursement"}?search=${encodeURIComponent(v.voucherNumber)}`;
 
 export default function ProjectFinancialsPage() {
   const { data: projects, isLoading: loadingProjects } = useListProjects();
@@ -30,6 +36,8 @@ export default function ProjectFinancialsPage() {
   const [docSearch, setDocSearch] = useState("");
   const [openVoucher, setOpenVoucher] = useState<number | null>(null);
   const [limit, setLimit] = useState(PAGE);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const [openEntryId, setOpenEntryId] = useState<number | null>(null);
   const { data: financials, isLoading: loadingFinancials } = useGetProjectFinancials(
     selectedId ?? 0,
     { query: { queryKey: getGetProjectFinancialsQueryKey(selectedId ?? 0), enabled: !!selectedId } }
@@ -55,6 +63,13 @@ export default function ProjectFinancialsPage() {
   const shownVouchers = vouchers.filter(v => !dq || `${v.voucherNumber} ${v.voucherType} ${v.description || ""} ${v.voucherDate}`.toLowerCase().includes(dq)).sort((a, b) => String(b.voucherDate).localeCompare(String(a.voucherDate)));
   const shownEntries = entries.filter(e => !dq || `${e.entryNumber} ${e.description || ""} ${e.entryDate}`.toLowerCase().includes(dq)).sort((a, b) => String(b.entryDate).localeCompare(String(a.entryDate)));
   const margin = f && f.totalIncome > 0 ? (f.netProfit / f.totalIncome) * 100 : null;
+  // 有子專案時，上面的總收入／總支出是主專案加子專案的合計，明細要到下面那張表一個一個專案點
+  const singleProject = !!f && !(Array.isArray(f.children) && f.children.length > 0);
+  const projectTitle: string = selected?.name || f?.projectName || "專案";
+  const kpiDrill = (kind: "Income" | "Expense"): DrillTarget | null => singleProject
+    ? { title: `${projectTitle} ${kind === "Income" ? "收入" : "支出"}`, accountTypes: [kind], projectId: selectedId }
+    : null;
+  const noDrill: DrillTarget | null = null;
   const chip = (active: boolean) => `shrink-0 rounded-full border px-3 py-1 text-sm transition-colors ${active ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`;
 
   const picker = (
@@ -133,15 +148,15 @@ export default function ProjectFinancialsPage() {
                 <>
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     {[
-                      { label: "總收入", value: money(f.totalIncome), icon: <TrendingUp className="h-5 w-5 text-green-600" />, tone: "text-green-600", bg: "bg-green-100" },
-                      { label: "總支出", value: money(f.totalExpense), icon: <TrendingDown className="h-5 w-5 text-red-600" />, tone: "text-red-600", bg: "bg-red-100" },
-                      { label: "淨損益", value: money(f.netProfit), icon: <DollarSign className="h-5 w-5 text-blue-600" />, tone: f.netProfit >= 0 ? "text-green-600" : "text-red-600", bg: "bg-blue-100" },
-                      { label: "毛利率", value: margin == null ? "-" : `${margin.toFixed(1)}%`, icon: <Percent className="h-5 w-5 text-amber-600" />, tone: margin != null && margin < 0 ? "text-red-600" : "text-foreground", bg: "bg-amber-100" },
+                      { label: "總收入", value: money(f.totalIncome), drill: kpiDrill("Income"), icon: <TrendingUp className="h-5 w-5 text-green-600" />, tone: "text-green-600", bg: "bg-green-100" },
+                      { label: "總支出", value: money(f.totalExpense), drill: kpiDrill("Expense"), icon: <TrendingDown className="h-5 w-5 text-red-600" />, tone: "text-red-600", bg: "bg-red-100" },
+                      { label: "淨損益", value: money(f.netProfit), drill: noDrill, icon: <DollarSign className="h-5 w-5 text-blue-600" />, tone: f.netProfit >= 0 ? "text-green-600" : "text-red-600", bg: "bg-blue-100" },
+                      { label: "毛利率", value: margin == null ? "-" : `${margin.toFixed(1)}%`, drill: noDrill, icon: <Percent className="h-5 w-5 text-amber-600" />, tone: margin != null && margin < 0 ? "text-red-600" : "text-foreground", bg: "bg-amber-100" },
                     ].map(k => (
                       <Card key={k.label}>
                         <CardContent className="flex items-center gap-3 py-4">
                           <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${k.bg}`}>{k.icon}</div>
-                          <div className="min-w-0"><div className="text-sm text-muted-foreground">{k.label}</div><div className={`truncate text-xl font-bold tabular-nums ${k.tone}`}>{k.value}</div></div>
+                          <div className="min-w-0"><div className="text-sm text-muted-foreground">{k.label}</div><div className={`truncate text-xl font-bold tabular-nums ${k.tone}`}>{k.drill ? <DrillAmount onClick={() => setDrill(k.drill)}>{k.value}</DrillAmount> : k.value}</div></div>
                         </CardContent>
                       </Card>
                     ))}
@@ -157,15 +172,15 @@ export default function ProjectFinancialsPage() {
                     <Card>
                       <CardHeader className="py-3"><CardTitle className="text-base">主專案與子專案</CardTitle></CardHeader>
                       <CardContent className="p-0 overflow-x-auto">
-                        <p className="px-4 pb-2 text-sm text-muted-foreground">上面的數字是主專案自己加上所有子專案的合計。點子專案可以單獨看。</p>
+                        <p className="px-4 pb-2 text-sm text-muted-foreground">上面的數字是主專案自己加上所有子專案的合計。點子專案可以單獨看；點收入、支出的金額可以看那個專案的明細。</p>
                         <table className="w-full text-sm" data-testid="table-child-projects">
                           <thead className="bg-muted/50"><tr><th className="px-4 py-2 text-left font-medium">專案</th><th className="px-4 py-2 text-right font-medium">收入</th><th className="px-4 py-2 text-right font-medium">支出</th><th className="px-4 py-2 text-right font-medium">損益</th></tr></thead>
                           <tbody>
                             {f.children.map((c: any, index: number) => (
                               <tr key={c.projectId} className={`border-t ${index > 0 ? "cursor-pointer hover:bg-muted/40" : ""}`} onClick={() => index > 0 && pick(c.projectId)}>
                                 <td className="px-4 py-2">{index === 0 ? `${c.projectName}（主專案本身）` : `└ ${c.projectName}`}</td>
-                                <td className="px-4 py-2 text-right tabular-nums">{money(c.totalIncome)}</td>
-                                <td className="px-4 py-2 text-right tabular-nums">{money(c.totalExpense)}</td>
+                                <td className="px-4 py-2 text-right tabular-nums"><DrillAmount onClick={() => setDrill({ title: `${c.projectName} 收入`, accountTypes: ["Income"], projectId: c.projectId })}>{money(c.totalIncome)}</DrillAmount></td>
+                                <td className="px-4 py-2 text-right tabular-nums"><DrillAmount onClick={() => setDrill({ title: `${c.projectName} 支出`, accountTypes: ["Expense"], projectId: c.projectId })}>{money(c.totalExpense)}</DrillAmount></td>
                                 <td className={`px-4 py-2 text-right tabular-nums ${c.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>{money(c.netProfit)}</td>
                               </tr>
                             ))}
@@ -201,7 +216,7 @@ export default function ProjectFinancialsPage() {
                                 return [
                                   <tr key={v.id} className="cursor-pointer border-b hover:bg-muted/40" onClick={() => setOpenVoucher(open ? null : v.id)} title="點一下看明細">
                                     <td className="px-2 py-2 text-muted-foreground">{open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}</td>
-                                    <td className="px-4 py-2 font-mono text-xs">{v.voucherNumber}</td>
+                                    <td className="px-4 py-2 font-mono text-xs">{v.voucherNumber}<Link href={voucherHref(v)} onClick={(event: React.MouseEvent) => event.stopPropagation()} className="ml-2 font-sans text-primary hover:underline" title="開啟這張單據">開啟</Link></td>
                                     <td className="px-4 py-2">{voucherTypeLabel[v.voucherType] || v.voucherType}</td>
                                     <td className="px-4 py-2 tabular-nums">{v.voucherDate}</td>
                                     <td className="hidden px-4 py-2 sm:table-cell">{v.description || "-"}</td>
@@ -239,8 +254,8 @@ export default function ProjectFinancialsPage() {
                             </tr></thead>
                             <tbody>
                               {shownEntries.slice(0, limit).map(e => (
-                                <tr key={e.id} className="border-b hover:bg-muted/40">
-                                  <td className="px-4 py-2 font-mono text-xs">{e.entryNumber}</td>
+                                <tr key={e.id} className="cursor-pointer border-b hover:bg-muted/40" title="點一下開啟這張分錄" onClick={() => setOpenEntryId(e.id)}>
+                                  <td className="px-4 py-2 font-mono text-xs text-primary">{e.entryNumber}</td>
                                   <td className="px-4 py-2 tabular-nums">{e.entryDate}</td>
                                   <td className="hidden px-4 py-2 sm:table-cell">{e.description || "-"}</td>
                                   <td className="px-4 py-2 text-right tabular-nums">{money(e.totalDebit)}</td>
@@ -264,6 +279,8 @@ export default function ProjectFinancialsPage() {
           )}
         </div>
       </div>
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
+      <JournalEntryDialog entryId={openEntryId} onClose={() => setOpenEntryId(null)} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { handleStockAdjust } from "./erpInventory";
+import { handleStockAdjust } from "../lib/stockAdjust";
 import { and, asc, desc, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
 import {
   db,

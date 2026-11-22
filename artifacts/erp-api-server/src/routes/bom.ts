@@ -10,7 +10,7 @@ function numericBom(b: Bom) {
   return { ...b, quantity: Number(b.quantity) };
 }
 
-type CleanLine = { itemId: number; quantity: number; rate: number; unit: string; parentBomItemId: number | null; level: number };
+type CleanLine = { itemId: number; quantity: number; rate: number; unit: string; parentBomItemId: number | null; level: number; remarks: string | null };
 
 /**
  * 整理原料明細：空白列略過；數量要大於 0；原料不能是成品自己；同一個原料重複就合併數量；
@@ -33,15 +33,22 @@ async function cleanLines(productId: number, raw: unknown): Promise<{ error: str
     if (!Number.isFinite(quantity) || quantity <= 0) return { error: `「${item.itemName}」的數量要大於 0` };
     const rate = Number(r.rate);
     if (!Number.isFinite(rate) || rate < 0) return { error: `「${item.itemName}」的單價不正確` };
+    // 摘要（位置）：這個原料用在哪裡之類的說明，選填
+    const remarks = typeof r.remarks === "string" && r.remarks.trim() ? r.remarks.trim() : null;
     const existing = merged.get(itemId);
-    if (existing) { existing.quantity += quantity; continue; }
-    merged.set(itemId, { itemId, quantity, rate, unit: (typeof r.unit === "string" && r.unit.trim() && r.unit !== "Nos" ? r.unit.trim() : item.unit) || "Nos", parentBomItemId: r.parentBomItemId ? Number(r.parentBomItemId) : null, level: r.level ? Number(r.level) : 0 });
+    if (existing) {
+      existing.quantity += quantity;
+      // 同一個原料填了兩行：摘要不一樣就接在一起，不要丟掉
+      if (remarks && !(existing.remarks ?? "").split("；").includes(remarks)) existing.remarks = existing.remarks ? `${existing.remarks}；${remarks}` : remarks;
+      continue;
+    }
+    merged.set(itemId, { itemId, quantity, rate, unit: (typeof r.unit === "string" && r.unit.trim() && r.unit !== "Nos" ? r.unit.trim() : item.unit) || "Nos", parentBomItemId: r.parentBomItemId ? Number(r.parentBomItemId) : null, level: r.level ? Number(r.level) : 0, remarks });
   }
   return { lines: [...merged.values()] };
 }
 const lineValues = (bomId: number, l: CleanLine) => ({
   bomId, itemId: l.itemId, quantity: String(l.quantity), unit: l.unit, rate: String(l.rate),
-  amount: String(Math.round(l.quantity * l.rate * 100) / 100), parentBomItemId: l.parentBomItemId, level: l.level,
+  amount: String(Math.round(l.quantity * l.rate * 100) / 100), parentBomItemId: l.parentBomItemId, level: l.level, remarks: l.remarks,
 });
 
 function generateBomNumber(): string {
@@ -89,6 +96,7 @@ router.get("/boms/:id", async (req, res): Promise<void> => {
     bomItem: bomItemsTable,
     itemName: itemsTable.itemName,
     itemCode: itemsTable.itemCode,
+    specification: itemsTable.specification,
     movingAvgCost: itemsTable.movingAvgCost,
     buyingPrice: itemsTable.buyingPrice,
     isVirtual: itemsTable.isVirtual,
@@ -107,6 +115,7 @@ router.get("/boms/:id", async (req, res): Promise<void> => {
       amount: Number(i.bomItem.amount),
       itemName: i.itemName || "",
       itemCode: i.itemCode || "",
+      specification: i.specification || "",
       currentUnitCost,
       currentCost: Math.round(quantity * currentUnitCost * 100) / 100,
     };

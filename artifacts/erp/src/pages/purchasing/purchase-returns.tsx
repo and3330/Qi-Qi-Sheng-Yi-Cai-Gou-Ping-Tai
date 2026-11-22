@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { PageHeader } from "@/components/shared/page-header";
 import { BatchActionBar, type BatchField } from "@/components/shared/batch-action-bar";
 import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
@@ -118,7 +119,7 @@ export default function PurchaseReturnsPage() {
     };
     const res = await fetch(`/erp-api/purchase-returns`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (res.ok) {
-      toast({ title: "採購退貨單已建立" }); setOpen(false);
+      toast({ title: "進貨退出單已建立" }); setOpen(false);
       setForm({ purchaseReceiptId: "", supplierId: "", returnDate: new Date().toISOString().slice(0, 10), reason: "", remarks: "", departmentId: "", projectId: "" });
       setLineItems([]); fetchAll();
     } else {
@@ -164,14 +165,14 @@ export default function PurchaseReturnsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="採購退貨" description="處理供應商退貨，需指定進貨單，確認後自動扣除庫存並建立扣項單" />
+      <PageHeader title="進貨退出" description="處理供應商退貨，需指定進貨單，確認後自動扣除庫存並建立扣項單" />
       <div className="flex justify-end">
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增退貨單</Button>
-        {/* 新增採購退貨單：外框用全系統共用的單據視窗 */}
+        {/* 新增進貨退出單：外框用全系統共用的單據視窗 */}
         <DocWindow
           open={open}
           onClose={() => setOpen(false)}
-          name="新增採購退貨單"
+          name="新增進貨退出單"
           wide
           footer={<>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -206,7 +207,7 @@ export default function PurchaseReturnsPage() {
                   <SearchableSelect
                     value={form.departmentId}
                     onValueChange={v => setForm(p => ({ ...p, departmentId: v }))}
-                    options={depts.filter(d => (d as any).isActive !== false || String(d.id) === String(form.departmentId)).map(d => ({ value: String(d.id), label: `${d.name}${(d as any).isActive === false ? "（已停用）" : ""}` }))}
+                    options={selectableDepartments(depts, form.departmentId).map(d => ({ value: String(d.id), label: departmentLabel(d) }))}
                     placeholder="請選擇部門"
                     triggerClassName={!form.departmentId ? "border-red-300 bg-red-50" : undefined}
                     data-testid="select-return-department"
@@ -217,7 +218,7 @@ export default function PurchaseReturnsPage() {
                   <SearchableSelect
                     value={form.projectId}
                     onValueChange={v => setForm(p => ({ ...p, projectId: v }))}
-                    options={projs.filter(p => (p as any).isActive !== false || String(p.id) === String(form.projectId)).map(p => ({ value: String(p.id), label: `${p.name}${(p as any).isActive === false ? "（已停用）" : ""}` }))}
+                    options={selectableProjects(projs, form.projectId).map(p => ({ value: String(p.id), label: projectPickerLabel(p) }))}
                     placeholder="請選擇專案"
                     triggerClassName={!form.projectId ? "border-red-300 bg-red-50" : undefined}
                     data-testid="select-return-project"
@@ -321,7 +322,8 @@ export default function PurchaseReturnsPage() {
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
                 ) : filtered.map(r => (
-                  <tr key={r.id} className="border-b hover:bg-gray-50">
+                  <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(r.id); }}>
                     <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} /></td>
                     <td className="px-4 py-2 font-medium">{r.returnNumber}</td>
                     <td className="px-4 py-2">{r.supplierName}</td>
@@ -352,7 +354,7 @@ export default function PurchaseReturnsPage() {
       <DocWindow
         open={!!detailItem}
         onClose={() => setDetailItem(null)}
-        name="採購退貨單"
+        name="進貨退出單"
         number={detailItem?.returnNumber}
         // 「已確認」在共用顏色規則裡算完成（藍色），和列表上的徽章一致
         status={detailItem && <DocStatus label={statusMap[detailItem.status] || detailItem.status} tone={statusTone(detailItem.status === "Submitted" ? "Confirmed" : detailItem.status)} />}

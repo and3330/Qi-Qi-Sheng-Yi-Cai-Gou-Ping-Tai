@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable } from "@/components/shared/data-table";
@@ -39,6 +39,19 @@ export default function AdvancesPage() {
 
   const { data, isLoading } = useQuery({ queryKey: ["/advances", status], queryFn: () => call<Listing>(`advances${status ? `?status=${status}` : ""}`) });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["/advances"] });
+  const openAdvance = (a: Advance) => { setRepay({ amount: String(a.outstanding), cashAccountId: "", date: todayText() }); setViewing(a); };
+  // 別的頁面用 ?open=<編號> 連過來：開那一張。清單預設只列「還沒還清」，找不到就改成「全部」再找一次
+  const [linkedId, setLinkedId] = useState<number | null>(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("open"));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
+  const linkedMissing = linkedId !== null && !!data && !data.advances.some(a => a.id === linkedId);
+  useEffect(() => {
+    if (!linkedMissing) return;
+    if (status !== "") setStatus(""); else setLinkedId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedMissing]);
+  useOpenFromUrl(linkedMissing && status !== "" ? undefined : data?.advances, a => { setLinkedId(null); openAdvance(a); });
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
     try { await work(); refresh(); } catch (error) { toast({ title: "沒有成功", description: error instanceof Error ? error.message : "請稍後再試", variant: "destructive" }); } finally { setBusy(false); }
@@ -92,7 +105,7 @@ export default function AdvancesPage() {
       <Card><CardContent className="p-0 overflow-x-auto">
         <DataTable
           isLoading={isLoading} data={data?.advances} emptyMessage="沒有代墊款或借款"
-          onRowClick={(a: Advance) => { setRepay({ amount: String(a.outstanding), cashAccountId: "", date: todayText() }); setViewing(a); }}
+          onRowClick={openAdvance}
           columns={[
             { header: "單號", accessor: (a: Advance) => <div><span className="font-medium">{a.advanceNumber}</span><span className="block text-xs text-muted-foreground">{a.entryDate}・{a.partyName}</span></div> },
             { header: "內容", accessor: (a: Advance) => <div className="text-sm">{KIND[a.kind] || a.kind}{a.description ? `：${a.description}` : ""}<span className="block text-xs text-muted-foreground">{a.counterAccountName || ""}{a.projectName ? `・${a.projectName}` : ""}</span></div> },

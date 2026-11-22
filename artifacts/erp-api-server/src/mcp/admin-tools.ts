@@ -5,6 +5,9 @@ import { buildQuotationPdf, quotationPdfPath } from "../lib/quotation-pdf";
 import { getEmailSettings, logEmail, sendEmail } from "../lib/email";
 import { judgeRequest, normalizePath, trimResult } from "./admin-guard";
 import { describeEndpoint } from "../lib/api-catalog";
+import { currentAgent } from "./agent-caps";
+import { submitAgentReview } from "./agent-review";
+import { userEndpointDenial } from "./user-identity";
 
 /**
  * AI 全權身分的工具：
@@ -15,12 +18,15 @@ import { describeEndpoint } from "../lib/api-catalog";
 
 const id = z.number().int().positive();
 export const adminToolSchemas = {
+  erp_whoami: z.object({}).strict(),
   erp_list_endpoints: z.object({ keyword: z.string().trim().max(60).optional() }).strict(),
   erp_request: z.object({
     method: z.enum(["GET", "POST", "PATCH", "PUT", "DELETE"]),
     path: z.string().min(2).max(300),
     query: z.record(z.string().max(60), z.union([z.string().max(300), z.number(), z.boolean()])).optional(),
     body: z.record(z.string(), z.unknown()).optional(),
+    /** 沖銷、作廢、付款、刪除、核准這類動作要寫原因；要人核准時，審核的人看的就是這一句 */
+    reason: z.string().trim().max(500).optional(),
   }).strict(),
   get_quotation_pdf: z.object({ quotation_id: id }).strict(),
   send_quotation_pdf: z.object({
@@ -71,15 +77,20 @@ export async function listEndpoints(args: unknown) {
       return d.module.includes(p.keyword!) || d.label.includes(p.keyword!) || d.description.includes(p.keyword!);
     })
     .map(e => {
-      const verdict = judgeRequest(e.method, e.path.replace(/:[A-Za-z]+\??/g, "1"), {});
+      const concrete = e.path.replace(/:[A-Za-z]+\??/g, "1");
+      const verdict = judgeRequest(e.method, concrete, {}, { actions: currentAgent()?.actions });
       const described = describeEndpoint(e.method, e.path);
-      return { method: e.method, path: e.path, module: described.module, description: described.description, ...(verdict.allowed ? {} : { humanOnly: verdict.reason }) };
+      // ERP 金鑰：再看金鑰綁定的那個人的角色能不能做
+      const profile = currentAgent()?.profile;
+      const roleDenial = profile && verdict.allowed ? userEndpointDenial(profile, e.method, concrete) : null;
+      return { method: e.method, path: e.path, module: described.module, description: described.description, ...(verdict.allowed ? (roleDenial ? { notForYourRole: roleDenial } : {}) : verdict.review ? { needsApproval: "可以送出，要人在 ERP 核准才生效；請帶 reason" } : { humanOnly: verdict.reason }) };
     });
-  const usable = rows.filter(row => !("humanOnly" in row));
+  const usable = rows.filter(row => !("humanOnly" in row) && !("notForYourRole" in row));
   return {
     total: rows.length, usable: usable.length,
     endpoints: (keyword ? rows : usable).slice(0, 400),
-    note: keyword ? undefined : "只列出 AI 可以用的端點；加 keyword（英文路徑或中文都可以，例如 purchase、salary、合約、請款、物料）可以縮小範圍並看到哪些留給人。",
+    actingAs: currentAgent()?.profile ? `${currentAgent()!.profile!.user.displayName}（${currentAgent()!.profile!.roleLabel}）` : undefined,
+    note: keyword ? undefined : "只列出你可以用的端點（依金鑰綁定的使用者角色）；加 keyword（英文路徑或中文都可以，例如 purchase、salary、合約、請款、物料）可以縮小範圍並看到哪些留給人。",
     howTo: "先用 GET 讀清單或單筆了解欄位，再用 POST 新增、PATCH 修改。金額多為含稅；每一筆收入與支出都要帶 projectId。",
     tips: [
       "歷史單（Ecount 搬來的）：銷貨單 orderSource=ecount、報價／採購／進貨單 extraFields.legacy=true、收款單明細 legacy=true。只能改標題、專案、部門、備註這類不影響帳的欄位；金額、品項、狀態、客戶、日期不能改，也不能作廢或轉單。",
@@ -105,14 +116,24 @@ export async function erpRequest(args: unknown) {
   if (!tenantId) throw new Error("Tenant context required");
   const path = normalizePath(p.path);
   if (!path) return { ok: false, status: 400, error: "路徑格式不正確：請用 /purchase-orders 這種以斜線開頭的路徑，查詢條件放在 query" };
-  const verdict = judgeRequest(p.method, path, p.body);
+  const agent = currentAgent();
+  const verdict = judgeRequest(p.method, path, p.body, { actions: agent?.actions });
+  if (!verdict.allowed && verdict.review && agent && verdict.category) {
+    const b = (p.body ?? {}) as Record<string, unknown>;
+    const reason = String(p.reason ?? b.reason ?? b.changeReason ?? b.voidReason ?? "").trim();
+    if (!reason) return { ok: false, status: 428, needsReason: true, error: "這個動作要人核准才會生效：請在 reason 寫清楚為什麼要做，審核的人才能判斷" };
+    // 沖銷、作廢、取消：原因一起帶進去，核准後產生的分錄和紀錄才看得到為什麼
+    const body = /\/(reverse|void|void-ecpay|cancel|write-off)$/.test(path) && b.reason === undefined ? { ...b, reason } : p.body;
+    const cr = await submitAgentReview(tenantId, agent, verdict.category, { method: p.method, path, query: p.query, body }, reason);
+    return { ok: true, status: 202, pending: true, requestNumber: cr.requestNumber, message: `還沒有生效。已送出異動申請 ${cr.requestNumber}，要等財務或超級管理員在 ERP 核准` };
+  }
   if (!verdict.allowed) return { ok: false, status: 403, humanOnly: true, error: verdict.reason };
 
   const url = new URL(`/api${path}`, baseUrl());
   for (const [key, value] of Object.entries(p.query ?? {})) url.searchParams.set(key, String(value));
   const response = await fetch(url, {
     method: p.method,
-    headers: { "content-type": "application/json", ...internalHeaders(tenantId) },
+    headers: { "content-type": "application/json", ...internalHeaders(tenantId, agent?.profile ? { userId: agent.profile.user.id, keyId: agent.keyId } : undefined), ...(p.reason ? { "x-change-reason": encodeURIComponent(p.reason) } : {}) },
     body: p.method === "GET" ? undefined : JSON.stringify(p.body ?? {}),
     signal: AbortSignal.timeout(60_000),
   });

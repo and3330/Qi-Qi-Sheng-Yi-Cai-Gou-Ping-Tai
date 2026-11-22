@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { departmentLabel, projectLabel } from "@/lib/select-options";
 import { useLocation, useRoute } from "wouter";
 import { Printer } from "lucide-react";
 import { ReportHeader } from "@/components/shared/report-header";
@@ -11,6 +12,8 @@ import { AccountMultiPicker, type PickerAccount } from "@/components/accounting/
 import { fmtMoney } from "@/lib/report-format";
 import { useAutoReloadKey } from "@/lib/auto-refresh";
 import type { ExportOptions } from "@/lib/export-utils";
+import { JournalEntryDialog } from "@/components/accounting/journal-entry-dialog";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 
 /** 會計帳簿：照 Ecount「會計 > 報表 > 帳簿」各張報表的查詢方式 */
 export type Kind = "journal" | "period" | "account-party" | "party-account" | "account-summary" | "cash" | "trial";
@@ -50,13 +53,31 @@ export const refText = (date: string, reference: string, seq?: number) => {
   return seq ? `${base}-${seq}` : base;
 };
 
-interface JournalRow { date: string; entryId: number; reference: string; seq: number; accountNumber: string; accountName: string; party: string; summary: string; debit: number; credit: number; department: string | null; project: string | null }
+/** 點數字看明細時要帶的查詢條件（查詢當下的，不是畫面上後來改的） */
+export interface DrillScope { startDate?: string; endDate?: string; projectId?: string; departmentId?: string }
+/** 「2026-10」「2026/10/05」這一段的第一天和最後一天，再夾在查詢期間裡；看不懂的就回 null */
+export function clipPeriod(period: string, start?: string, end?: string): { startDate: string; endDate: string } | null {
+  const p = period.replace(/\//g, "-");
+  let s: string, e: string;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(p)) { s = p; e = p; }
+  else if (/^\d{4}-\d{2}$/.test(p)) {
+    const [y, m] = p.split("-").map(Number);
+    s = `${p}-01`; e = `${p}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+  } else return null;
+  if (start && start > s) s = start;
+  if (end && end < e) e = end;
+  return { startDate: s, endDate: e };
+}
+const isPL = (type?: string) => type === "Income" || type === "Expense";
+const dims = (q: DrillScope) => ({ projectId: q.projectId || undefined, departmentId: q.departmentId || undefined });
+
+interface JournalRow { date: string; entryId: number; reference: string; seq: number; accountId?: number; accountNumber: string; accountName: string; party: string; summary: string; debit: number; credit: number; department: string | null; project: string | null }
 interface JournalData { rows: JournalRow[]; entryCount: number; totalDebit: number; totalCredit: number }
 interface PeriodData { periods: { period: string; rows: { accountId: number; accountNumber: string; accountName: string; debit: number; credit: number }[]; totalDebit: number; totalCredit: number }[]; totalDebit: number; totalCredit: number }
 interface SubRow { date: string; entryId: number; reference: string; party: string; summary: string; accountName: string; debit: number; credit: number; balance: number }
 interface SubSection { key: string; account: { id: number; accountNumber: string; accountName: string; accountType: string }; party: string; summary: string; openingBalance: number; totalDebit: number; totalCredit: number; closingBalance: number; rows: SubRow[] }
 export interface SubData { filteredByDimension?: boolean; sections: SubSection[] }
-interface TrialRowT { accountId: number; accountNumber: string; accountName: string; depth: number; isGroup: boolean; debitAmount: number; creditAmount: number; debitBalance: number; creditBalance: number }
+interface TrialRowT { accountId: number; accountNumber: string; accountName: string; accountType?: string; depth: number; isGroup: boolean; debitAmount: number; creditAmount: number; debitBalance: number; creditBalance: number }
 interface TrialData { filteredByDimension?: boolean; rows: TrialRowT[]; total: { debitAmount: number; creditAmount: number; debitBalance: number; creditBalance: number } }
 interface CashRow { date: string; entryId: number; reference: string; cashAccount: string; counterAccount: string; party: string; summary: string; debit: number; credit: number; balance: number }
 interface CashData { filteredByDimension?: boolean; cashAccounts: { accountNumber: string; accountName: string }[]; openingBalance: number; rows: CashRow[]; totalDebit: number; totalCredit: number; closingBalance: number }
@@ -95,9 +116,11 @@ export default function AccountBooksPage() {
   const [accounts, setAccounts] = useState<PickerAccount[]>([]);
   const [departments, setDepartments] = useState<{ id: number; name: string }[]>([]);
   const [projects, setProjects] = useState<{ id: number; name: string }[]>([]);
-  const [data, setData] = useState<{ kind: Kind; body: unknown } | null>(null);
+  const [data, setData] = useState<{ kind: Kind; body: unknown; q: DrillScope & { summary: string } } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [openEntryId, setOpenEntryId] = useState<number | null>(null);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
 
   useEffect(() => {
     fetch(`/erp-api/accounts`).then(r => r.json()).then(d => setAccounts(Array.isArray(d) ? d : [])).catch(() => {});
@@ -145,7 +168,7 @@ export default function AccountBooksPage() {
       const res = await fetch(`${url}?${p}`);
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "查詢失敗");
-      setData({ kind, body: json });
+      setData({ kind, body: json, q: { startDate, endDate, projectId, departmentId, summary: isSub ? summary : "" } });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "查詢失敗");
     }
@@ -245,13 +268,13 @@ export default function AccountBooksPage() {
             {field("部門", (
               <select className={select} value={departmentId} onChange={e => setDepartmentId(e.target.value)} aria-label="部門">
                 <option value="">全部部門</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {departments.map(d => <option key={d.id} value={d.id}>{departmentLabel(d)}</option>)}
               </select>
             ))}
             {field("專案", (
               <select className={select} value={projectId} onChange={e => setProjectId(e.target.value)} aria-label="專案">
                 <option value="">全部專案</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {projects.map(p => <option key={p.id} value={p.id}>{projectLabel(p)}</option>)}
               </select>
             ))}
             {(kind === "journal" || kind === "account-party" || kind === "party-account") && field("客戶/供應商", <Input value={party} onChange={e => setParty(e.target.value)} placeholder="名稱的一部分" />)}
@@ -284,13 +307,15 @@ export default function AccountBooksPage() {
       </Card>
 
       <F8 onQuery={fetchReport} />
-      {data?.kind === "journal" && <JournalView d={data.body as JournalData} subtitle={subtitle} />}
-      {data?.kind === "period" && <PeriodView d={data.body as PeriodData} mode={mode} subtitle={subtitle} />}
+      {data?.kind === "journal" && <JournalView d={data.body as JournalData} subtitle={subtitle} onOpenEntry={setOpenEntryId} />}
+      {data?.kind === "period" && <PeriodView d={data.body as PeriodData} mode={mode} subtitle={subtitle} scope={data.q} onDrill={setDrill} />}
       {data && (data.kind === "account-party" || data.kind === "party-account" || data.kind === "account-summary") && (
-        <SubledgerView kind={data.kind} d={data.body as SubData} view={view} showOpening={showOpening} subtitle={subtitle} />
+        <SubledgerView kind={data.kind} d={data.body as SubData} view={view} showOpening={showOpening} subtitle={subtitle} scope={data.q.summary ? undefined : data.q} />
       )}
-      {data?.kind === "trial" && <TrialView d={data.body as TrialData} subtitle={subtitle} />}
-      {data?.kind === "cash" && <CashView d={data.body as CashData} subtitle={subtitle} />}
+      {data?.kind === "trial" && <TrialView d={data.body as TrialData} subtitle={subtitle} scope={data.q} onDrill={setDrill} />}
+      {data?.kind === "cash" && <CashView d={data.body as CashData} subtitle={subtitle} onOpenEntry={setOpenEntryId} />}
+      <JournalEntryDialog entryId={openEntryId} onClose={() => setOpenEntryId(null)} />
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
       {!data && !loading && <Card><CardContent className="py-12 text-center text-muted-foreground">設定條件後按「查詢(F8)」</CardContent></Card>}
     </div>
   );
@@ -315,7 +340,7 @@ function ReportTable({ children, minWidth = 860 }: { children: ReactNode; minWid
   return <Card><CardContent className="overflow-x-auto p-0"><table className="w-full text-sm" style={{ minWidth }}>{children}</table></CardContent></Card>;
 }
 
-function JournalView({ d, subtitle }: { d: JournalData; subtitle: string }) {
+function JournalView({ d, subtitle, onOpenEntry }: { d: JournalData; subtitle: string; onOpenEntry: (id: number) => void }) {
   return (
     <>
       <p className="text-sm text-muted-foreground">{subtitle}　{d.entryCount} 張傳票、{d.rows.length} 行</p>
@@ -327,7 +352,7 @@ function JournalView({ d, subtitle }: { d: JournalData; subtitle: string }) {
         </tr></thead>
         <tbody>
           {d.rows.map((r, i) => (
-            <tr key={`${r.entryId}-${r.seq}-${i}`} className={`border-b hover:bg-muted/40 ${i > 0 && d.rows[i - 1].entryId !== r.entryId ? "border-t-muted-foreground/30" : ""}`}>
+            <tr key={`${r.entryId}-${r.seq}-${i}`} title="點一下打開這張分錄" onClick={() => onOpenEntry(r.entryId)} className={`cursor-pointer border-b hover:bg-muted/40 ${i > 0 && d.rows[i - 1].entryId !== r.entryId ? "border-t-muted-foreground/30" : ""}`}>
               <td className={`${td} whitespace-nowrap font-mono text-xs`}>{refText(r.date, r.reference, r.seq)}</td>
               <td className={td}>{r.accountName}</td>
               <td className={`${td} max-w-[180px] truncate`}>{r.party}</td>
@@ -347,7 +372,12 @@ function JournalView({ d, subtitle }: { d: JournalData; subtitle: string }) {
   );
 }
 
-function PeriodView({ d, mode, subtitle }: { d: PeriodData; mode: "day" | "month"; subtitle: string }) {
+function PeriodView({ d, mode, subtitle, scope, onDrill }: { d: PeriodData; mode: "day" | "month"; subtitle: string; scope: DrillScope; onDrill: (t: DrillTarget) => void }) {
+  const cell = (text: string, period: string, r: { accountId: number; accountNumber: string; accountName: string }) => {
+    if (!text || !r.accountId) return text;
+    const range = clipPeriod(period, scope.startDate, scope.endDate) ?? { startDate: scope.startDate, endDate: scope.endDate };
+    return <DrillAmount onClick={() => onDrill({ title: `${r.accountNumber} ${r.accountName}`, accountIds: [r.accountId], ...range, ...dims(scope) })}>{text}</DrillAmount>;
+  };
   if (d.periods.length === 0) return <Card><CardContent className="py-12 text-center text-muted-foreground">這段期間沒有傳票</CardContent></Card>;
   return (
     <>
@@ -363,7 +393,7 @@ function PeriodView({ d, mode, subtitle }: { d: PeriodData; mode: "day" | "month
           <tbody>
             {p.rows.map(r => (
               <tr key={r.accountId} className="border-b hover:bg-muted/40">
-                <td className={num}>{amt(r.debit)}</td><td className={`${td} text-center`}>[{r.accountNumber}] {r.accountName}</td><td className={num}>{amt(r.credit)}</td>
+                <td className={num}>{cell(amt(r.debit), p.period, r)}</td><td className={`${td} text-center`}>[{r.accountNumber}] {r.accountName}</td><td className={num}>{cell(amt(r.credit), p.period, r)}</td>
               </tr>
             ))}
             <tr className="border-t-2 bg-primary/5 font-semibold">
@@ -379,12 +409,12 @@ function PeriodView({ d, mode, subtitle }: { d: PeriodData; mode: "day" | "month
   );
 }
 
-type SubDisplay = { kind: "row"; r: SubRow } | { kind: "group"; label: string; debit: number; credit: number; balance: number } | { kind: "subtotal"; label: string; debit: number; credit: number };
+type SubDisplay = { kind: "row"; r: SubRow } | { kind: "group"; label: string; debit: number; credit: number; balance: number } | { kind: "subtotal"; label: string; period: string; debit: number; credit: number };
 function subRows(rows: SubRow[], view: ViewType): SubDisplay[] {
   if (view === "line") {
     const out: SubDisplay[] = [];
     let month = "", dr = 0, cr = 0;
-    const flush = () => { if (month) out.push({ kind: "subtotal", label: `${month.replace("-", "/")} 合計`, debit: dr, credit: cr }); };
+    const flush = () => { if (month) out.push({ kind: "subtotal", label: `${month.replace("-", "/")} 合計`, period: month, debit: dr, credit: cr }); };
     for (const r of rows) {
       const m = r.date.slice(0, 7);
       if (m !== month) { flush(); month = m; dr = 0; cr = 0; }
@@ -404,8 +434,37 @@ function subRows(rows: SubRow[], view: ViewType): SubDisplay[] {
   return out;
 }
 
-export function SubledgerView({ kind, d, view, showOpening, subtitle }: { kind: Kind; d: SubData; view: ViewType; showOpening: boolean; subtitle: string }) {
+/**
+ * scope：查詢當下的期間與部門、專案。有給才能點合計看明細（一段＝一個科目＋一個對象）；
+ * 沒有對象的那一段、科目摘要明細帳的段落沒辦法只篩出那幾筆，合計就不能點，但每一行還是可以點開分錄。
+ */
+export function SubledgerView({ kind, d, view, showOpening, subtitle, scope }: { kind: Kind; d: SubData; view: ViewType; showOpening: boolean; subtitle: string; scope?: DrillScope }) {
   const sections = useMemo(() => d.sections, [d]);
+  const [openEntryId, setOpenEntryId] = useState<number | null>(null);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  const dialogs = (
+    <>
+      <JournalEntryDialog entryId={openEntryId} onClose={() => setOpenEntryId(null)} />
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
+    </>
+  );
+  const base = (s: SubSection): DrillTarget | null => (!scope || kind === "account-summary" || !s.party || !s.account.id ? null
+    : { title: `${s.account.accountNumber} ${s.account.accountName}`, accountIds: [s.account.id], party: s.party, endDate: scope.endDate, ...dims(scope) });
+  /** 本期發生額（借方、貸方合計）：只看查詢期間，或其中某一天、某個月 */
+  const inPeriod = (s: SubSection, period?: string): DrillTarget | null => {
+    const b = base(s);
+    if (!b) return null;
+    const range = (period ? clipPeriod(period, scope?.startDate, scope?.endDate) : null) ?? { startDate: scope?.startDate, endDate: scope?.endDate };
+    return { ...b, ...range };
+  };
+  /** 餘額：含結轉時從頭算（損益科目從當年 1/1），不含結轉時只看查詢期間 */
+  const balanceOf = (s: SubSection): DrillTarget | null => {
+    const b = base(s);
+    if (!b) return null;
+    if (!showOpening) return { ...b, startDate: scope?.startDate };
+    return { ...b, startDate: isPL(s.account.accountType) && scope?.startDate ? `${scope.startDate.slice(0, 4)}-01-01` : undefined };
+  };
+  const cell = (text: string, t: DrillTarget | null) => (t && text ? <DrillAmount onClick={() => setDrill(t)}>{text}</DrillAmount> : text);
   if (sections.length === 0) return <Card><CardContent className="py-12 text-center text-muted-foreground">沒有符合條件的資料</CardContent></Card>;
   if (view === "summary") {
     const firstCol = kind === "party-account" ? "客戶/供應商" : "科目";
@@ -427,8 +486,8 @@ export function SubledgerView({ kind, d, view, showOpening, subtitle }: { kind: 
                 <tr key={s.key} className="border-b hover:bg-muted/40">
                   <td className={td}>{kind === "party-account" ? other : acc}</td><td className={td}>{kind === "party-account" ? acc : other}</td>
                   {showOpening && <td className={num}>{fmt(s.openingBalance)}</td>}
-                  <td className={num}>{amt(s.totalDebit)}</td><td className={num}>{amt(s.totalCredit)}</td>
-                  <td className={num}>{fmt(showOpening ? s.closingBalance : s.closingBalance - s.openingBalance)}</td>
+                  <td className={num}>{cell(amt(s.totalDebit), inPeriod(s))}</td><td className={num}>{cell(amt(s.totalCredit), inPeriod(s))}</td>
+                  <td className={num}>{cell(fmt(showOpening ? s.closingBalance : s.closingBalance - s.openingBalance), balanceOf(s))}</td>
                 </tr>
               );
             })}
@@ -440,6 +499,7 @@ export function SubledgerView({ kind, d, view, showOpening, subtitle }: { kind: 
             </tr>
           </tbody>
         </ReportTable>
+        {dialogs}
       </>
     );
   }
@@ -469,7 +529,7 @@ export function SubledgerView({ kind, d, view, showOpening, subtitle }: { kind: 
                   </tr>
                 )}
                 {subRows(s.rows, view).map((x, i) => x.kind === "row" ? (
-                  <tr key={i} className="border-b hover:bg-muted/40">
+                  <tr key={i} className="cursor-pointer border-b hover:bg-muted/40" title="點一下打開這張分錄" onClick={() => setOpenEntryId(x.r.entryId)}>
                     <td className={`${td} whitespace-nowrap font-mono text-xs`}>{refText(x.r.date, x.r.reference)}</td>
                     {kind === "account-summary" && <td className={`${td} max-w-[180px] truncate`}>{x.r.party}</td>}
                     <td className={`${td} max-w-[320px] truncate`} title={x.r.summary}>{x.r.summary}</td>
@@ -478,29 +538,30 @@ export function SubledgerView({ kind, d, view, showOpening, subtitle }: { kind: 
                 ) : x.kind === "subtotal" ? (
                   <tr key={i} className="border-b bg-muted/30 text-muted-foreground">
                     <td colSpan={kind === "account-summary" ? 3 : 2} className={`${td} text-right font-medium`}>{x.label}</td>
-                    <td className={num}>{fmt(x.debit)}</td><td className={num}>{fmt(x.credit)}</td><td />
+                    <td className={num}>{cell(fmt(x.debit), inPeriod(s, x.period))}</td><td className={num}>{cell(fmt(x.credit), inPeriod(s, x.period))}</td><td />
                   </tr>
                 ) : (
                   <tr key={i} className="border-b hover:bg-muted/40">
                     <td colSpan={kind === "account-summary" ? 3 : 2} className={td}>{x.label}</td>
-                    <td className={num}>{amt(x.debit)}</td><td className={num}>{amt(x.credit)}</td><td className={num}>{fmt(x.balance - shift)}</td>
+                    <td className={num}>{cell(amt(x.debit), inPeriod(s, x.label))}</td><td className={num}>{cell(amt(x.credit), inPeriod(s, x.label))}</td><td className={num}>{fmt(x.balance - shift)}</td>
                   </tr>
                 ))}
                 <tr className="border-t-2 bg-primary/5 font-semibold">
                   <td colSpan={kind === "account-summary" ? 3 : 2} className="px-3 py-2">合計</td>
-                  <td className="px-3 py-2 text-right font-mono">{fmt(s.totalDebit)}</td><td className="px-3 py-2 text-right font-mono">{fmt(s.totalCredit)}</td>
-                  <td className="px-3 py-2 text-right font-mono">{fmt(s.closingBalance - shift)}</td>
+                  <td className="px-3 py-2 text-right font-mono">{cell(fmt(s.totalDebit), inPeriod(s))}</td><td className="px-3 py-2 text-right font-mono">{cell(fmt(s.totalCredit), inPeriod(s))}</td>
+                  <td className="px-3 py-2 text-right font-mono">{cell(fmt(s.closingBalance - shift), balanceOf(s))}</td>
                 </tr>
               </tbody>
             </ReportTable>
           </div>
         );
       })}
+      {dialogs}
     </>
   );
 }
 
-function CashView({ d, subtitle }: { d: CashData; subtitle: string }) {
+function CashView({ d, subtitle, onOpenEntry }: { d: CashData; subtitle: string; onOpenEntry: (id: number) => void }) {
   return (
     <>
       <p className="text-sm text-muted-foreground">{subtitle}　現金科目：{d.cashAccounts.map(a => `[${a.accountNumber}] ${a.accountName}`).join("、") || "（找不到 1111 現金科目）"}</p>
@@ -517,7 +578,7 @@ function CashView({ d, subtitle }: { d: CashData; subtitle: string }) {
             <td className={num} /><td className={num} /><td className={`${num} font-semibold`}>{fmt(d.openingBalance)}</td>
           </tr>
           {d.rows.map((r, i) => (
-            <tr key={`${r.entryId}-${i}`} className="border-b hover:bg-muted/40">
+            <tr key={`${r.entryId}-${i}`} className="cursor-pointer border-b hover:bg-muted/40" title="點一下打開這張分錄" onClick={() => onOpenEntry(r.entryId)}>
               <td className={`${td} whitespace-nowrap font-mono text-xs`}>{refText(r.date, r.reference)}</td>
               {d.cashAccounts.length > 1 && <td className={td}>{r.cashAccount}</td>}
               <td className={td}>{r.counterAccount}</td><td className={`${td} max-w-[180px] truncate`}>{r.party}</td>
@@ -536,7 +597,20 @@ function CashView({ d, subtitle }: { d: CashData; subtitle: string }) {
   );
 }
 
-function TrialView({ d, subtitle }: { d: TrialData; subtitle: string }) {
+function TrialView({ d, subtitle, scope, onDrill }: { d: TrialData; subtitle: string; scope: DrillScope; onDrill: (t: DrillTarget) => void }) {
+  // 試算表的金額是累計的（結轉＋本期），所以明細從頭列到結束日；損益科目每年 1/1 歸零，從當年 1/1 列起。
+  // 「以前年度損益」不是科目、「（本科目）」那一列沒辦法只篩自己，這兩種不能點。
+  const cell = (text: string, r: TrialRowT) => {
+    if (!text || !r.accountId || r.accountName.endsWith("（本科目）")) return text;
+    const pl = isPL(r.accountType);
+    return (
+      <DrillAmount onClick={() => onDrill({
+        title: `${r.accountNumber} ${r.accountName}`, accountIds: [r.accountId],
+        startDate: pl && scope.startDate ? `${scope.startDate.slice(0, 4)}-01-01` : undefined, endDate: scope.endDate, ...dims(scope),
+        note: pl ? "試算表金額是累計：損益科目從當年 1/1 算到結束日" : "試算表金額是累計：從開帳算到結束日",
+      })}>{text}</DrillAmount>
+    );
+  };
   return (
     <>
       <p className="text-sm text-muted-foreground">{subtitle}</p>
@@ -549,9 +623,9 @@ function TrialView({ d, subtitle }: { d: TrialData; subtitle: string }) {
         <tbody>
           {d.rows.map(r => (
             <tr key={`${r.accountId}-${r.accountName}`} className={`border-b hover:bg-muted/40 ${r.isGroup ? "bg-muted/20 font-semibold" : ""}`}>
-              <td className={num}>{amt(r.debitBalance)}</td><td className={num}>{amt(r.debitAmount)}</td>
+              <td className={num}>{cell(amt(r.debitBalance), r)}</td><td className={num}>{cell(amt(r.debitAmount), r)}</td>
               <td className={td} style={{ paddingLeft: 12 + r.depth * 16 }}>[{r.accountNumber}] {r.accountName}</td>
-              <td className={num}>{amt(r.creditAmount)}</td><td className={num}>{amt(r.creditBalance)}</td>
+              <td className={num}>{cell(amt(r.creditAmount), r)}</td><td className={num}>{cell(amt(r.creditBalance), r)}</td>
             </tr>
           ))}
           <tr className="border-t-2 bg-primary/5 font-semibold">

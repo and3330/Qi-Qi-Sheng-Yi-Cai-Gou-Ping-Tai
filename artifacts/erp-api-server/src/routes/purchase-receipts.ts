@@ -3,7 +3,7 @@ import { logStockMovement } from "../lib/stock-ledger";
 import { nextDocNumber } from "../lib/doc-number";
 import { randomUUID } from "node:crypto";
 import { desc, eq, sql, and, inArray } from "drizzle-orm";
-import { db, purchaseReceiptsTable, purchaseOrdersTable, suppliersTable, itemsTable, activitiesTable, invoicesTable, paymentRequestsTable, purchaseReturnsTable, invoiceSettlementsTable } from "@workspace/erp-db";
+import { db, purchaseReceiptsTable, purchaseOrdersTable, suppliersTable, itemsTable, activitiesTable, invoicesTable, paymentRequestsTable, purchaseReturnsTable, invoiceSettlementsTable, employeesTable, warehousesTable } from "@workspace/erp-db";
 import { requireAuth, requireRole } from "../middleware/require-auth";
 import { isLegacyDoc, LEGACY_DOC_READONLY_MESSAGE, LEGACY_EDIT_LIMIT_MESSAGE, readLegacyHeader, legacyStockLines, legacyImportError } from "../lib/legacy";
 import { assertIncomingInspectionPassed } from "../lib/quality-gate";
@@ -21,8 +21,22 @@ function generatePRNumber(): string {
   return `PR-${String(Date.now()).slice(-8)}-${randomUUID().slice(0, 6).toUpperCase()}`;
 }
 
-interface PRItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number; /** 建單當下的虛擬服務快照；舊單據無此欄位時回查品項主檔 */ isVirtual?: boolean }
-interface POItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number }
+interface PRItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number; /** 建單當下的虛擬服務快照；舊單據無此欄位時回查品項主檔 */ isVirtual?: boolean; /** 規格、摘要：照 Ecount 的明細欄位，只是說明文字 */ specification?: string; note?: string }
+interface POItem { itemId: number; itemName: string; quantity: number; rate: number; amount: number; specification?: string | null; note?: string | null }
+
+/** 明細上的說明文字（規格、摘要）：有填才存 */
+function lineTexts(item: any): { specification?: string; note?: string } {
+  const text = (value: unknown, max: number) => (typeof value === "string" && value.trim() ? value.trim().slice(0, max) : undefined);
+  const specification = text(item?.specification, 200);
+  const note = text(item?.note, 500);
+  return { ...(specification ? { specification } : {}), ...(note ? { note } : {}) };
+}
+/** 選填的主檔編號（承辦人）：沒填回 null，格式不對回 undefined */
+function optionalId(value: unknown): number | null | undefined {
+  if (value === undefined || value === null || value === "") return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : undefined;
+}
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   Draft: ["Submitted", "Cancelled"],
@@ -158,7 +172,7 @@ router.get("/purchase-receipts", async (_req, res): Promise<void> => {
       totalAmount: purchaseReceiptsTable.totalAmount, items: purchaseReceiptsTable.items,
       remarks: purchaseReceiptsTable.remarks, createdAt: purchaseReceiptsTable.createdAt,
       departmentId: purchaseReceiptsTable.departmentId, projectId: purchaseReceiptsTable.projectId,
-      extraFields: purchaseReceiptsTable.extraFields,
+      extraFields: purchaseReceiptsTable.extraFields, handlerId: purchaseReceiptsTable.handlerId,
     })
     .from(purchaseReceiptsTable)
     .innerJoin(suppliersTable, eq(purchaseReceiptsTable.supplierId, suppliersTable.id))
@@ -171,6 +185,8 @@ router.post("/purchase-receipts", async (req, res): Promise<void> => {
   if (!supplierId || !receiptDate || !items?.length) {
     res.status(400).json({ error: "缺少必填欄位" }); return;
   }
+  const handlerId = optionalId(req.body.handlerId);
+  if (handlerId === undefined) { res.status(400).json({ error: "承辦人格式不正確" }); return; }
 
   if (purchaseOrderId) {
     const [po] = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, purchaseOrderId));
@@ -191,7 +207,7 @@ router.post("/purchase-receipts", async (req, res): Promise<void> => {
     if (!dbItem) { res.status(400).json({ error: `品項 ID ${item.itemId} 不存在` }); return; }
     const amount = item.quantity * item.rate;
     totalAmount += amount;
-    orderItems.push({ itemId: item.itemId, itemName: dbItem.itemName, quantity: item.quantity, rate: item.rate, amount, isVirtual: dbItem.isVirtual });
+    orderItems.push({ itemId: item.itemId, itemName: dbItem.itemName, quantity: item.quantity, rate: item.rate, amount, isVirtual: dbItem.isVirtual, ...lineTexts(item) });
   }
 
   try {
@@ -220,6 +236,7 @@ router.post("/purchase-receipts", async (req, res): Promise<void> => {
         items: orderItems, remarks: remarks || null,
         departmentId: departmentId ? Number(departmentId) : null,
         projectId: projectId ? Number(projectId) : null,
+        handlerId,
       }).returning();
       const [sup] = await tx.select({ name: suppliersTable.name }).from(suppliersTable).where(eq(suppliersTable.id, supplierId));
       await tx.insert(activitiesTable).values({
@@ -263,6 +280,49 @@ router.post("/purchase-receipts/legacy-import", requireRole("owner", "admin"), a
   }
 });
 
+/** 「從採購單帶入」的選單：還沒收完、也不是舊系統搬來的採購單 */
+router.get("/purchase-receipts/open-orders", async (_req, res): Promise<void> => {
+  const orders = await db.select({
+    id: purchaseOrdersTable.id, orderNumber: purchaseOrdersTable.orderNumber, supplierId: purchaseOrdersTable.supplierId,
+    supplierName: suppliersTable.name, orderDate: purchaseOrdersTable.orderDate, status: purchaseOrdersTable.status, extraFields: purchaseOrdersTable.extraFields,
+  }).from(purchaseOrdersTable)
+    .innerJoin(suppliersTable, eq(purchaseOrdersTable.supplierId, suppliersTable.id))
+    .where(sql`${purchaseOrdersTable.status} NOT IN ('Completed','Cancelled')`)
+    .orderBy(desc(purchaseOrdersTable.orderDate), desc(purchaseOrdersTable.id)).limit(300);
+  res.json(orders.filter(o => !isLegacyDoc(o.extraFields)).map(({ extraFields: _extra, ...o }) => o));
+});
+
+/** 一張採購單還剩哪些品項、各多少沒收貨（草稿進貨單也算已佔用），給進貨單表單帶入用 */
+router.get("/purchase-receipts/order-remaining/:orderId", async (req, res): Promise<void> => {
+  const orderId = Number(req.params.orderId);
+  if (!Number.isInteger(orderId) || orderId <= 0) { res.status(400).json({ error: "採購訂單編號格式不正確" }); return; }
+  const [order] = await db.select().from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, orderId));
+  if (!order) { res.status(404).json({ error: "採購訂單不存在" }); return; }
+  if (isLegacyDoc(order.extraFields)) { res.status(400).json({ error: LEGACY_DOC_READONLY_MESSAGE }); return; }
+  if (order.status === "Completed" || order.status === "Cancelled") { res.status(400).json({ error: `訂單狀態為「${order.status}」，無法建立進貨單` }); return; }
+  const active = await db.select({ items: purchaseReceiptsTable.items }).from(purchaseReceiptsTable)
+    .where(and(eq(purchaseReceiptsTable.purchaseOrderId, orderId), sql`${purchaseReceiptsTable.status} IN ('Draft','Submitted','Completed')`));
+  const used = new Map<number, number>();
+  for (const doc of active) for (const item of doc.items as PRItem[]) used.set(item.itemId, (used.get(item.itemId) || 0) + Number(item.quantity));
+  const lines: Array<{ itemId: number; itemName: string; quantity: number; orderQuantity: number; rate: number; specification: string | null; note: string | null }> = [];
+  for (const item of (order.items as POItem[]) || []) {
+    if (!item.itemId) continue;
+    const taken = Math.min(used.get(item.itemId) || 0, Number(item.quantity));
+    used.set(item.itemId, (used.get(item.itemId) || 0) - taken);
+    const remaining = Number(item.quantity) - taken;
+    if (remaining > 0) lines.push({ itemId: item.itemId, itemName: item.itemName, quantity: remaining, orderQuantity: Number(item.quantity), rate: Number(item.rate) || 0, specification: item.specification || null, note: item.note || null });
+  }
+  const [supplier] = await db.select({ name: suppliersTable.name }).from(suppliersTable).where(eq(suppliersTable.id, order.supplierId));
+  res.json({
+    order: {
+      id: order.id, orderNumber: order.orderNumber, supplierId: order.supplierId, supplierName: supplier?.name || "",
+      currency: order.currency || "TWD", departmentId: order.departmentId, projectId: order.projectId,
+      handlerId: order.handlerId ?? null, warehouseId: order.warehouseId ?? null,
+    },
+    lines,
+  });
+});
+
 router.get("/purchase-receipts/:id", async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "進貨單編號格式不正確" }); return; }
@@ -275,13 +335,21 @@ router.get("/purchase-receipts/:id", async (req, res): Promise<void> => {
       totalAmount: purchaseReceiptsTable.totalAmount, items: purchaseReceiptsTable.items,
       remarks: purchaseReceiptsTable.remarks, createdAt: purchaseReceiptsTable.createdAt,
       departmentId: purchaseReceiptsTable.departmentId, projectId: purchaseReceiptsTable.projectId,
-      extraFields: purchaseReceiptsTable.extraFields,
+      extraFields: purchaseReceiptsTable.extraFields, handlerId: purchaseReceiptsTable.handlerId,
     })
     .from(purchaseReceiptsTable)
     .innerJoin(suppliersTable, eq(purchaseReceiptsTable.supplierId, suppliersTable.id))
     .where(eq(purchaseReceiptsTable.id, id));
   if (!receipt) { res.status(404).json({ error: "找不到進貨單" }); return; }
-  res.json({ ...receipt, totalAmount: Number(receipt.totalAmount) });
+  // 明細畫面要顯示名稱：承辦人、倉庫、來源採購單（含幣別，外幣進貨沒有營業稅）
+  const [handler] = receipt.handlerId ? await db.select({ firstName: employeesTable.firstName, lastName: employeesTable.lastName }).from(employeesTable).where(eq(employeesTable.id, receipt.handlerId)) : [];
+  const [warehouse] = receipt.warehouseId ? await db.select({ name: warehousesTable.name }).from(warehousesTable).where(eq(warehousesTable.id, receipt.warehouseId)) : [];
+  const [sourceOrder] = receipt.purchaseOrderId ? await db.select({ orderNumber: purchaseOrdersTable.orderNumber, currency: purchaseOrdersTable.currency }).from(purchaseOrdersTable).where(eq(purchaseOrdersTable.id, receipt.purchaseOrderId)) : [];
+  res.json({
+    ...receipt, totalAmount: Number(receipt.totalAmount),
+    handlerName: handler ? `${handler.firstName || ""}${/^[A-Za-z]/.test(handler.lastName || "") ? " " : ""}${handler.lastName || ""}`.trim() : null,
+    warehouseName: warehouse?.name ?? null, purchaseOrderNumber: sourceOrder?.orderNumber ?? null, currency: sourceOrder?.currency || "TWD",
+  });
 });
 
 router.patch("/purchase-receipts/:id", async (req, res): Promise<void> => {
@@ -326,7 +394,7 @@ router.patch("/purchase-receipts/:id", async (req, res): Promise<void> => {
   }
 
   // 草稿限定的內容編輯（表頭與品項，含日期與備註）；已確認/已完成/已取消不可修改內容
-  const wantsContentEdit = [supplierId, warehouseId, departmentId, projectId, items, receiptDate, remarks].some(v => v !== undefined);
+  const wantsContentEdit = [supplierId, warehouseId, departmentId, projectId, items, receiptDate, remarks, req.body.handlerId].some(v => v !== undefined);
   if (wantsContentEdit && existing.status !== "Draft") {
     res.status(400).json({ error: `僅草稿狀態的進貨單可編輯內容（目前狀態：${existing.status}）` }); return;
   }
@@ -352,6 +420,11 @@ router.patch("/purchase-receipts/:id", async (req, res): Promise<void> => {
     if (warehouseId !== undefined) updateData.warehouseId = warehouseId === null || warehouseId === "" ? null : Number(warehouseId);
     if (departmentId !== undefined) updateData.departmentId = departmentId === null ? null : Number(departmentId);
     if (projectId !== undefined) updateData.projectId = projectId === null ? null : Number(projectId);
+    if (req.body.handlerId !== undefined) {
+      const hid = optionalId(req.body.handlerId);
+      if (hid === undefined) { res.status(400).json({ error: "承辦人格式不正確" }); return; }
+      updateData.handlerId = hid;
+    }
     if (items !== undefined) {
       if (!Array.isArray(items) || items.length === 0) { res.status(400).json({ error: "至少需要一個品項" }); return; }
       const newItems: PRItem[] = [];
@@ -368,7 +441,7 @@ router.patch("/purchase-receipts/:id", async (req, res): Promise<void> => {
         if (!dbItem) { res.status(400).json({ error: `品項 ID ${itemId} 不存在` }); return; }
         const amount = quantity * rate;
         totalAmount += amount;
-        newItems.push({ itemId, itemName: dbItem.itemName, quantity, rate, amount, isVirtual: dbItem.isVirtual });
+        newItems.push({ itemId, itemName: dbItem.itemName, quantity, rate, amount, isVirtual: dbItem.isVirtual, ...lineTexts(item) });
       }
       updateData.items = newItems;
       updateData.totalAmount = String(totalAmount);
@@ -485,16 +558,16 @@ router.post("/purchase-receipts/from-order/:orderId", async (req, res): Promise<
         if (remaining > 0) {
           const amount = remaining * oi.rate;
           totalAmount += amount;
-          remainingItems.push({ itemId: oi.itemId, itemName: oi.itemName, quantity: remaining, rate: oi.rate, amount, isVirtual: virtualIds.has(oi.itemId) });
+          remainingItems.push({ itemId: oi.itemId, itemName: oi.itemName, quantity: remaining, rate: oi.rate, amount, isVirtual: virtualIds.has(oi.itemId), ...lineTexts(oi) });
         }
       }
       if (remainingItems.length === 0) throw new Error("所有品項已完成收貨");
       const [receipt] = await tx.insert(purchaseReceiptsTable).values({
         receiptNumber: await nextDocNumber(tx, "purchase_receipts", "receipt_number", "PR", generatePRNumber), purchaseOrderId: orderId, supplierId: order.supplierId,
-        warehouseId: Number(req.body?.warehouseId) || null,
+        warehouseId: Number(req.body?.warehouseId) || order.warehouseId || null,
         receiptDate: order.expectedDate || todayTaipei(),
         totalAmount: String(totalAmount), items: remainingItems,
-        departmentId: order.departmentId, projectId: order.projectId,
+        departmentId: order.departmentId, projectId: order.projectId, handlerId: order.handlerId ?? null,
       }).returning();
       await tx.insert(activitiesTable).values({
         type: "create", title: "從採購訂單建立進貨單",

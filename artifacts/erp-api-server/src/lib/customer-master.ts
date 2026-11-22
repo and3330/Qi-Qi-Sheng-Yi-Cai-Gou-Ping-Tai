@@ -5,7 +5,7 @@ import { isValidTaiwanTaxId } from "./tax-id-tw";
 /** Fields accepted by POST /customers (camelCase, matching the customers table). */
 export const CUSTOMER_TEXT_FIELDS = [
   "name", "customerCode", "shortName", "email", "phone", "mobile", "contactPerson",
-  "salesPerson", "address", "city", "country", "taxId", "category",
+  "salesPerson", "address", "city", "country", "taxId", "category", "remarks",
 ] as const;
 export type CustomerTextField = typeof CUSTOMER_TEXT_FIELDS[number];
 export type CustomerInput = { name: string } & Partial<Record<Exclude<CustomerTextField, "name">, string | null>>;

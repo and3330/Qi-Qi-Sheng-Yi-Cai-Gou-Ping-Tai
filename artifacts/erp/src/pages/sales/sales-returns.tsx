@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { selectableDepartments, selectableProjects, departmentLabel, projectPickerLabel } from "@/lib/select-options";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,7 +119,7 @@ export default function SalesReturnsPage() {
     };
     const res = await fetch(`/erp-api/sales-returns`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (res.ok) {
-      toast({ title: "銷售退貨單已建立" }); setOpen(false);
+      toast({ title: "銷貨退回單已建立" }); setOpen(false);
       setForm({ deliveryNoteId: "", customerId: "", returnDate: new Date().toISOString().slice(0, 10), reason: "", remarks: "", departmentId: "", projectId: "" });
       setLineItems([]); fetchAll();
     } else {
@@ -164,7 +165,7 @@ export default function SalesReturnsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="銷售退貨" description="處理客戶退貨，需指定送貨單，確認後自動回復庫存並建立折讓單" />
+      <PageHeader title="銷貨退回" description="處理客戶退貨，需指定出貨單，確認後自動回復庫存並建立折讓單" />
 
       {batch.count > 0 && (
         <BatchActionBar
@@ -179,11 +180,11 @@ export default function SalesReturnsPage() {
       )}
       <div className="flex justify-end">
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增退貨單</Button>
-        {/* 新增銷售退貨單：外框用全系統共用的單據視窗 */}
+        {/* 新增銷貨退回單：外框用全系統共用的單據視窗 */}
         <DocWindow
           open={open}
           onClose={() => setOpen(false)}
-          name="新增銷售退貨單"
+          name="新增銷貨退回單"
           wide
           footer={<>
             <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
@@ -192,12 +193,12 @@ export default function SalesReturnsPage() {
         >
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">來源送貨單 *</label>
+                <label className="text-sm font-medium">來源出貨單 *</label>
                 <SearchableSelect
                   value={form.deliveryNoteId}
                   onValueChange={v => onSelectDN(v)}
                   options={deliveryNotes.map(dn => ({ value: String(dn.id), label: `${dn.noteNumber} - ${dn.customerName}` }))}
-                  placeholder="選擇送貨單"
+                  placeholder="選擇出貨單"
                   data-testid="select-return-delivery-note"
                 />
               </div>
@@ -218,7 +219,7 @@ export default function SalesReturnsPage() {
                   <SearchableSelect
                     value={form.departmentId}
                     onValueChange={v => setForm(p => ({ ...p, departmentId: v }))}
-                    options={depts.filter(d => (d as any).isActive !== false || String(d.id) === String(form.departmentId)).map(d => ({ value: String(d.id), label: `${d.name}${(d as any).isActive === false ? "（已停用）" : ""}` }))}
+                    options={selectableDepartments(depts, form.departmentId).map(d => ({ value: String(d.id), label: departmentLabel(d) }))}
                     placeholder="請選擇部門"
                     triggerClassName={!form.departmentId ? "border-red-300 bg-red-50" : undefined}
                     data-testid="select-return-department"
@@ -229,7 +230,7 @@ export default function SalesReturnsPage() {
                   <SearchableSelect
                     value={form.projectId}
                     onValueChange={v => setForm(p => ({ ...p, projectId: v }))}
-                    options={projs.filter(p => (p as any).isActive !== false || String(p.id) === String(form.projectId)).map(p => ({ value: String(p.id), label: `${p.name}${(p as any).isActive === false ? "（已停用）" : ""}` }))}
+                    options={selectableProjects(projs, form.projectId).map(p => ({ value: String(p.id), label: projectPickerLabel(p) }))}
                     placeholder="請選擇專案"
                     triggerClassName={!form.projectId ? "border-red-300 bg-red-50" : undefined}
                     data-testid="select-return-project"
@@ -239,7 +240,7 @@ export default function SalesReturnsPage() {
               <div><label className="text-sm font-medium">備註</label><Input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註說明" /></div>
               {lineItems.length > 0 && (
                 <div>
-                  <label className="text-sm font-medium">退貨品項（自送貨單帶入）</label>
+                  <label className="text-sm font-medium">退貨品項（自出貨單帶入）</label>
                   {/* 手機版：卡片式品項編輯 */}
                   <div className="md:hidden space-y-3 mt-2">
                     {lineItems.map((line, i) => (
@@ -321,7 +322,8 @@ export default function SalesReturnsPage() {
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
                 ) : filtered.map(r => (
-                  <tr key={r.id} className="border-b hover:bg-gray-50">
+                  <tr key={r.id} className="border-b hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(r.id); }}>
                     <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(r.id)} onChange={() => batch.toggle(r.id)} /></td>
                     <td className="px-4 py-2 font-medium">{r.returnNumber}</td>
                     <td className="px-4 py-2">{r.customerName}</td>
@@ -408,7 +410,7 @@ export default function SalesReturnsPage() {
             </div>
           </DocSection>
 
-          {/* 這張退貨是從哪張送貨單退的；送貨單沒有單張的網址，點了到送貨單列表 */}
+          {/* 這張退貨是從哪張出貨單退的；出貨單沒有單張的網址，點了到出貨單列表 */}
           <RelatedDocs type="sales_return" id={detailItem.id} onNavigate={() => setDetailItem(null)} />
         </DocWindow>
       )}

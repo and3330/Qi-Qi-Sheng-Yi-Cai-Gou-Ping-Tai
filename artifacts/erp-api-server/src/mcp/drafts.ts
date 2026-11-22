@@ -1,13 +1,17 @@
 import { z } from "zod/v4";
-import { db, currentTenantId, customersTable, suppliersTable, accountsTable, invoicesTable, invoiceSettlementsTable, itemsTable } from "@workspace/erp-db";
-import { eq, sql } from "drizzle-orm";
-import { resolveJournalLines } from "../lib/auto-journal";
+import { db, currentTenantId, customersTable, suppliersTable, accountsTable, invoicesTable, invoiceSettlementsTable, itemsTable, salesOrdersTable, purchaseOrdersTable } from "@workspace/erp-db";
+import { eq, inArray, sql } from "drizzle-orm";
+import { cashLineAccount } from "../lib/cash-accounts";
+import { orderOutstanding, orderPaymentSummaries } from "../lib/order-payments";
 
 export const id = z.number().int().positive();
 export const date = z.iso.date();
 export const money = z.number().positive().max(999999999).refine(v => Math.abs(v * 100 - Math.round(v * 100)) < 0.00001, "At most two decimal places");
 const text = z.string().max(500);
-const line = z.object({ invoiceId: id, amount: money }).strict();
+// 每一行沖一張發票，或直接沖一張訂單（收款單沖銷貨單、付款單沖採購單）。
+// 老闆 2026-11-18：Ecount 搬來、沒有發票的歷史銷貨單也要能由 AI 建收款草稿
+const line = z.object({ invoiceId: id.optional(), salesOrderId: id.optional(), purchaseOrderId: id.optional(), amount: money }).strict()
+  .refine(row => [row.invoiceId, row.salesOrderId, row.purchaseOrderId].filter(v => v !== undefined).length === 1, "Each line needs exactly one of invoiceId, salesOrderId or purchaseOrderId");
 const voucher = z.object({
   voucherType: z.enum(["收款單", "付款單"]), voucherDate: date,
   customerId: id.optional(), supplierId: id.optional(), accountId: id,
@@ -39,10 +43,33 @@ export async function validateDraft(type: DraftType, input: unknown): Promise<Re
     const [account] = await db.select().from(accountsTable).where(eq(accountsTable.id, p.accountId));
     // Accounts currently have no active flag. Only an existing non-group asset account is usable.
     if (!account || account.isGroup || account.accountType !== "Asset") throw new Error("Usable asset account required");
-    const [cash] = await resolveJournalLines(db,[{ accountName: "現金/銀行", debit: 0, credit: 0 }]);
-    if (cash.accountId !== p.accountId) throw new Error("Account must match the existing voucher cash resolver");
+    // 收付款帳戶：跟人工開收款單一樣，可選任何現金或銀行存款明細科目（例如國泰板橋），核准時以 cashAccountId 帶進傳票
+    const cash = await cashLineAccount(db, p.accountId).catch(() => { throw new Error("Account must be a cash or bank account"); });
     const totals = new Map<number, number>();
-    for (const row of p.items) totals.set(row.invoiceId, (totals.get(row.invoiceId) ?? 0) + Math.round(row.amount * 100));
+    const orderTotals = new Map<number, number>();
+    const orderKey = type === "receipt" ? "salesOrderId" : "purchaseOrderId";
+    for (const row of p.items) {
+      if ((type === "receipt" ? row.purchaseOrderId : row.salesOrderId) !== undefined) throw new Error(type === "receipt" ? "Receipts settle sales orders, not purchase orders" : "Payments settle purchase orders, not sales orders");
+      const orderId = row[orderKey];
+      if (orderId !== undefined) orderTotals.set(orderId, (orderTotals.get(orderId) ?? 0) + Math.round(row.amount * 100));
+      else totals.set(row.invoiceId!, (totals.get(row.invoiceId!) ?? 0) + Math.round(row.amount * 100));
+    }
+    if (orderTotals.size > 0) {
+      const ids = Array.from(orderTotals.keys());
+      const orders: any[] = type === "receipt"
+        ? await db.select().from(salesOrdersTable).where(inArray(salesOrdersTable.id, ids))
+        : await db.select().from(purchaseOrdersTable).where(inArray(purchaseOrdersTable.id, ids));
+      const summaries = await orderPaymentSummaries(db, type === "receipt" ? "sales" : "purchase", ids);
+      for (const [orderId, cents] of orderTotals) {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) throw new Error("Order not found in tenant");
+        if (order.status === "Cancelled") throw new Error("Order is cancelled");
+        if (type === "receipt" ? order.customerId !== p.customerId : order.supplierId !== p.supplierId) throw new Error("Order party mismatch");
+        const rate = type === "payment" && order.currency && order.currency !== "TWD" ? (Number(order.exchangeRate) || 1) : 1;
+        const available = orderOutstanding(Math.round(Number(order.totalAmount) * rate * 100) / 100, summaries.get(orderId));
+        if (cents > Math.round(available * 100)) throw new Error(`Amount exceeds order outstanding balance (${available})`);
+      }
+    }
     for (const [invoiceId, cents] of totals) {
       const [inv] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, invoiceId));
       if (!inv || inv.ecpayVoidedAt || ["Draft", "Cancelled", "Voided", "VoidPending", "VoidReconcileRequired", "WrittenOff", "Paid"].includes(inv.status)) throw new Error("Invoice not collectible");
@@ -51,7 +78,7 @@ export async function validateDraft(type: DraftType, input: unknown): Promise<Re
       const available = Math.min(Number(inv.outstandingAmount), Number(inv.totalAmount) - Number(settled.amount) - Number(inv.writeOffAmount));
       if (cents > Math.round(available * 100)) throw new Error("Amount exceeds outstanding balance");
     }
-    return { voucherType: p.voucherType, voucherDate: p.voucherDate, customerId: p.customerId, supplierId: p.supplierId, description: p.description, items: p.items.map(row => ({ ...row, description: p.description, accountId: p.accountId })), totalAmount: (Array.from(totals.values()).reduce((a,b) => a+b,0)/100).toFixed(2) };
+    return { voucherType: p.voucherType, voucherDate: p.voucherDate, cashAccountId: cash.accountId, customerId: p.customerId, supplierId: p.supplierId, description: p.description, items: p.items.map(row => ({ ...row, description: p.description, accountId: p.accountId })), totalAmount: ([...totals.values(), ...orderTotals.values()].reduce((a,b) => a+b,0)/100).toFixed(2) };
   }
   if (type === "payment_request") {
     const p = request.parse(parsed);

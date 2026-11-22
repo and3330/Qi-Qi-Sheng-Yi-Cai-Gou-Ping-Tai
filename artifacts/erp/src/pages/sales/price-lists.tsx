@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DocWindow, DocStatus } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Eye, X } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
@@ -123,12 +123,16 @@ export default function PriceListsPage() {
         />
       )}
       <div className="flex justify-end">
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-1" />新增價目表</Button>
-          </DialogTrigger>
-          <DialogContent className="md:max-w-md">
-            <DialogHeader><DialogTitle>新增價目表</DialogTitle></DialogHeader>
+        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" />新增價目表</Button>
+        <DocWindow
+          open={open}
+          onClose={() => setOpen(false)}
+          name="新增價目表"
+          footer={<>
+              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
+              <Button onClick={handleCreate} disabled={!form.name}>建立</Button>
+          </>}
+        >
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium">名稱 *</label>
@@ -154,12 +158,7 @@ export default function PriceListsPage() {
                 <Input value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註" />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
-              <Button onClick={handleCreate} disabled={!form.name}>建立</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </DocWindow>
       </div>
 
       <Card>
@@ -183,7 +182,7 @@ export default function PriceListsPage() {
                 ) : lists.length === 0 ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">尚無資料</td></tr>
                 ) : lists.map(l => (
-                  <tr key={l.id} className="border-b hover:bg-gray-50">
+                  <tr key={l.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={(e) => { if ((e.target as HTMLElement).closest("button,select,input,a,label")) return; viewDetail(l.id); }}>
                     <td className="px-2"><CheckboxCell checked={batch.selectedIds.has(l.id)} onChange={() => batch.toggle(l.id)} /></td>
                     <td className="px-4 py-2 font-medium">{l.name}</td>
                     <td className="px-4 py-2">{l.currency}</td>
@@ -203,11 +202,15 @@ export default function PriceListsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="md:max-w-2xl max-h-[85dvh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{detail?.name} - 品項明細</DialogTitle>
-          </DialogHeader>
+      {/* 價目表內容與品項明細 */}
+      <DocWindow
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        name={detail ? `價目表：${detail.name}` : "價目表"} layoutKey="價目表"
+        status={detail ? <DocStatus label={detail.isActive === "Y" ? "啟用" : "停用"} tone={detail.isActive === "Y" ? "default" : "secondary"} /> : undefined}
+        description={detail ? `${detail.currency}${detail.customerGroup ? `・客群 ${detail.customerGroup}` : ""}${detail.remarks ? `・${detail.remarks}` : ""}` : undefined}
+        footer={<Button variant="outline" onClick={() => setDetailOpen(false)}>關閉</Button>}
+      >
           {detail && (
             <div className="space-y-4">
               <div className="flex gap-2 items-end">
@@ -260,8 +263,7 @@ export default function PriceListsPage() {
               </table>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+      </DocWindow>
     </div>
   );
 }

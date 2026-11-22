@@ -9,7 +9,8 @@ import { reqTenantId } from "../middleware/tenant-context";
 import accountRecoveryRouter from "./account-recovery";
 import { createLockedAuth } from "../lib/locked-auth";
 import { companyCode, accountName } from "../lib/company-identity";
-import { loadCustomRoles } from "../lib/custom-roles";
+import { builtinRolePermissions, customRoleApplies, loadCustomRoles, removeUserFromCustomRoles } from "../lib/custom-roles";
+import { BUILTIN_ROLES, ROLE_LABEL } from "../lib/role-defaults";
 import { authConnectionTimeoutMs } from "../lib/auth-diagnostics";
 
 const router: IRouter = Router();
@@ -91,8 +92,13 @@ router.get("/admin/me", async (req, res): Promise<void> => {
   let customRole: { id: string; name: string; permissions: Record<string, string[]> } | null = null;
   try {
     const tenantId = (req as any).tenantId ?? user.tenantId;
-    const role = tenantId ? (await loadCustomRoles(tenantId)).find((r) => r.userIds.includes(user.id)) : null;
+    const role = tenantId && customRoleApplies(user.role) ? (await loadCustomRoles(tenantId)).find((r) => r.userIds.includes(user.id)) : null;
     if (role) customRole = { id: role.id, name: role.name, permissions: role.permissions };
+    // 內建角色也有勾選表；畫面用同一個欄位決定要不要顯示新增、修改、刪除按鈕
+    else if (tenantId) {
+      const builtin = await builtinRolePermissions(tenantId, user.role);
+      if (builtin) customRole = { id: `builtin-${user.role}`, name: ROLE_LABEL[user.role] || user.role, permissions: builtin };
+    }
   } catch (err) {
     (req as any).log?.error({ err }, "custom role lookup failed");
   }
@@ -118,21 +124,21 @@ router.get("/admin/users", requireRole("owner", "admin"), async (_req, res): Pro
     .orderBy(adminUsersTable.username);
   const customRoles = await loadCustomRoles(reqTenantId(_req), db, true).catch(() => []);
   res.json(users.map((u) => {
-    const custom = customRoles.find((r) => r.userIds.includes(u.id));
+    const custom = customRoleApplies(u.role) ? customRoles.find((r) => r.userIds.includes(u.id)) : undefined;
     return { ...u, customRoleId: custom?.id ?? null, customRoleName: custom?.name ?? null };
   }));
 });
 
 /** super_admin 為平台維運角色：僅平台方（tenant 1 的 super_admin）可指派，租戶不得自行升級 */
 /** 系統內建的角色；角色欄只接受這些值 */
-const ASSIGNABLE_ROLES = ["owner", "admin", "manager", "hr_admin", "finance_admin", "accountant", "viewer", "employee"];
+const ASSIGNABLE_ROLES: readonly string[] = BUILTIN_ROLES;
 
 function canAssignRole(req: any, role: unknown): boolean {
   if (role === undefined || role === null || role === "") return true; // 沒指定就用預設角色
   const actorRole = req.session?.user?.role;
   if (role === "super_admin") return actorRole === "super_admin" && reqTenantId(req) === 1;
   if (typeof role !== "string" || !ASSIGNABLE_ROLES.includes(role)) return false;
-  // 擁有者只能由擁有者（或平台方）指派，管理員不能把人升成擁有者
+  // 老闆只能由老闆（或平台方）指派，系統管理員不能把人升成老闆
   if (role === "owner") return actorRole === "owner" || actorRole === "super_admin";
   return true;
 }
@@ -227,6 +233,8 @@ router.patch("/admin/users/:id", requireRole("owner", "admin"), async (req, res)
   try {
     const [user] = await db.update(adminUsersTable).set(updates).where(and(eq(adminUsersTable.id, id), eq(adminUsersTable.tenantId, reqTenantId(req)))).returning();
     if (!user) { res.status(404).json({ error: "Not found" }); return; }
+    // 角色改掉了：從原本的自訂角色移出，一個帳號不會同時掛在兩種身分底下
+    if (updates.role !== undefined) await removeUserFromCustomRoles(reqTenantId(req), id, user.role);
     res.json({ id: user.id, username: user.username, displayName: user.displayName, role: user.role, isActive: user.isActive, employeeId: user.employeeId });
   } catch (e: unknown) {
     if (pgErrorCode(e) === "23505") {
@@ -244,6 +252,7 @@ router.delete("/admin/users/:id", requireRole("owner", "admin"), async (req, res
   if (problem) { res.status(problem.status).json({ error: problem.error }); return; }
   const [user] = await db.delete(adminUsersTable).where(and(eq(adminUsersTable.id, id), eq(adminUsersTable.tenantId, reqTenantId(req)))).returning();
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
+  await removeUserFromCustomRoles(reqTenantId(req), id);
   res.sendStatus(204);
 });
 

@@ -11,6 +11,7 @@ import { ExportMenu } from "@/components/shared/export-menu";
 import { MobileCard, MobileCardHeader, MobileCardGrid, MobileCardItem, MobileTotalCard } from "@/components/shared/mobile-card";
 import type { ExportOptions, ExportRow } from "@/lib/export-utils";
 import type { CashFlowData, CashFlowItem } from "./types";
+import { AccountDrillDialog, DrillAmount, type DrillTarget } from "@/components/shared/account-drill";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
@@ -36,6 +37,9 @@ export default function CashFlowPage() {
   const [data, setData] = useState<CashFlowData | null>(null);
   const [compareData, setCompareData] = useState<CashFlowData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [drill, setDrill] = useState<DrillTarget | null>(null);
+  // 這次查詢實際用的期間（點數字看明細時要用同一組）
+  const [queried, setQueried] = useState({ startDate, endDate, compareStartDate, compareEndDate });
 
   const fetchCashFlow = async (sd: string, ed: string): Promise<CashFlowData | null> => {
     const params = new URLSearchParams();
@@ -51,6 +55,7 @@ export default function CashFlowPage() {
     try {
       const main = await fetchCashFlow(startDate, endDate);
       setData(main);
+      setQueried({ startDate, endDate, compareStartDate, compareEndDate });
       if (viewMode === "horizontal") {
         const compare = await fetchCashFlow(compareStartDate, compareEndDate);
         setCompareData(compare);
@@ -67,6 +72,26 @@ export default function CashFlowPage() {
   useEffect(() => { fetchReport(); }, [reloadKey]);
 
   const fmt = (n: number) => fmtMoney(n);
+
+  // 點數字看明細：有科目編號（accountId）而且金額不是 0 才可以點
+  const openDrill = (title: string, accountIds: number[], compare = false) => setDrill({
+    title, accountIds,
+    startDate: compare ? queried.compareStartDate : queried.startDate,
+    endDate: compare ? queried.compareEndDate : queried.endDate,
+  });
+  const itemAmount = (item: CashFlowItem | undefined, text: string, compare = false) => {
+    const id = item?.accountId;
+    return item && id != null && item.amount !== 0
+      ? <DrillAmount onClick={() => openDrill(`${item.accountNumber} ${item.accountName}`, [id], compare)}>{text}</DrillAmount>
+      : text;
+  };
+  const totalAmount = (title: string, items: CashFlowItem[] | undefined, total: number, text: string, compare = false) => {
+    const ids = (items ?? []).map(i => i.accountId).filter((id): id is number => id != null);
+    // 要整段的每個科目都有編號才開，不然明細會少算
+    return total !== 0 && ids.length > 0 && ids.length === (items ?? []).length
+      ? <DrillAmount onClick={() => openDrill(title, ids, compare)}>{text}</DrillAmount>
+      : text;
+  };
   const applyPeriod = (mode: PeriodMode, value: string) => {
     setPeriodMode(mode);
     setPeriodValue(value);
@@ -118,8 +143,8 @@ export default function CashFlowPage() {
     <>
       <tr className={`${style.bg} border-b`}>
         <td colSpan={2} className={`px-4 py-2.5 font-bold ${style.text}`}>{title}</td>
-        <td className={`px-4 py-2.5 text-right font-bold ${style.text}`}>{fmt(total)}</td>
-        {isHoriz && <td className={`px-4 py-2.5 text-right font-bold ${style.text}`}>{fmt(cTotal!)}</td>}
+        <td className={`px-4 py-2.5 text-right font-bold ${style.text}`}>{totalAmount(title, items, total, fmt(total))}</td>
+        {isHoriz && <td className={`px-4 py-2.5 text-right font-bold ${style.text}`}>{totalAmount(title, cItems, cTotal!, fmt(cTotal!), true)}</td>}
         {isHoriz && <td className={`px-4 py-2.5 text-right font-bold ${total - cTotal! >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(total - cTotal!)}</td>}
       </tr>
       {items.map((i, idx) => {
@@ -128,8 +153,8 @@ export default function CashFlowPage() {
         <tr key={idx} className="border-b hover:bg-gray-50">
           <td className="px-4 py-1.5 pl-8 font-mono text-xs text-gray-400">{i.accountNumber}</td>
           <td className="px-4 py-1.5 pl-10 text-gray-600">{i.accountName}</td>
-          <td className={`px-4 py-1.5 text-right font-mono ${i.amount >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(i.amount)}</td>
-          {isHoriz && <td className="px-4 py-1.5 text-right font-mono text-gray-500">{fmt(ci?.amount || 0)}</td>}
+          <td className={`px-4 py-1.5 text-right font-mono ${i.amount >= 0 ? "text-green-600" : "text-red-600"}`}>{itemAmount(i, fmt(i.amount))}</td>
+          {isHoriz && <td className="px-4 py-1.5 text-right font-mono text-gray-500">{itemAmount(ci, fmt(ci?.amount || 0), true)}</td>}
           {isHoriz && <td className={`px-4 py-1.5 text-right font-mono ${i.amount - (ci?.amount || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(i.amount - (ci?.amount || 0))}</td>}
         </tr>
         );
@@ -145,13 +170,13 @@ export default function CashFlowPage() {
       <div className="mb-4">
         <MobileCardHeader 
           title={title} 
-          value={fmt(total)} 
+          value={totalAmount(title, items, total, fmt(total))} 
           titleClass={color === "green" ? "text-green-800" : color === "orange" ? "text-orange-800" : "text-purple-800"} 
           valueClass={color === "green" ? "text-green-800" : color === "orange" ? "text-orange-800" : "text-purple-800"} 
         />
         {isHoriz && (
           <div className="flex justify-between text-sm mb-3 pb-2 border-b">
-            <span className="text-gray-500">比較期: <span className="font-bold text-gray-700">{fmt(cTotal!)}</span></span>
+            <span className="text-gray-500">比較期: <span className="font-bold text-gray-700">{totalAmount(title, cItems, cTotal!, fmt(cTotal!), true)}</span></span>
             <span className="text-gray-500">差異: <span className={`font-bold ${total - cTotal! >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(total - cTotal!)}</span></span>
           </div>
         )}
@@ -162,11 +187,11 @@ export default function CashFlowPage() {
               <div key={idx} className="bg-white p-3 rounded border text-sm">
                 <div className="flex justify-between mb-1">
                   <span className="text-gray-700">{i.accountName} <span className="text-gray-400 text-xs ml-1">({i.accountNumber})</span></span>
-                  <span className={`font-mono font-bold ${i.amount >= 0 ? "text-green-600" : "text-red-600"}`}>{fmt(i.amount)}</span>
+                  <span className={`font-mono font-bold ${i.amount >= 0 ? "text-green-600" : "text-red-600"}`}>{itemAmount(i, fmt(i.amount))}</span>
                 </div>
                 {isHoriz && (
                   <div className="flex justify-between text-xs text-gray-500 mt-2 pt-2 border-t">
-                    <span>比較期: {fmt(ci?.amount || 0)}</span>
+                    <span>比較期: {itemAmount(ci, fmt(ci?.amount || 0), true)}</span>
                     <span>差異: <span className={i.amount - (ci?.amount || 0) >= 0 ? "text-green-600" : "text-red-600"}>{fmt(i.amount - (ci?.amount || 0))}</span></span>
                   </div>
                 )}
@@ -357,6 +382,8 @@ export default function CashFlowPage() {
       {!data && !loading && (
         <Card><CardContent className="py-12 text-center text-gray-400">選擇日期區間後點擊查詢以產生現金流量表</CardContent></Card>
       )}
+
+      <AccountDrillDialog target={drill} onClose={() => setDrill(null)} />
     </div>
   );
 }

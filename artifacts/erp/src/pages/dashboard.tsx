@@ -20,7 +20,7 @@ import {
   DollarSign, Users, ShoppingCart, Truck, CalendarOff,
   FolderKanban, UserPlus, TrendingUp, TrendingDown,
   Pause, Play, ClipboardCheck, AlertTriangle, PackageSearch, Landmark, FileClock,
-  ChevronRight, FileText, Clock, HandCoins, Search, CheckCircle2,
+  ChevronRight, FileText, Clock, HandCoins, Search, CheckCircle2, RefreshCw,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -99,7 +99,7 @@ export default function Dashboard() {
   const [filterMonth, setFilterMonth] = useState<string>(thisMonth);
   const yearOptions = Array.from({ length: now.getFullYear() - 2021 + 1 }, (_, i) => String(2021 + i)).reverse();
 
-  const { data: summary, isLoading: summaryLoading, isFetching: sFetch, dataUpdatedAt } = useQuery<any>({
+  const { data: summary, isLoading: summaryLoading, isFetching: sFetch, dataUpdatedAt, isError: summaryFailed, refetch: refetchSummary } = useQuery<any>({
     queryKey: ["/erp-api/dashboard/summary", filterYear, filterMonth],
     queryFn: async () => {
       const response = await fetch(`/erp-api/dashboard/summary?year=${filterYear}&month=${filterMonth}`, { credentials: "include" });
@@ -108,9 +108,9 @@ export default function Dashboard() {
     },
     refetchInterval,
   });
-  const { data: activities, isLoading: activitiesLoading, isFetching: aFetch } = useGetRecentActivity({ limit: 8 }, { query: { queryKey: getGetRecentActivityQueryKey({ limit: 8 }), refetchInterval } });
+  const { data: activities, isLoading: activitiesLoading, isFetching: aFetch, isError: activitiesFailed, refetch: refetchActivities } = useGetRecentActivity({ limit: 8 }, { query: { queryKey: getGetRecentActivityQueryKey({ limit: 8 }), refetchInterval } });
   const chartYear = filterYear === "all" ? thisYear : filterYear;
-  const { data: revenueData, isLoading: chartLoading } = useQuery<any[]>({
+  const { data: revenueData, isLoading: chartLoading, isError: chartFailed, refetch: refetchChart } = useQuery<any[]>({
     queryKey: ["/erp-api/dashboard/revenue-chart", chartYear],
     queryFn: async () => {
       const response = await fetch(`/erp-api/dashboard/revenue-chart?year=${chartYear}`, { credentials: "include" });
@@ -119,7 +119,7 @@ export default function Dashboard() {
     },
     refetchInterval: livePaused ? false : 60000,
   });
-  const { data: todos, isLoading: todosLoading } = useQuery<DashboardTodos>({
+  const { data: todos, isLoading: todosLoading, isError: todosFailed, refetch: refetchTodos } = useQuery<DashboardTodos>({
     queryKey: ["/erp-api/dashboard/todos"],
     queryFn: async () => {
       const response = await fetch(`/erp-api/dashboard/todos`, { credentials: "include" });
@@ -131,13 +131,26 @@ export default function Dashboard() {
 
   useEffect(() => { if (dataUpdatedAt) setLastUpdate(new Date(dataUpdatedAt)); }, [dataUpdatedAt]);
   const isLive = !livePaused && (sFetch || aFetch);
+  // 資料抓不到時要講清楚，不能留一片空白讓人以為壞掉
+  const summaryBroken = summaryFailed || !!summary?.error;
+  const failedCount = [summaryBroken, todosFailed, chartFailed, activitiesFailed].filter(Boolean).length;
+  const offline = failedCount > 0;
+  const retryAll = () => { void refetchSummary(); void refetchTodos(); void refetchChart(); void refetchActivities(); };
+  const chartRows = Array.isArray(revenueData) ? revenueData : [];
+  const chartEmpty = chartRows.every((row) => !Number(row?.revenue) && !Number(row?.expenses));
+  const sectionError = (text: string, retry: () => void, className = "") => (
+    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed px-4 py-4 text-sm text-muted-foreground ${className}`} role="status">
+      <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" aria-hidden />{text}</span>
+      <Button variant="outline" size="sm" onClick={retry}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />重新讀取</Button>
+    </div>
+  );
 
   const periodLabel = filterYear === "all" ? "歷年" : filterMonth === "all" ? `${filterYear} 全年` : `${filterYear}/${filterMonth} 月`;
   const money = (n: number) => (isMobile ? compactMoney(n) : `$${n.toLocaleString()}`);
   const profit = Number(summary?.netProfit ?? 0);
   const statCards = summary && !summary.error ? [
     { label: `營收（${periodLabel}）`, value: money(Number(summary.totalRevenue ?? 0)), icon: <DollarSign size={20} />, color: "text-emerald-600", path: "/reports/sales-analysis" },
-    { label: `發票毛利（${periodLabel}）`, value: money(profit), icon: profit >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />, color: profit >= 0 ? "text-emerald-600" : "text-red-600", path: "/reports/gross-margin" },
+    { label: `營收減採購（${periodLabel}）`, value: money(profit), icon: profit >= 0 ? <TrendingUp size={20} /> : <TrendingDown size={20} />, color: profit >= 0 ? "text-emerald-600" : "text-red-600", path: "/reports/gross-margin" },
     { label: "待處理銷售訂單", value: summary.openSalesOrders ?? 0, icon: <ShoppingCart size={20} />, color: "text-orange-600", path: "/sales/orders" },
     { label: "待處理採購訂單", value: summary.openPurchaseOrders ?? 0, icon: <Truck size={20} />, color: "text-cyan-600", path: "/purchasing/orders" },
     { label: "待審核假單", value: summary.pendingLeaves ?? 0, icon: <CalendarOff size={20} />, color: "text-amber-600", path: "/hr/leaves" },
@@ -148,8 +161,8 @@ export default function Dashboard() {
 
   const todoItems = todos ? [
     { label: "待我審批", count: todos.pendingApprovals.count as number | null, detail: "等待您的決定", path: "/system/approval-requests", icon: ClipboardCheck, color: "text-amber-600", danger: false, attention: todos.pendingApprovals.count > 0 },
-    { label: "逾期應收", count: todos.overdueReceivables.count, detail: `NT$ ${todos.overdueReceivables.total.toLocaleString()}`, path: "/sales/invoices", icon: AlertTriangle, color: "text-red-600", danger: todos.overdueReceivables.count > 0, attention: todos.overdueReceivables.count > 0 },
-    { label: "低庫存品項", count: todos.lowStock.count, detail: "低於或等於補貨點", path: "/inventory/lookup", icon: PackageSearch, color: todos.lowStock.count > 0 ? "text-red-600" : "text-emerald-600", danger: todos.lowStock.count > 0, attention: todos.lowStock.count > 0 },
+    { label: "逾期應收", count: todos.overdueReceivables.count, detail: `NT$ ${todos.overdueReceivables.total.toLocaleString()}`, path: "/reports/ar-aging", icon: AlertTriangle, color: "text-red-600", danger: todos.overdueReceivables.count > 0, attention: todos.overdueReceivables.count > 0 },
+    { label: "低庫存品項", count: todos.lowStock.count, detail: "低於或等於補貨點", path: "/inventory/lookup?low=1", icon: PackageSearch, color: todos.lowStock.count > 0 ? "text-red-600" : "text-emerald-600", danger: todos.lowStock.count > 0, attention: todos.lowStock.count > 0 },
     { label: "草稿逾 14 天", count: todos.draftDocsAging.count, detail: `報價 ${todos.draftDocsAging.quotations} · 訂單 ${todos.draftDocsAging.salesOrders}`, path: "/sales/quotations", icon: FileClock, color: todos.draftDocsAging.count > 0 ? "text-red-600" : "text-muted-foreground", danger: todos.draftDocsAging.count > 0, attention: todos.draftDocsAging.count > 0 },
     { label: "本期營業稅估算", count: null, detail: `NT$ ${todos.vatEstimate.payableTax.toLocaleString()}`, path: "/accounting/vat-report", icon: Landmark, color: todos.vatEstimate.payableTax < 0 ? "text-red-600" : "text-blue-600", danger: todos.vatEstimate.payableTax < 0, attention: false },
   ] : [];
@@ -167,10 +180,10 @@ export default function Dashboard() {
   const liveStatus = (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <span className="relative flex h-2 w-2">
-        {!livePaused && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
-        <span className={`relative inline-flex rounded-full h-2 w-2 ${livePaused ? "bg-muted-foreground" : isLive ? "bg-emerald-500" : "bg-emerald-400"}`} />
+        {!livePaused && !offline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${offline ? "bg-red-500" : livePaused ? "bg-muted-foreground" : isLive ? "bg-emerald-500" : "bg-emerald-400"}`} />
       </span>
-      <span>{livePaused ? "已暫停" : "即時更新"}</span>
+      <span className={offline ? "text-red-600" : ""}>{offline ? "資料讀取失敗" : livePaused ? "已暫停" : "即時更新"}</span>
       <span className="text-muted-foreground/70">· 最後 {lastUpdate.toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}</span>
     </div>
   );
@@ -199,6 +212,13 @@ export default function Dashboard() {
           {todos && (attentionCount > 0 ? `　·　有 ${attentionCount} 件事要處理` : "　·　目前沒有待處理的事")}
         </p>
       </div>
+
+      {failedCount >= 3 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200" role="alert" data-testid="dashboard-offline">
+          <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />目前連不到伺服器，下面的數字讀不出來。系統每隔幾秒會自己再試，也可以按右邊重試。</span>
+          <Button variant="outline" size="sm" onClick={retryAll}><RefreshCw className="mr-1.5 h-3.5 w-3.5" />重新讀取</Button>
+        </div>
+      )}
 
       <FoundationCheck />
       <SetupReminders />
@@ -234,7 +254,7 @@ export default function Dashboard() {
           {todosLoading ? (
             <CardContent className="space-y-3 p-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</CardContent>
           ) : todoItems.length === 0 ? (
-            <CardContent className="p-4 text-sm text-muted-foreground">待辦資料暫時無法取得</CardContent>
+            <CardContent className="p-3">{sectionError("待辦讀不出來", () => void refetchTodos(), "border-0 px-1 py-1")}</CardContent>
           ) : (
             <ul className="divide-y">
               {[...todoItems].sort((a, b) => Number(b.attention) - Number(a.attention)).map((item) => {
@@ -269,7 +289,7 @@ export default function Dashboard() {
         <div className="hidden md:grid grid-cols-2 xl:grid-cols-5 gap-3">
           {todosLoading ? Array.from({ length: 5 }).map((_, i) => (
             <Card key={i}><CardContent className="p-4"><Skeleton className="h-20 w-full" /></CardContent></Card>
-          )) : todoItems.map((item) => {
+          )) : todoItems.length === 0 ? sectionError("待辦讀不出來", () => void refetchTodos(), "col-span-full") : todoItems.map((item) => {
             const Icon = item.icon;
             return (
               <Card
@@ -324,7 +344,7 @@ export default function Dashboard() {
               {Array.from({ length: 12 }, (_, i) => String(i + 1)).map(m => <option key={m} value={m}>{m} 月</option>)}
             </select>
           )}
-          <span className="hidden md:inline text-xs text-muted-foreground">（適用於營收、支出與淨利，不含作廢發票）</span>
+          <span className="hidden md:inline text-xs text-muted-foreground">（適用於營收與採購支出；已開發票的算發票，還沒開的算已成立的訂單，不含作廢）</span>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4" data-testid="dashboard-stats">
@@ -332,6 +352,7 @@ export default function Dashboard() {
             ? Array.from({ length: 8 }).map((_, i) => (
                 <Card key={i}><CardContent className="p-3 md:p-4"><Skeleton className="h-14 md:h-16 w-full" /></CardContent></Card>
               ))
+            : statCards.length === 0 ? sectionError("營運數字讀不出來", () => void refetchSummary(), "col-span-full")
             : statCards.map((card) => (
                 <Card
                   key={card.label}
@@ -351,13 +372,13 @@ export default function Dashboard() {
                 </Card>
               ))}
         </div>
-        <p className="md:hidden px-1 text-xs text-muted-foreground">營收與毛利依所選期間計算，不含作廢發票。</p>
+        <p className="md:hidden px-1 text-xs text-muted-foreground">營收與採購依所選期間計算；還沒開發票的算已成立的訂單。</p>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
         <Card className="lg:col-span-2">
           <CardHeader className="max-md:p-4 max-md:pb-2">
-            <CardTitle className="text-base">營收與支出<span className="ml-1.5 text-xs font-normal text-muted-foreground">{chartYear} 年逐月，依發票</span></CardTitle>
+            <CardTitle className="text-base">營收與支出<span className="ml-1.5 text-xs font-normal text-muted-foreground">{chartYear} 年逐月，依發票與已成立的訂單</span></CardTitle>
             <div className="flex gap-4 pt-1 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" />營收</span>
               <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-destructive" />支出</span>
@@ -366,9 +387,12 @@ export default function Dashboard() {
           <CardContent className="max-md:px-2 max-md:pb-3">
             {chartLoading ? (
               <Skeleton className="h-52 md:h-64 w-full" />
+            ) : chartFailed ? sectionError("營收圖表讀不出來", () => void refetchChart(), "mx-2")
+            : chartEmpty ? (
+              <p className="flex h-40 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">{chartYear} 年還沒有發票資料</p>
             ) : (
               <ResponsiveContainer width="100%" height={isMobile ? 210 : 280}>
-                <AreaChart data={Array.isArray(revenueData) ? revenueData : []} margin={isMobile ? { top: 6, right: 10, left: 0, bottom: 0 } : undefined}>
+                <AreaChart data={chartRows} margin={isMobile ? { top: 6, right: 10, left: 0, bottom: 0 } : undefined}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={!isMobile} />
                   <XAxis dataKey="month" className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} interval={isMobile ? 1 : 0} tickLine={false} />
                   <YAxis className="text-xs" tick={{ fill: "hsl(var(--muted-foreground))" }} tickFormatter={axisMoney} width={isMobile ? 44 : 60} tickLine={false} axisLine={!isMobile} />
@@ -393,7 +417,8 @@ export default function Dashboard() {
           <CardContent className="space-y-3 max-md:px-4 max-md:pb-4">
             {activitiesLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
-            ) : Array.isArray(activities) && activities.length > 0 ? (
+            ) : activitiesFailed ? sectionError("近期動態讀不出來", () => void refetchActivities())
+            : Array.isArray(activities) && activities.length > 0 ? (
               activities.slice(0, isMobile ? 5 : 8).map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 text-sm">
                   <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />

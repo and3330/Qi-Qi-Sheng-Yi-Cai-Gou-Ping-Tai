@@ -19,6 +19,8 @@ import type {
 } from "./types";
 
 import { LookupSelect } from "@/components/shared/lookup-select";
+import { DrillAmount } from "@/components/shared/account-drill";
+import { DocListDrillDialog, type DocListTarget } from "@/components/shared/doc-list-drill";
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 const PAGE_SIZE = 50;
 
@@ -35,6 +37,7 @@ export default function InventoryStatusPage() {
   const [showLow, setShowLow] = useState(false);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [docs, setDocs] = useState<DocListTarget | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -88,6 +91,16 @@ export default function InventoryStatusPage() {
 
   const fmt = (n: number) => fmtMoney(n);
   const fmtQty = (n: number) => n.toLocaleString("zh-TW", { maximumFractionDigits: 2 });
+  // 點數量看這個品項的每一筆進出；給 entry 就只看那個倉庫。上面有選倉庫時，整列的數量本來就只算那個倉庫
+  const stockDrill = (row: InventoryRow, qty: number, entry?: WarehouseBreakdown) => {
+    const wid = entry ? entry.warehouseId : warehouseId ? Number(warehouseId) : undefined;
+    const wname = entry ? entry.warehouseName : wid ? data?.warehouses.find(w => w.id === wid)?.name : undefined;
+    return (
+      <DrillAmount onClick={() => setDocs({ kind: "stock-entries", itemId: row.itemId, title: `${row.itemCode} ${row.itemName}`, ...(wid ? { warehouseId: wid } : {}), ...(wname ? { note: `倉庫：${wname}` } : {}) })}>
+        {fmtQty(qty)}
+      </DrillAmount>
+    );
+  };
 
   const exportRows = async (): Promise<InventoryRow[]> => {
     const params = new URLSearchParams(filterParams);
@@ -185,7 +198,7 @@ export default function InventoryStatusPage() {
                   <MobileCard key={row.itemId} className={row.belowReorder ? "border-red-300 bg-red-50/30" : ""}>
                     <MobileCardHeader 
                       title={row.itemName}
-                      value={<>{fmtQty(row.currentStock)} <span className="text-xs text-gray-400 font-normal">{row.unit}</span></>}
+                      value={<>{stockDrill(row, row.currentStock)} <span className="text-xs text-gray-400 font-normal">{row.unit}</span></>}
                       titleClass="text-gray-900"
                       valueClass="text-blue-700 font-mono"
                     />
@@ -205,7 +218,7 @@ export default function InventoryStatusPage() {
                           {row.warehouseBreakdown.map((entry: WarehouseBreakdown) => (
                             <div key={`${row.itemId}-${entry.warehouseId}`} className="bg-gray-50 p-2 rounded text-sm flex justify-between items-center">
                               <span className="text-gray-700">{entry.warehouseName}</span>
-                              <span className="font-mono text-gray-600">{fmtQty(entry.qty)} <span className="text-xs text-gray-400 font-normal ml-1">{row.unit}</span></span>
+                              <span className="font-mono text-gray-600">{stockDrill(row, entry.qty, entry)} <span className="text-xs text-gray-400 font-normal ml-1">{row.unit}</span></span>
                             </div>
                           ))}
                         </div>
@@ -232,7 +245,7 @@ export default function InventoryStatusPage() {
                         <tr className={`border-b hover:bg-gray-50 ${row.belowReorder ? "bg-red-50/30" : ""}`}>
                           <td className="px-4 py-1.5 font-mono text-xs">{row.itemCode}</td><td className="px-4 py-1.5 font-medium">{row.itemName}</td>
                           <td className="px-4 py-1.5 text-gray-500 hidden lg:table-cell">{row.itemGroup || "-"}</td><td className="px-3 py-1.5 text-center">{row.unit}</td>
-                          <td className="px-3 py-1.5 text-right font-mono">{fmtQty(row.currentStock)}</td><td className="px-3 py-1.5 text-right font-mono text-gray-400">{fmtQty(row.reorderLevel)}</td>
+                          <td className="px-3 py-1.5 text-right font-mono">{stockDrill(row, row.currentStock)}</td><td className="px-3 py-1.5 text-right font-mono text-gray-400">{fmtQty(row.reorderLevel)}</td>
                           <td className="px-3 py-1.5 text-right font-mono">{fmt(row.movingAvgCost)}</td><td className="px-4 py-1.5 text-right font-mono">{fmt(row.stockValue)}</td>
                           <td className="px-3 py-1.5 text-center">{row.belowReorder ? <Badge variant="destructive">低庫存</Badge> : <Badge variant="outline" className="text-green-600 border-green-300">正常</Badge>}</td>
                         </tr>
@@ -240,7 +253,7 @@ export default function InventoryStatusPage() {
                           <tr key={`${row.itemId}-${entry.warehouseId}`} className="border-b bg-gray-50/30">
                             <td className="px-4 py-1 pl-10 text-xs text-gray-400" colSpan={3}>└ {entry.warehouseName}</td>
                             <td className="px-3 py-1 text-center text-xs text-gray-400">{row.unit}</td>
-                            <td className="px-3 py-1 text-right font-mono text-xs text-gray-500">{fmtQty(entry.qty)}</td><td colSpan={4} />
+                            <td className="px-3 py-1 text-right font-mono text-xs text-gray-500">{stockDrill(row, entry.qty, entry)}</td><td colSpan={4} />
                           </tr>
                         ))}
                       </React.Fragment>
@@ -289,6 +302,7 @@ export default function InventoryStatusPage() {
       )}
 
       {!data && loading && <Card><CardContent className="py-12 text-center text-gray-400">載入中...</CardContent></Card>}
+      <DocListDrillDialog target={docs} onClose={() => setDocs(null)} />
     </div>
   );
 }
