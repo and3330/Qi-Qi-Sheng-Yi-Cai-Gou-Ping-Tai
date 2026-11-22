@@ -3,11 +3,12 @@
  * 每種單據有一份預設版面；「系統管理 › 列印模板」可以另存版面並設為預設。
  */
 
-export type PrintDocType = "Quotation" | "SalesOrder";
+export type PrintDocType = "Quotation" | "SalesOrder" | "DeliveryNote";
 
 export const PRINT_DOC_TYPES: { value: PrintDocType; label: string; module: string }[] = [
   { value: "Quotation", label: "報價單", module: "Sales" },
   { value: "SalesOrder", label: "銷貨單", module: "Sales" },
+  { value: "DeliveryNote", label: "出貨單", module: "Sales" },
 ];
 
 export interface PrintFieldSetting { key: string; label: string; visible: boolean }
@@ -59,6 +60,11 @@ export const DOC_HEADER_FIELDS: Record<PrintDocType, PrintFieldSetting[]> = {
     f("project", "專案", false), f("deliveryDate", "預計交貨日", false), f("courseStartDate", "開課日期"), f("courseEndDate", "課程截止日"),
     f("caseTime", "上課時間"), f("coursePeriod", "課程期數", false), f("teacher", "老師", false),
   ],
+  DeliveryNote: [
+    f("docNumber", "出貨單號"), f("date", "出貨日期"), f("customerName", "客戶"), f("customerTaxId", "統編", false),
+    f("customerPhone", "聯繫方式"), f("customerAddress", "送貨地址"), f("salesOrder", "銷貨單號"), f("handler", "承辦人"),
+    f("warehouse", "發貨倉庫", false), f("project", "專案", false),
+  ],
 };
 
 export const COMPANY_FIELDS: PrintFieldSetting[] = [
@@ -74,7 +80,7 @@ export function defaultLayout(docType: PrintDocType): PrintLayout {
   return {
     paper: "A4",
     orientation: "portrait",
-    titleText: docType === "Quotation" ? "{公司}　報價單" : "{公司}　銷貨單",
+    titleText: `{公司}　${PRINT_DOC_TYPES.find(d => d.value === docType)?.label ?? "單據"}`,
     accentColor: "#000000",
     fontSize: "normal",
     showCompanyBlock: true,
@@ -233,12 +239,13 @@ export function renderPrintHtml(docType: PrintDocType, data: PrintData, layout: 
 /** 預覽用的範例資料 */
 export function samplePrintData(docType: PrintDocType): PrintData {
   return {
-    docNumber: docType === "Quotation" ? "QT-20261115-001" : "SO-20261115-001",
+    docNumber: docType === "Quotation" ? "QT-20261115-001" : docType === "DeliveryNote" ? "DN-20261115-001" : "SO-20261115-001",
     title: "115(上) 範例國小 課後社團",
     customer: { name: "範例國民小學", taxId: "12345678", phone: "02-1234-5678", address: "新北市板橋區範例路 1 號" },
     company: { name: "範例股份有限公司", taxId: "00000000", address: "新北市板橋區範例路 2 號", contact: "王小明", tel: "02-0000-0000" },
     fields: {
       date: "2026-11-15", validUntil: "2026-12-15", project: "校園社團", handler: "謝孟軒", deliveryDate: "2026-12-01",
+      salesOrder: "SO-20261115-001", warehouse: "總倉",
       courseStartDate: "2026-09-01", courseEndDate: "2027-01-15", caseTime: "1600-1730", coursePeriod: "115上", teacher: "王老師",
     },
     items: [

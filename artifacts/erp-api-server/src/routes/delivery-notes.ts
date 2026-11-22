@@ -309,6 +309,8 @@ router.get("/delivery-notes/order-remaining/:orderId", async (req, res): Promise
       id: order.id, orderNumber: order.orderNumber, customerId: order.customerId, customerName: customer?.name || "",
       deliveryDate: order.deliveryDate, departmentId: order.departmentId, projectId: order.projectId, handlerId: order.handlerId, warehouseId,
       contactInfo: [customer?.contactPerson, customer?.phone].filter(Boolean).join(" ") || null, shippingAddress: customer?.address || null,
+      // 銷貨單的備註帶到出貨單（出貨、收件的交代要跟著走）
+      remarks: order.remarks || null,
     },
     lines,
   });
