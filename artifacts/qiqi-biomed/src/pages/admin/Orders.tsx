@@ -7,6 +7,7 @@ import {
   useBulkUpdateAdminOrderStatus,
   useBulkDeleteAdminOrders,
   useUpdateShipmentPhotos,
+  useUpdateAdminOrderShipment,
   getGetAdminStatsQueryKey,
   getListAdminProductsQueryKey,
   getListAdminStockMovementsQueryKey,
@@ -45,6 +46,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { SHIPPING_CARRIERS } from "@/lib/utils";
 import { AdminLayout } from "./AdminLayout";
 import { PaymentInfoSettings } from "./PaymentInfoSettings";
 
@@ -92,6 +94,73 @@ const NEXT_ACTIONS: Record<string, { status: string; label: string; danger?: boo
   completed: [],
   cancelled: [],
 };
+
+/** 出貨資訊：貨運公司與運送單號。已付款的訂單存檔後會順便變成「已出貨」，會員在訂單頁看得到。 */
+function ShipmentInfoEditor({ order, onSaved }: { order: AdminOrder; onSaved: (order: AdminOrder) => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [carrier, setCarrier] = useState(order.shippingCarrier ?? "");
+  const [trackingNo, setTrackingNo] = useState(order.trackingNo ?? "");
+  useEffect(() => {
+    setCarrier(order.shippingCarrier ?? "");
+    setTrackingNo(order.trackingNo ?? "");
+  }, [order.id, order.shippingCarrier, order.trackingNo]);
+  const { mutate, isPending } = useUpdateAdminOrderShipment({
+    mutation: {
+      onSuccess: (updated) => {
+        queryClient.invalidateQueries({ queryKey: getListAdminOrdersQueryKey(), exact: false });
+        queryClient.invalidateQueries({ queryKey: getGetAdminStatsQueryKey() });
+        onSaved(updated);
+        toast({ title: "出貨資訊已儲存", description: updated.status === "shipped" ? "訂單已是「已出貨」，會員在訂單頁看得到單號" : undefined });
+      },
+      onError: (err: unknown) => {
+        const message = (err as { data?: { error?: string } })?.data?.error;
+        toast({ title: message || "儲存失敗", variant: "destructive" });
+      },
+    },
+  });
+  const allowed = ["paid", "shipped", "completed"].includes(order.status);
+  return (
+    <div className="mt-4 rounded-lg border p-3" data-testid="shipment-info-editor">
+      <p className="text-sm font-semibold">出貨資訊</p>
+      {!allowed ? (
+        <p className="mt-1 text-xs text-muted-foreground">確認付款後才能填貨運公司與運送單號。</p>
+      ) : (
+        <>
+          <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
+            <Input
+              list="shipping-carrier-options"
+              placeholder="貨運公司"
+              value={carrier}
+              onChange={(e) => setCarrier(e.target.value)}
+              data-testid="input-shipping-carrier"
+            />
+            <datalist id="shipping-carrier-options">
+              {SHIPPING_CARRIERS.map((name) => <option key={name} value={name} />)}
+            </datalist>
+            <Input
+              placeholder="運送單號"
+              value={trackingNo}
+              onChange={(e) => setTrackingNo(e.target.value)}
+              data-testid="input-tracking-no"
+            />
+            <Button
+              type="button"
+              disabled={isPending || !trackingNo.trim()}
+              onClick={() => mutate({ id: order.id, data: { carrier: carrier.trim() || null, trackingNo: trackingNo.trim() } })}
+              data-testid="button-save-shipment"
+            >
+              {order.status === "paid" ? "儲存並標記已出貨" : "儲存"}
+            </Button>
+          </div>
+          {order.shippedAt && (
+            <p className="mt-2 text-xs text-muted-foreground">出貨時間：{new Date(order.shippedAt).toLocaleString("zh-TW", { hour12: false })}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 function ShipmentPhotosManager({ order }: { order: AdminOrder }) {
   const { toast } = useToast();
@@ -664,6 +733,8 @@ export default function AdminOrdersPage() {
                 </span>
               </p>
               
+              <ShipmentInfoEditor order={detail} onSaved={setDetail} />
+
               <ShipmentPhotosManager order={detail} />
             </div>
           )}

@@ -729,6 +729,9 @@ export const ListAdminOrdersResponseItem = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -767,6 +770,55 @@ export const GetAdminOrderResponse = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "id": zod.int(),
+  "productId": zod.int(),
+  "productName": zod.string(),
+  "productCode": zod.string(),
+  "unitPrice": zod.int(),
+  "variantId": zod.int().nullish(),
+  "variantName": zod.string().nullish(),
+  "quantity": zod.int()
+}))
+})
+
+
+/**
+ * @summary 填入出貨資訊（貨運公司、運送單號）；訂單是已付款時預設順便改成已出貨
+ */
+export const UpdateAdminOrderShipmentParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const UpdateAdminOrderShipmentBody = zod.object({
+  "carrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().describe('運送單號'),
+  "markShipped": zod.boolean().optional().describe('訂單是已付款時要不要順便改成已出貨，預設要')
+})
+
+export const UpdateAdminOrderShipmentResponse = zod.object({
+  "id": zod.int(),
+  "orderNo": zod.string(),
+  "memberId": zod.int(),
+  "memberName": zod.string(),
+  "memberTier": zod.enum(['hospital', 'clinic', 'consumer']).optional(),
+  "status": zod.enum(['pending', 'paid', 'shipped', 'completed', 'cancelled', 'returned']),
+  "paymentMethod": zod.enum(['bank_transfer', 'cod', 'wallet']),
+  "totalAmount": zod.int(),
+  "shippingAddress": zod.string().nullish(),
+  "receiverName": zod.string().nullish(),
+  "receiverPhone": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
+  "remitReportedAt": zod.string().nullish(),
+  "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -808,6 +860,9 @@ export const UpdateAdminOrderStatusResponse = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -851,6 +906,9 @@ export const BulkUpdateAdminOrderStatusResponse = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1455,6 +1513,9 @@ export const ListOrdersResponseItem = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1512,6 +1573,9 @@ export const CreateOrderResponse = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1555,6 +1619,9 @@ export const ReportOrderRemittanceResponse = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1591,6 +1658,9 @@ export const CancelOwnOrderResponse = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),
@@ -1627,6 +1697,9 @@ export const GetOrderResponse = zod.object({
   "remitLastFive": zod.string().nullish().describe('會員回報的匯款帳號後五碼'),
   "remitReportedAt": zod.string().nullish(),
   "shipmentPhotos": zod.array(zod.string()).optional().describe('出貨照片物件路徑'),
+  "shippingCarrier": zod.string().nullish().describe('貨運公司'),
+  "trackingNo": zod.string().nullish().describe('運送單號'),
+  "shippedAt": zod.string().nullish().describe('出貨時間'),
   "createdAt": zod.string(),
   "items": zod.array(zod.object({
   "id": zod.int(),

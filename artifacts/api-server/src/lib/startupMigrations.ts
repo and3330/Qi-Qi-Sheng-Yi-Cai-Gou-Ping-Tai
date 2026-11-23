@@ -23,6 +23,7 @@ const STARTUP_MIGRATIONS = [
   "migrate-mcp.mjs",
   "migrate-ai-credits.mjs",
   "migrate-shop-account.mjs",
+  "migrate-order-shipment.mjs",
 ];
 
 function findScriptsDir(): string | null {

@@ -24,7 +24,7 @@ import {
   erpWarehousesTable,
   erpInvoicesTable,
 } from "@workspace/db";
-import { applyOrderStatusChange } from "../routes/adminOrders";
+import { applyOrderShipment, applyOrderStatusChange } from "../routes/adminOrders";
 import { convertQuotationToOrder, ConvertError } from "../routes/adminQuotations";
 import { reindex, searchDocuments } from "./aiIndex";
 import {
@@ -199,9 +199,40 @@ async function lowStock(args: { threshold?: number }) {
   };
 }
 
-async function listOrders(args: { status?: string; olderThanDays?: number; limit?: number }) {
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  pending: "待付款（還沒安排出貨）",
+  paid: "已付款，待出貨",
+  shipped: "已出貨，運送中",
+  completed: "已完成",
+  cancelled: "已取消",
+  returned: "已退貨",
+};
+
+const MEMBER_TIER_LABELS: Record<string, string> = {
+  hospital: "醫院會員",
+  clinic: "診所藥局會員",
+  consumer: "一般消費者",
+};
+
+async function listOrders(args: { status?: string; olderThanDays?: number; limit?: number; keyword?: string }) {
   const conds = [];
   if (args.status) conds.push(eq(ordersTable.status, args.status));
+  const keyword = typeof args.keyword === "string" ? args.keyword.trim() : "";
+  if (keyword) {
+    const like = `%${keyword}%`;
+    conds.push(
+      or(
+        ilike(ordersTable.orderNo, like),
+        ilike(ordersTable.trackingNo, like),
+        ilike(ordersTable.receiverName, like),
+        ilike(ordersTable.receiverPhone, like),
+        ilike(membersTable.name, like),
+        ilike(membersTable.username, like),
+        ilike(membersTable.phone, like),
+        ilike(membersTable.email, like),
+      )!,
+    );
+  }
   if (args.olderThanDays != null)
     conds.push(lte(ordersTable.createdAt, new Date(Date.now() - args.olderThanDays * 86400000)));
   const rows = await db
@@ -213,13 +244,22 @@ async function listOrders(args: { status?: string; olderThanDays?: number; limit
       paymentMethod: ordersTable.paymentMethod,
       createdAt: ordersTable.createdAt,
       memberName: membersTable.name,
+      receiverName: ordersTable.receiverName,
+      shippingCarrier: ordersTable.shippingCarrier,
+      trackingNo: ordersTable.trackingNo,
+      shippedAt: ordersTable.shippedAt,
     })
     .from(ordersTable)
     .innerJoin(membersTable, eq(ordersTable.memberId, membersTable.id))
     .where(conds.length ? and(...conds) : undefined)
     .orderBy(desc(ordersTable.createdAt))
     .limit(Math.min(args.limit ?? 20, 50));
-  return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString().slice(0, 16) }));
+  return rows.map((r) => ({
+    ...r,
+    statusLabel: ORDER_STATUS_LABELS[r.status] ?? r.status,
+    createdAt: r.createdAt.toISOString().slice(0, 16),
+    shippedAt: r.shippedAt ? r.shippedAt.toISOString().slice(0, 16) : null,
+  }));
 }
 
 async function financeSummary(args: { from?: string; to?: string }) {
@@ -315,6 +355,111 @@ async function updateOrderStatus(args: { orderId: number; status: string }) {
   }
   reindex("order", args.orderId);
   return { ok: true, orderId: args.orderId, status: args.status };
+}
+
+async function setOrderShipment(args: {
+  orderId?: number;
+  orderNo?: string;
+  carrier?: string;
+  trackingNo: string;
+  markShipped?: boolean;
+}) {
+  let orderId = args.orderId != null ? Number(args.orderId) : null;
+  if (orderId == null && args.orderNo) {
+    const [row] = await db
+      .select({ id: ordersTable.id })
+      .from(ordersTable)
+      .where(eq(ordersTable.orderNo, String(args.orderNo)))
+      .limit(1);
+    orderId = row?.id ?? null;
+  }
+  if (orderId == null || !Number.isInteger(orderId)) throw new ToolError("找不到此訂單");
+  try {
+    await applyOrderShipment(orderId, {
+      carrier: args.carrier ?? null,
+      trackingNo: args.trackingNo,
+      markShipped: args.markShipped !== false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (message === "ORDER_NOT_FOUND") throw new ToolError("找不到此訂單");
+    if (message === "TRACKING_REQUIRED") throw new ToolError("請提供運送單號");
+    if (message.startsWith("SHIPMENT_NOT_ALLOWED:")) {
+      const current = message.split(":")[1] ?? "";
+      throw new ToolError(`訂單目前是「${ORDER_STATUS_LABELS[current] ?? current}」，不能填出貨資訊`);
+    }
+    throw err;
+  }
+  reindex("order", orderId);
+  return getOrder({ orderId });
+}
+
+async function findMember(args: { keyword: string; limit?: number }) {
+  const keyword = typeof args.keyword === "string" ? args.keyword.trim() : "";
+  if (!keyword) throw new ToolError("請提供姓名、帳號、電話或 Email");
+  const like = `%${keyword}%`;
+  const members = await db
+    .select({
+      id: membersTable.id,
+      username: membersTable.username,
+      name: membersTable.name,
+      email: membersTable.email,
+      phone: membersTable.phone,
+      tier: membersTable.tier,
+      requestedTier: membersTable.requestedTier,
+      institution: institutionsTable.name,
+      department: membersTable.boundDepartment,
+      points: membersTable.points,
+      walletBalance: membersTable.walletBalance,
+      shippingAddress: membersTable.shippingAddress,
+    })
+    .from(membersTable)
+    .leftJoin(institutionsTable, eq(membersTable.boundInstitutionId, institutionsTable.id))
+    .where(
+      or(
+        ilike(membersTable.name, like),
+        ilike(membersTable.username, like),
+        ilike(membersTable.phone, like),
+        ilike(membersTable.email, like),
+      ),
+    )
+    .orderBy(desc(membersTable.id))
+    .limit(Math.min(args.limit ?? 5, 10));
+  const result = [];
+  for (const m of members) {
+    const [stats] = await db
+      .select({
+        orders: sql<number>`COUNT(*)::int`,
+        spent: sql<number>`COALESCE(SUM(${ordersTable.totalAmount}) FILTER (WHERE ${ordersTable.status} NOT IN ('cancelled','returned','pending')), 0)::int`,
+      })
+      .from(ordersTable)
+      .where(eq(ordersTable.memberId, m.id));
+    const recent = await db
+      .select({
+        orderNo: ordersTable.orderNo,
+        status: ordersTable.status,
+        totalAmount: ordersTable.totalAmount,
+        shippingCarrier: ordersTable.shippingCarrier,
+        trackingNo: ordersTable.trackingNo,
+        createdAt: ordersTable.createdAt,
+      })
+      .from(ordersTable)
+      .where(eq(ordersTable.memberId, m.id))
+      .orderBy(desc(ordersTable.createdAt))
+      .limit(5);
+    result.push({
+      ...m,
+      tierLabel: MEMBER_TIER_LABELS[m.tier] ?? m.tier,
+      orderCount: stats?.orders ?? 0,
+      totalSpent: stats?.spent ?? 0,
+      recentOrders: recent.map((o) => ({
+        ...o,
+        statusLabel: ORDER_STATUS_LABELS[o.status] ?? o.status,
+        createdAt: o.createdAt.toISOString().slice(0, 16),
+      })),
+    });
+  }
+  return result;
 }
 
 async function adjustStock(args: { productId: number; variantId?: number; quantity: number; reason?: string }) {
@@ -627,6 +772,13 @@ async function getOrder(args: { orderId?: number; orderNo?: string }) {
     receiverPhone: o.receiverPhone,
     shippingAddress: o.shippingAddress,
     note: o.note,
+    statusLabel: ORDER_STATUS_LABELS[o.status] ?? o.status,
+    shipment: {
+      shipped: ["shipped", "completed"].includes(o.status),
+      carrier: o.shippingCarrier ?? null,
+      trackingNo: o.trackingNo ?? null,
+      shippedAt: o.shippedAt ? iso(o.shippedAt) : null,
+    },
     shipmentPhotoCount: (o.shipmentPhotos ?? []).length,
     createdAt: iso(o.createdAt),
     items: items.map((i) => ({
@@ -656,6 +808,7 @@ export const READ_TOOLS = new Set([
   "finance_summary",
   "pending_tasks",
   "get_order",
+  "find_member",
 ]);
 
 export const ACTION_TOOLS = new Set([
@@ -664,6 +817,7 @@ export const ACTION_TOOLS = new Set([
   "topup_institution_wallet",
   "set_article_status",
   "create_order",
+  "set_order_shipment",
 ]);
 
 
@@ -741,10 +895,12 @@ const allToolDefinitions = [
     type: "function" as const,
     function: {
       name: "list_orders",
-      description: "查詢訂單列表，可依狀態與建立天數過濾（例如未出貨超過三天 = status=paid, olderThanDays=3）。",
+      description:
+        "查詢訂單列表，可依狀態、建立天數、關鍵字過濾（例如未出貨超過三天 = status=paid, olderThanDays=3）。keyword 可填客人姓名、帳號、電話、Email、收件人、訂單編號或運送單號。回傳含目前進度、貨運公司與運送單號。客人問「出貨了嗎」先用這個找到訂單。",
       parameters: {
         type: "object",
         properties: {
+          keyword: { type: "string", description: "客人姓名、帳號、電話、Email、收件人、訂單編號或運送單號" },
           status: { type: "string", enum: ["pending", "paid", "shipped", "completed", "cancelled"] },
           olderThanDays: { type: "integer" },
           limit: { type: "integer" },
@@ -872,8 +1028,44 @@ const allToolDefinitions = [
   {
     type: "function" as const,
     function: {
+      name: "set_order_shipment",
+      description:
+        "在訂單填入出貨資訊（貨運公司、運送單號）。訂單是「已付款」時會順便改成「已出貨」；會員在自己的訂單頁就看得到運送狀態與單號。orderNo 與 orderId 擇一提供。執行前必須先向管理者確認。",
+      parameters: {
+        type: "object",
+        properties: {
+          confirmationId: { type: "integer", description: "第二階段執行時帶入第一階段回傳的確認碼；首次呼叫請勿帶" },
+          orderNo: { type: "string", description: "訂單編號" },
+          orderId: { type: "integer", description: "訂單 id" },
+          carrier: { type: "string", description: "貨運公司，例如：黑貓宅急便、新竹物流、宅配通、郵局、順豐" },
+          trackingNo: { type: "string", description: "運送單號（託運單號）" },
+          markShipped: { type: "boolean", description: "訂單是已付款時要不要順便改成已出貨，預設要" },
+        },
+        required: ["trackingNo"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "find_member",
+      description:
+        "快速查會員資料：用姓名、帳號、電話或 Email 找人，回傳會員等級、所屬機構與科室、點數、錢包餘額、累計消費、最近 5 筆訂單與運送單號。",
+      parameters: {
+        type: "object",
+        properties: {
+          keyword: { type: "string", description: "姓名、帳號、電話或 Email" },
+          limit: { type: "integer", description: "最多回傳幾位，預設 5" },
+        },
+        required: ["keyword"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "get_order",
-      description: "查詢單筆商城訂單明細：品項、收件資訊、付款方式，以及自動連動的 ERP 銷貨單號與狀態。orderNo 與 orderId 擇一提供。",
+      description: "查詢單筆商城訂單明細：品項、收件資訊、付款方式、目前進度與出貨資訊（是否已出貨、貨運公司、運送單號、出貨時間），以及自動連動的 ERP 銷貨單號與狀態。orderNo 與 orderId 擇一提供。",
       parameters: {
         type: "object",
         properties: {
@@ -1005,6 +1197,8 @@ const executors: Record<string, (args: any, actor?: ToolActor) => Promise<unknow
   set_article_status: setArticleStatus,
   create_order: createOrder,
   get_order: getOrder,
+  set_order_shipment: setOrderShipment,
+  find_member: findMember,
 };
 
 /** 執行工具；操作類寫入稽核紀錄 */
@@ -1173,6 +1367,11 @@ export const MCP_CONFIRM_TTL_MS = 60 * 60 * 1000;
 
 /** 操作送出前的檢查；有問題回傳錯誤訊息（給模型看），沒問題回 null */
 export function precheckAction(name: string, payload: Record<string, unknown>): string | null {
+  if (name === "set_order_shipment") {
+    if (typeof payload.trackingNo !== "string" || !payload.trackingNo.trim()) return "請提供運送單號";
+    if (payload.orderId == null && !payload.orderNo) return "請提供訂單編號（orderNo）或訂單 id（orderId）";
+    return null;
+  }
   if (name !== "admin_write") return null;
   try {
     validateRequest(payload, "write");

@@ -56,8 +56,8 @@ POST 上面的網址，標頭 Content-Type: application/json、Accept: applicati
 2. 對 qiqi-shop 呼叫 admin_list_endpoints、對 qiqi-erp 呼叫 erp_list_endpoints（都可帶 keyword 篩選，例如 {"keyword":"商品"}），了解兩邊各有哪些功能可以操作。
 
 【qiqi-shop：商城】
-- 查詢類（直接回傳）：search_knowledge 查知識庫、sales_report 銷售報表、commission_report 佣金報表、low_stock 低庫存、list_orders 訂單列表、get_order 單一訂單、finance_summary 財務摘要、pending_tasks 待辦。
-- 操作類（update_order_status 改訂單狀態、adjust_stock 調整庫存、topup_institution_wallet 機構錢包儲值、set_article_status 文章上下架、create_order 代客下單）：
+- 查詢類（直接回傳）：search_knowledge 查知識庫、sales_report 銷售報表、commission_report 佣金報表、low_stock 低庫存、list_orders 訂單列表（可用客人姓名、電話、訂單編號或運送單號找，回傳目前進度與運送單號）、get_order 單一訂單（含是否已出貨、貨運公司、運送單號）、find_member 快速查會員資料（等級、機構、點數、錢包、最近訂單）、finance_summary 財務摘要、pending_tasks 待辦。
+- 操作類（update_order_status 改訂單狀態、set_order_shipment 填貨運公司與運送單號（已付款的訂單會順便改成已出貨）、adjust_stock 調整庫存、topup_institution_wallet 機構錢包儲值、set_article_status 文章上下架、create_order 代客下單）：
   你呼叫後只會建立「待確認操作」，不會馬上生效。必須由後台人員登入商城後台「Bot 連線」按確認才會執行。
   你沒有辦法自己確認，也不要嘗試。建立後請告訴我「已送出，等後台確認」，之後用 get_action_status 查結果。
 - 通用工具（可以使用商城後台的全部功能，約 130 個）：

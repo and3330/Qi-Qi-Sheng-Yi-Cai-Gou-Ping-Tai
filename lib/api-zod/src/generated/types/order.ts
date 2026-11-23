@@ -35,6 +35,21 @@ export interface Order {
   remitReportedAt?: string | null;
   /** 出貨照片物件路徑 */
   shipmentPhotos?: string[];
+  /**
+     * 貨運公司
+     * @nullable
+     */
+  shippingCarrier?: string | null;
+  /**
+     * 運送單號
+     * @nullable
+     */
+  trackingNo?: string | null;
+  /**
+     * 出貨時間
+     * @nullable
+     */
+  shippedAt?: string | null;
   createdAt: string;
   items: OrderItem[];
 }

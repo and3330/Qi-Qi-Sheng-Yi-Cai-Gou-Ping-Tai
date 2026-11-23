@@ -58,6 +58,9 @@ function serializeAdminOrder(
     receiverPhone: o.receiverPhone,
     note: o.note,
     shipmentPhotos: o.shipmentPhotos ?? [],
+    shippingCarrier: o.shippingCarrier ?? null,
+    trackingNo: o.trackingNo ?? null,
+    shippedAt: o.shippedAt ? o.shippedAt.toISOString() : null,
     remitLastFive: o.remitLastFive ?? null,
     remitReportedAt: o.remitReportedAt ? o.remitReportedAt.toISOString() : null,
     createdAt: o.createdAt.toISOString(),
@@ -631,7 +634,7 @@ export async function applyOrderStatusChange(
 
       await tx
         .update(ordersTable)
-        .set({ status: target })
+        .set(target === "shipped" ? { status: target, shippedAt: new Date() } : { status: target })
         .where(eq(ordersTable.id, id));
 
       // 同步 ERP 銷貨單狀態（商城訂單 ↔ 銷貨單一對一）
@@ -673,6 +676,71 @@ router.patch("/admin/orders/:id/status", requireOps, async (req, res) => {
     throw err;
   }
 
+  reindex("order", id);
+  res.json(await loadAdminOrder(id));
+});
+
+/**
+ * 填入出貨資訊（貨運公司、運送單號）。訂單還是「已付款」時預設順便改成「已出貨」。
+ * 供後台路由與 AI 助理／Bot 共用。失敗時丟出 ORDER_NOT_FOUND、SHIPMENT_NOT_ALLOWED:<現況> 或 TRACKING_REQUIRED。
+ */
+export async function applyOrderShipment(
+  id: number,
+  input: { carrier?: string | null; trackingNo?: string | null; markShipped?: boolean },
+) {
+  const carrier = typeof input.carrier === "string" ? input.carrier.trim().slice(0, 40) : "";
+  const trackingNo = typeof input.trackingNo === "string" ? input.trackingNo.trim().slice(0, 60) : "";
+  if (!trackingNo) throw new Error("TRACKING_REQUIRED");
+  await db.transaction(async (tx) => {
+    const [order] = await tx
+      .select({ status: ordersTable.status })
+      .from(ordersTable)
+      .where(eq(ordersTable.id, id))
+      .for("update")
+      .limit(1);
+    if (!order) throw new Error("ORDER_NOT_FOUND");
+    if (!["paid", "shipped", "completed"].includes(order.status))
+      throw new Error(`SHIPMENT_NOT_ALLOWED:${order.status}`);
+    await tx
+      .update(ordersTable)
+      .set({ shippingCarrier: carrier || null, trackingNo })
+      .where(eq(ordersTable.id, id));
+    if (order.status === "paid" && input.markShipped !== false)
+      await applyOrderStatusChange(id, "shipped", tx);
+  });
+}
+
+router.patch("/admin/orders/:id/shipment", requireOps, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const body = (req.body ?? {}) as { carrier?: unknown; trackingNo?: unknown; markShipped?: unknown };
+  try {
+    await applyOrderShipment(id, {
+      carrier: typeof body.carrier === "string" ? body.carrier : null,
+      trackingNo: typeof body.trackingNo === "string" ? body.trackingNo : null,
+      markShipped: body.markShipped !== false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (message === "ORDER_NOT_FOUND") {
+      res.status(404).json({ error: "找不到此訂單" });
+      return;
+    }
+    if (message === "TRACKING_REQUIRED") {
+      res.status(400).json({ error: "請填寫運送單號" });
+      return;
+    }
+    if (message.startsWith("SHIPMENT_NOT_ALLOWED:")) {
+      res.status(400).json({
+        error: `訂單目前是「${STATUS_LABELS[message.split(":")[1]!] ?? message.split(":")[1]}」，不能填出貨資訊（要先確認付款）`,
+      });
+      return;
+    }
+    throw err;
+  }
   reindex("order", id);
   res.json(await loadAdminOrder(id));
 });

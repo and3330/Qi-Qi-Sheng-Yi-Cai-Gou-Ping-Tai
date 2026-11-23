@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, Clock, CreditCard, Truck, FileText, Image as ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Clock, CreditCard, Truck, FileText, Image as ImageIcon, X, PackageCheck, Copy, ExternalLink } from "lucide-react";
 import { useGetOrder, getGetOrderQueryKey } from "@workspace/api-client-react";
-import { formatPrice, getOrderStatusName, getPaymentMethodName, classNames } from "@/lib/utils";
+import { formatPrice, getOrderStatusName, getPaymentMethodName, getCarrierTrackingUrl, classNames } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RemittanceCard, CancelOrderButton } from "@/components/OrderSelfService";
@@ -10,6 +10,62 @@ import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog";
+
+/** 運送狀態：目前進度、貨運公司、運送單號（可複製、可連到貨運公司查件） */
+function ShipmentCard({ order }: { order: { status: string; shippingCarrier?: string | null; trackingNo?: string | null; shippedAt?: string | null } }) {
+  const [copied, setCopied] = useState(false);
+  if (order.status === "cancelled" || order.status === "returned") return null;
+  const shipped = order.status === "shipped" || order.status === "completed";
+  const text = order.status === "pending"
+    ? "尚未付款，付款確認後安排出貨"
+    : order.status === "paid"
+      ? "已收到款項，正在安排出貨"
+      : order.status === "shipped"
+        ? "已出貨，運送中"
+        : "已送達，訂單完成";
+  const trackingUrl = order.trackingNo ? getCarrierTrackingUrl(order.shippingCarrier, order.trackingNo) : null;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(order.trackingNo ?? "");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* 瀏覽器不給複製就算了，單號本身看得到 */
+    }
+  };
+  return (
+    <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100" data-testid="shipment-card">
+      <div className="flex gap-3">
+        <PackageCheck className={classNames("shrink-0 mt-0.5", shipped ? "text-primary" : "text-gray-400")} size={18} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-gray-900 mb-1">運送狀態</p>
+          <p className="text-sm text-gray-600" data-testid="shipment-status-text">{text}</p>
+          {order.shippedAt && (
+            <p className="text-xs text-gray-400 mt-0.5">出貨時間：{new Date(order.shippedAt).toLocaleString("zh-TW", { hour12: false })}</p>
+          )}
+          {order.trackingNo ? (
+            <div className="mt-3 rounded-xl bg-gray-50 p-3">
+              <p className="text-xs text-gray-500">{order.shippingCarrier || "貨運"}　運送單號</p>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="text-base font-bold tracking-wide text-gray-900 break-all" data-testid="shipment-tracking-no">{order.trackingNo}</span>
+                <button type="button" onClick={copy} className="inline-flex items-center gap-1 text-xs text-primary font-medium">
+                  <Copy size={13} />{copied ? "已複製" : "複製"}
+                </button>
+                {trackingUrl && (
+                  <a href={trackingUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary font-medium">
+                    <ExternalLink size={13} />查詢貨件
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : shipped ? (
+            <p className="text-xs text-gray-400 mt-1">運送單號尚未提供</p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function OrderDetailPage() {
   const [, params] = useRoute("/orders/:id");
@@ -91,6 +147,8 @@ export default function OrderDetailPage() {
         </section>
 
         <RemittanceCard order={order} />
+
+        <ShipmentCard order={order} />
 
         {/* Info Cards */}
         <section className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-4">
