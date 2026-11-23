@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2 } from "lucide-react";
 import { SearchableSelect } from "@/components/shared/searchable-select";
 import { LookupSelect } from "@/components/shared/lookup-select";
+import { CustomerRemarkHint } from "@/components/shared/customer-remark-hint";
+import { appendToDocumentRemarks } from "@/lib/customer-remarks";
 import { templateDefaults, templateAppliesTo, suggestTemplateForGroups, withoutLegacyFields } from "@/lib/template-fields";
 import { selectClass, todayText } from "@/lib/call";
 
@@ -601,6 +603,11 @@ export function SalesOrderFormDialog({ open, onOpenChange, order, initial, focus
               </p>
             </div>
           </div>
+
+          <CustomerRemarkHint
+            remarks={customers.find((c: any) => String(c.id) === String(form.customerId))?.remarks}
+            onInsert={can("remarks") ? (entry) => setForm(p => ({ ...p, remarks: appendToDocumentRemarks(p.remarks, entry) })) : undefined}
+          />
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div className="md:col-span-2">

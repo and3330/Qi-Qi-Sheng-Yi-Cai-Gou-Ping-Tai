@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DocWindow } from "@/components/shared/doc-window";
 import { useToast } from "@/hooks/use-toast";
+import { prependRemarkEntry } from "@/lib/customer-remarks";
 
 /**
  * 客戶的「同一個畫面」（老闆 2026-11-16：一種資料只有一個表單，全系統共用）。
@@ -73,11 +74,13 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSaved }: {
   const qc = useQueryClient();
   const [form, setForm] = useState<CustForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [newRemark, setNewRemark] = useState("");
   const editing = customer ?? null;
 
   // 每次打開：編輯就帶入這個客戶的資料，新增就給空白表單和一個新編號
   useEffect(() => {
     if (!open) return;
+    setNewRemark("");
     if (!editing) {
       setForm({ ...emptyForm, customerCode: `C-${Date.now().toString().slice(-6)}` });
       return;
@@ -113,7 +116,8 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSaved }: {
       const res = await fetch(editing ? api(`customers/${editing.id}`) : api("customers"), {
         method: editing ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // 「新增一則」打了字還沒按「記下」，儲存時一併記下，免得漏掉
+        body: JSON.stringify({ ...form, remarks: prependRemarkEntry(form.remarks, newRemark) }),
       });
       await readJsonResponse(res, "無法儲存客戶資料，請稍後再試。");
       toast({ title: editing ? "客戶已更新" : "客戶已建立" });
@@ -194,11 +198,27 @@ export function CustomerFormDialog({ open, onOpenChange, customer, onSaved }: {
             <p className="mt-1 text-xs text-muted-foreground">這個客戶最多可以欠多少。欠款加上新訂單超過就不能成立訂單，老闆或財務可以個別放行。</p>
           </div>
           <div>
-            <Label htmlFor="customer-remarks">備註</Label>
+            <Label htmlFor="customer-new-remark">備註</Label>
+            <p className="mb-1 text-xs text-muted-foreground">一則一則記，會自動加上今天日期、排在最上面。開報價單、銷貨單、出貨單選到這個客戶時會顯示出來，也可以一鍵帶進單據備註。</p>
+            <div className="flex gap-2">
+              <Input
+                id="customer-new-remark" value={newRemark} onChange={e => setNewRemark(e.target.value)}
+                placeholder="例如：11/15、12/15 合併出貨，下次出貨 1/15"
+                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); if (newRemark.trim()) { setForm(p => ({ ...p, remarks: prependRemarkEntry(p.remarks, newRemark) })); setNewRemark(""); } } }}
+                data-testid="input-customer-new-remark"
+              />
+              <Button
+                type="button" variant="outline" disabled={!newRemark.trim()}
+                onClick={() => { setForm(p => ({ ...p, remarks: prependRemarkEntry(p.remarks, newRemark) })); setNewRemark(""); }}
+                data-testid="button-add-customer-remark"
+              >記下</Button>
+            </div>
+            <Label htmlFor="customer-remarks" className="mt-2 block text-xs text-muted-foreground">全部備註（可直接修改；各則之間用一行橫線隔開）</Label>
             <textarea
-              id="customer-remarks" rows={3} maxLength={2000} value={form.remarks} onChange={F("remarks")}
+              id="customer-remarks" rows={6} maxLength={20000} value={form.remarks} onChange={F("remarks")}
               placeholder="例如：聯絡注意事項、開票習慣、特殊約定"
-              className="flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-base md:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              data-testid="input-customer-remarks"
             />
           </div>
         </div>

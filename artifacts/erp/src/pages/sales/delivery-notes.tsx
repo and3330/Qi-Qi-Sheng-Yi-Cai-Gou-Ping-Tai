@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Check, X, Eye, Search, FileText, Ban, Pencil, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Check, X, Eye, Search, FileText, Ban, Pencil, RotateCcw, Printer } from "lucide-react";
 import { useBatchSelection } from "@/hooks/use-batch-selection";
 import { BatchActionBar, type BatchField } from "@/components/shared/batch-action-bar";
 import { CheckboxCell, CheckboxHeader } from "@/components/shared/checkbox-column";
@@ -18,6 +18,11 @@ import { DateRangePresets } from "@/components/shared/date-range-presets";
 import { DocWindow, DocStatus, statusTone, DocFields, DocLines, DocSection, DocFormRows, DocFormRow } from "@/components/shared/doc-window";
 import { DocItemLines, blankLines, filledLines, linesPayload, linesFromSaved, type ItemLine } from "@/components/shared/doc-item-lines";
 import { RelatedDocs, useOpenFromUrl } from "@/components/shared/related-docs";
+import { CustomerRemarkHint } from "@/components/shared/customer-remark-hint";
+import { appendToDocumentRemarks } from "@/lib/customer-remarks";
+import { DocumentPrintDialog, companyOf, defaultBrand } from "@/components/sales/quotation-print-dialog";
+import type { PrintData } from "@/lib/print-layout";
+import { Textarea } from "@/components/ui/textarea";
 
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 
@@ -30,7 +35,7 @@ interface DeliveryNote {
   warehouseId?: number | null; handlerId?: number | null; contactInfo?: string | null; shippingAddress?: string | null;
   handlerName?: string | null; warehouseName?: string | null; salesOrderNumber?: string | null;
 }
-interface Customer { id: number; name: string }
+interface Customer { id: number; name: string; remarks?: string | null; taxId?: string | null; phone?: string | null; address?: string | null }
 interface Item { id: number; itemName: string; sellingPrice: string; itemCode?: string | null; specification?: string | null }
 /** 「從銷貨單帶入」選單裡的一張銷貨單 */
 interface OpenOrder { id: number; orderNumber: string; customerId: number; customerName: string; orderDate: string; label: string | null }
@@ -62,6 +67,7 @@ export default function DeliveryNotesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DeliveryNote | null>(null);
   const [detailNote, setDetailNote] = useState<DeliveryNote | null>(null);
+  const [printData, setPrintData] = useState<PrintData | null>(null);
   const [editRemarks, setEditRemarks] = useState("");
   const { toast } = useToast();
 
@@ -145,6 +151,8 @@ export default function DeliveryNotesPage() {
       warehouseId: o.warehouseId ? String(o.warehouseId) : p.warehouseId,
       contactInfo: p.contactInfo || o.contactInfo || "",
       shippingAddress: p.shippingAddress || o.shippingAddress || "",
+      // 出貨單還沒寫備註時，把銷貨單的備註帶過來
+      remarks: p.remarks.trim() ? p.remarks : (o.remarks || ""),
     }));
     setLineItems(data.lines.map((l: any) => ({ itemId: String(l.itemId), quantity: String(l.quantity), rate: String(l.rate), specification: l.specification || "", note: l.note || "", remaining: Number(l.quantity) })));
     toast({ title: `已帶入 ${o.orderNumber} 還沒出貨的 ${data.lines.length} 個品項`, description: "只出一部分的話，把數量改少或刪掉那一行就可以。" });
@@ -246,6 +254,29 @@ export default function DeliveryNotesPage() {
   };
 
   useOpenFromUrl(notes, n => viewDetail(n.id));
+  /** 列印出貨單：品項、送貨地址、備註都印出來；版面可在「系統管理 › 列印模板」調整 */
+  const openPrint = async (n: DeliveryNote) => {
+    const customer = customers.find(c => c.id === n.customerId);
+    let company = companyOf(null);
+    try { const r = await fetch(`/erp-api/brands`, { credentials: "include" }); if (r.ok) company = companyOf(defaultBrand(await r.json())); } catch { /* 讀不到公司資料就先不印公司欄 */ }
+    const grand = Number(n.totalAmount) || 0;
+    // 印的是視窗裡現在的備註（改了還沒按儲存也照印，免得印出舊的）
+    const remarkText = (detailNote?.id === n.id ? editRemarks : n.remarks || "").trim();
+    setPrintData({
+      docNumber: n.noteNumber,
+      customer: { name: n.customerName, taxId: customer?.taxId || undefined, phone: n.contactInfo || customer?.phone || undefined, address: n.shippingAddress || customer?.address || undefined },
+      company: { ...company, contact: n.handlerName || company.contact },
+      fields: { date: n.deliveryDate, salesOrder: n.salesOrderNumber, handler: n.handlerName, warehouse: n.warehouseName, project: projs.find(p => p.id === n.projectId)?.name },
+      items: ((n.items as DNItem[]) || []).map(it => ({
+        code: items.find(i => i.id === it.itemId)?.itemCode || undefined,
+        name: it.specification ? `${it.itemName}[${it.specification}]` : it.itemName,
+        qty: Number(it.quantity) || 0, unitPrice: Number(it.rate) || 0, amount: Number(it.amount) || 0, summary: it.note,
+      })),
+      totals: { subtotal: grand, tax: 0, grand, taxIncluded: true },
+      terms: remarkText ? `備註：${remarkText}` : "",
+    });
+  };
+
   const viewDetail = async (id: number) => {
     const res = await fetch(`/erp-api/delivery-notes/${id}`);
     if (res.ok) {
@@ -326,6 +357,14 @@ export default function DeliveryNotesPage() {
                   disabled={linkedOrder}
                 />
               </DocFormRow>
+              {customers.find(c => String(c.id) === form.customerId)?.remarks?.trim() && (
+                <DocFormRow label="客戶備註">
+                  <CustomerRemarkHint
+                    remarks={customers.find(c => String(c.id) === form.customerId)?.remarks}
+                    onInsert={entry => setForm(p => ({ ...p, remarks: appendToDocumentRemarks(p.remarks, entry) }))}
+                  />
+                </DocFormRow>
+              )}
               <DocFormRow label="承辦人">
                 <SearchableSelect
                   value={form.handlerId}
@@ -375,7 +414,7 @@ export default function DeliveryNotesPage() {
                 />
               </DocFormRow>
               <DocFormRow label="備註" htmlFor="dn-remarks">
-                <Input id="dn-remarks" value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註說明" />
+                <Textarea id="dn-remarks" rows={2} value={form.remarks} onChange={e => setForm(p => ({ ...p, remarks: e.target.value }))} placeholder="備註說明（會印在出貨單上）" />
               </DocFormRow>
             </DocFormRows>
 
@@ -551,6 +590,7 @@ export default function DeliveryNotesPage() {
               {detailNote.status === "Submitted" && (
                 <Button onClick={() => updateStatus(detailNote.id, "Completed")}>標記完成</Button>
               )}
+              <Button variant="outline" onClick={() => openPrint(detailNote)} data-testid="button-print-delivery-note"><Printer className="h-4 w-4 mr-1" />列印</Button>
               <Button variant="outline" onClick={() => setDetailNote(null)}>關閉</Button>
             </>
           }
@@ -581,7 +621,7 @@ export default function DeliveryNotesPage() {
 
           <DocSection title="備註">
             <div className="flex gap-2">
-              <Input value={editRemarks} onChange={e => setEditRemarks(e.target.value)} placeholder="備註" />
+              <Textarea rows={2} value={editRemarks} onChange={e => setEditRemarks(e.target.value)} placeholder="備註（會印在出貨單上）" />
               <Button size="sm" onClick={saveRemarks}>儲存</Button>
             </div>
             {detailNote.status !== "Draft" && <p className="text-xs text-muted-foreground">已出貨的出貨單可以補備註；品項與數量不能改。</p>}
@@ -590,6 +630,7 @@ export default function DeliveryNotesPage() {
           <RelatedDocs type="delivery_note" id={detailNote.id} onNavigate={() => setDetailNote(null)} />
         </DocWindow>
       )}
+      <DocumentPrintDialog open={!!printData} onClose={() => setPrintData(null)} docType="DeliveryNote" data={printData} />
     </div>
   );
 }

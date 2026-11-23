@@ -39,7 +39,8 @@ export function quotationPrintData(q: any, customer: any | null, brand: any | nu
     fields: { date: q.quotationDate, validUntil: q.validUntil, project: q.projectName },
     items,
     totals: { subtotal: Number(q.totalAmount) || 0, tax: Number(q.taxAmount) || 0, grand: Number(q.grandTotal) || 0, taxIncluded: q.taxIncluded === true },
-    terms: q.terms || "",
+    // 備註與條款都印（備註先）；單據備註常是出貨、收件的交代，印出來的單子上要看得到
+    terms: [q.notes ? `備註：${q.notes}` : "", q.terms || ""].filter(Boolean).join("\n\n"),
     extraRows: Array.isArray(q.extraFieldRows) ? q.extraFieldRows : [],
   };
 }

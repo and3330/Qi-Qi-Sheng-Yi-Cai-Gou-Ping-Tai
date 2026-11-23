@@ -25,6 +25,8 @@ import { missingTemplateFields, templateDefaults, extraFieldRows, withoutLegacyF
 import { useSearch } from "wouter";
 
 import { LookupSelect } from "@/components/shared/lookup-select";
+import { CustomerRemarkHint } from "@/components/shared/customer-remark-hint";
+import { appendToDocumentRemarks } from "@/lib/customer-remarks";
 import { DateRangePresets } from "@/components/shared/date-range-presets";
 const BASE = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_URL : import.meta.env.BASE_URL + "/";
 const apiFetch = (path: string, opts?: RequestInit) =>
@@ -472,6 +474,10 @@ export default function QuotationsPage() {
                 </div>
               )}
             </div>
+            <CustomerRemarkHint
+              remarks={(customers as any[]).find((c: any) => String(c.id) === form.customerId)?.remarks}
+              onInsert={(entry) => setForm(f => ({ ...f, notes: appendToDocumentRemarks(f.notes, entry) }))}
+            />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label className="text-sm text-muted-foreground">品牌（報價公司）</label>
