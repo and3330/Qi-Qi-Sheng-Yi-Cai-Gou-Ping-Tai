@@ -425,7 +425,7 @@ export default function SalesOrderDetail() {
       },
       items: lines,
       totals: { subtotal: Math.round((grand - tax) * 100) / 100, tax, grand, taxIncluded: true },
-      terms: order.remarks || "",
+      terms: order.remarks ? `備註：${order.remarks}` : "",
       extraRows: templateFields
         .filter((fd: any) => !COLUMN_FIELDS.has(fd.name) && (order.extraFields?.[fd.name] || order.extraFields?.[fd.name] === 0))
         .map((fd: any) => ({ label: fd.label, value: String(order.extraFields[fd.name]) })),
