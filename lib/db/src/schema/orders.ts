@@ -25,6 +25,10 @@ export const ordersTable = pgTable("orders", {
   walletSource: text("wallet_source"),
   // 出貨照片存證（物件路徑陣列，如 ["/objects/uploads/xxx"]）
   shipmentPhotos: jsonb("shipment_photos").$type<string[]>().notNull().default([]),
+  // 出貨資訊：貨運公司、運送單號、出貨時間（會員在訂單頁看得到）
+  shippingCarrier: text("shipping_carrier"),
+  trackingNo: text("tracking_no"),
+  shippedAt: timestamp("shipped_at"),
   totalAmount: integer("total_amount").notNull(),
   // 點數折抵：本單使用點數（1 點 = NT$1，折抵後為 totalAmount）與折抵前金額
   pointsUsed: integer("points_used").notNull().default(0),

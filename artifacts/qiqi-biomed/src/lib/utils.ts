@@ -23,6 +23,20 @@ export function getTierName(tier: string | undefined | null) {
   }
 }
 
+/** 常用貨運公司（後台填出貨資訊時的選項；也可以自己打） */
+export const SHIPPING_CARRIERS = ["黑貓宅急便", "新竹物流", "宅配通", "郵局", "順豐速運", "自行配送"];
+
+/** 貨運公司的查件網頁；不認得的貨運公司回傳 null */
+export function getCarrierTrackingUrl(carrier: string | null | undefined, trackingNo: string | null | undefined) {
+  const name = carrier ?? "";
+  const no = encodeURIComponent((trackingNo ?? "").trim());
+  if (/黑貓|宅急便|t-?cat/i.test(name)) return `https://www.t-cat.com.tw/Inquire/Trace.aspx?no=${no}`;
+  if (/新竹|hct/i.test(name)) return "https://www.hct.com.tw/Search/SearchGoods_n.aspx";
+  if (/宅配通|e-?can/i.test(name)) return "https://www.e-can.com.tw/search_Goods.aspx";
+  if (/郵局|中華郵政/.test(name)) return "https://postserv.post.gov.tw/pstmail/main_mail.html";
+  return null;
+}
+
 export function getOrderStatusName(status: string) {
   switch (status) {
     case 'pending': return '待付款';

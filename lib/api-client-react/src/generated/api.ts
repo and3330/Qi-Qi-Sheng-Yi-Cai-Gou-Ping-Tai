@@ -348,6 +348,7 @@ import type {
   OkMessage,
   Order,
   OrderInput,
+  OrderShipmentUpdate,
   OrderStatusUpdate,
   PnlReport,
   PointTransaction,
@@ -2196,6 +2197,78 @@ export function useGetAdminOrder<TData = Awaited<ReturnType<typeof getAdminOrder
 
 
 
+
+export const getUpdateAdminOrderShipmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/orders/${id}/shipment`
+}
+
+/**
+ * @summary 填入出貨資訊（貨運公司、運送單號）；訂單是已付款時預設順便改成已出貨
+ */
+export const updateAdminOrderShipment = async (id: number,
+    orderShipmentUpdate: OrderShipmentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<AdminOrder> => {
+
+  return customFetch<AdminOrder>(getUpdateAdminOrderShipmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(orderShipmentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdminOrderShipmentMutationOptions = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminOrderShipment>>, TError,{id: number;data: BodyType<OrderShipmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdminOrderShipment>>, TError,{id: number;data: BodyType<OrderShipmentUpdate>}, TContext> => {
+
+const mutationKey = ['updateAdminOrderShipment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdminOrderShipment>>, {id: number;data: BodyType<OrderShipmentUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdminOrderShipment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdminOrderShipmentMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdminOrderShipment>>>
+    export type UpdateAdminOrderShipmentMutationBody = BodyType<OrderShipmentUpdate>
+    export type UpdateAdminOrderShipmentMutationError = ErrorType<ErrorMessage>
+
+    /**
+ * @summary 填入出貨資訊（貨運公司、運送單號）；訂單是已付款時預設順便改成已出貨
+ */
+export const useUpdateAdminOrderShipment = <TError = ErrorType<ErrorMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdminOrderShipment>>, TError,{id: number;data: BodyType<OrderShipmentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdminOrderShipment>>,
+        TError,
+        {id: number;data: BodyType<OrderShipmentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAdminOrderShipmentMutationOptions(options));
+    }
 
 export const getUpdateAdminOrderStatusUrl = (id: number,) => {
 

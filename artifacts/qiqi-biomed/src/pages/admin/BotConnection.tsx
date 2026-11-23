@@ -36,6 +36,7 @@ function errMessage(e: unknown, fallback: string) {
 
 const ACTION_LABEL: Record<string, string> = {
   update_order_status: "變更訂單狀態",
+  set_order_shipment: "填入出貨資訊（貨運公司、運送單號）",
   adjust_stock: "調整庫存",
   topup_institution_wallet: "機構錢包儲值／調整",
   set_article_status: "變更文章狀態",

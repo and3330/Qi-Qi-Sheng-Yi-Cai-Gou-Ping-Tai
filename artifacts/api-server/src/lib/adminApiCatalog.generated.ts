@@ -1418,6 +1418,43 @@ export const ADMIN_API_CATALOG = [
   ]
  },
  {
+  "method": "PATCH",
+  "path": "/admin/orders/:id/shipment",
+  "summary": "填入出貨資訊（貨運公司、運送單號）；訂單是已付款時預設順便改成已出貨",
+  "tag": "admin",
+  "parameters": [
+   {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "type": "integer"
+   }
+  ],
+  "body": {
+   "type": "object",
+   "required": [
+    "trackingNo"
+   ],
+   "properties": {
+    "carrier": {
+     "type": [
+      "string",
+      "null"
+     ],
+     "description": "貨運公司"
+    },
+    "trackingNo": {
+     "type": "string",
+     "description": "運送單號"
+    },
+    "markShipped": {
+     "type": "boolean",
+     "description": "訂單是已付款時要不要順便改成已出貨，預設要"
+    }
+   }
+  }
+ },
+ {
   "method": "POST",
   "path": "/admin/orders/:id/shipment-photos",
   "summary": "出貨照片存證（限營運人員）",

@@ -492,6 +492,7 @@ export * from './orderInputPaymentMethod';
 export * from './orderItem';
 export * from './orderLineInput';
 export * from './orderPaymentMethod';
+export * from './orderShipmentUpdate';
 export * from './orderStatus';
 export * from './orderStatusUpdate';
 export * from './orderStatusUpdateStatus';

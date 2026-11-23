@@ -676,6 +676,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
+  /admin/orders/{id}/shipment:
+    patch:
+      operationId: updateAdminOrderShipment
+      tags:
+        - admin
+      summary: 填入出貨資訊（貨運公司、運送單號）；訂單是已付款時預設順便改成已出貨
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderShipmentUpdate'
+      responses:
+        '200':
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOrder'
+        '400':
+          description: 缺運送單號，或訂單狀態不能填出貨資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
   /admin/orders/{id}/status:
     patch:
       operationId: updateAdminOrderStatus
@@ -9707,6 +9744,21 @@ components:
           items:
             type: string
           description: 出貨照片物件路徑
+        shippingCarrier:
+          type:
+            - string
+            - 'null'
+          description: 貨運公司
+        trackingNo:
+          type:
+            - string
+            - 'null'
+          description: 運送單號
+        shippedAt:
+          type:
+            - string
+            - 'null'
+          description: 出貨時間
         createdAt:
           type: string
         items:
@@ -10262,6 +10314,22 @@ components:
           items:
             type: string
             maxLength: 500
+    OrderShipmentUpdate:
+      type: object
+      required:
+        - trackingNo
+      properties:
+        carrier:
+          type:
+            - string
+            - 'null'
+          description: 貨運公司
+        trackingNo:
+          type: string
+          description: 運送單號
+        markShipped:
+          type: boolean
+          description: 訂單是已付款時要不要順便改成已出貨，預設要
     ShipmentPhotosResult:
       type: object
       required:
@@ -11135,6 +11203,21 @@ components:
           items:
             type: string
           description: 出貨照片物件路徑
+        shippingCarrier:
+          type:
+            - string
+            - 'null'
+          description: 貨運公司
+        trackingNo:
+          type:
+            - string
+            - 'null'
+          description: 運送單號
+        shippedAt:
+          type:
+            - string
+            - 'null'
+          description: 出貨時間
         createdAt:
           type: string
           format: date-time
