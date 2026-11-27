@@ -103,6 +103,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.2
         version: 1.32.2(zod@4.6.7)
+      '@opentelemetry/api':
+        specifier: ^1.10.0
+        version: 1.10.0
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
