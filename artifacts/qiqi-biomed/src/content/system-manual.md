@@ -278,7 +278,9 @@ AI 助理與 Bot 使用時會扣 AI 點數，點數用刷卡儲值。餘額、�
 | `SESSION_SECRET` | 是 | 登入狀態加密 |
 | `AI_INTEGRATIONS_OPENAI_BASE_URL`、`AI_INTEGRATIONS_OPENAI_API_KEY` | 是 | 原本的 AI 整合；圖片生成仍使用，必須保留 |
 | `AI_PROVIDER_BASE_URL`、`AI_PROVIDER_API_KEY` | 選填 | 設定後，AI 助理、AI CMO、客服、社群文案的文字對答改走這個供應商；兩個都要填才生效 |
-| `AI_MODEL_STRONG` | 選填 | 覆寫對答模型名稱 |
+| `ANTHROPIC_API_KEY` | 選填 | Claude（Anthropic）的金鑰。設定後，商城的 AI 助理、AI CMO、客服、社群文案，以及 ERP 的 AI 功能，文字對答都改用 Claude；比 `AI_PROVIDER_*` 優先 |
+| `AI_PROVIDER` | 選填 | 同時設定了好幾家時指定用哪一家：`anthropic`、`atlas`、`replit` |
+| `AI_MODEL_STRONG` | 選填 | 覆寫對答模型名稱。用 Claude 時預設是 `claude-haiku-5-5`（最便宜），可改成 `claude-sonnet-5-5` 或 `claude-opus-5-5` |
 | `STRIPE_SECRET_KEY`、`STRIPE_WEBHOOK_SECRET` | 要開放儲值時必填 | 收款方的 Stripe 金鑰與付款通知簽章密鑰 |
 | `AI_CREDIT_PACK_POINTS`、`AI_CREDIT_PACK_AMOUNT`、`AI_CREDIT_PACK_CURRENCY` | 選填 | 每包點數、價格（該幣別的最小單位）、幣別；預設 100、1000、usd |
 | `AI_CREDITS_ENFORCED` | 選填 | 設為 `false` 可暫停扣點；預設會扣 |

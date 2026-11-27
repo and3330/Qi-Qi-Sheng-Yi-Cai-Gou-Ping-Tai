@@ -7,7 +7,7 @@
  */
 import { Router, type IRouter } from "express";
 import { desc, eq } from "drizzle-orm";
-import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
+import { chatCompletionStream } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import {
   db,
@@ -335,15 +335,8 @@ router.post("/admin/cmo/chat", requireAdmin, async (req, res) => {
       ...history,
       { role: "user", content },
     ];
-    const stream = await chatAi.chat.completions.create({
-      model: chatModel(),
-      max_completion_tokens: 8192,
-      messages: chatMessages,
-      stream: true,
-    });
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) send("delta", { text: delta });
+    for await (const delta of chatCompletionStream({ maxTokens: 8192, messages: chatMessages })) {
+      send("delta", { text: delta });
     }
     send("done", { ok: true });
   } catch (err) {

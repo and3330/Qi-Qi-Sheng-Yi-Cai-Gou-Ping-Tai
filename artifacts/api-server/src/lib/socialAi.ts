@@ -3,12 +3,10 @@
  * 使用專案既有的 AI 整合（平台代理模型）。
  */
 import { randomUUID } from "node:crypto";
-import { chatAi, chatModel, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
+import { chatCompletion, generateImageBuffer } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import { objectStorageClient } from "./objectStorage";
 import { getPublicBaseUrl } from "./socialService";
-
-const TEXT_MODEL = chatModel();
 
 // ---------- AI 文案 ----------
 export async function generateSocialContent(input: {
@@ -16,9 +14,9 @@ export async function generateSocialContent(input: {
   platforms: string[];
   tone?: string;
 }): Promise<{ content: string; hashtags: string }> {
-  const completion = await chatAi.chat.completions.create({
-    model: TEXT_MODEL,
-    max_completion_tokens: 2048,
+  const completion = await chatCompletion({
+    maxTokens: 2048,
+    json: true,
     messages: [
       {
         role: "system",
@@ -30,9 +28,8 @@ export async function generateSocialContent(input: {
         content: `主題：${input.topic}\n目標平台：${input.platforms.join("、")}${input.tone ? `\n語氣：${input.tone}` : ""}\n請產生一則社群貼文。`,
       },
     ],
-    response_format: { type: "json_object" },
   });
-  const raw = completion.choices[0]?.message?.content ?? "{}";
+  const raw = completion?.content ?? "{}";
   let parsed: any = {};
   try {
     parsed = JSON.parse(raw);
@@ -110,12 +107,8 @@ export async function runContentPlanner(
     { role: "system", content: `現在時間：${now.toISOString()}（UTC）` },
     ...history.map((m) => ({ role: m.role, content: m.content.slice(0, 4000) })),
   ];
-  const completion = await chatAi.chat.completions.create({
-    model: TEXT_MODEL,
-    max_completion_tokens: 4096,
-    messages,
-  });
-  const reply = completion.choices[0]?.message?.content ?? "";
+  const completion = await chatCompletion({ maxTokens: 4096, messages });
+  const reply = completion?.content ?? "";
   const plan = extractPlan(reply);
   return { reply, plan };
 }

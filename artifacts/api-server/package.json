@@ -12,6 +12,7 @@
     "test:admin-content": "env -u OPENAI_API_KEY tsx --test src/routes/adminContent.integration.test.ts src/routes/adminContent.ui-contract.test.ts src/routes/adminContent.comparison.test.ts",
     "test:assistant-auth": "tsx --test src/lib/assistantTools.integration.test.ts",
     "test:cmo": "tsx --test src/lib/cmoScheduler.test.ts",
+    "test:ai-provider": "tsx --test src/lib/aiProvider.test.ts",
     "test:content-restore": "tsx --test --test-concurrency=1 src/routes/adminContent.restore.test.ts",
     "test:ai-knowledge": "env -u OPENAI_API_KEY tsx --test --test-concurrency=1 src/routes/adminAiKnowledge.integration.test.ts"
   },

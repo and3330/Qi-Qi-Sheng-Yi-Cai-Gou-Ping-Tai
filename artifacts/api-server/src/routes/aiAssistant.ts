@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
-import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
+import { chatCompletion } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import { db, conversations, messages, aiActionLogsTable } from "@workspace/db";
 import { requireOps, requireAdmin } from "../middlewares/requireMember";
@@ -238,13 +238,11 @@ router.post("/admin/assistant/conversations/:id/messages", requireOps, async (re
   try {
     let finalText = "";
     for (let round = 0; round < 6; round++) {
-      const completion = await chatAi.chat.completions.create({
-        model: chatModel(),
-        max_completion_tokens: 8192,
+      const msg = await chatCompletion({
+        maxTokens: 8192,
         messages: chatMessages,
         tools: toolDefinitions,
       });
-      const msg = completion.choices[0]?.message;
       if (!msg) break;
       if (msg.tool_calls?.length) {
         chatMessages.push(msg);
