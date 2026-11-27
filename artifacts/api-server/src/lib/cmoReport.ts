@@ -5,7 +5,7 @@
  * 並透過既有 AI 整合生成繁中摘要與建議，寫入 cmo_reports。
  */
 import { and, desc, eq } from "drizzle-orm";
-import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
+import { chatCompletion } from "@workspace/integrations-openai-ai-server";
 import {
   db,
   cmoGoalsTable,
@@ -245,12 +245,11 @@ ${anomalies.map((a) => `- [${a.severity}] ${a.message}`).join("\n") || "（無�
 金額單位為新台幣元，數字必須來自上方資料，不可臆測。`;
 
   try {
-    const completion = await chatAi.chat.completions.create({
-      model: chatModel(),
-      max_completion_tokens: 4096,
+    const completion = await chatCompletion({
+      maxTokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });
-    const text = completion.choices[0]?.message?.content ?? "";
+    const text = completion?.content ?? "";
     const jsonText = text.replace(/^```(?:json)?/m, "").replace(/```\s*$/m, "").trim();
     const parsed = JSON.parse(jsonText) as { summary?: string; recommendations?: string };
     if (parsed.summary) {

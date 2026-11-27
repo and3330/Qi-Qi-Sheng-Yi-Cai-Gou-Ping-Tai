@@ -102,7 +102,7 @@ importers:
         version: 8.0.1
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.2
-        version: 1.32.2
+        version: 1.32.2(zod@4.6.7)
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
@@ -419,10 +419,10 @@ importers:
         version: 8.4.0
       '@google/genai':
         specifier: ^2.23.0
-        version: 2.32.0(@modelcontextprotocol/sdk@1.32.2)
+        version: 2.32.0(@modelcontextprotocol/sdk@1.32.2(zod@3.25.76))
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.1
-        version: 1.32.2
+        version: 1.32.2(zod@3.25.76)
       '@opentelemetry/api':
         specifier: ^1.10.0
         version: 1.10.0
@@ -1107,6 +1107,9 @@ importers:
 
   lib/integrations-openai-ai-server:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^1.8.0
+        version: 1.8.0(zod@4.6.7)
       openai:
         specifier: ^6.27.0
         version: 6.49.0(ws@8.23.0)(zod@4.6.7)
@@ -1981,6 +1984,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
+      zod: ^3.25 || ^4.0
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -6167,6 +6171,14 @@ snapshots:
     optionalDependencies:
       zod: 3.25.76
 
+  '@anthropic-ai/sdk@1.8.0(zod@4.6.7)':
+    dependencies:
+      '@opentelemetry/api': 1.10.0
+      json-schema-to-ts: 3.1.1
+      standardwebhooks: 1.1.1
+    optionalDependencies:
+      zod: 4.6.7
+
   '@babel/code-frame@7.29.7':
     dependencies:
       '@babel/helper-validator-identifier': 7.29.7
@@ -6673,14 +6685,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@google/genai@2.32.0(@modelcontextprotocol/sdk@1.32.2)':
+  '@google/genai@2.32.0(@modelcontextprotocol/sdk@1.32.2(zod@3.25.76))':
     dependencies:
       google-auth-library: 10.9.1
       p-retry: 4.6.2
       protobufjs: 7.6.6
       ws: 8.23.0
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.32.2
+      '@modelcontextprotocol/sdk': 1.32.2(zod@3.25.76)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -6764,7 +6776,29 @@ snapshots:
       '@lemonadejs/contextmenu': 5.8.6
       lemonadejs: 5.3.6
 
-  '@modelcontextprotocol/sdk@1.32.2':
+  '@modelcontextprotocol/sdk@1.32.2(zod@3.25.76)':
+    dependencies:
+      '@hono/node-server': 2.1.6(hono@4.13.17)
+      ajv: 8.20.0
+      ajv-formats: 3.0.1
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.1.1
+      express: 5.2.1
+      express-rate-limit: 8.7.0(express@5.2.1)
+      hono: 4.13.17
+      jose: 6.2.17
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@modelcontextprotocol/sdk@1.32.2(zod@4.6.7)':
     dependencies:
       '@hono/node-server': 2.1.6(hono@4.13.17)
       ajv: 8.20.0
@@ -11351,6 +11385,10 @@ snapshots:
   yocto-queue@1.2.2: {}
 
   yoctocolors@2.2.0: {}
+
+  zod-to-json-schema@3.25.2(zod@3.25.76):
+    dependencies:
+      zod: 3.25.76
 
   zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:

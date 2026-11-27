@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, asc, desc, eq } from "drizzle-orm";
-import { chatAi, chatModel } from "@workspace/integrations-openai-ai-server";
+import { chatCompletion } from "@workspace/integrations-openai-ai-server";
 import type OpenAI from "openai";
 import { db, conversations, messages, membersTable } from "@workspace/db";
 import { requireMember, requireStaff } from "../middlewares/requireMember";
@@ -141,12 +141,8 @@ router.post("/support/conversations/:id/messages", requireMember, async (req, re
         })),
     ];
 
-    const completion = await chatAi.chat.completions.create({
-      model: chatModel(),
-      max_completion_tokens: 8192,
-      messages: chatMessages,
-    });
-    let reply = completion.choices[0]?.message?.content ?? "";
+    const completion = await chatCompletion({ maxTokens: 8192, messages: chatMessages });
+    let reply = completion?.content ?? "";
     const needsHuman = reply.includes("[轉真人]");
     reply = reply.replace(/\[轉真人\]/g, "").trim();
     if (!reply) reply = "很抱歉，這個問題需要真人客服協助，我們會盡快回覆您。";
